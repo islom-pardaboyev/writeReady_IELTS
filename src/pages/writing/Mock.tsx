@@ -88,7 +88,7 @@ function Mock() {
     activeText.trim() === "" ? 0 : activeText.trim().split(/\s+/).length;
   const minWords = activeTask === 1 ? 150 : 250;
 
-  const pickRandom = <T,>(items: T[]) =>
+  const pickRandomItem = <T,>(items: T[]) =>
     items[Math.floor(Math.random() * items.length)];
 
   const timerHours = Math.floor(timeLeft / 3600);
@@ -96,25 +96,34 @@ function Mock() {
   const timerSeconds = timeLeft % 60;
   const timerLabel =
     timerHours > 0
-      ? `${timerHours}:${timerMinutes.toString().padStart(2, "0")}:${timerSeconds.toString().padStart(2, "0")}`
-      : `${timerMinutes.toString().padStart(2, "0")}:${timerSeconds.toString().padStart(2, "0")}`;
+      ? `${timerHours}:${timerMinutes.toString().padStart(2, "0")}:${timerSeconds
+          .toString()
+          .padStart(2, "0")}`
+      : `${timerMinutes.toString().padStart(2, "0")}:${timerSeconds
+          .toString()
+          .padStart(2, "0")}`;
 
   const handleGetAnother = () => {
     if (activeTask === 1) {
       if (task1List.length === 0) return;
       setUserText1("");
       const current = task1;
-      let next = pickRandom(task1List);
-      if (task1List.length > 1) while (next === current) next = pickRandom(task1List);
+      let next = pickRandomItem(task1List);
+      if (task1List.length > 1) {
+        while (next === current) next = pickRandomItem(task1List);
+      }
       setTask1(next);
-    } else {
-      if (task2List.length === 0) return;
-      setUserText2("");
-      const current = task2;
-      let next = pickRandom(task2List);
-      if (task2List.length > 1) while (next === current) next = pickRandom(task2List);
-      setTask2(next);
+      return;
     }
+
+    if (task2List.length === 0) return;
+    setUserText2("");
+    const current = task2;
+    let next = pickRandomItem(task2List);
+    if (task2List.length > 1) {
+      while (next === current) next = pickRandomItem(task2List);
+    }
+    setTask2(next);
   };
 
   const handleDownloadPDF = () => {
@@ -178,7 +187,10 @@ function Mock() {
       pdfdoc.text("YOUR ANSWER", margin + 3, y + 1);
       y += 12;
 
-      const answerLines = pdfdoc.splitTextToSize(answer || "(No answer provided)", contentW - 10);
+      const answerLines = pdfdoc.splitTextToSize(
+        answer || "(No answer provided)",
+        contentW - 10,
+      );
       const totalHeight = answerLines.length * 5.6 + 10;
       if (y + totalHeight > pageH - margin) { pdfdoc.addPage(); y = 20; }
       pdfdoc.setFillColor(245, 252, 245);
@@ -200,7 +212,7 @@ function Mock() {
       pdfdoc.text(`Page ${i} of ${pages}`, pageW - margin, pageH - 5, { align: "right" });
     }
 
-    pdfdoc.save("WriteReady_Mock.pdf");
+    pdfdoc.save(`WriteReady_Mock.pdf`);
     setShowFeedbackModal(true);
   };
 
@@ -220,7 +232,7 @@ function Mock() {
       const encoded = encodeReport({ task1, task2, userText1, userText2 });
       navigate(`/feedback/${encoded}`);
     } catch (err) {
-      console.error("Failed to verify subscription:", err);
+      console.error("Failed to verify account/subscription status:", err);
       navigate("/auth");
     } finally {
       setCheckingAccess(false);
@@ -234,8 +246,12 @@ function Mock() {
     return (
       <div className="flex items-center justify-center min-h-screen px-4 text-gray-900 bg-white">
         <div className="px-8 py-10 text-center bg-white border border-gray-200 shadow-sm rounded-3xl">
-          <p className="text-sm tracking-widest text-blue-600 uppercase">Loading mock exam</p>
-          <p className="mt-3 text-base">Setting up the IELTS writing experience...</p>
+          <p className="text-sm tracking-widest text-blue-600 uppercase">
+            Loading mock exam
+          </p>
+          <p className="mt-3 text-base">
+            Setting up the IELTS writing experience...
+          </p>
         </div>
       </div>
     );
@@ -243,7 +259,6 @@ function Mock() {
 
   return (
     <div className="flex flex-col min-h-screen bg-white">
-      {/* Top timer bar */}
       <div className="sticky top-0 z-20 border-b border-blue-100 bg-blue-50/95 backdrop-blur-sm">
         <div className="flex flex-wrap items-center justify-between gap-3 px-4 py-2 sm:px-6">
           <div className="flex items-center gap-2 text-sm font-medium text-blue-900">
@@ -263,7 +278,6 @@ function Mock() {
         </div>
       </div>
 
-      {/* Main header (hideable) */}
       {showHeader && (
         <div className="sticky top-[44px] z-10 bg-white border-b border-gray-200">
           <header className="flex flex-col gap-3 px-6 py-4 lg:flex-row lg:items-center lg:justify-between">
@@ -309,7 +323,7 @@ function Mock() {
               </button>
             ))}
             <div className="flex-1" />
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 text-black">
               <NavLink to="/"><Button variant="outline" size="sm">Home</Button></NavLink>
               <NavLink to="/writing/practice"><Button variant="outline" size="sm">Practice Mode</Button></NavLink>
               <NavLink to="/writing/relax"><Button variant="outline" size="sm">Relax Mode</Button></NavLink>
@@ -318,7 +332,6 @@ function Mock() {
         </div>
       )}
 
-      {/* Feedback modal */}
       {showFeedbackModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40">
           <div className="w-full max-w-lg p-6 bg-white rounded-3xl shadow-2xl">
@@ -326,9 +339,12 @@ function Mock() {
               {autoSubmittedByTimer ? "Time's up!" : "Get AI Feedback?"}
             </h2>
             <p className="mt-3 text-sm leading-6 text-gray-600">
-              {autoSubmittedByTimer && <>Your answers have been automatically saved as a PDF. </>}
-              Would you like in-depth AI feedback on your writing? Our AI will analyze your response
-              for grammar, vocabulary, coherence, and task achievement.
+              {autoSubmittedByTimer && (
+                <>Your answers have been automatically saved as a PDF. </>
+              )}
+              Would you like in-depth AI feedback on your writing? Our AI will
+              analyze your response for grammar, vocabulary, coherence, and task
+              achievement.
             </p>
             <div className="mt-6 flex flex-col gap-3 sm:flex-row sm:justify-end">
               <Button
@@ -351,7 +367,6 @@ function Mock() {
         </div>
       )}
 
-      {/* Instructions bar */}
       <div className="px-6 py-4 border-b border-gray-200 bg-gray-50">
         <p className="text-sm font-medium text-gray-900">Task {activeTask}</p>
         <p className="mt-1 text-sm text-gray-700">
@@ -360,20 +375,19 @@ function Mock() {
         </p>
       </div>
 
-      {/* Two-column layout */}
       <div className="flex flex-1 overflow-hidden">
-        {/* Left: question */}
         <div className="w-1/2 p-6 overflow-y-auto bg-white border-r border-gray-200">
-          {activeTask === 1 && task1 ? (
-            <WritingTask1Preview task1={task1} />
-          ) : activeTask === 2 && task2 ? (
-            <WritingTask2Preview task2={task2.report} />
-          ) : (
-            <p className="text-sm text-gray-500">No question available yet.</p>
-          )}
+          <div className="space-y-6">
+            {activeTask === 1 && task1 ? (
+              <WritingTask1Preview task1={task1} />
+            ) : activeTask === 2 && task2 ? (
+              <WritingTask2Preview task2={task2.report} />
+            ) : (
+              <p className="text-sm text-gray-500">No question available yet.</p>
+            )}
+          </div>
         </div>
 
-        {/* Right: answer */}
         <div className="flex flex-col w-1/2 p-6 overflow-y-auto bg-gray-50">
           <textarea
             rows={25}

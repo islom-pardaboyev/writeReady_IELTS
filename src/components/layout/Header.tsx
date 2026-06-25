@@ -48,10 +48,16 @@ export function Header() {
           {user ? (
             <>
               <Link
-                to="/dashboard"
+                to="/writing"
                 style={{ color: 'rgba(255,255,255,0.8)', fontSize: '0.875rem', fontWeight: 500 }}
               >
-                Dashboard
+                Writing
+              </Link>
+              <Link
+                to="/pricing"
+                style={{ color: 'rgba(255,255,255,0.8)', fontSize: '0.875rem', fontWeight: 500 }}
+              >
+                Pricing
               </Link>
               {profile?.plan === 'free' && (
                 <Link to="/pricing">

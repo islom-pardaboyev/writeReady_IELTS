@@ -3,8 +3,8 @@ import { auth, db } from "@/firebase/firebase";
 import { collection, doc, getDoc, getDocs } from "firebase/firestore";
 import jsPDF from "jspdf";
 import WritingTask1Preview from "@/components/writingTask1Preview/WritingTask1Preview";
-import { Button } from "@/components/ui/Button";
 import { NavLink, useNavigate } from "react-router-dom";
+import { Button } from "@/components/ui/Button";
 import WritingTask2Preview from "@/components/writingTask2Preview/WritingTask2Preview";
 import { encodeReport } from "@/lib/reportEncoding";
 
@@ -65,23 +65,30 @@ function Practice() {
     activeText.trim() === "" ? 0 : activeText.trim().split(/\s+/).length;
   const minWords = activeTask === 1 ? 150 : 250;
 
-  const pickRandom = <T,>(items: T[]) =>
+  const pickRandomItem = <T,>(items: T[]) =>
     items[Math.floor(Math.random() * items.length)];
 
   const handleGetAnother = () => {
-    if (activeTask === 1 && task1List.length > 0) {
+    if (activeTask === 1) {
+      if (task1List.length === 0) return;
       setUserText1("");
       const current = task1;
-      let next = pickRandom(task1List);
-      if (task1List.length > 1) while (next === current) next = pickRandom(task1List);
+      let next = pickRandomItem(task1List);
+      if (task1List.length > 1) {
+        while (next === current) next = pickRandomItem(task1List);
+      }
       setTask1(next);
-    } else if (activeTask === 2 && task2List.length > 0) {
-      setUserText2("");
-      const current = task2;
-      let next = pickRandom(task2List);
-      if (task2List.length > 1) while (next === current) next = pickRandom(task2List);
-      setTask2(next);
+      return;
     }
+
+    if (task2List.length === 0) return;
+    setUserText2("");
+    const current = task2;
+    let next = pickRandomItem(task2List);
+    if (task2List.length > 1) {
+      while (next === current) next = pickRandomItem(task2List);
+    }
+    setTask2(next);
   };
 
   const handleDownloadPDF = () => {
@@ -145,7 +152,10 @@ function Practice() {
       pdfdoc.text("YOUR ANSWER", margin + 3, y + 1);
       y += 12;
 
-      const answerLines = pdfdoc.splitTextToSize(answer || "(No answer provided)", contentW - 10);
+      const answerLines = pdfdoc.splitTextToSize(
+        answer || "(No answer provided)",
+        contentW - 10,
+      );
       const totalHeight = answerLines.length * 5.6 + 10;
       if (y + totalHeight > pageH - margin) { pdfdoc.addPage(); y = 20; }
       pdfdoc.setFillColor(245, 252, 245);
@@ -187,7 +197,7 @@ function Practice() {
       const encoded = encodeReport({ task1, task2, userText1, userText2 });
       navigate(`/feedback/${encoded}`);
     } catch (err) {
-      console.error("Failed to verify subscription:", err);
+      console.error("Failed to verify account/subscription status:", err);
       navigate("/auth");
     } finally {
       setCheckingAccess(false);
@@ -201,8 +211,12 @@ function Practice() {
     return (
       <div className="flex items-center justify-center min-h-screen px-4 text-gray-900 bg-white">
         <div className="px-8 py-10 text-center bg-white border border-gray-200 shadow-sm rounded-3xl">
-          <p className="text-sm tracking-widest text-blue-600 uppercase">Loading practice materials</p>
-          <p className="mt-3 text-base">Preparing your IELTS practice session...</p>
+          <p className="text-sm tracking-widest text-blue-600 uppercase">
+            Loading practice materials
+          </p>
+          <p className="mt-3 text-base">
+            Preparing your IELTS practice session...
+          </p>
         </div>
       </div>
     );
@@ -212,10 +226,10 @@ function Practice() {
     <div className="flex flex-col min-h-screen bg-white">
       {showHeader && (
         <div className="sticky top-0 z-10 bg-white border-b border-gray-200">
-          <header className="flex items-center justify-between px-6 py-4">
+          <header className="flex flex-col gap-3 px-6 py-4 lg:flex-row lg:items-center lg:justify-between">
             <div>
               <h1 className="text-lg font-semibold text-gray-900">Practice Mode</h1>
-              <p className="text-sm text-gray-500">
+              <p className="mt-1 text-sm text-gray-500">
                 Task {activeTask} — {minWords} words minimum
               </p>
             </div>
@@ -252,7 +266,7 @@ function Practice() {
               </button>
             ))}
             <div className="flex-1" />
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 text-black">
               <NavLink to="/"><Button variant="ghost" size="sm">Home</Button></NavLink>
               <NavLink to="/writing/mock"><Button variant="ghost" size="sm">Mock Test</Button></NavLink>
               <NavLink to="/writing/relax"><Button variant="ghost" size="sm">Relax Mode</Button></NavLink>
@@ -261,7 +275,6 @@ function Practice() {
         </div>
       )}
 
-      {/* Feedback modal */}
       {showFeedbackModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40">
           <div className="w-full max-w-lg p-6 bg-white rounded-3xl shadow-2xl">
@@ -291,7 +304,6 @@ function Practice() {
         </div>
       )}
 
-      {/* Instructions + hide header toggle */}
       <div className="px-6 py-4 border-b border-gray-200 bg-gray-50">
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div>
@@ -312,26 +324,27 @@ function Practice() {
         </div>
       </div>
 
-      {/* Two-column layout */}
       <div className="flex flex-1 overflow-hidden">
         <div className="w-1/2 p-6 overflow-y-auto bg-white border-r border-gray-200">
-          {activeTask === 1 && task1 ? (
-            <WritingTask1Preview task1={task1} />
-          ) : activeTask === 2 && task2 ? (
-            <WritingTask2Preview task2={task2.report} />
-          ) : (
-            <p className="text-sm text-gray-500">No question available yet.</p>
-          )}
+          <div className="space-y-6">
+            {activeTask === 1 && task1 ? (
+              <WritingTask1Preview task1={task1} />
+            ) : activeTask === 2 && task2 ? (
+              <WritingTask2Preview task2={task2.report} />
+            ) : (
+              <p className="text-sm text-gray-500">No question available yet.</p>
+            )}
+          </div>
         </div>
 
         <div className="flex flex-col w-1/2 p-6 overflow-y-auto bg-gray-50">
           <textarea
+            rows={25}
             value={activeTask === 1 ? userText1 : userText2}
             onChange={(e) =>
               activeTask === 1 ? setUserText1(e.target.value) : setUserText2(e.target.value)
             }
             placeholder="Start writing your response here..."
-            rows={25}
             className="flex-1 w-full p-4 text-sm text-gray-900 bg-white border border-gray-300 rounded outline-none resize-none placeholder:text-gray-400 focus:border-blue-600 focus:ring-1 focus:ring-blue-600"
           />
           <div className="mt-4 text-right">
