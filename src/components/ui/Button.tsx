@@ -1,7 +1,8 @@
-import type { ButtonHTMLAttributes, ReactNode } from 'react';
+import { forwardRef, type ButtonHTMLAttributes, type ReactNode } from 'react';
+import { cn } from '@/lib/cn';
 
-type Variant = 'primary' | 'secondary' | 'ghost' | 'danger' | 'gold';
-type Size = 'sm' | 'md' | 'lg';
+type Variant = 'primary' | 'secondary' | 'ghost' | 'danger' | 'gold' | 'default' | 'outline' | 'destructive';
+type Size = 'sm' | 'md' | 'lg' | 'default';
 
 interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
   variant?: Variant;
@@ -10,43 +11,41 @@ interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
   children: ReactNode;
 }
 
-export function Button({
-  variant = 'primary',
-  size = 'md',
-  loading,
-  disabled,
-  children,
-  ...props
-}: ButtonProps) {
-  return (
-    <button
-      {...props}
-      disabled={disabled || loading}
-      style={{
-        fontWeight: 600,
-        borderRadius: 'var(--radius)',
-        transition: 'all 0.15s',
-        display: 'inline-flex',
-        alignItems: 'center',
-        gap: '0.5rem',
-        justifyContent: 'center',
-        cursor: disabled || loading ? 'not-allowed' : 'pointer',
-        opacity: disabled || loading ? 0.6 : 1,
-        backgroundColor: variant === 'primary' ? 'var(--ink-blue)'
-          : variant === 'danger' ? 'var(--coral)'
-          : variant === 'gold' ? 'var(--gold)'
-          : 'transparent',
-        color: ['primary', 'danger', 'gold'].includes(variant) ? '#fff' : variant === 'secondary' ? 'var(--ink-blue)' : 'var(--slate)',
-        border: variant === 'secondary' ? '1.5px solid var(--ink-blue)' : 'none',
-        padding: size === 'sm' ? '0.375rem 0.75rem' : size === 'lg' ? '0.875rem 2rem' : '0.625rem 1.25rem',
-        fontSize: size === 'lg' ? '1rem' : size === 'sm' ? '0.8125rem' : '0.875rem',
-      }}
-    >
-      {loading ? <Spinner /> : null}
-      {children}
-    </button>
-  );
-}
+export const Button = forwardRef<HTMLButtonElement, ButtonProps>(
+  ({ variant = 'primary', size = 'default', loading, disabled, children, className, ...props }, ref) => {
+    return (
+      <button
+        ref={ref}
+        {...props}
+        disabled={disabled || loading}
+        className={cn(
+          'inline-flex items-center justify-center gap-2 font-semibold rounded-lg transition-all focus-visible:outline-none disabled:pointer-events-none disabled:opacity-60',
+          {
+            'bg-[var(--ink-blue)] text-white hover:opacity-90': variant === 'primary',
+            'bg-gray-100 text-gray-900 hover:bg-gray-200': variant === 'secondary',
+            'text-[var(--slate)] hover:bg-gray-100': variant === 'ghost',
+            'bg-[var(--coral)] text-white hover:opacity-90': variant === 'danger' || variant === 'destructive',
+            'bg-[var(--gold)] text-white hover:opacity-90': variant === 'gold',
+            'bg-blue-600 text-white hover:bg-blue-700': variant === 'default',
+            'border border-gray-300 bg-white text-gray-700 hover:bg-gray-50': variant === 'outline',
+          },
+          {
+            'h-8 px-3 text-xs': size === 'sm',
+            'h-10 px-4 py-2 text-sm': size === 'default',
+            'px-5 py-2.5 text-sm': size === 'md',
+            'px-8 py-3.5 text-base': size === 'lg',
+          },
+          className,
+        )}
+      >
+        {loading ? <Spinner /> : null}
+        {children}
+      </button>
+    );
+  },
+);
+
+Button.displayName = 'Button';
 
 function Spinner() {
   return (

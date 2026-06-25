@@ -11,6 +11,8 @@
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.106.0",
+    "@tailwindcss/vite": "^4.3.1",
+    "clsx": "^2.1.1",
     "firebase": "^12.15.0",
     "firebase-admin": "^13.10.0",
     "html2canvas": "^1.4.1",
@@ -18,7 +20,9 @@
     "lucide-react": "^1.21.0",
     "react": "^19.2.7",
     "react-dom": "^19.2.7",
-    "react-router-dom": "^7.18.0"
+    "react-router-dom": "^7.18.0",
+    "tailwind-merge": "^3.6.0",
+    "tailwindcss": "^4.3.1"
   },
   "devDependencies": {
     "@types/node": "^24.13.2",
