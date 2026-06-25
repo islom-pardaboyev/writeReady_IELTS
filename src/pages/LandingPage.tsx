@@ -61,8 +61,8 @@ export function LandingPage() {
             <Link to="/auth?mode=signup" style={{ display: 'inline-flex', alignItems: 'center', gap: '0.5rem', background: '#1e3a5f', color: 'white', fontWeight: 700, fontSize: '0.9375rem', padding: '0.75rem 1.75rem', borderRadius: 50, textDecoration: 'none' }}>
               Check My Essay →
             </Link>
-            <Link to="/writing" style={{ display: 'inline-flex', alignItems: 'center', gap: '0.375rem', color: '#334155', fontWeight: 600, fontSize: '0.9375rem', textDecoration: 'none' }}>
-              Try a Practice Test →
+            <Link to="/writing/mock" style={{ display: 'inline-flex', alignItems: 'center', gap: '0.375rem', color: '#334155', fontWeight: 600, fontSize: '0.9375rem', textDecoration: 'none' }}>
+              Try a Test →
             </Link>
           </div>
 
