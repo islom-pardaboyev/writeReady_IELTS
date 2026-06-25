@@ -1,217 +1,211 @@
 import { Link } from 'react-router-dom';
-import { Layout } from '../components/layout/Layout';
-import { Button } from '../components/ui/Button';
+import { useAuth } from '../contexts/AuthContext';
 
 export function LandingPage() {
+  const { user } = useAuth();
+
   return (
-    <Layout>
+    <div style={{ fontFamily: 'Inter, sans-serif', color: '#0f172a', background: 'white' }}>
+
+      {/* ── Nav ── */}
+      <header style={{
+        position: 'sticky', top: 0, zIndex: 100,
+        background: 'rgba(255,255,255,0.95)', backdropFilter: 'blur(8px)',
+        borderBottom: '1px solid #e2e8f0',
+      }}>
+        <div style={{ maxWidth: 1160, margin: '0 auto', padding: '0 1.5rem', height: 60, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+          <Link to="/" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', textDecoration: 'none' }}>
+            <div style={{ width: 32, height: 32, borderRadius: 8, background: '#1e3a5f', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'white', fontWeight: 800, fontSize: '0.875rem' }}>W</div>
+            <span style={{ fontWeight: 700, fontSize: '1rem', color: '#0f172a' }}>WriteReady <span style={{ color: '#c9900a' }}>IELTS</span></span>
+          </Link>
+          <nav style={{ display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
+            <Link to="/writing" style={{ color: '#475569', fontSize: '0.875rem', fontWeight: 500, padding: '0.375rem 0.875rem', borderRadius: 6, textDecoration: 'none' }}>Writing</Link>
+            <Link to="/pricing" style={{ color: '#475569', fontSize: '0.875rem', fontWeight: 500, padding: '0.375rem 0.875rem', borderRadius: 6, textDecoration: 'none' }}>Pricing</Link>
+            {user ? (
+              <Link to="/account" style={{ marginLeft: '0.5rem', background: '#1e3a5f', color: 'white', fontSize: '0.875rem', fontWeight: 600, padding: '0.5rem 1.25rem', borderRadius: 8, textDecoration: 'none' }}>
+                My Account
+              </Link>
+            ) : (
+              <>
+                <Link to="/auth?mode=login" style={{ color: '#475569', fontSize: '0.875rem', fontWeight: 500, padding: '0.375rem 0.875rem', borderRadius: 6, textDecoration: 'none' }}>Sign in</Link>
+                <Link to="/auth?mode=signup" style={{ marginLeft: '0.25rem', background: '#1e3a5f', color: 'white', fontSize: '0.875rem', fontWeight: 600, padding: '0.5rem 1.25rem', borderRadius: 8, textDecoration: 'none' }}>
+                  Start Free
+                </Link>
+              </>
+            )}
+          </nav>
+        </div>
+      </header>
+
       {/* ── Hero ── */}
-      <section
-        style={{
-          background: 'var(--ink-blue)',
-          color: 'white',
-          padding: '6rem 0 5rem',
-          textAlign: 'center',
-          position: 'relative',
-          overflow: 'hidden',
-        }}
-      >
-        {/* grid overlay */}
-        <div
-          style={{
-            position: 'absolute', inset: 0, opacity: 0.05,
-            backgroundImage:
-              'repeating-linear-gradient(0deg,#fff 0,#fff 1px,transparent 1px,transparent 48px),' +
-              'repeating-linear-gradient(90deg,#fff 0,#fff 1px,transparent 1px,transparent 48px)',
-          }}
-        />
-        <div className="container" style={{ position: 'relative' }}>
-          <div
-            style={{
-              display: 'inline-flex', alignItems: 'center', gap: '0.5rem',
-              background: 'rgba(217,164,65,0.12)', border: '1px solid rgba(217,164,65,0.35)',
-              color: 'var(--gold)', fontSize: '0.7rem', fontWeight: 700,
-              letterSpacing: '0.1em', textTransform: 'uppercase',
-              padding: '0.35rem 1rem', borderRadius: 20, marginBottom: '2rem',
-            }}
-          >
-            <span style={{ fontSize: '0.75rem' }}>✦</span>
-            AI-Powered IELTS Writing Coach
+      <section style={{ maxWidth: 1160, margin: '0 auto', padding: '5rem 1.5rem 4rem', display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '4rem', alignItems: 'center' }}>
+        {/* Left */}
+        <div>
+          <div style={{ display: 'inline-flex', alignItems: 'center', gap: '0.5rem', background: '#eff6ff', border: '1px solid #bfdbfe', color: '#1d4ed8', fontSize: '0.75rem', fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase', padding: '0.35rem 0.875rem', borderRadius: 20, marginBottom: '1.75rem' }}>
+            <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#22c55e', display: 'inline-block' }} />
+            AI-Powered · Uzbek & English
           </div>
 
-          <h1
-            style={{
-              fontFamily: 'Fraunces, serif',
-              fontSize: 'clamp(2.75rem, 7vw, 4.5rem)',
-              fontWeight: 900,
-              color: 'white',
-              lineHeight: 1.1,
-              margin: '0 auto 1.5rem',
-              maxWidth: 700,
-            }}
-          >
-            Write better.<br />
-            <span style={{ color: 'var(--gold)' }}>Score higher.</span>
+          <h1 style={{ fontSize: 'clamp(2.25rem, 4.5vw, 3.25rem)', fontWeight: 900, lineHeight: 1.1, color: '#0f172a', marginBottom: '1.25rem', letterSpacing: '-0.02em' }}>
+            IELTS Writing{' '}
+            <span style={{ color: '#1d4ed8' }}>Feedback.</span>
+            <br />
+            Delivered instantly<br />through AI.
           </h1>
 
-          <p
-            style={{
-              fontSize: '1.0625rem',
-              color: 'rgba(255,255,255,0.7)',
-              maxWidth: 480,
-              margin: '0 auto 2.5rem',
-              lineHeight: 1.75,
-            }}
-          >
-            Sentence-by-sentence AI feedback in Uzbek and English.
-            Practice in Mock, Practice, or Relax mode.
+          <p style={{ fontSize: '1.0625rem', color: '#64748b', lineHeight: 1.75, marginBottom: '2rem', maxWidth: 440 }}>
+            WriteReady combines real IELTS exam prompts with AI to deliver sentence-level feedback, vocabulary upgrades, and a band score — in both Uzbek and English.
           </p>
 
-          <div style={{ display: 'flex', gap: '0.875rem', justifyContent: 'center', flexWrap: 'wrap', marginBottom: '3.5rem' }}>
-            <Link to="/auth?mode=signup">
-              <Button size="lg" style={{ background: 'var(--gold)', fontSize: '0.9375rem', padding: '0.75rem 1.75rem' } as React.CSSProperties}>
-                Start Practicing Free
-              </Button>
+          <div style={{ display: 'flex', gap: '0.875rem', alignItems: 'center', marginBottom: '2rem', flexWrap: 'wrap' }}>
+            <Link to="/auth?mode=signup" style={{ display: 'inline-flex', alignItems: 'center', gap: '0.5rem', background: '#1e3a5f', color: 'white', fontWeight: 700, fontSize: '0.9375rem', padding: '0.75rem 1.75rem', borderRadius: 50, textDecoration: 'none' }}>
+              Check My Essay →
             </Link>
-            <Link to="/pricing">
-              <Button size="lg" variant="secondary" style={{ color: 'white', borderColor: 'rgba(255,255,255,0.3)', fontSize: '0.9375rem' } as React.CSSProperties}>
-                See Pricing
-              </Button>
+            <Link to="/writing" style={{ display: 'inline-flex', alignItems: 'center', gap: '0.375rem', color: '#334155', fontWeight: 600, fontSize: '0.9375rem', textDecoration: 'none' }}>
+              Try a Practice Test →
             </Link>
           </div>
 
-          {/* Stats row */}
-          <div
-            style={{
-              display: 'flex', justifyContent: 'center', flexWrap: 'wrap', gap: '0.5rem',
-            }}
-          >
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.5rem 1.5rem' }}>
             {[
-              { value: '4', label: 'Scoring criteria' },
-              { value: 'Band 7+', label: 'Target score' },
-              { value: 'Uzbek & English', label: 'Feedback language' },
-            ].map((s) => (
-              <div
-                key={s.label}
-                style={{
-                  background: 'rgba(255,255,255,0.07)',
-                  border: '1px solid rgba(255,255,255,0.1)',
-                  borderRadius: 12,
-                  padding: '0.75rem 1.5rem',
-                  textAlign: 'center',
-                  minWidth: 130,
-                }}
-              >
-                <div style={{ fontFamily: 'Fraunces, serif', fontSize: '1.375rem', fontWeight: 700, color: 'var(--gold)', marginBottom: 2 }}>
-                  {s.value}
-                </div>
-                <div style={{ fontSize: '0.75rem', color: 'rgba(255,255,255,0.5)', letterSpacing: '0.03em' }}>{s.label}</div>
+              'First analysis free',
+              'No credit card required',
+              'Real exam-style prompts',
+              'Sentence-level feedback',
+            ].map((t) => (
+              <div key={t} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.875rem', color: '#475569' }}>
+                <span style={{ color: '#22c55e', fontWeight: 700, fontSize: '1rem' }}>✓</span> {t}
               </div>
             ))}
           </div>
+        </div>
+
+        {/* Right — feedback UI mockup */}
+        <div style={{ position: 'relative' }}>
+          <div style={{ background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: 16, padding: '1.5rem', boxShadow: '0 20px 60px rgba(0,0,0,0.08)' }}>
+            {/* Mock header */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '1rem', paddingBottom: '0.875rem', borderBottom: '1px solid #e2e8f0' }}>
+              <div style={{ width: 10, height: 10, borderRadius: '50%', background: '#f87171' }} />
+              <div style={{ width: 10, height: 10, borderRadius: '50%', background: '#fbbf24' }} />
+              <div style={{ width: 10, height: 10, borderRadius: '50%', background: '#34d399' }} />
+              <span style={{ marginLeft: 'auto', fontSize: '0.75rem', color: '#94a3b8', fontFamily: 'monospace' }}>AI Feedback Report</span>
+            </div>
+
+            {/* Band score badge */}
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1rem' }}>
+              <span style={{ fontSize: '0.8125rem', fontWeight: 600, color: '#475569' }}>Task 2 — Opinion Essay</span>
+              <div style={{ background: '#1e3a5f', color: 'white', fontSize: '0.8125rem', fontWeight: 700, padding: '0.25rem 0.875rem', borderRadius: 20 }}>
+                Band 7.0
+              </div>
+            </div>
+
+            {/* Annotated text */}
+            <div style={{ fontFamily: 'Georgia, serif', fontSize: '0.9rem', lineHeight: 2, color: '#334155', marginBottom: '1rem', background: 'white', borderRadius: 8, padding: '1rem', border: '1px solid #e2e8f0' }}>
+              <p>
+                Technology{' '}
+                <span style={{ textDecoration: 'underline wavy #ef4444', textUnderlineOffset: 3 }}>have</span>
+                {' '}changed our lives{' '}
+                <span style={{ background: 'rgba(234,179,8,0.15)', borderRadius: 3, padding: '0 3px', fontWeight: 500 }}>dramatically</span>
+                {' '}in recent years.
+              </p>
+            </div>
+
+            {/* Grammar note */}
+            <div style={{ borderLeft: '3px solid #ef4444', paddingLeft: '0.875rem', marginBottom: '0.875rem' }}>
+              <p style={{ fontSize: '0.8rem', color: '#ef4444', fontWeight: 600, marginBottom: '0.125rem' }}>Grammar</p>
+              <p style={{ fontSize: '0.8rem', color: '#64748b' }}>"Technology" is singular → use "has changed"</p>
+            </div>
+
+            {/* Vocab card */}
+            <div style={{ background: 'rgba(234,179,8,0.07)', border: '1px solid rgba(234,179,8,0.25)', borderRadius: 8, padding: '0.75rem' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.375rem' }}>
+                <span style={{ fontSize: '0.8rem', fontWeight: 700, color: '#92400e' }}>dramatically</span>
+                <span style={{ fontSize: '0.75rem', color: '#94a3b8' }}>→</span>
+                <span style={{ fontSize: '0.8rem', fontWeight: 600, color: '#0f172a' }}>profoundly</span>
+              </div>
+              <p style={{ fontSize: '0.75rem', color: '#94a3b8' }}>O'zbek: keskin darajada · C1 level</p>
+            </div>
+          </div>
+
+          {/* Floating band card */}
+          <div style={{
+            position: 'absolute', bottom: -20, right: -20,
+            background: 'white', borderRadius: 12, padding: '1rem 1.25rem',
+            boxShadow: '0 8px 32px rgba(0,0,0,0.12)', border: '1px solid #e2e8f0',
+            minWidth: 160,
+          }}>
+            <p style={{ fontSize: '0.7rem', color: '#94a3b8', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: '0.25rem' }}>Criteria scores</p>
+            {[['Task Achievement', '7.0'], ['Coherence', '7.5'], ['Lexical Resource', '6.5'], ['Grammar', '7.0']].map(([k, v]) => (
+              <div key={k} style={{ display: 'flex', justifyContent: 'space-between', gap: '1rem', fontSize: '0.8rem', color: '#334155', padding: '0.125rem 0' }}>
+                <span>{k}</span>
+                <span style={{ fontWeight: 700, color: '#1d4ed8' }}>{v}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* ── Stats ── */}
+      <section style={{ background: '#f8fafc', borderTop: '1px solid #e2e8f0', borderBottom: '1px solid #e2e8f0' }}>
+        <div style={{ maxWidth: 1160, margin: '0 auto', padding: '2.5rem 1.5rem', display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1rem' }}>
+          {[
+            { value: 'Band 7+', sub: 'Target score', note: 'IELTS Writing' },
+            { value: '4', sub: 'Scoring criteria', note: 'TA · CC · LR · GRA' },
+            { value: 'Instant', sub: 'AI feedback', note: 'Uzbek & English' },
+            { value: '3 modes', sub: 'Practice styles', note: 'Mock · Practice · Relax' },
+          ].map((s) => (
+            <div key={s.sub} style={{ padding: '1.25rem 1.5rem' }}>
+              <div style={{ fontSize: '1.75rem', fontWeight: 900, color: '#0f172a', letterSpacing: '-0.02em', marginBottom: '0.125rem' }}>{s.value}</div>
+              <div style={{ fontSize: '0.8125rem', fontWeight: 700, color: '#334155', marginBottom: '0.125rem', textTransform: 'uppercase', letterSpacing: '0.04em' }}>{s.sub}</div>
+              <div style={{ fontSize: '0.75rem', color: '#94a3b8' }}>{s.note}</div>
+            </div>
+          ))}
         </div>
       </section>
 
       {/* ── How it works ── */}
-      <section style={{ padding: '5rem 0', background: 'white' }}>
-        <div className="container">
-          <div style={{ textAlign: 'center', marginBottom: '3rem' }}>
-            <h2 style={{ fontFamily: 'Fraunces, serif', fontSize: '2rem', marginBottom: '0.5rem', color: 'var(--ink-blue)' }}>
-              How it works
-            </h2>
-            <p style={{ color: 'var(--text-muted)', fontSize: '1rem' }}>Three steps to better writing</p>
-          </div>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '1.5rem' }}>
-            {[
-              { step: '01', title: 'Choose a mode', desc: 'Mock exam for pressure, Practice for pace, or Relax for exploration.' },
-              { step: '02', title: 'Write your essay', desc: 'Task 1 and Task 2 prompts selected randomly from a real exam bank.' },
-              { step: '03', title: 'Get AI feedback', desc: 'Sentence-level grammar notes, vocab upgrades, and a band score estimate.' },
-            ].map((s) => (
-              <div
-                key={s.step}
-                style={{
-                  background: 'var(--paper)',
-                  borderRadius: 'var(--radius-lg)',
-                  padding: '2rem',
-                  border: '1px solid var(--border)',
-                  position: 'relative',
-                }}
-              >
-                <div
-                  style={{
-                    fontFamily: 'Fraunces, serif',
-                    fontSize: '2.5rem',
-                    fontWeight: 900,
-                    color: 'var(--gold)',
-                    opacity: 0.25,
-                    lineHeight: 1,
-                    marginBottom: '1rem',
-                  }}
-                >
-                  {s.step}
-                </div>
-                <h3 style={{ fontFamily: 'Fraunces, serif', fontSize: '1.1875rem', color: 'var(--ink-blue)', marginBottom: '0.5rem' }}>
-                  {s.title}
-                </h3>
-                <p style={{ fontSize: '0.9rem', color: 'var(--text-muted)', lineHeight: 1.7 }}>{s.desc}</p>
-              </div>
-            ))}
-          </div>
+      <section style={{ maxWidth: 1160, margin: '0 auto', padding: '5rem 1.5rem' }}>
+        <div style={{ marginBottom: '3rem' }}>
+          <p style={{ fontSize: '0.8125rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em', color: '#1d4ed8', marginBottom: '0.5rem' }}>Simple process</p>
+          <h2 style={{ fontSize: 'clamp(1.75rem, 3vw, 2.25rem)', fontWeight: 900, color: '#0f172a', letterSpacing: '-0.02em' }}>Three steps to a higher band</h2>
+        </div>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: '1.5rem' }}>
+          {[
+            { n: '01', title: 'Choose your mode', desc: 'Mock exam for pressure, Practice for pace, or Relax for free writing with your own prompt.' },
+            { n: '02', title: 'Write your essay', desc: 'Real IELTS Task 1 and Task 2 prompts, selected randomly from our exam bank.' },
+            { n: '03', title: 'Get AI feedback', desc: 'Sentence-level grammar notes, vocabulary upgrades with Uzbek meanings, and a band score estimate.' },
+          ].map((s) => (
+            <div key={s.n} style={{ background: '#f8fafc', borderRadius: 12, padding: '2rem', border: '1px solid #e2e8f0' }}>
+              <div style={{ fontSize: '2.25rem', fontWeight: 900, color: '#e2e8f0', lineHeight: 1, marginBottom: '1rem', letterSpacing: '-0.02em' }}>{s.n}</div>
+              <h3 style={{ fontSize: '1.0625rem', fontWeight: 700, color: '#0f172a', marginBottom: '0.5rem' }}>{s.title}</h3>
+              <p style={{ fontSize: '0.9rem', color: '#64748b', lineHeight: 1.7 }}>{s.desc}</p>
+            </div>
+          ))}
         </div>
       </section>
 
-      {/* ── Three modes ── */}
-      <section style={{ padding: '5rem 0', background: 'var(--paper)' }}>
-        <div className="container">
-          <div style={{ textAlign: 'center', marginBottom: '3rem' }}>
-            <h2 style={{ fontFamily: 'Fraunces, serif', fontSize: '2rem', marginBottom: '0.5rem', color: 'var(--ink-blue)' }}>
-              Three modes, one goal
-            </h2>
-            <p style={{ color: 'var(--text-muted)' }}>Choose your practice style and build exam confidence your way</p>
+      {/* ── Modes ── */}
+      <section style={{ background: '#f8fafc', borderTop: '1px solid #e2e8f0' }}>
+        <div style={{ maxWidth: 1160, margin: '0 auto', padding: '5rem 1.5rem' }}>
+          <div style={{ marginBottom: '3rem' }}>
+            <p style={{ fontSize: '0.8125rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em', color: '#1d4ed8', marginBottom: '0.5rem' }}>Practice modes</p>
+            <h2 style={{ fontSize: 'clamp(1.75rem, 3vw, 2.25rem)', fontWeight: 900, color: '#0f172a', letterSpacing: '-0.02em' }}>One goal, three ways to train</h2>
           </div>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: '1.25rem' }}>
             {[
-              {
-                emoji: '⏱', title: 'Mock Exam', subtitle: 'Exam simulation',
-                desc: '60-minute timer, both tasks. Mirrors the real IELTS on-computer experience with pressure and conditions.',
-                bg: 'var(--ink-blue)', light: true,
-              },
-              {
-                emoji: '✏️', title: 'Practice Mode', subtitle: 'Targeted improvement',
-                desc: 'No timer. Work through Task 1 and Task 2 at your own pace with random questions.',
-                bg: 'white', light: false,
-              },
-              {
-                emoji: '☕', title: 'Relax Mode', subtitle: 'Low-pressure drafting',
-                desc: 'Write with your own custom prompt. Enter any question you like and write freely.',
-                bg: 'var(--mist)', light: false,
-              },
+              { emoji: '⏱', title: 'Mock Exam', tag: 'Exam simulation', desc: '60-minute timer, both Task 1 and Task 2. Mirrors the real IELTS on-computer experience.', bg: '#1e3a5f', light: true },
+              { emoji: '✏️', title: 'Practice Mode', tag: 'Targeted improvement', desc: 'No timer pressure. Work through tasks at your own pace with randomly selected prompts.', bg: 'white', light: false },
+              { emoji: '☕', title: 'Relax Mode', tag: 'Free writing', desc: 'Use your own custom prompt. Enter any question you like, optionally upload a chart, and write freely.', bg: '#eff6ff', light: false },
             ].map((m) => (
               <Link key={m.title} to="/writing" style={{ textDecoration: 'none' }}>
-                <div
-                  style={{
-                    background: m.bg,
-                    borderRadius: 'var(--radius-lg)',
-                    padding: '2rem',
-                    border: m.light ? '1px solid transparent' : '1px solid var(--border)',
-                    boxShadow: 'var(--shadow-sm)',
-                    height: '100%',
-                    transition: 'transform 0.15s, box-shadow 0.15s',
-                    cursor: 'pointer',
-                  }}
-                  onMouseEnter={(e) => { (e.currentTarget as HTMLDivElement).style.transform = 'translateY(-3px)'; (e.currentTarget as HTMLDivElement).style.boxShadow = 'var(--shadow-md)'; }}
-                  onMouseLeave={(e) => { (e.currentTarget as HTMLDivElement).style.transform = ''; (e.currentTarget as HTMLDivElement).style.boxShadow = 'var(--shadow-sm)'; }}
+                <div style={{ background: m.bg, borderRadius: 12, padding: '2rem', border: m.light ? 'none' : '1px solid #e2e8f0', height: '100%', transition: 'transform 0.15s, box-shadow 0.15s', display: 'block', cursor: 'pointer' }}
+                  onMouseEnter={(e) => { (e.currentTarget as HTMLDivElement).style.transform = 'translateY(-2px)'; (e.currentTarget as HTMLDivElement).style.boxShadow = '0 8px 24px rgba(0,0,0,0.1)'; }}
+                  onMouseLeave={(e) => { (e.currentTarget as HTMLDivElement).style.transform = ''; (e.currentTarget as HTMLDivElement).style.boxShadow = ''; }}
                 >
-                  <div style={{ fontSize: '2rem', marginBottom: '0.875rem' }}>{m.emoji}</div>
-                  <h3 style={{ fontFamily: 'Fraunces, serif', fontSize: '1.25rem', color: m.light ? 'white' : 'var(--ink-blue)', marginBottom: '0.25rem' }}>
-                    {m.title}
-                  </h3>
-                  <p style={{ fontSize: '0.75rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', color: m.light ? 'rgba(255,255,255,0.5)' : 'var(--text-muted)', marginBottom: '0.75rem' }}>
-                    {m.subtitle}
-                  </p>
-                  <p style={{ fontSize: '0.9rem', color: m.light ? 'rgba(255,255,255,0.75)' : 'var(--text-muted)', lineHeight: 1.7 }}>
-                    {m.desc}
-                  </p>
+                  <div style={{ fontSize: '1.75rem', marginBottom: '1rem' }}>{m.emoji}</div>
+                  <div style={{ fontSize: '0.7rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em', color: m.light ? 'rgba(255,255,255,0.5)' : '#94a3b8', marginBottom: '0.375rem' }}>{m.tag}</div>
+                  <h3 style={{ fontSize: '1.125rem', fontWeight: 800, color: m.light ? 'white' : '#0f172a', marginBottom: '0.5rem', letterSpacing: '-0.01em' }}>{m.title}</h3>
+                  <p style={{ fontSize: '0.875rem', color: m.light ? 'rgba(255,255,255,0.7)' : '#64748b', lineHeight: 1.7 }}>{m.desc}</p>
                 </div>
               </Link>
             ))}
@@ -219,102 +213,28 @@ export function LandingPage() {
         </div>
       </section>
 
-      {/* ── Feedback preview ── */}
-      <section style={{ padding: '5rem 0', background: 'var(--paper-dark)' }}>
-        <div className="container">
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '3.5rem', alignItems: 'center' }}>
-            <div>
-              <div
-                style={{
-                  display: 'inline-block', background: 'rgba(217,164,65,0.1)',
-                  border: '1px solid rgba(217,164,65,0.3)', color: 'var(--gold)',
-                  fontSize: '0.7rem', fontWeight: 700, letterSpacing: '0.08em',
-                  textTransform: 'uppercase', padding: '0.3rem 0.875rem',
-                  borderRadius: 20, marginBottom: '1.25rem',
-                }}
-              >
-                AI Feedback
-              </div>
-              <h2 style={{ fontFamily: 'Fraunces, serif', fontSize: '2rem', marginBottom: '1rem', color: 'var(--ink-blue)' }}>
-                Feedback like a real teacher
-              </h2>
-              <p style={{ color: 'var(--text-muted)', lineHeight: 1.8, marginBottom: '1.5rem', fontSize: '0.9375rem' }}>
-                Not a generic AI response — annotations styled like ink on paper. Coral underlines for grammar corrections, gold highlights for vocabulary upgrades.
-              </p>
-              <ul style={{ display: 'flex', flexDirection: 'column', gap: '0.625rem' }}>
-                {[
-                  'Sentence-by-sentence grammar & coherence notes',
-                  'Vocabulary upgrades with Uzbek + English meanings',
-                  'Band score estimate (1–9)',
-                  'Model paragraph showing a stronger version',
-                ].map((f) => (
-                  <li key={f} style={{ display: 'flex', gap: '0.625rem', fontSize: '0.9rem', color: 'var(--slate)', alignItems: 'flex-start' }}>
-                    <span style={{ color: 'var(--gold)', fontWeight: 700, marginTop: 1 }}>✓</span> {f}
-                  </li>
-                ))}
-              </ul>
-              <div style={{ marginTop: '2rem' }}>
-                <Link to="/auth?mode=signup">
-                  <Button>Get Feedback Now</Button>
-                </Link>
-              </div>
-            </div>
-
-            {/* Annotation mockup */}
-            <div
-              style={{
-                background: 'white', borderRadius: 'var(--radius-lg)',
-                padding: '2rem', border: '1px solid var(--border)',
-                boxShadow: 'var(--shadow-md)', fontFamily: 'Georgia, serif',
-                lineHeight: 1.9, fontSize: '0.9375rem', color: 'var(--slate)',
-              }}
-            >
-              <p style={{ marginBottom: '0.75rem' }}>
-                Technology{' '}
-                <span style={{ textDecoration: 'underline wavy var(--coral)', textUnderlineOffset: 3 }}>have</span>
-                {' '}changed our lives{' '}
-                <span style={{ background: 'rgba(217,164,65,0.18)', borderRadius: 3, padding: '0 3px' }}>dramatically</span>
-                {' '}in recent years.
-              </p>
-              <div style={{ marginLeft: '1.5rem', borderLeft: '3px solid var(--coral)', paddingLeft: '1rem', marginBottom: '1.25rem' }}>
-                <p style={{ fontSize: '0.8125rem', color: 'var(--coral)', fontFamily: 'Inter, sans-serif', fontStyle: 'normal' }}>
-                  <strong>Grammar:</strong> Subject-verb agreement — "Technology" is singular → "has changed"
-                </p>
-              </div>
-              <div
-                style={{
-                  background: 'rgba(217,164,65,0.08)', border: '1px solid rgba(217,164,65,0.3)',
-                  borderRadius: 'var(--radius)', padding: '0.75rem 1rem',
-                  fontSize: '0.8125rem', fontFamily: 'Inter, sans-serif',
-                }}
-              >
-                <span style={{ fontWeight: 700, color: 'var(--gold)' }}>dramatically</span>
-                <span style={{ color: 'var(--text-muted)' }}> → </span>
-                <span style={{ fontWeight: 600 }}>profoundly / fundamentally</span>
-                <br />
-                <span style={{ color: 'var(--text-muted)' }}>O'zbek: keskin darajada · "This has profoundly shaped society."</span>
-              </div>
-            </div>
-          </div>
-        </div>
-      </section>
-
       {/* ── CTA ── */}
-      <section style={{ background: 'var(--ink-blue)', padding: '5rem 0', textAlign: 'center' }}>
-        <div className="container">
-          <h2 style={{ fontFamily: 'Fraunces, serif', color: 'white', fontSize: '2.25rem', marginBottom: '1rem' }}>
+      <section style={{ background: '#0f172a', padding: '5rem 1.5rem', textAlign: 'center' }}>
+        <div style={{ maxWidth: 600, margin: '0 auto' }}>
+          <h2 style={{ fontSize: 'clamp(1.75rem, 4vw, 2.5rem)', fontWeight: 900, color: 'white', letterSpacing: '-0.02em', marginBottom: '1rem' }}>
             Ready to reach your target band?
           </h2>
-          <p style={{ color: 'rgba(255,255,255,0.65)', marginBottom: '2rem', fontSize: '1rem' }}>
-            Free to start. Upgrade for unlimited AI feedback.
+          <p style={{ color: 'rgba(255,255,255,0.55)', fontSize: '1rem', marginBottom: '2rem', lineHeight: 1.7 }}>
+            Free to start. Upgrade for unlimited AI feedback in Uzbek and English.
           </p>
-          <Link to="/auth?mode=signup">
-            <Button size="lg" style={{ background: 'var(--gold)', fontSize: '0.9375rem' } as React.CSSProperties}>
-              Create Free Account
-            </Button>
+          <Link to="/auth?mode=signup" style={{ display: 'inline-flex', alignItems: 'center', gap: '0.5rem', background: '#c9900a', color: 'white', fontWeight: 700, fontSize: '1rem', padding: '0.875rem 2rem', borderRadius: 50, textDecoration: 'none' }}>
+            Create Free Account →
           </Link>
         </div>
       </section>
-    </Layout>
+
+      {/* ── Footer ── */}
+      <footer style={{ background: '#0f172a', borderTop: '1px solid rgba(255,255,255,0.06)', padding: '1.5rem', textAlign: 'center' }}>
+        <p style={{ fontSize: '0.8125rem', color: 'rgba(255,255,255,0.3)' }}>
+          © {new Date().getFullYear()} WriteReady IELTS · AI-powered writing coach
+        </p>
+      </footer>
+
+    </div>
   );
 }
