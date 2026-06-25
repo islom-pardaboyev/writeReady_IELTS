@@ -1,4 +1,10 @@
-import { useState, useEffect, useRef, type PointerEvent, type CSSProperties } from "react";
+import {
+  useState,
+  useEffect,
+  useRef,
+  type PointerEvent,
+  type CSSProperties,
+} from "react";
 import { auth, db } from "@/firebase/firebase";
 import { collection, doc, getDoc, getDocs } from "firebase/firestore";
 import jsPDF from "jspdf";
@@ -66,18 +72,32 @@ function Practice() {
   }, []);
 
   const activeText = activeTask === 1 ? userText1 : userText2;
-  const wordCount = activeText.trim() === "" ? 0 : activeText.trim().split(/\s+/).length;
+  const wordCount =
+    activeText.trim() === "" ? 0 : activeText.trim().split(/\s+/).length;
   const minWords = activeTask === 1 ? 150 : 250;
 
   const meetsMinWords =
-    (activeTask === 1 && userText1.trim().split(/\s+/).filter(Boolean).length >= 150) ||
-    (activeTask === 2 && userText2.trim().split(/\s+/).filter(Boolean).length >= 250);
+    (activeTask === 1 &&
+      userText1.trim().split(/\s+/).filter(Boolean).length >= 150) ||
+    (activeTask === 2 &&
+      userText2.trim().split(/\s+/).filter(Boolean).length >= 250);
 
-  const taskProgress1 = Math.min(100, Math.round((userText1.trim().split(/\s+/).filter(Boolean).length / 150) * 100));
-  const taskProgress2 = Math.min(100, Math.round((userText2.trim().split(/\s+/).filter(Boolean).length / 250) * 100));
+  const taskProgress1 = Math.min(
+    100,
+    Math.round(
+      (userText1.trim().split(/\s+/).filter(Boolean).length / 150) * 100,
+    ),
+  );
+  const taskProgress2 = Math.min(
+    100,
+    Math.round(
+      (userText2.trim().split(/\s+/).filter(Boolean).length / 250) * 100,
+    ),
+  );
   const currentProgress = activeTask === 1 ? taskProgress1 : taskProgress2;
 
-  const pickRandomItem = <T,>(items: T[]) => items[Math.floor(Math.random() * items.length)];
+  const pickRandomItem = <T,>(items: T[]) =>
+    items[Math.floor(Math.random() * items.length)];
 
   const handleGetAnother = () => {
     if (activeTask === 1) {
@@ -85,7 +105,8 @@ function Practice() {
       setUserText1("");
       const current = task1;
       let next = pickRandomItem(task1List);
-      if (task1List.length > 1) while (next === current) next = pickRandomItem(task1List);
+      if (task1List.length > 1)
+        while (next === current) next = pickRandomItem(task1List);
       setTask1(next);
       return;
     }
@@ -93,7 +114,8 @@ function Practice() {
     setUserText2("");
     const current = task2;
     let next = pickRandomItem(task2List);
-    if (task2List.length > 1) while (next === current) next = pickRandomItem(task2List);
+    if (task2List.length > 1)
+      while (next === current) next = pickRandomItem(task2List);
     setTask2(next);
   };
 
@@ -104,11 +126,14 @@ function Practice() {
   const handleSplitPointerMove = (e: PointerEvent<HTMLDivElement>) => {
     if (!isDraggingSplit.current || !splitContainerRef.current) return;
     const rect = splitContainerRef.current.getBoundingClientRect();
-    setSplitRatio(Math.min(0.72, Math.max(0.28, (e.clientX - rect.left) / rect.width)));
+    setSplitRatio(
+      Math.min(0.72, Math.max(0.28, (e.clientX - rect.left) / rect.width)),
+    );
   };
   const handleSplitPointerUp = (e: PointerEvent<HTMLDivElement>) => {
     isDraggingSplit.current = false;
-    if (e.currentTarget.hasPointerCapture(e.pointerId)) e.currentTarget.releasePointerCapture(e.pointerId);
+    if (e.currentTarget.hasPointerCapture(e.pointerId))
+      e.currentTarget.releasePointerCapture(e.pointerId);
   };
 
   const handleDownloadPDF = () => {
@@ -120,41 +145,93 @@ function Practice() {
 
     pdfdoc.setFillColor(15, 23, 42);
     pdfdoc.rect(0, 0, pageW, 40, "F");
-    pdfdoc.setFontSize(12); pdfdoc.setTextColor(255, 255, 255); pdfdoc.setFont("helvetica", "bold");
+    pdfdoc.setFontSize(12);
+    pdfdoc.setTextColor(255, 255, 255);
+    pdfdoc.setFont("helvetica", "bold");
     pdfdoc.text("WriteReady IELTS", margin, 15);
-    pdfdoc.setFontSize(16); pdfdoc.text("Writing Practice Report", margin, 30);
-    pdfdoc.setFontSize(8); pdfdoc.setFont("helvetica", "normal");
-    pdfdoc.text(new Date().toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" }), pageW - margin, 15, { align: "right" });
+    pdfdoc.setFontSize(16);
+    pdfdoc.text("Writing Practice Report", margin, 30);
+    pdfdoc.setFontSize(8);
+    pdfdoc.setFont("helvetica", "normal");
+    pdfdoc.text(
+      new Date().toLocaleDateString("en-GB", {
+        day: "2-digit",
+        month: "short",
+        year: "numeric",
+      }),
+      pageW - margin,
+      15,
+      { align: "right" },
+    );
 
     let y = 52;
-    [{ taskNum: 1 as const, question: task1?.report, answer: userText1, minW: 150 },
-     { taskNum: 2 as const, question: task2?.report, answer: userText2, minW: 250 }].forEach(({ taskNum, question, answer, minW }, i) => {
-      if (i > 0) { pdfdoc.addPage(); y = 20; }
-      pdfdoc.setFillColor(240, 244, 255); pdfdoc.roundedRect(margin, y - 5, contentW, 12, 2, 2, "F");
-      pdfdoc.setFontSize(11); pdfdoc.setTextColor(15, 23, 42); pdfdoc.setFont("helvetica", "bold");
-      pdfdoc.text(`TASK ${taskNum} — ${minW} words minimum`, margin + 3, y + 2); y += 16;
+    [
+      {
+        taskNum: 1 as const,
+        question: task1?.report,
+        answer: userText1,
+        minW: 150,
+      },
+      {
+        taskNum: 2 as const,
+        question: task2?.report,
+        answer: userText2,
+        minW: 250,
+      },
+    ].forEach(({ taskNum, question, answer, minW }, i) => {
+      if (i > 0) {
+        pdfdoc.addPage();
+        y = 20;
+      }
+      pdfdoc.setFillColor(240, 244, 255);
+      pdfdoc.roundedRect(margin, y - 5, contentW, 12, 2, 2, "F");
+      pdfdoc.setFontSize(11);
+      pdfdoc.setTextColor(15, 23, 42);
+      pdfdoc.setFont("helvetica", "bold");
+      pdfdoc.text(`TASK ${taskNum} — ${minW} words minimum`, margin + 3, y + 2);
+      y += 16;
       if (question) {
         const qLines = pdfdoc.splitTextToSize(question, contentW - 10);
         const qH = qLines.length * 5.6 + 10;
-        pdfdoc.setFillColor(248, 250, 252); pdfdoc.roundedRect(margin, y, contentW, qH, 2, 2, "FD");
-        pdfdoc.setFontSize(10); pdfdoc.setFont("helvetica", "normal"); pdfdoc.text(qLines, margin + 5, y + 7); y += qH + 12;
+        pdfdoc.setFillColor(248, 250, 252);
+        pdfdoc.roundedRect(margin, y, contentW, qH, 2, 2, "FD");
+        pdfdoc.setFontSize(10);
+        pdfdoc.setFont("helvetica", "normal");
+        pdfdoc.text(qLines, margin + 5, y + 7);
+        y += qH + 12;
       }
-      pdfdoc.setFillColor(233, 245, 255); pdfdoc.roundedRect(margin, y - 5, contentW, 8, 2, 2, "F");
-      pdfdoc.setFont("helvetica", "bold"); pdfdoc.text("YOUR ANSWER", margin + 3, y + 1); y += 12;
-      const aLines = pdfdoc.splitTextToSize(answer || "(No answer provided)", contentW - 10);
+      pdfdoc.setFillColor(233, 245, 255);
+      pdfdoc.roundedRect(margin, y - 5, contentW, 8, 2, 2, "F");
+      pdfdoc.setFont("helvetica", "bold");
+      pdfdoc.text("YOUR ANSWER", margin + 3, y + 1);
+      y += 12;
+      const aLines = pdfdoc.splitTextToSize(
+        answer || "(No answer provided)",
+        contentW - 10,
+      );
       const aH = aLines.length * 5.6 + 10;
-      if (y + aH > pageH - margin) { pdfdoc.addPage(); y = 20; }
-      pdfdoc.setFillColor(245, 252, 245); pdfdoc.roundedRect(margin, y, contentW, aH, 2, 2, "FD");
-      pdfdoc.setFont("helvetica", "normal"); pdfdoc.text(aLines, margin + 5, y + 7); y += aH + 12;
+      if (y + aH > pageH - margin) {
+        pdfdoc.addPage();
+        y = 20;
+      }
+      pdfdoc.setFillColor(245, 252, 245);
+      pdfdoc.roundedRect(margin, y, contentW, aH, 2, 2, "FD");
+      pdfdoc.setFont("helvetica", "normal");
+      pdfdoc.text(aLines, margin + 5, y + 7);
+      y += aH + 12;
     });
 
     const pages = (pdfdoc.internal as any).getNumberOfPages();
     for (let i = 1; i <= pages; i++) {
       pdfdoc.setPage(i);
-      pdfdoc.setFillColor(15, 23, 42); pdfdoc.rect(0, pageH - 14, pageW, 14, "F");
-      pdfdoc.setFontSize(7); pdfdoc.setTextColor(255, 255, 255);
+      pdfdoc.setFillColor(15, 23, 42);
+      pdfdoc.rect(0, pageH - 14, pageW, 14, "F");
+      pdfdoc.setFontSize(7);
+      pdfdoc.setTextColor(255, 255, 255);
       pdfdoc.text("WriteReady — IELTS Writing Practice", margin, pageH - 5);
-      pdfdoc.text(`Page ${i} of ${pages}`, pageW - margin, pageH - 5, { align: "right" });
+      pdfdoc.text(`Page ${i} of ${pages}`, pageW - margin, pageH - 5, {
+        align: "right",
+      });
     }
     pdfdoc.save("WriteReady_Practice.pdf");
     setShowFeedbackModal(true);
@@ -164,15 +241,27 @@ function Practice() {
     setCheckingAccess(true);
     try {
       const user = auth.currentUser;
-      if (!user) { navigate("/auth"); return; }
+      if (!user) {
+        navigate("/auth");
+        return;
+      }
       const snap = await getDoc(doc(db, "users", user.uid));
-      const subscription = snap.exists() ? ((snap.data().subscription as string | null) ?? null) : null;
-      if (!isPro(subscription)) { navigate("/pricing"); return; }
-      navigate(`/feedback/${encodeReport({ task1, task2, userText1, userText2 })}`);
+      const subscription = snap.exists()
+        ? ((snap.data().subscription as string | null) ?? null)
+        : null;
+      if (!isPro(subscription)) {
+        navigate("/pricing");
+        return;
+      }
+      navigate(
+        `/feedback/${encodeReport({ task1, task2, userText1, userText2 })}`,
+      );
     } catch (err) {
-      console.error(err); navigate("/auth");
+      console.error(err);
+      navigate("/auth");
     } finally {
-      setCheckingAccess(false); setShowFeedbackModal(false);
+      setCheckingAccess(false);
+      setShowFeedbackModal(false);
     }
   };
 
@@ -181,7 +270,9 @@ function Practice() {
       <div className="flex items-center justify-center min-h-screen bg-slate-50">
         <div className="flex flex-col items-center gap-4">
           <div className="w-8 h-8 border-2 border-blue-600 border-t-transparent rounded-full animate-spin" />
-          <p className="text-sm text-slate-500 tracking-wide">Preparing your practice session…</p>
+          <p className="text-sm text-slate-500 tracking-wide">
+            Preparing your practice session…
+          </p>
         </div>
       </div>
     );
@@ -189,14 +280,17 @@ function Practice() {
 
   return (
     <div className="flex flex-col min-h-screen bg-white font-sans">
-
       {/* ── Top bar ── */}
       <div className="sticky top-0 z-30 bg-slate-900 border-b border-slate-800">
         <div className="flex items-center justify-between gap-4 px-5 py-2.5">
           <div className="flex items-center gap-2 min-w-0">
-            <span className="hidden sm:block text-xs font-semibold text-white/50 tracking-widest uppercase">WriteReady</span>
+            <span className="hidden sm:block text-xs font-semibold text-white/50 tracking-widest uppercase">
+              WriteReady
+            </span>
             <ChevronRightIcon className="hidden sm:block w-3 h-3 text-white/30" />
-            <span className="text-sm font-medium text-white truncate">Practice Mode</span>
+            <span className="text-sm font-medium text-white truncate">
+              Practice Mode
+            </span>
           </div>
 
           <div className="flex items-center gap-2">
@@ -223,7 +317,10 @@ function Practice() {
 
         {/* Progress bar */}
         <div className="h-0.5 bg-white/10">
-          <div className="h-full bg-white/60 transition-all duration-500" style={{ width: `${currentProgress}%` }} />
+          <div
+            className="h-full bg-white/60 transition-all duration-500"
+            style={{ width: `${currentProgress}%` }}
+          />
         </div>
       </div>
 
@@ -233,18 +330,23 @@ function Practice() {
           <div className="flex items-center justify-between gap-4 px-5 py-3">
             <div className="flex items-center gap-1">
               {([1, 2] as const).map((t) => {
-                const done = t === 1 ? taskProgress1 >= 100 : taskProgress2 >= 100;
+                const done =
+                  t === 1 ? taskProgress1 >= 100 : taskProgress2 >= 100;
                 return (
                   <button
                     key={t}
                     onClick={() => setActiveTask(t)}
                     className={`relative flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-lg transition-all ${
-                      activeTask === t ? "bg-blue-600 text-white shadow-sm" : "text-slate-600 hover:bg-slate-100"
+                      activeTask === t
+                        ? "bg-blue-600 text-white shadow-sm"
+                        : "text-slate-600 hover:bg-slate-100"
                     }`}
                   >
                     Task {t}
                     {done && (
-                      <span className={`flex items-center justify-center w-4 h-4 rounded-full text-[10px] ${activeTask === t ? "bg-white/20 text-white" : "bg-emerald-100 text-emerald-700"}`}>
+                      <span
+                        className={`flex items-center justify-center w-4 h-4 rounded-full text-[10px] ${activeTask === t ? "bg-white/20 text-white" : "bg-emerald-100 text-emerald-700"}`}
+                      >
                         <CheckIcon className="w-2.5 h-2.5" />
                       </span>
                     )}
@@ -254,9 +356,24 @@ function Practice() {
             </div>
 
             <nav className="hidden md:flex items-center gap-1 text-xs text-slate-500">
-              <NavLink to="/" className="px-2 py-1 hover:text-slate-900 hover:bg-slate-100 rounded transition-colors">Home</NavLink>
-              <NavLink to="/writing/mock" className="px-2 py-1 hover:text-slate-900 hover:bg-slate-100 rounded transition-colors">Mock Test</NavLink>
-              <NavLink to="/writing/relax" className="px-2 py-1 hover:text-slate-900 hover:bg-slate-100 rounded transition-colors">Relax</NavLink>
+              <NavLink
+                to="/"
+                className="px-2 py-1 hover:text-slate-900 hover:bg-slate-100 rounded transition-colors"
+              >
+                Home
+              </NavLink>
+              <NavLink
+                to="/writing/mock"
+                className="px-2 py-1 hover:text-slate-900 hover:bg-slate-100 rounded transition-colors"
+              >
+                Mock Test
+              </NavLink>
+              <NavLink
+                to="/writing/relax"
+                className="px-2 py-1 hover:text-slate-900 hover:bg-slate-100 rounded transition-colors"
+              >
+                Relax
+              </NavLink>
             </nav>
           </div>
 
@@ -265,8 +382,9 @@ function Practice() {
               {activeTask}
             </span>
             <p className="text-xs text-slate-600">
-              Spend about <strong>{activeTask === 1 ? "20" : "40"} minutes</strong> on this task.
-              Write at least <strong>{minWords} words</strong>.
+              Spend about{" "}
+              <strong>{activeTask === 1 ? "20" : "40"} minutes</strong> on this
+              task. Write at least <strong>{minWords} words</strong>.
             </p>
           </div>
         </div>
@@ -285,7 +403,9 @@ function Practice() {
               </button>
             ))}
           </div>
-          <span className="text-xs text-slate-400">{minWords} words minimum</span>
+          <span className="text-xs text-slate-400">
+            {minWords} words minimum
+          </span>
         </div>
       )}
 
@@ -296,13 +416,15 @@ function Practice() {
         style={{ "--split": splitRatio } as unknown as CSSProperties}
       >
         <div className="w-full overflow-y-auto bg-white border-b border-slate-200 md:w-[calc(var(--split)*100%)] md:border-b-0 md:border-r max-h-[42vh] md:max-h-none">
-          <div className="p-6 max-w-prose">
+          <div className="p-6 w-full">
             {activeTask === 1 && task1 ? (
               <WritingTask1Preview task1={task1} />
             ) : activeTask === 2 && task2 ? (
               <WritingTask2Preview task2={task2.report} />
             ) : (
-              <p className="text-sm text-slate-400">No question available yet.</p>
+              <p className="text-sm text-slate-400">
+                No question available yet.
+              </p>
             )}
           </div>
         </div>
@@ -322,11 +444,17 @@ function Practice() {
         </div>
 
         <div className="flex flex-col flex-1 bg-slate-50">
-          <label htmlFor={`answer-task-${activeTask}`} className="sr-only">Your answer for Task {activeTask}</label>
+          <label htmlFor={`answer-task-${activeTask}`} className="sr-only">
+            Your answer for Task {activeTask}
+          </label>
           <textarea
             id={`answer-task-${activeTask}`}
             value={activeTask === 1 ? userText1 : userText2}
-            onChange={(e) => activeTask === 1 ? setUserText1(e.target.value) : setUserText2(e.target.value)}
+            onChange={(e) =>
+              activeTask === 1
+                ? setUserText1(e.target.value)
+                : setUserText2(e.target.value)
+            }
             placeholder="Start writing your response here…"
             spellCheck={false}
             autoCorrect="off"
@@ -347,17 +475,26 @@ function Practice() {
                   style={{ width: `${currentProgress}%` }}
                 />
               </div>
-              <span className={`text-xs font-medium ${meetsMinWords ? "text-emerald-600" : "text-slate-400"}`}>
-                {wordCount} / {minWords} words{meetsMinWords && <span className="ml-1.5">✓</span>}
+              <span
+                className={`text-xs font-medium ${meetsMinWords ? "text-emerald-600" : "text-slate-400"}`}
+              >
+                {wordCount} / {minWords} words
+                {meetsMinWords && <span className="ml-1.5">✓</span>}
               </span>
             </div>
 
             <div className="flex items-center gap-2">
-              <button onClick={handleGetAnother} className="text-xs text-slate-400 hover:text-slate-700 transition-colors">
+              <button
+                onClick={handleGetAnother}
+                className="text-xs text-slate-400 hover:text-slate-700 transition-colors"
+              >
                 New question
               </button>
               <span className="text-slate-200">|</span>
-              <button onClick={handleDownloadPDF} className="text-xs font-medium text-blue-600 hover:text-blue-800 transition-colors">
+              <button
+                onClick={handleDownloadPDF}
+                className="text-xs font-medium text-blue-600 hover:text-blue-800 transition-colors"
+              >
                 Save PDF
               </button>
             </div>
@@ -374,15 +511,27 @@ function Practice() {
               <div className="flex items-center justify-center w-11 h-11 mx-auto rounded-full bg-blue-50">
                 <CheckIcon className="w-5 h-5 text-blue-600" />
               </div>
-              <h2 className="mt-4 text-base font-semibold text-center text-slate-900">Session saved</h2>
+              <h2 className="mt-4 text-base font-semibold text-center text-slate-900">
+                Session saved
+              </h2>
               <p className="mt-2 text-sm leading-6 text-center text-slate-500">
-                Would you like in-depth AI feedback on your writing? We'll analyse grammar, vocabulary, coherence, and task achievement.
+                Would you like in-depth AI feedback on your writing? We'll
+                analyse grammar, vocabulary, coherence, and task achievement.
               </p>
               <div className="flex flex-col gap-2.5 mt-6">
-                <Button onClick={handleAcceptFeedback} disabled={checkingAccess} className="w-full bg-blue-600 hover:bg-blue-700 text-white">
+                <Button
+                  onClick={handleAcceptFeedback}
+                  disabled={checkingAccess}
+                  className="w-full bg-blue-600 hover:bg-blue-700 text-white"
+                >
                   {checkingAccess ? "Checking…" : "Get AI feedback"}
                 </Button>
-                <Button variant="secondary" onClick={() => setShowFeedbackModal(false)} disabled={checkingAccess} className="w-full">
+                <Button
+                  variant="secondary"
+                  onClick={() => setShowFeedbackModal(false)}
+                  disabled={checkingAccess}
+                  className="w-full"
+                >
                   No thanks
                 </Button>
               </div>

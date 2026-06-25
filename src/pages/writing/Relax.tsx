@@ -355,7 +355,7 @@ function Relax() {
         style={{ "--split": splitRatio } as unknown as CSSProperties}
       >
         <div className="w-full overflow-y-auto bg-white border-b border-slate-200 md:w-[calc(var(--split)*100%)] md:border-b-0 md:border-r max-h-[42vh] md:max-h-none">
-          <div className="p-6 max-w-prose">
+          <div className="p-6 w-full">
             {activeTask === 2 && <WritingTask2Preview task2={task2Prompt} />}
             {activeTask === 1 && imageUrl && <WritingTask1Preview task1={{ image: imageUrl, report: prompt }} />}
             {activeTask === 1 && !imageUrl && prompt && (
