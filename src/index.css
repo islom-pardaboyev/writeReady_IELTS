@@ -1,0 +1,114 @@
+@import url('https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,300;0,9..144,700;0,9..144,900;1,9..144,300&family=IBM+Plex+Mono:wght@400;500&family=Inter:wght@300;400;500;600;700&display=swap');
+
+*, *::before, *::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+:root {
+  --ink-blue: #1C3A5E;
+  --paper: #F6F3EC;
+  --slate: #1A2230;
+  --coral: #E0654B;
+  --gold: #D9A441;
+  --mist: #D7E2EA;
+  --ink-light: #2D527E;
+  --paper-dark: #EDE9E0;
+  --border: #C8C4BB;
+  --text-muted: #6B7280;
+  --white: #FFFFFF;
+  --shadow-sm: 0 1px 3px rgba(28,58,94,0.08);
+  --shadow-md: 0 4px 16px rgba(28,58,94,0.12);
+  --shadow-lg: 0 8px 32px rgba(28,58,94,0.16);
+  --radius: 8px;
+  --radius-lg: 14px;
+}
+
+html {
+  font-size: 16px;
+  scroll-behavior: smooth;
+}
+
+body {
+  font-family: 'Inter', sans-serif;
+  background-color: var(--paper);
+  color: var(--slate);
+  line-height: 1.6;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+h1, h2, h3 {
+  font-family: 'Fraunces', serif;
+  color: var(--ink-blue);
+  line-height: 1.2;
+}
+
+code, .mono, .timer-display {
+  font-family: 'IBM Plex Mono', monospace;
+}
+
+a {
+  color: var(--ink-blue);
+  text-decoration: none;
+}
+
+button {
+  cursor: pointer;
+  border: none;
+  font-family: 'Inter', sans-serif;
+}
+
+input, textarea, select {
+  font-family: 'Inter', sans-serif;
+}
+
+#root {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+.container {
+  max-width: 1100px;
+  margin: 0 auto;
+  padding: 0 1.5rem;
+  width: 100%;
+}
+
+/* Scrollbar */
+::-webkit-scrollbar { width: 6px; }
+::-webkit-scrollbar-track { background: var(--paper-dark); }
+::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+
+/* Utility classes */
+.text-muted { color: var(--text-muted); }
+.text-coral { color: var(--coral); }
+.text-gold { color: var(--gold); }
+.text-ink { color: var(--ink-blue); }
+
+.font-fraunces { font-family: 'Fraunces', serif; }
+.font-mono { font-family: 'IBM Plex Mono', monospace; }
+
+/* Fade-in animation */
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.fade-in {
+  animation: fadeIn 0.3s ease-out;
+}
+
+/* Underline annotation style for feedback */
+.correction-underline {
+  text-decoration: underline wavy var(--coral);
+  text-underline-offset: 3px;
+}
+
+.vocab-highlight {
+  background: rgba(217,164,65,0.18);
+  border-radius: 3px;
+  padding: 0 3px;
+}
