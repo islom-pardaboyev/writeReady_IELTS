@@ -13,6 +13,7 @@ import { NavLink, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/Button";
 import WritingTask2Preview from "@/components/writingTask2Preview/WritingTask2Preview";
 import { encodeReport } from "@/lib/reportEncoding";
+import { CheckIcon, ClockIcon } from "lucide-react";
 
 interface Task1 {
   image: string;
@@ -47,6 +48,9 @@ function Mock() {
   const [autoSubmittedByTimer, setAutoSubmittedByTimer] = useState(false);
   const autoSubmitRef = useRef(false);
 
+  const meetsMinWords =
+    (activeTask === 1 && userText1.trim().split(/\s+/).length >= 150) ||
+    (activeTask === 2 && userText2.trim().split(/\s+/).length >= 250);
   // Resizable split between the question panel and the answer panel,
   // mirroring the draggable divider used in the real IELTS on-computer test.
   const [splitRatio, setSplitRatio] = useState(0.46);
@@ -494,7 +498,7 @@ function Mock() {
               {autoSubmittedByTimer ? (
                 <ClockIcon className="w-6 h-6" />
               ) : (
-                <SparkleIcon className="w-6 h-6" />
+                <CheckIcon className="w-6 h-6" />
               )}
             </div>
             <h2 className="mt-5 text-lg font-semibold text-center text-gray-900">
