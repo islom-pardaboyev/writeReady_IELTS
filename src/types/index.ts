@@ -6,6 +6,7 @@ export interface UserProfile {
   uid: string;
   email: string;
   plan: Plan;
+  subscription?: string;
   subscriptionExpiresAt: Date | null;
   createdAt: Date;
 }

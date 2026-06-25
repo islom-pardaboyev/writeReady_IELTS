@@ -1,22 +1,16 @@
-import { Link, useNavigate } from 'react-router-dom';
+import { Link } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
 import { Button } from '../ui/Button';
 
 export function Header() {
-  const { user, profile, logOut } = useAuth();
-  const navigate = useNavigate();
-
-  const handleLogout = async () => {
-    await logOut();
-    navigate('/');
-  };
+  const { user, profile } = useAuth();
 
   return (
     <header
       style={{
-        background: 'var(--ink-blue)',
-        color: 'white',
-        borderBottom: '1px solid rgba(255,255,255,0.08)',
+        background: 'white',
+        color: '#0f172a',
+        borderBottom: '1px solid #e2e8f0',
         position: 'sticky',
         top: 0,
         zIndex: 100,
@@ -37,11 +31,11 @@ export function Header() {
             fontFamily: 'Fraunces, serif',
             fontWeight: 700,
             fontSize: '1.25rem',
-            color: 'white',
+            color: '#0f172a',
             letterSpacing: '-0.01em',
           }}
         >
-          WriteReady <span style={{ color: 'var(--gold)' }}>IELTS</span>
+          WriteReady <span style={{ color: '#c9900a' }}>IELTS</span>
         </Link>
 
         <nav style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
@@ -49,13 +43,13 @@ export function Header() {
             <>
               <Link
                 to="/writing/mock"
-                style={{ color: 'rgba(255,255,255,0.8)', fontSize: '0.875rem', fontWeight: 500 }}
+                style={{ color: '#475569', fontSize: '0.875rem', fontWeight: 500 }}
               >
                 Writing
               </Link>
               <Link
                 to="/pricing"
-                style={{ color: 'rgba(255,255,255,0.8)', fontSize: '0.875rem', fontWeight: 500 }}
+                style={{ color: '#475569', fontSize: '0.875rem', fontWeight: 500 }}
               >
                 Pricing
               </Link>
@@ -63,7 +57,7 @@ export function Header() {
                 <Link to="/pricing">
                   <span
                     style={{
-                      background: 'var(--gold)',
+                      background: '#1d4ed8',
                       color: 'white',
                       fontSize: '0.75rem',
                       fontWeight: 700,
@@ -82,8 +76,8 @@ export function Header() {
                   style={{
                     fontSize: '0.75rem',
                     fontWeight: 600,
-                    color: 'var(--gold)',
-                    border: '1px solid var(--gold)',
+                    color: '#c9900a',
+                    border: '1px solid #c9900a',
                     padding: '0.2rem 0.6rem',
                     borderRadius: 20,
                     textTransform: 'uppercase',
@@ -93,20 +87,19 @@ export function Header() {
                   {profile?.plan === 'forever' ? 'Lifetime' : 'Pro'}
                 </span>
               )}
-              {/* Avatar → account page */}
               <Link to="/account" title="Account">
                 {user.photoURL ? (
                   <img
                     src={user.photoURL}
                     alt="Account"
-                    style={{ width: 30, height: 30, borderRadius: '50%', objectFit: 'cover', display: 'block', border: '2px solid rgba(255,255,255,0.2)' }}
+                    style={{ width: 30, height: 30, borderRadius: '50%', objectFit: 'cover', display: 'block', border: '2px solid #e2e8f0' }}
                   />
                 ) : (
                   <div
                     style={{
                       width: 30, height: 30, borderRadius: '50%',
-                      background: 'rgba(255,255,255,0.15)',
-                      border: '1px solid rgba(255,255,255,0.2)',
+                      background: '#1d4ed8',
+                      border: '2px solid #dbeafe',
                       color: 'white', fontSize: '0.75rem', fontWeight: 700,
                       display: 'flex', alignItems: 'center', justifyContent: 'center',
                       letterSpacing: 0,
@@ -119,16 +112,16 @@ export function Header() {
             </>
           ) : (
             <>
-              <Link to="/pricing" style={{ color: 'rgba(255,255,255,0.8)', fontSize: '0.875rem' }}>
+              <Link to="/pricing" style={{ color: '#475569', fontSize: '0.875rem' }}>
                 Pricing
               </Link>
               <Link to="/auth?mode=login">
-                <Button variant="secondary" size="sm" style={{ color: 'white', borderColor: 'rgba(255,255,255,0.4)' } as React.CSSProperties}>
+                <Button variant="secondary" size="sm">
                   Sign in
                 </Button>
               </Link>
               <Link to="/auth?mode=signup">
-                <Button size="sm" style={{ background: 'var(--gold)' } as React.CSSProperties}>
+                <Button size="sm" style={{ background: '#1d4ed8' } as React.CSSProperties}>
                   Start Free
                 </Button>
               </Link>

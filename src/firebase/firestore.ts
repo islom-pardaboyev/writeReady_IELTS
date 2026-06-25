@@ -12,7 +12,7 @@ import {
   Timestamp,
 } from 'firebase/firestore';
 import { db } from './config';
-import type { UserProfile, UsageRecord, Question, Submission } from '../types';
+import type { UserProfile, UsageRecord, Question, Submission, Plan } from '../types';
 
 function toDate(val: unknown): Date {
   if (val instanceof Timestamp) return val.toDate();
@@ -24,10 +24,21 @@ export async function getUserProfile(uid: string): Promise<UserProfile | null> {
   const snap = await getDoc(doc(db, 'users', uid));
   if (!snap.exists()) return null;
   const d = snap.data();
+  const subscription: string = d.subscription ?? '';
+
+  // Derive effective plan from subscription field (date string or 'forever')
+  let plan: Plan = 'free';
+  if (subscription === 'forever' || d.plan === 'forever') {
+    plan = 'forever';
+  } else if ((subscription && new Date(subscription) > new Date()) || d.plan === 'pro') {
+    plan = 'pro';
+  }
+
   return {
     uid,
     email: d.email,
-    plan: d.plan,
+    plan,
+    subscription,
     subscriptionExpiresAt: d.subscriptionExpiresAt ? toDate(d.subscriptionExpiresAt) : null,
     createdAt: toDate(d.createdAt),
   };
