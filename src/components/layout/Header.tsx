@@ -48,7 +48,7 @@ export function Header() {
           {user ? (
             <>
               <Link
-                to="/writing"
+                to="/writing/mock"
                 style={{ color: 'rgba(255,255,255,0.8)', fontSize: '0.875rem', fontWeight: 500 }}
               >
                 Writing

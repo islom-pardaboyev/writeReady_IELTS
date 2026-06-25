@@ -9,9 +9,12 @@ interface Props {
 
 export default function WritingTask1Preview({ task1 }: Props) {
   return (
-    <div className="space-y-4">
-      <div className="p-4 border border-gray-200 rounded-xl bg-gray-50">
-        <p className="text-sm font-bold text-gray-900 leading-relaxed">{task1.report}</p>
+    <div className="space-y-4 text-sm">
+      <div className="border-gray-200 font-bold border p-4 text-gray-900 leading-relaxed">
+        <p className="mb-4">
+          {task1.report}
+        </p>
+        <p>Summarise the information by selecting and reporting the main features, and make comparisons where relevant.</p>
       </div>
       {task1.image && (
         <div className="overflow-hidden rounded-xl border border-gray-200 bg-white">

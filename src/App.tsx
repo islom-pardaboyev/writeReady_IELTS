@@ -22,7 +22,6 @@ export default function App() {
           <Route path="/workspace/:id" element={<WorkspacePage />} />
           <Route path="/feedback/:id" element={<FeedbackPage />} />
           <Route path="/pricing" element={<PricingPage />} />
-          <Route path="/writing" element={<WritingPage />} />
           <Route path="/writing/mock" element={<Mock />} />
           <Route path="/writing/practice" element={<Practice />} />
           <Route path="/writing/relax" element={<Relax />} />

@@ -7,6 +7,7 @@ import { Layout } from '../components/layout/Layout';
 import { Card } from '../components/ui/Card';
 import { Button } from '../components/ui/Button';
 import type { Question, PracticeMode } from '../types';
+import { Coffee, Pen, Timer } from 'lucide-react';
 
 export function DashboardPage() {
   const { user, profile } = useAuth();
@@ -220,9 +221,9 @@ export function DashboardPage() {
 }
 
 const modes = [
-  { id: 'mock', emoji: '⏱', title: 'Mock', desc: '40-min timer · Exam simulation' },
-  { id: 'practice', emoji: '✏️', title: 'Practice', desc: 'No timer · Per-paragraph feedback' },
-  { id: 'relax', emoji: '☕', title: 'Relax', desc: 'No pressure · Vocabulary focus' },
+  { id: 'mock', emoji: <Timer />, title: 'Mock', desc: '40-min timer · Exam simulation' },
+  { id: 'practice', emoji: <Pen />, title: 'Practice', desc: 'No timer · Per-paragraph feedback' },
+  { id: 'relax', emoji: <Coffee />, title: 'Relax', desc: 'No pressure · Vocabulary focus' },
 ];
 
 function tagStyle(color: string): React.CSSProperties {

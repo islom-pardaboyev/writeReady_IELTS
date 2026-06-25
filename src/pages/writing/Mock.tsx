@@ -1,4 +1,10 @@
-import { useState, useEffect, useRef } from "react";
+import {
+  useState,
+  useEffect,
+  useRef,
+  type PointerEvent,
+  type CSSProperties,
+} from "react";
 import { auth, db } from "@/firebase/firebase";
 import { collection, doc, getDoc, getDocs } from "firebase/firestore";
 import jsPDF from "jspdf";
@@ -23,7 +29,6 @@ function isPro(subscription: string | null): boolean {
 }
 
 const TIMER_SECONDS = 3600;
-const CRITICAL_SECONDS = 300;
 
 function Mock() {
   const navigate = useNavigate();
@@ -41,6 +46,12 @@ function Mock() {
   const [checkingAccess, setCheckingAccess] = useState(false);
   const [autoSubmittedByTimer, setAutoSubmittedByTimer] = useState(false);
   const autoSubmitRef = useRef(false);
+
+  // Resizable split between the question panel and the answer panel,
+  // mirroring the draggable divider used in the real IELTS on-computer test.
+  const [splitRatio, setSplitRatio] = useState(0.46);
+  const splitContainerRef = useRef<HTMLDivElement>(null);
+  const isDraggingSplit = useRef(false);
 
   useEffect(() => {
     const fetchTasks = async () => {
@@ -86,15 +97,20 @@ function Mock() {
     activeText.trim() === "" ? 0 : activeText.trim().split(/\s+/).length;
   const minWords = activeTask === 1 ? 150 : 250;
 
-  const isTimeUp = timeLeft <= 0;
-  const isTimeCritical = !isTimeUp && timeLeft <= CRITICAL_SECONDS;
-
-  const timerMinutes = Math.floor(timeLeft / 60);
-  const timerSeconds = timeLeft % 60;
-  const timerLabel = `${timerMinutes.toString().padStart(2, "0")}:${timerSeconds.toString().padStart(2, "0")}`;
-
   const pickRandomItem = <T,>(items: T[]) =>
     items[Math.floor(Math.random() * items.length)];
+
+  const timerHours = Math.floor(timeLeft / 3600);
+  const timerMinutes = Math.floor((timeLeft % 3600) / 60);
+  const timerSeconds = timeLeft % 60;
+  const timerLabel =
+    timerHours > 0
+      ? `${timerHours}:${timerMinutes.toString().padStart(2, "0")}:${timerSeconds
+          .toString()
+          .padStart(2, "0")}`
+      : `${timerMinutes.toString().padStart(2, "0")}:${timerSeconds
+          .toString()
+          .padStart(2, "0")}`;
 
   const handleGetAnother = () => {
     if (activeTask === 1) {
@@ -117,6 +133,26 @@ function Mock() {
       while (next === current) next = pickRandomItem(task2List);
     }
     setTask2(next);
+  };
+
+  /* ---- resizable divider handlers ---- */
+  const handleSplitPointerDown = (e: PointerEvent<HTMLDivElement>) => {
+    isDraggingSplit.current = true;
+    e.currentTarget.setPointerCapture(e.pointerId);
+  };
+
+  const handleSplitPointerMove = (e: PointerEvent<HTMLDivElement>) => {
+    if (!isDraggingSplit.current || !splitContainerRef.current) return;
+    const rect = splitContainerRef.current.getBoundingClientRect();
+    const ratio = (e.clientX - rect.left) / rect.width;
+    setSplitRatio(Math.min(0.72, Math.max(0.28, ratio)));
+  };
+
+  const handleSplitPointerUp = (e: PointerEvent<HTMLDivElement>) => {
+    isDraggingSplit.current = false;
+    if (e.currentTarget.hasPointerCapture(e.pointerId)) {
+      e.currentTarget.releasePointerCapture(e.pointerId);
+    }
   };
 
   const handleDownloadPDF = () => {
@@ -145,12 +181,25 @@ function Mock() {
 
     let y = 52;
     const tasks = [
-      { taskNum: 1 as const, question: task1?.report, answer: userText1, minW: 150 },
-      { taskNum: 2 as const, question: task2?.report, answer: userText2, minW: 250 },
+      {
+        taskNum: 1 as const,
+        question: task1?.report,
+        answer: userText1,
+        minW: 150,
+      },
+      {
+        taskNum: 2 as const,
+        question: task2?.report,
+        answer: userText2,
+        minW: 250,
+      },
     ];
 
     tasks.forEach(({ taskNum, question, answer, minW }, index) => {
-      if (index > 0) { pdfdoc.addPage(); y = 20; }
+      if (index > 0) {
+        pdfdoc.addPage();
+        y = 20;
+      }
 
       pdfdoc.setFillColor(240, 244, 255);
       pdfdoc.roundedRect(margin, y - 5, contentW, 12, 2, 2, "F");
@@ -185,7 +234,10 @@ function Mock() {
         contentW - 10,
       );
       const totalHeight = answerLines.length * 5.6 + 10;
-      if (y + totalHeight > pageH - margin) { pdfdoc.addPage(); y = 20; }
+      if (y + totalHeight > pageH - margin) {
+        pdfdoc.addPage();
+        y = 20;
+      }
       pdfdoc.setFillColor(245, 252, 245);
       pdfdoc.roundedRect(margin, y, contentW, totalHeight, 2, 2, "FD");
       pdfdoc.setTextColor(15, 23, 42);
@@ -201,7 +253,7 @@ function Mock() {
       pdfdoc.rect(0, pageH - 14, pageW, 14, "F");
       pdfdoc.setFontSize(7);
       pdfdoc.setTextColor(255, 255, 255);
-      pdfdoc.text("WriteReady — IELTS Mock Exam", margin, pageH - 5);
+      pdfdoc.text("WriteReady — IELTS Writing Practice", margin, pageH - 5);
       pdfdoc.text(`Page ${i} of ${pages}`, pageW - margin, pageH - 5, { align: "right" });
     }
 
@@ -213,14 +265,20 @@ function Mock() {
     setCheckingAccess(true);
     try {
       const user = auth.currentUser;
-      if (!user) { navigate("/auth"); return; }
+      if (!user) {
+        navigate("/auth");
+        return;
+      }
 
       const snap = await getDoc(doc(db, "users", user.uid));
       const subscription = snap.exists()
         ? ((snap.data().subscription as string | null) ?? null)
         : null;
 
-      if (!isPro(subscription)) { navigate("/pricing"); return; }
+      if (!isPro(subscription)) {
+        navigate("/pricing");
+        return;
+      }
 
       const encoded = encodeReport({ task1, task2, userText1, userText2 });
       navigate(`/feedback/${encoded}`);
@@ -235,6 +293,10 @@ function Mock() {
 
   const handleDeclineFeedback = () => setShowFeedbackModal(false);
 
+  /* ---------------------------------------------------------------- */
+  /* Loading state — a skeleton of the exam chrome itself, so the     */
+  /* transition into the real UI feels instant rather than jarring.   */
+  /* ---------------------------------------------------------------- */
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-screen px-4 text-gray-900 bg-white">
@@ -243,7 +305,7 @@ function Mock() {
             Loading mock exam
           </p>
           <p className="mt-3 text-base">
-            Preparing your IELTS mock test...
+            Setting up the IELTS writing experience...
           </p>
         </div>
       </div>
@@ -252,42 +314,65 @@ function Mock() {
 
   return (
     <div className="flex flex-col min-h-screen bg-white">
+      <div className="sticky top-0 z-20 border-b border-blue-100 bg-blue-50/95 backdrop-blur-sm">
+        <div className="flex flex-wrap items-center justify-between gap-3 px-4 py-2 sm:px-6">
+          <div className="flex items-center gap-2 text-sm font-medium text-blue-900">
+            <span className="rounded-full bg-white px-3 py-1 shadow-sm border border-blue-100">
+              Time left: {timerLabel}
+            </span>
+            <span className="text-blue-700">Mock Exam</span>
+          </div>
+          <Button
+            type="button"
+            variant={showHeader ? "outline" : "secondary"}
+            onClick={() => setShowHeader((prev) => !prev)}
+            className={showHeader ? "border-blue-200 text-blue-700 hover:bg-blue-100" : ""}
+          >
+            {showHeader ? "Hide header" : "Show header"}
+          </Button>
+        </div>
+      </div>
+
       {showHeader && (
-        <div className="sticky top-0 z-10 bg-white border-b border-gray-200">
+        <div className="sticky top-[44px] z-10 bg-white border-b border-gray-200">
           <header className="flex flex-col gap-3 px-6 py-4 lg:flex-row lg:items-center lg:justify-between">
             <div>
-              <div className="flex items-center gap-3">
-                <h1 className="text-lg font-semibold text-gray-900">Mock Exam</h1>
-                <span
-                  className={`font-mono text-base font-semibold tabular-nums px-3 py-0.5 rounded-full transition-colors ${
-                    isTimeUp
-                      ? "bg-red-100 text-red-600"
-                      : isTimeCritical
-                      ? "bg-red-100 text-red-600 animate-pulse"
-                      : "bg-blue-50 text-blue-700"
-                  }`}
-                >
-                  {isTimeUp ? "Time's up" : timerLabel}
+              <h1 className="text-lg font-semibold text-gray-900">Mock Exam</h1>
+              <div className="flex flex-wrap items-center gap-3 mt-1 text-sm text-gray-500">
+                <span>Task {activeTask} — {minWords} words minimum</span>
+                <span className="rounded-full bg-blue-50 px-3 py-1 text-blue-700">
+                  {timeLeft > 0 ? `Time left: ${timerLabel}` : "Time is up"}
                 </span>
               </div>
-              <p className="mt-1 text-sm text-gray-500">
-                Task {activeTask} — {minWords} words minimum
-              </p>
             </div>
+
             <div className="flex flex-wrap items-center gap-3">
+              <div className="hidden items-center gap-2 pr-4 mr-2 border-r border-gray-200 text-xs text-gray-400 sm:flex">
+                <NavLink to="/" className="hover:text-gray-600">
+                  Home
+                </NavLink>
+                <span>·</span>
+                <NavLink to="/writing/practice" className="hover:text-gray-600">
+                  Practice
+                </NavLink>
+                <span>·</span>
+                <NavLink to="/writing/relax" className="hover:text-gray-600">
+                  Relax
+                </NavLink>
+              </div>
               <Button
                 type="button"
                 variant="outline"
                 onClick={handleGetAnother}
-                className="border-blue-200 text-blue-700 hover:bg-blue-50"
+                className="border-gray-200 text-gray-700 hover:bg-gray-50"
               >
                 Get another test
               </Button>
               <button
                 onClick={handleDownloadPDF}
-                className="px-6 py-2 font-medium text-white transition bg-blue-600 rounded-lg hover:bg-blue-700"
+                className="px-5 py-2.5 text-sm font-medium text-white transition bg-blue-600 rounded-md hover:bg-blue-700"
               >
-                Finish &amp; Download PDF
+                Finish Test & Download PDF
               </button>
             </div>
           </header>
@@ -308,30 +393,126 @@ function Mock() {
             ))}
             <div className="flex-1" />
             <div className="flex items-center gap-2 text-black">
-              <NavLink to="/"><Button variant="ghost" size="sm">Home</Button></NavLink>
-              <NavLink to="/writing/practice"><Button variant="ghost" size="sm">Practice</Button></NavLink>
-              <NavLink to="/writing/relax"><Button variant="ghost" size="sm">Relax Mode</Button></NavLink>
+              <NavLink to="/"><Button variant="outline" size="sm">Home</Button></NavLink>
+              <NavLink to="/writing/practice"><Button variant="outline" size="sm">Practice Mode</Button></NavLink>
+              <NavLink to="/writing/relax"><Button variant="outline" size="sm">Relax Mode</Button></NavLink>
             </div>
           </div>
         </div>
       )}
 
+      {/* ---------------- Task instructions strip (always visible) ---------------- */}
+      <div className="flex items-center gap-2 px-6 py-3.5 text-xs text-gray-600 border-b border-gray-200 bg-[#f8f9fa] shrink-0">
+        <span className="font-semibold text-gray-800">Task {activeTask}</span>
+        <span className="text-gray-300">|</span>
+        <span>
+          You should spend about {activeTask === 1 ? "20" : "40"} minutes on
+          this task and write at least {minWords} words.
+        </span>
+      </div>
+
+      {/* ---------------- Split question / answer panels ---------------- */}
+      <div
+        ref={splitContainerRef}
+        className="flex flex-col flex-1 overflow-hidden md:flex-row"
+        style={{ "--split": splitRatio } as unknown as CSSProperties}
+      >
+        <div className="w-full overflow-y-auto bg-white border-b border-gray-200 md:w-[calc(var(--split)*100%)] md:border-b-0 md:border-r max-h-[42vh] md:max-h-none">
+          <div className="p-3">
+            {activeTask === 1 && task1 ? (
+              <WritingTask1Preview task1={task1} />
+            ) : activeTask === 2 && task2 ? (
+              <WritingTask2Preview task2={task2.report} />
+            ) : (
+              <p className="text-sm text-gray-500">
+                No question available yet.
+              </p>
+            )}
+          </div>
+        </div>
+
+        {/* Drag handle — desktop only, like the resizable divider on the real test */}
+        <div
+          onPointerDown={handleSplitPointerDown}
+          onPointerMove={handleSplitPointerMove}
+          onPointerUp={handleSplitPointerUp}
+          className="relative hidden w-2 shrink-0 cursor-col-resize select-none bg-red hover:bg-blue-100 active:bg-blue-200 transition-colors md:flex items-center justify-center"
+          style={{ touchAction: "none" }}
+        >
+          <div className="flex flex-col gap-1">
+            <span className="w-1 h-1 rounded-full bg-gray-400" />
+            <span className="w-1 h-1 rounded-full bg-gray-400" />
+            <span className="w-1 h-1 rounded-full bg-gray-400" />
+          </div>
+        </div>
+
+        <div className="flex flex-col py-2 px-1 flex-1 text-sm">
+          <label htmlFor={`answer-task-${activeTask}`} className="sr-only">
+            Your answer for Task {activeTask}
+          </label>
+          <textarea
+            id={`answer-task-${activeTask}`}
+            name={`answer-task-${activeTask}`}
+            value={activeTask === 1 ? userText1 : userText2}
+            onChange={(e) =>
+              activeTask === 1
+                ? setUserText1(e.target.value)
+                : setUserText2(e.target.value)
+            }
+            placeholder="Start writing your response here…"
+            spellCheck={false}
+            autoCorrect="off"
+            rows={40}
+            autoCapitalize="off"
+            autoComplete="off"
+            data-gramm="false"
+            data-gramm_editor="false"
+            data-enable-grammarly="false"
+            className="text-sm text-gray-900 rounded-sm p-2 bg-white outline-none resize-none caret-blue-600 transition-colors duration-200 placeholder:text-gray-300 focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 focus:ring-offset-white"
+            style={{ scrollbarGutter: "stable" }}
+          />
+          <div className="flex p-2 items-center justify-end gap-1.5 text-xs">
+            {meetsMinWords && (
+              <CheckIcon className="w-3.5 h-3.5 text-emerald-600" />
+            )}
+            <span
+              className={
+                meetsMinWords ? "font-medium text-emerald-700" : "text-gray-500"
+              }
+            >
+              Word count: {wordCount}
+            </span>
+          </div>
+        </div>
+      </div>
+
+      {/* ---------------- Feedback modal ---------------- */}
       {showFeedbackModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40">
-          <div className="w-full max-w-lg p-6 bg-white rounded-3xl shadow-2xl">
-            <h2 className="text-xl font-semibold text-gray-900">
-              {autoSubmittedByTimer ? "Time's up!" : "Get AI Feedback?"}
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
+          <div className="w-full max-w-md p-8 bg-white shadow-2xl rounded-2xl">
+            <div className="flex items-center justify-center w-12 h-12 mx-auto rounded-full bg-blue-50 text-blue-600">
+              {autoSubmittedByTimer ? (
+                <ClockIcon className="w-6 h-6" />
+              ) : (
+                <SparkleIcon className="w-6 h-6" />
+              )}
+            </div>
+            <h2 className="mt-5 text-lg font-semibold text-center text-gray-900">
+              {autoSubmittedByTimer ? "Time's up!" : "Get AI feedback?"}
             </h2>
             <p className="mt-3 text-sm leading-6 text-gray-600">
-              {autoSubmittedByTimer && "Your answers have been saved as a PDF. "}
-              Would you like in-depth AI feedback on your writing? Our AI will analyze your response
-              for grammar, vocabulary, coherence, and task achievement.
+              {autoSubmittedByTimer && (
+                <>Your answers have been automatically saved as a PDF. </>
+              )}
+              Would you like in-depth AI feedback on your writing? Our AI will
+              analyze your response for grammar, vocabulary, coherence, and task
+              achievement.
             </p>
-            <div className="mt-6 flex flex-col gap-3 sm:flex-row sm:justify-end">
+            <div className="flex flex-col gap-3 mt-7 sm:flex-row-reverse">
               <Button
                 onClick={handleAcceptFeedback}
                 disabled={checkingAccess}
-                className="w-full sm:w-auto bg-blue-600 hover:bg-blue-700"
+                className="w-full bg-blue-600 hover:bg-blue-700"
               >
                 {checkingAccess ? "Checking..." : "Yes, get feedback"}
               </Button>
@@ -339,7 +520,7 @@ function Mock() {
                 variant="secondary"
                 onClick={handleDeclineFeedback}
                 disabled={checkingAccess}
-                className="w-full sm:w-auto"
+                className="w-full"
               >
                 No, thanks
               </Button>
@@ -349,23 +530,11 @@ function Mock() {
       )}
 
       <div className="px-6 py-4 border-b border-gray-200 bg-gray-50">
-        <div className="flex flex-wrap items-start justify-between gap-3">
-          <div>
-            <p className="text-sm font-medium text-gray-900">Task {activeTask}</p>
-            <p className="mt-1 text-sm text-gray-700">
-              You should spend about {activeTask === 1 ? "20" : "40"} minutes on this task. Write
-              at least {minWords} words.
-            </p>
-          </div>
-          <Button
-            type="button"
-            variant={showHeader ? "outline" : "secondary"}
-            onClick={() => setShowHeader((prev) => !prev)}
-            className={showHeader ? "border-blue-200 text-blue-700 hover:bg-blue-50" : ""}
-          >
-            {showHeader ? "Hide header" : "Show header"}
-          </Button>
-        </div>
+        <p className="text-sm font-medium text-gray-900">Task {activeTask}</p>
+        <p className="mt-1 text-sm text-gray-700">
+          You should spend about {activeTask === 1 ? "20" : "40"} minutes on this task. Write at
+          least {minWords} words.
+        </p>
       </div>
 
       <div className="flex flex-1 overflow-hidden">
