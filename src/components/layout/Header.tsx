@@ -93,17 +93,29 @@ export function Header() {
                   {profile?.plan === 'forever' ? 'Lifetime' : 'Pro'}
                 </span>
               )}
-              <button
-                onClick={handleLogout}
-                style={{
-                  background: 'transparent',
-                  color: 'rgba(255,255,255,0.6)',
-                  fontSize: '0.875rem',
-                  padding: '0.25rem 0',
-                }}
-              >
-                Sign out
-              </button>
+              {/* Avatar → account page */}
+              <Link to="/account" title="Account">
+                {user.photoURL ? (
+                  <img
+                    src={user.photoURL}
+                    alt="Account"
+                    style={{ width: 30, height: 30, borderRadius: '50%', objectFit: 'cover', display: 'block', border: '2px solid rgba(255,255,255,0.2)' }}
+                  />
+                ) : (
+                  <div
+                    style={{
+                      width: 30, height: 30, borderRadius: '50%',
+                      background: 'rgba(255,255,255,0.15)',
+                      border: '1px solid rgba(255,255,255,0.2)',
+                      color: 'white', fontSize: '0.75rem', fontWeight: 700,
+                      display: 'flex', alignItems: 'center', justifyContent: 'center',
+                      letterSpacing: 0,
+                    }}
+                  >
+                    {(user.displayName || user.email || 'U').slice(0, 2).toUpperCase()}
+                  </div>
+                )}
+              </Link>
             </>
           ) : (
             <>
