@@ -32,8 +32,8 @@ export function DashboardPage() {
     setSeeding(false);
   };
 
-  const startPractice = (questionId: string, mode: PracticeMode) => {
-    navigate(`/workspace/${questionId}?mode=${mode}`);
+  const startPractice = (_questionId: string, mode: PracticeMode) => {
+    navigate(`/writing/${mode}`);
   };
 
   const isPro = profile?.plan === 'pro' || profile?.plan === 'forever';
@@ -91,10 +91,7 @@ export function DashboardPage() {
             {modes.map((m) => (
               <button
                 key={m.id}
-                onClick={() => {
-                  if (questions.length > 0) startPractice(questions[0].id, m.id as PracticeMode);
-                  else if (!loadingQ) alert('No questions found. Click "Load sample questions" below.');
-                }}
+                onClick={() => navigate(`/writing/${m.id}`)}
                 style={{
                   background: m.id === 'mock' ? 'var(--ink-blue)' : m.id === 'relax' ? 'var(--mist)' : 'white',
                   border: `1.5px solid ${m.id === 'mock' ? 'transparent' : 'var(--border)'}`,
