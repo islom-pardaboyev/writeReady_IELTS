@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import jsPDF from 'jspdf';
 import { useAuth } from '../contexts/AuthContext';
@@ -8,17 +8,6 @@ import { decodeReport } from '../lib/reportEncoding';
 import type { ReportData } from '../lib/reportEncoding';
 import { saveSpacedRepResult, getFeedbackReportHistory } from '../firebase/firestore';
 import type { EnhancedFeedbackResult, QuizQuestion } from '../types';
-
-const CREAM = '#f9f7f2';
-const INK = '#1e3a5f';
-const GOLD = '#c9900a';
-const BORDER = '#d4cfc7';
-const TEXT = '#2c2c2c';
-const MUTED = '#6b7280';
-const GREEN = '#166534';
-const RED = '#b91c1c';
-const GREEN_BG = '#f0fdf4';
-const RED_BG = '#fef2f2';
 
 type Tab = 'overview' | 'priority' | 'detailed' | 'vocabulary' | 'grammar' | 'quiz';
 
@@ -51,6 +40,18 @@ function categorizeIssue(issue: string): string | null {
   return null;
 }
 
+function scoreColor(score: number) {
+  if (score >= 7) return 'text-green-700';
+  if (score >= 6) return 'text-[#1e3a5f]';
+  return 'text-amber-700';
+}
+
+function scoreBarColor(score: number) {
+  if (score >= 7) return 'bg-green-500';
+  if (score >= 6) return 'bg-[#1e3a5f]';
+  return 'bg-amber-500';
+}
+
 export function FeedbackPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
@@ -79,6 +80,8 @@ export function FeedbackPage() {
 
   const [recurringIssues, setRecurringIssues] = useState<string[]>([]);
   const [exporting, setExporting] = useState(false);
+
+  const autoLoadedRef = useRef(false);
 
   useEffect(() => {
     if (!id) return;
@@ -165,13 +168,21 @@ export function FeedbackPage() {
           .sort(([, a], [, b]) => b - a)
           .map(([k]) => k);
         setRecurringIssues(recurring);
-      }).catch(() => {/* non-critical */});
+      }).catch(() => { /* non-critical */ });
     } catch (err) {
       setFeedbackError(err instanceof Error ? err.message : 'Something went wrong.');
     } finally {
       setLoading(false);
     }
   }, [reportData, selectedTask, user, id]);
+
+  // Auto-load feedback once data + user + pro status are ready
+  useEffect(() => {
+    if (reportData && user && isPro && !autoLoadedRef.current) {
+      autoLoadedRef.current = true;
+      loadFeedback();
+    }
+  }, [reportData, user, isPro, loadFeedback]);
 
   const generateQuiz = async () => {
     if (!feedback || !user) return;
@@ -324,11 +335,13 @@ export function FeedbackPage() {
     setExporting(false);
   };
 
+  // ── Early returns ──────────────────────────────────────────────────────────
+
   if (decodeError) {
     return (
       <Layout>
-        <div style={{ padding: '4rem', textAlign: 'center' }}>
-          <p style={{ color: MUTED, marginBottom: '1rem' }}>Invalid feedback link.</p>
+        <div className="py-16 text-center">
+          <p className="text-gray-500 mb-4">Invalid feedback link.</p>
           <Link to="/dashboard"><Button>Back to Dashboard</Button></Link>
         </div>
       </Layout>
@@ -338,7 +351,7 @@ export function FeedbackPage() {
   if (!reportData) {
     return (
       <Layout>
-        <div style={{ padding: '4rem', textAlign: 'center', color: MUTED }}>Loading…</div>
+        <div className="py-16 text-center text-gray-500">Loading…</div>
       </Layout>
     );
   }
@@ -346,22 +359,23 @@ export function FeedbackPage() {
   if (profile && !isPro) {
     return (
       <Layout>
-        <div style={{ padding: '2.5rem 0', background: CREAM, minHeight: 'calc(100vh - 120px)' }}>
-          <div className="container" style={{ maxWidth: 640 }}>
-            <div style={{ background: INK, borderRadius: 16, padding: '2.5rem', textAlign: 'center', color: 'white' }}>
-              <div style={{ fontSize: '3rem', marginBottom: '1rem' }}>🔒</div>
-              <h2 style={{ fontFamily: 'Fraunces, serif', marginBottom: '0.75rem', fontSize: '1.5rem' }}>
+        <div className="bg-[#f9f7f2] min-h-[calc(100vh-120px)] py-10">
+          <div className="container mx-auto max-w-xl px-4">
+            <div className="bg-[#1e3a5f] rounded-2xl p-10 text-center text-white">
+              <div className="text-5xl mb-4">🔒</div>
+              <h2 className="font-[Fraunces,serif] text-2xl font-bold mb-3">
                 AI Feedback Requires Pro
               </h2>
-              <p style={{ color: 'rgba(255,255,255,0.7)', marginBottom: '1.75rem', lineHeight: 1.7 }}>
-                Your essay has been saved. Upgrade to Pro to unlock AI-powered feedback with band scores, vocabulary flashcards, grammar analysis, and retention quizzes.
+              <p className="text-white/70 mb-7 leading-relaxed">
+                Your essay has been saved. Upgrade to Pro to unlock AI-powered feedback with band scores,
+                vocabulary flashcards, grammar analysis, and retention quizzes.
               </p>
-              <div style={{ display: 'flex', gap: '0.75rem', justifyContent: 'center', flexWrap: 'wrap' }}>
+              <div className="flex gap-3 justify-center flex-wrap">
                 <Link to="/pricing">
-                  <Button style={{ background: GOLD } as React.CSSProperties} size="lg">Upgrade to Pro</Button>
+                  <Button size="lg" style={{ background: '#c9900a' }}>Upgrade to Pro</Button>
                 </Link>
                 <Link to="/dashboard">
-                  <Button variant="secondary" style={{ color: 'white', borderColor: 'rgba(255,255,255,0.3)' } as React.CSSProperties}>
+                  <Button variant="secondary" style={{ color: 'white', borderColor: 'rgba(255,255,255,0.3)' }}>
                     Back to Dashboard
                   </Button>
                 </Link>
@@ -373,6 +387,8 @@ export function FeedbackPage() {
     );
   }
 
+  // ── Main render ────────────────────────────────────────────────────────────
+
   return (
     <Layout>
       <style>{`
@@ -383,29 +399,29 @@ export function FeedbackPage() {
         .fp-flip-back { transform: rotateY(180deg); }
       `}</style>
 
-      <div style={{ background: CREAM, minHeight: 'calc(100vh - 120px)', padding: '2.5rem 0' }}>
-        <div className="container" style={{ maxWidth: 880 }}>
+      <div className="bg-[#f9f7f2] min-h-[calc(100vh-120px)] py-10">
+        <div className="container mx-auto max-w-[880px] px-4">
 
           {/* Top bar */}
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1.5rem', flexWrap: 'wrap', gap: '0.75rem' }}>
+          <div className="flex items-center justify-between mb-6 flex-wrap gap-3">
             <div>
-              <Link to="/dashboard" style={{ fontSize: '0.875rem', color: MUTED }}>← Dashboard</Link>
-              <h1 style={{ fontFamily: 'Fraunces, serif', fontSize: '1.75rem', fontWeight: 800, color: INK, marginTop: '0.375rem', marginBottom: 0 }}>
+              <Link to="/dashboard" className="text-sm text-gray-500 hover:text-[#1e3a5f] transition-colors">
+                ← Dashboard
+              </Link>
+              <h1 className="font-[Fraunces,serif] text-3xl font-extrabold text-[#1e3a5f] mt-1">
                 AI Feedback Report
               </h1>
             </div>
-            <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center', flexWrap: 'wrap' }}>
-              {feedback && (
-                <Button onClick={exportPDF} loading={exporting} variant="secondary" size="sm">
-                  ⬇ Download PDF
-                </Button>
-              )}
-            </div>
+            {feedback && (
+              <Button onClick={exportPDF} loading={exporting} variant="secondary" size="sm">
+                ⬇ Download PDF
+              </Button>
+            )}
           </div>
 
           {/* Task selector */}
           {hasBothTasks && (
-            <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '1.25rem' }}>
+            <div className="flex gap-2 mb-5">
               {(['task1', 'task2'] as const).map((t) => (
                 <button
                   key={t}
@@ -414,17 +430,13 @@ export function FeedbackPage() {
                     setFeedback(null);
                     setFeedbackError(null);
                     setActiveTab('overview');
+                    autoLoadedRef.current = false;
                   }}
-                  style={{
-                    padding: '0.375rem 1rem',
-                    borderRadius: 20,
-                    border: `1.5px solid ${selectedTask === t ? INK : BORDER}`,
-                    background: selectedTask === t ? INK : 'white',
-                    color: selectedTask === t ? 'white' : TEXT,
-                    fontWeight: 600,
-                    fontSize: '0.875rem',
-                    cursor: 'pointer',
-                  }}
+                  className={`px-4 py-1.5 rounded-full text-sm font-semibold border-[1.5px] transition-colors cursor-pointer ${
+                    selectedTask === t
+                      ? 'bg-[#1e3a5f] border-[#1e3a5f] text-white'
+                      : 'bg-white border-[#d4cfc7] text-[#2c2c2c] hover:border-[#1e3a5f]'
+                  }`}
                 >
                   {t === 'task1' ? 'Task 1' : 'Task 2'}
                 </button>
@@ -434,92 +446,87 @@ export function FeedbackPage() {
 
           {/* Word count warning */}
           {wordCountWarning && (
-            <div style={{ background: '#fff7ed', border: '1px solid #fed7aa', borderRadius: 10, padding: '0.75rem 1rem', marginBottom: '1.25rem', fontSize: '0.875rem', color: '#9a3412' }}>
+            <div className="bg-orange-50 border border-orange-200 rounded-xl px-4 py-3 mb-5 text-sm text-orange-800">
               ⚠️ {wordCountWarning}
             </div>
           )}
 
           {/* Question card */}
-          <div style={{ background: 'white', borderRadius: 12, padding: '1.25rem 1.5rem', border: `1px solid ${BORDER}`, marginBottom: '1.5rem', borderLeft: `4px solid ${INK}` }}>
-            <p style={{ fontSize: '0.75rem', fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', color: MUTED, marginBottom: '0.5rem' }}>
+          <div className="bg-white rounded-xl px-6 py-5 border border-[#d4cfc7] border-l-4 border-l-[#1e3a5f] mb-6">
+            <p className="text-[0.7rem] font-bold tracking-widest uppercase text-gray-500 mb-2">
               {selectedTask === 'task1' ? 'Task 1' : 'Task 2'} Question
             </p>
-            <p style={{ fontFamily: 'Georgia, serif', lineHeight: 1.75, color: TEXT, fontSize: '0.9375rem', margin: 0 }}>
+            <p className="font-[Georgia,serif] leading-[1.75] text-[#2c2c2c] text-[0.9375rem]">
               {selectedTask === 'task1' ? reportData.task1?.report : reportData.task2?.report}
             </p>
           </div>
 
           {/* Loading */}
           {loading && (
-            <div style={{ background: 'white', borderRadius: 12, padding: '3rem', textAlign: 'center', border: `1px solid ${BORDER}` }}>
-              <div style={{ fontSize: '2.5rem', marginBottom: '1rem' }}>🤖</div>
-              <p style={{ color: INK, fontWeight: 600, marginBottom: '0.5rem' }}>Analysing your essay…</p>
-              <p style={{ color: MUTED, fontSize: '0.875rem' }}>This usually takes 15–30 seconds.</p>
+            <div className="bg-white rounded-xl p-12 text-center border border-[#d4cfc7]">
+              <div className="text-5xl mb-4 animate-pulse">🤖</div>
+              <p className="text-[#1e3a5f] font-semibold mb-1">Analysing your essay…</p>
+              <p className="text-gray-500 text-sm">This usually takes 15–30 seconds.</p>
             </div>
           )}
 
           {/* Error */}
           {feedbackError && (
-            <div style={{ background: RED_BG, border: '1px solid #fecaca', borderRadius: 12, padding: '1.25rem 1.5rem', marginBottom: '1.5rem' }}>
-              <p style={{ color: RED, fontWeight: 600, marginBottom: '0.625rem' }}>Error: {feedbackError}</p>
+            <div className="bg-red-50 border border-red-200 rounded-xl px-6 py-5 mb-6">
+              <p className="text-red-700 font-semibold mb-2">Error: {feedbackError}</p>
               <Button size="sm" onClick={loadFeedback}>Try again</Button>
             </div>
           )}
 
-          {/* CTA when no feedback yet */}
+          {/* CTA — only shown if not pro (should rarely appear given auto-load) */}
           {!feedback && !loading && !feedbackError && (
-            <div style={{ background: 'white', borderRadius: 12, padding: '2.5rem', textAlign: 'center', border: `1px solid ${BORDER}` }}>
-              <div style={{ fontSize: '2.5rem', marginBottom: '1rem' }}>📋</div>
-              <h3 style={{ fontFamily: 'Fraunces, serif', color: INK, marginBottom: '0.5rem' }}>Ready to analyse your essay?</h3>
-              <p style={{ color: MUTED, marginBottom: '1.5rem', fontSize: '0.9375rem', lineHeight: 1.6 }}>
+            <div className="bg-white rounded-xl p-10 text-center border border-[#d4cfc7]">
+              <div className="text-5xl mb-4">📋</div>
+              <h3 className="font-[Fraunces,serif] text-[#1e3a5f] text-xl font-bold mb-2">
+                Ready to analyse your essay?
+              </h3>
+              <p className="text-gray-500 mb-6 leading-relaxed max-w-sm mx-auto">
                 Click below to get your band score, priority fixes, vocabulary flashcards, and grammar analysis.
               </p>
               <Button onClick={loadFeedback}>Generate AI Feedback</Button>
             </div>
           )}
 
-          {/* Main feedback UI */}
+          {/* ── Main feedback UI ─────────────────────────────────── */}
           {feedback && (
             <div>
               {/* Score banner */}
-              <div style={{
-                background: `linear-gradient(135deg, ${INK} 0%, #2d5a8e 100%)`,
-                borderRadius: 16,
-                padding: '1.75rem 2rem',
-                marginBottom: '1.25rem',
-                display: 'flex',
-                alignItems: 'center',
-                gap: '2rem',
-                flexWrap: 'wrap',
-              }}>
-                <div style={{ textAlign: 'center', minWidth: 90 }}>
-                  <p style={{ fontSize: '0.7rem', fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'rgba(255,255,255,0.5)', marginBottom: '0.25rem' }}>
+              <div className="bg-gradient-to-br from-[#1e3a5f] to-[#2d5a8e] rounded-2xl px-8 py-7 mb-5 flex items-center gap-8 flex-wrap">
+                <div className="text-center min-w-[90px]">
+                  <p className="text-[0.65rem] font-bold tracking-[0.1em] uppercase text-white/50 mb-1">
                     Band Score
                   </p>
-                  <div style={{ fontFamily: 'IBM Plex Mono, monospace', fontSize: '3.5rem', fontWeight: 700, color: GOLD, lineHeight: 1 }}>
+                  <div className="font-[IBM_Plex_Mono,monospace] text-[3.5rem] font-bold text-[#c9900a] leading-none">
                     {feedback.scores.overall.toFixed(1)}
                   </div>
-                  <p style={{ fontSize: '0.7rem', color: 'rgba(255,255,255,0.4)', marginTop: '0.375rem' }}>
-                    {feedback.wordCount} words
-                  </p>
+                  <p className="text-[0.65rem] text-white/40 mt-1">{feedback.wordCount} words</p>
                 </div>
-                <div style={{ flex: 1, minWidth: 200 }}>
-                  <p style={{ color: 'rgba(255,255,255,0.45)', fontSize: '0.7rem', fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', marginBottom: '0.75rem' }}>
+
+                <div className="flex-1 min-w-[200px]">
+                  <p className="text-white/45 text-[0.65rem] font-bold tracking-[0.08em] uppercase mb-3">
                     Category Scores
                   </p>
-                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.5rem 1.5rem' }}>
+                  <div className="grid grid-cols-2 gap-x-6 gap-y-2">
                     {([
                       ['TA', feedback.scores.taskAchievement],
                       ['CC', feedback.scores.coherenceCohesion],
                       ['LR', feedback.scores.lexicalResource],
                       ['GRA', feedback.scores.grammaticalRangeAccuracy],
                     ] as [string, number][]).map(([abbr, score]) => (
-                      <div key={abbr} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                        <span style={{ fontSize: '0.7rem', color: 'rgba(255,255,255,0.45)', width: 30, fontFamily: 'IBM Plex Mono, monospace' }}>{abbr}</span>
-                        <div style={{ flex: 1, height: 4, background: 'rgba(255,255,255,0.15)', borderRadius: 2 }}>
-                          <div style={{ height: '100%', width: `${((score - 4) / 5) * 100}%`, background: GOLD, borderRadius: 2 }} />
+                      <div key={abbr} className="flex items-center gap-2">
+                        <span className="text-[0.65rem] text-white/45 w-8 font-[IBM_Plex_Mono,monospace]">{abbr}</span>
+                        <div className="flex-1 h-1 bg-white/15 rounded-full">
+                          <div
+                            className="h-full bg-[#c9900a] rounded-full"
+                            style={{ width: `${((score - 4) / 5) * 100}%` }}
+                          />
                         </div>
-                        <span style={{ fontSize: '0.8125rem', fontWeight: 700, color: 'white', fontFamily: 'IBM Plex Mono, monospace', minWidth: 28, textAlign: 'right' }}>
+                        <span className="text-[0.8rem] font-bold text-white font-[IBM_Plex_Mono,monospace] min-w-[28px] text-right">
                           {score.toFixed(1)}
                         </span>
                       </div>
@@ -530,13 +537,16 @@ export function FeedbackPage() {
 
               {/* Recurring issues */}
               {recurringIssues.length > 0 && (
-                <div style={{ background: '#fffbeb', border: '1px solid #fde68a', borderRadius: 12, padding: '1rem 1.25rem', marginBottom: '1.25rem' }}>
-                  <p style={{ fontWeight: 700, color: '#92400e', marginBottom: '0.5rem', fontSize: '0.875rem' }}>
+                <div className="bg-amber-50 border border-amber-200 rounded-xl px-5 py-4 mb-5">
+                  <p className="font-bold text-amber-800 text-sm mb-2">
                     🔁 Recurring patterns in your recent essays:
                   </p>
-                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.375rem' }}>
+                  <div className="flex flex-wrap gap-1.5">
                     {recurringIssues.map((issue) => (
-                      <span key={issue} style={{ background: '#fef3c7', border: '1px solid #fcd34d', borderRadius: 20, padding: '0.125rem 0.625rem', fontSize: '0.8125rem', color: '#78350f' }}>
+                      <span
+                        key={issue}
+                        className="bg-amber-100 border border-amber-300 rounded-full px-3 py-0.5 text-[0.8rem] text-amber-900"
+                      >
                         {issue}
                       </span>
                     ))}
@@ -545,26 +555,16 @@ export function FeedbackPage() {
               )}
 
               {/* Tab bar */}
-              <div style={{ display: 'flex', gap: '0.25rem', marginBottom: '1.5rem', background: 'white', border: `1px solid ${BORDER}`, borderRadius: 12, padding: '0.375rem', overflowX: 'auto' }}>
+              <div className="flex gap-1 mb-6 bg-white border border-[#d4cfc7] rounded-xl p-1.5 overflow-x-auto">
                 {TABS.map((tab) => (
                   <button
                     key={tab.id}
                     onClick={() => setActiveTab(tab.id)}
-                    style={{
-                      padding: '0.5rem 0.875rem',
-                      borderRadius: 8,
-                      border: 'none',
-                      background: activeTab === tab.id ? INK : 'transparent',
-                      color: activeTab === tab.id ? 'white' : MUTED,
-                      fontWeight: activeTab === tab.id ? 700 : 500,
-                      fontSize: '0.8125rem',
-                      cursor: 'pointer',
-                      whiteSpace: 'nowrap',
-                      transition: 'background 0.15s, color 0.15s',
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: '0.375rem',
-                    }}
+                    className={`flex items-center gap-1.5 px-3.5 py-2 rounded-lg text-[0.8rem] font-medium whitespace-nowrap transition-all cursor-pointer ${
+                      activeTab === tab.id
+                        ? 'bg-[#1e3a5f] text-white font-bold'
+                        : 'text-gray-500 hover:text-[#1e3a5f] hover:bg-gray-50'
+                    }`}
                   >
                     <span>{tab.icon}</span>
                     {tab.label}
@@ -572,126 +572,110 @@ export function FeedbackPage() {
                 ))}
               </div>
 
-              {/* ── OVERVIEW ─────────────────────────────────────── */}
+              {/* ── OVERVIEW ──────────────────────────────────────── */}
               {activeTab === 'overview' && (
                 <div>
-                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '0.75rem', marginBottom: '1.5rem' }}>
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-6">
                     {([
                       ['Task Achievement', feedback.scores.taskAchievement],
                       ['Coherence & Cohesion', feedback.scores.coherenceCohesion],
                       ['Lexical Resource', feedback.scores.lexicalResource],
                       ['Grammatical Range', feedback.scores.grammaticalRangeAccuracy],
                     ] as [string, number][]).map(([name, score]) => (
-                      <div key={name} style={{ background: 'white', borderRadius: 12, padding: '1.25rem', border: `1px solid ${BORDER}`, textAlign: 'center' }}>
-                        <p style={{ fontSize: '0.7rem', fontWeight: 700, color: MUTED, textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: '0.5rem', lineHeight: 1.4 }}>
+                      <div key={name} className="bg-white rounded-xl p-5 border border-[#d4cfc7] text-center">
+                        <p className="text-[0.65rem] font-bold text-gray-500 uppercase tracking-wider mb-2 leading-snug">
                           {name}
                         </p>
-                        <div style={{
-                          fontFamily: 'IBM Plex Mono, monospace',
-                          fontSize: '2.25rem',
-                          fontWeight: 700,
-                          color: score >= 7 ? GREEN : score >= 6 ? INK : '#b45309',
-                          lineHeight: 1,
-                        }}>
+                        <div className={`font-[IBM_Plex_Mono,monospace] text-[2.25rem] font-bold leading-none ${scoreColor(score)}`}>
                           {score.toFixed(1)}
                         </div>
-                        <div style={{ height: 3, background: '#f1f5f9', borderRadius: 2, marginTop: '0.75rem' }}>
-                          <div style={{ height: '100%', width: `${((score - 4) / 5) * 100}%`, background: score >= 7 ? '#22c55e' : score >= 6 ? INK : GOLD, borderRadius: 2 }} />
+                        <div className="h-[3px] bg-slate-100 rounded-full mt-3">
+                          <div
+                            className={`h-full rounded-full ${scoreBarColor(score)}`}
+                            style={{ width: `${((score - 4) / 5) * 100}%` }}
+                          />
                         </div>
                       </div>
                     ))}
                   </div>
 
-                  <div style={{ background: 'white', borderRadius: 12, padding: '1.5rem', border: `1px solid ${BORDER}`, borderLeft: `4px solid ${GOLD}` }}>
-                    <p style={{ fontWeight: 700, color: INK, marginBottom: '0.75rem', fontSize: '0.9375rem' }}>
-                      📈 Band Gap Analysis
-                    </p>
-                    <p style={{ color: TEXT, lineHeight: 1.8, fontFamily: 'Georgia, serif', fontSize: '0.9375rem', margin: 0 }}>
+                  <div className="bg-white rounded-xl p-6 border border-[#d4cfc7] border-l-4 border-l-[#c9900a]">
+                    <p className="font-bold text-[#1e3a5f] mb-3">📈 Band Gap Analysis</p>
+                    <p className="text-[#2c2c2c] leading-[1.8] font-[Georgia,serif] text-[0.9375rem]">
                       {feedback.bandGapAnalysis}
                     </p>
                   </div>
                 </div>
               )}
 
-              {/* ── PRIORITY FIXES ───────────────────────────────── */}
+              {/* ── PRIORITY FIXES ────────────────────────────────── */}
               {activeTab === 'priority' && (
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                <div className="flex flex-col gap-4">
                   {feedback.priorityFixes.map((fix, i) => (
-                    <div key={i} style={{
-                      background: 'white',
-                      borderRadius: 12,
-                      padding: '1.25rem 1.5rem',
-                      border: `1px solid ${BORDER}`,
-                      borderLeft: `4px solid ${i === 0 ? RED : i === 1 ? GOLD : GREEN}`,
-                      display: 'flex',
-                      gap: '1.25rem',
-                      alignItems: 'flex-start',
-                    }}>
-                      <div style={{
-                        background: i === 0 ? RED : i === 1 ? GOLD : GREEN,
-                        color: 'white',
-                        fontFamily: 'IBM Plex Mono, monospace',
-                        fontWeight: 700,
-                        fontSize: '1rem',
-                        width: 38,
-                        height: 38,
-                        borderRadius: 10,
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        flexShrink: 0,
-                      }}>
+                    <div
+                      key={i}
+                      className={`bg-white rounded-xl px-6 py-5 border border-[#d4cfc7] flex gap-5 items-start border-l-4 ${
+                        i === 0 ? 'border-l-red-700' : i === 1 ? 'border-l-[#c9900a]' : 'border-l-green-700'
+                      }`}
+                    >
+                      <div
+                        className={`w-10 h-10 rounded-xl flex items-center justify-center text-white font-bold font-[IBM_Plex_Mono,monospace] shrink-0 ${
+                          i === 0 ? 'bg-red-700' : i === 1 ? 'bg-[#c9900a]' : 'bg-green-700'
+                        }`}
+                      >
                         {i + 1}
                       </div>
                       <div>
-                        <p style={{ fontSize: '0.75rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', color: i === 0 ? RED : i === 1 ? '#92400e' : GREEN, marginBottom: '0.375rem' }}>
+                        <p className={`text-[0.7rem] font-bold uppercase tracking-wider mb-1 ${
+                          i === 0 ? 'text-red-700' : i === 1 ? 'text-amber-800' : 'text-green-700'
+                        }`}>
                           {i === 0 ? 'High priority' : i === 1 ? 'Medium priority' : 'Also consider'}
                         </p>
-                        <p style={{ fontSize: '0.9375rem', color: TEXT, lineHeight: 1.65, margin: 0 }}>{fix}</p>
+                        <p className="text-[0.9375rem] text-[#2c2c2c] leading-[1.65]">{fix}</p>
                       </div>
                     </div>
                   ))}
                 </div>
               )}
 
-              {/* ── DETAILED FEEDBACK ────────────────────────────── */}
+              {/* ── DETAILED FEEDBACK ─────────────────────────────── */}
               {activeTab === 'detailed' && (
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+                <div className="flex flex-col gap-3">
                   {(Object.entries(feedback.feedback) as [string, { strengths: string[]; issues: string[] }][]).map(([key, cat]) => (
-                    <div key={key} style={{ background: 'white', borderRadius: 12, border: `1px solid ${BORDER}`, overflow: 'hidden' }}>
+                    <div key={key} className="bg-white rounded-xl border border-[#d4cfc7] overflow-hidden">
                       <button
                         onClick={() => setExpandedCat(expandedCat === key ? null : key)}
-                        style={{ width: '100%', padding: '1rem 1.25rem', background: 'none', border: 'none', display: 'flex', alignItems: 'center', justifyContent: 'space-between', cursor: 'pointer' }}
+                        className="w-full px-5 py-4 flex items-center justify-between cursor-pointer hover:bg-gray-50 transition-colors"
                       >
-                        <span style={{ fontWeight: 700, color: INK, fontSize: '0.9375rem' }}>
+                        <span className="font-bold text-[#1e3a5f] text-[0.9375rem]">
                           {CAT_LABELS[key] ?? key}
                         </span>
-                        <span style={{ color: MUTED }}>{expandedCat === key ? '▲' : '▼'}</span>
+                        <span className="text-gray-400 text-sm">{expandedCat === key ? '▲' : '▼'}</span>
                       </button>
                       {expandedCat === key && (
-                        <div style={{ padding: '0 1.25rem 1.25rem', borderTop: `1px solid ${BORDER}` }}>
+                        <div className="px-5 pb-5 border-t border-[#d4cfc7]">
                           {cat.strengths.length > 0 && (
-                            <div style={{ marginTop: '1rem', marginBottom: '0.875rem' }}>
-                              <p style={{ fontSize: '0.7rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.07em', color: GREEN, marginBottom: '0.5rem' }}>
+                            <div className="mt-4 mb-3">
+                              <p className="text-[0.65rem] font-bold uppercase tracking-wider text-green-700 mb-2">
                                 Strengths
                               </p>
                               {cat.strengths.map((s, i) => (
-                                <div key={i} style={{ display: 'flex', gap: '0.625rem', marginBottom: '0.375rem', alignItems: 'flex-start' }}>
-                                  <span style={{ color: GREEN, fontSize: '0.875rem', marginTop: 2 }}>✓</span>
-                                  <p style={{ fontSize: '0.9rem', color: TEXT, lineHeight: 1.65, margin: 0 }}>{s}</p>
+                                <div key={i} className="flex gap-2.5 mb-1.5 items-start">
+                                  <span className="text-green-700 text-sm mt-0.5">✓</span>
+                                  <p className="text-[0.9rem] text-[#2c2c2c] leading-[1.65]">{s}</p>
                                 </div>
                               ))}
                             </div>
                           )}
                           {cat.issues.length > 0 && (
                             <div>
-                              <p style={{ fontSize: '0.7rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.07em', color: RED, marginBottom: '0.5rem' }}>
+                              <p className="text-[0.65rem] font-bold uppercase tracking-wider text-red-700 mb-2">
                                 Issues to Improve
                               </p>
                               {cat.issues.map((s, i) => (
-                                <div key={i} style={{ display: 'flex', gap: '0.625rem', marginBottom: '0.375rem', alignItems: 'flex-start' }}>
-                                  <span style={{ color: RED, fontSize: '0.875rem', marginTop: 2 }}>✗</span>
-                                  <p style={{ fontSize: '0.9rem', color: TEXT, lineHeight: 1.65, margin: 0 }}>{s}</p>
+                                <div key={i} className="flex gap-2.5 mb-1.5 items-start">
+                                  <span className="text-red-700 text-sm mt-0.5">✗</span>
+                                  <p className="text-[0.9rem] text-[#2c2c2c] leading-[1.65]">{s}</p>
                                 </div>
                               ))}
                             </div>
@@ -703,38 +687,39 @@ export function FeedbackPage() {
                 </div>
               )}
 
-              {/* ── VOCABULARY ───────────────────────────────────── */}
+              {/* ── VOCABULARY ────────────────────────────────────── */}
               {activeTab === 'vocabulary' && (
                 <div>
-                  <p style={{ color: MUTED, fontSize: '0.875rem', marginBottom: '1.25rem' }}>
+                  <p className="text-gray-500 text-sm mb-5">
                     Tap a card to flip it and see the meaning and example sentence.
                   </p>
-                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(190px, 1fr))', gap: '1rem' }}>
+                  <div className="grid grid-cols-[repeat(auto-fill,minmax(185px,1fr))] gap-4">
                     {feedback.vocabulary.map((v, i) => (
                       <div
                         key={i}
-                        className="fp-flip-card"
-                        style={{ height: 185 }}
+                        className="fp-flip-card h-[185px]"
                         onClick={() => setFlipped((prev) => ({ ...prev, [i]: !prev[i] }))}
                       >
-                        <div className={`fp-flip-inner${flipped[i] ? ' is-flipped' : ''}`} style={{ height: '100%' }}>
-                          <div className="fp-flip-face" style={{ background: INK, color: 'white', border: `1px solid ${INK}` }}>
-                            <p style={{ fontSize: '0.65rem', fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'rgba(255,255,255,0.4)', marginBottom: '0.875rem' }}>
+                        <div className={`fp-flip-inner h-full${flipped[i] ? ' is-flipped' : ''}`}>
+                          {/* Front */}
+                          <div className="fp-flip-face bg-[#1e3a5f] border border-[#1e3a5f]">
+                            <p className="text-[0.6rem] font-bold tracking-[0.1em] uppercase text-white/40 mb-3">
                               Word {i + 1} of {feedback.vocabulary.length}
                             </p>
-                            <p style={{ fontFamily: 'Georgia, serif', fontSize: '1.2rem', fontWeight: 700, color: 'white', lineHeight: 1.3 }}>
+                            <p className="font-[Georgia,serif] text-[1.2rem] font-bold text-white leading-snug">
                               {v.word}
                             </p>
-                            <p style={{ fontSize: '0.7rem', color: 'rgba(255,255,255,0.35)', marginTop: 'auto' }}>tap to flip ↩</p>
+                            <p className="text-[0.65rem] text-white/35 mt-auto">tap to flip ↩</p>
                           </div>
-                          <div className="fp-flip-face fp-flip-back" style={{ background: CREAM, border: `1px solid ${BORDER}` }}>
-                            <div style={{ width: '100%' }}>
-                              <span style={{ background: GOLD, color: 'white', fontSize: '0.65rem', fontWeight: 700, padding: '0.125rem 0.5rem', borderRadius: 20, display: 'inline-block', marginBottom: '0.5rem', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                          {/* Back */}
+                          <div className="fp-flip-face fp-flip-back bg-[#f9f7f2] border border-[#d4cfc7]">
+                            <div className="w-full">
+                              <span className="bg-[#c9900a] text-white text-[0.6rem] font-bold px-2 py-0.5 rounded-full inline-block mb-2 uppercase tracking-wider">
                                 O'zbek
                               </span>
-                              <p style={{ fontSize: '0.9rem', fontWeight: 700, color: TEXT, marginBottom: '0.375rem' }}>{v.uzbek}</p>
-                              <p style={{ fontSize: '0.75rem', color: MUTED, marginBottom: '0.5rem', lineHeight: 1.4 }}>{v.english}</p>
-                              <p style={{ fontFamily: 'Georgia, serif', fontSize: '0.75rem', color: INK, fontStyle: 'italic', lineHeight: 1.5 }}>
+                              <p className="text-[0.9rem] font-bold text-[#2c2c2c] mb-1">{v.uzbek}</p>
+                              <p className="text-[0.75rem] text-gray-500 mb-2 leading-snug">{v.english}</p>
+                              <p className="font-[Georgia,serif] text-[0.75rem] text-[#1e3a5f] italic leading-snug">
                                 "{v.exampleFromEssay}"
                               </p>
                             </div>
@@ -746,20 +731,20 @@ export function FeedbackPage() {
                 </div>
               )}
 
-              {/* ── GRAMMAR ──────────────────────────────────────── */}
+              {/* ── GRAMMAR ───────────────────────────────────────── */}
               {activeTab === 'grammar' && (
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+                <div className="flex flex-col gap-3">
                   {feedback.grammar.map((g, i) => (
-                    <div key={i} style={{ background: 'white', borderRadius: 12, padding: '1.25rem 1.5rem', border: `1px solid ${BORDER}` }}>
-                      <div style={{ display: 'flex', gap: '1rem', alignItems: 'flex-start' }}>
-                        <div style={{ background: `${INK}18`, color: INK, fontFamily: 'IBM Plex Mono, monospace', fontWeight: 700, fontSize: '0.8125rem', width: 30, height: 30, borderRadius: 8, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                    <div key={i} className="bg-white rounded-xl px-6 py-5 border border-[#d4cfc7]">
+                      <div className="flex gap-4 items-start">
+                        <div className="bg-[#1e3a5f]/10 text-[#1e3a5f] font-[IBM_Plex_Mono,monospace] font-bold text-[0.8rem] w-8 h-8 rounded-lg flex items-center justify-center shrink-0">
                           {i + 1}
                         </div>
-                        <div style={{ flex: 1 }}>
-                          <p style={{ fontWeight: 700, color: INK, marginBottom: '0.375rem', fontSize: '0.9375rem' }}>{g.point}</p>
-                          <p style={{ fontSize: '0.875rem', color: TEXT, lineHeight: 1.65, marginBottom: '0.625rem' }}>{g.explanation}</p>
-                          <div style={{ background: `${GOLD}15`, border: `1px solid ${GOLD}40`, borderRadius: 8, padding: '0.625rem 0.875rem' }}>
-                            <p style={{ fontSize: '0.8125rem', color: '#78350f', fontStyle: 'italic', fontFamily: 'Georgia, serif', margin: 0 }}>
+                        <div className="flex-1">
+                          <p className="font-bold text-[#1e3a5f] mb-1 text-[0.9375rem]">{g.point}</p>
+                          <p className="text-sm text-[#2c2c2c] leading-[1.65] mb-2.5">{g.explanation}</p>
+                          <div className="bg-[#c9900a]/10 border border-[#c9900a]/30 rounded-lg px-3.5 py-2.5">
+                            <p className="text-[0.8rem] text-amber-900 italic font-[Georgia,serif]">
                               Example: "{g.example}"
                             </p>
                           </div>
@@ -770,62 +755,59 @@ export function FeedbackPage() {
                 </div>
               )}
 
-              {/* ── RETENTION QUIZ ───────────────────────────────── */}
+              {/* ── RETENTION QUIZ ────────────────────────────────── */}
               {activeTab === 'quiz' && (
                 <div>
                   {!quizQuestions && !quizLoading && (
-                    <div style={{ background: 'white', borderRadius: 12, padding: '2.5rem', textAlign: 'center', border: `1px solid ${BORDER}` }}>
-                      <div style={{ fontSize: '2.5rem', marginBottom: '1rem' }}>🧠</div>
-                      <h3 style={{ fontFamily: 'Fraunces, serif', color: INK, marginBottom: '0.5rem' }}>Test Your Retention</h3>
-                      <p style={{ color: MUTED, marginBottom: '1.5rem', lineHeight: 1.65, maxWidth: 420, margin: '0 auto 1.5rem' }}>
-                        Generate a 10-question quiz to reinforce vocabulary and grammar from this session. Your results are tracked for spaced repetition review.
+                    <div className="bg-white rounded-xl p-10 text-center border border-[#d4cfc7]">
+                      <div className="text-5xl mb-4">🧠</div>
+                      <h3 className="font-[Fraunces,serif] text-[#1e3a5f] text-xl font-bold mb-2">
+                        Test Your Retention
+                      </h3>
+                      <p className="text-gray-500 mb-6 leading-relaxed max-w-sm mx-auto">
+                        Generate a 10-question quiz to reinforce vocabulary and grammar from this session.
+                        Your results are tracked for spaced repetition review.
                       </p>
                       {quizError && (
-                        <p style={{ color: RED, fontSize: '0.875rem', marginBottom: '1rem' }}>{quizError}</p>
+                        <p className="text-red-700 text-sm mb-4">{quizError}</p>
                       )}
                       <Button onClick={generateQuiz}>Generate Quiz</Button>
                     </div>
                   )}
 
                   {quizLoading && (
-                    <div style={{ background: 'white', borderRadius: 12, padding: '3rem', textAlign: 'center', border: `1px solid ${BORDER}` }}>
-                      <div style={{ fontSize: '2rem', marginBottom: '1rem' }}>✨</div>
-                      <p style={{ color: INK, fontWeight: 600 }}>Generating your quiz…</p>
+                    <div className="bg-white rounded-xl p-12 text-center border border-[#d4cfc7]">
+                      <div className="text-4xl mb-4 animate-pulse">✨</div>
+                      <p className="text-[#1e3a5f] font-semibold">Generating your quiz…</p>
                     </div>
                   )}
 
                   {quizQuestions && !quizSubmitted && (
                     <div>
-                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1.25rem' }}>
-                        <p style={{ fontWeight: 700, color: INK }}>{quizQuestions.length} questions</p>
-                        <p style={{ fontSize: '0.875rem', color: MUTED }}>
+                      <div className="flex items-center justify-between mb-5">
+                        <p className="font-bold text-[#1e3a5f]">{quizQuestions.length} questions</p>
+                        <p className="text-sm text-gray-500">
                           {Object.keys(quizAnswers).length} / {quizQuestions.length} answered
                         </p>
                       </div>
-                      <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                      <div className="flex flex-col gap-4">
                         {quizQuestions.map((q, qi) => (
-                          <div key={q.id} style={{ background: 'white', borderRadius: 12, padding: '1.25rem 1.5rem', border: `1px solid ${BORDER}` }}>
-                            <p style={{ fontWeight: 600, color: INK, marginBottom: '1rem', lineHeight: 1.5 }}>
-                              <span style={{ fontFamily: 'IBM Plex Mono, monospace', color: MUTED, fontSize: '0.8rem', marginRight: '0.5rem' }}>Q{qi + 1}</span>
+                          <div key={q.id} className="bg-white rounded-xl px-6 py-5 border border-[#d4cfc7]">
+                            <p className="font-semibold text-[#1e3a5f] mb-4 leading-snug">
+                              <span className="font-[IBM_Plex_Mono,monospace] text-gray-400 text-[0.8rem] mr-2">
+                                Q{qi + 1}
+                              </span>
                               {q.question}
                             </p>
-                            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                            <div className="flex flex-col gap-2">
                               {q.options.map((opt) => (
                                 <label
                                   key={opt}
-                                  style={{
-                                    display: 'flex',
-                                    alignItems: 'center',
-                                    gap: '0.75rem',
-                                    padding: '0.625rem 0.875rem',
-                                    borderRadius: 8,
-                                    border: `1.5px solid ${quizAnswers[q.id] === opt ? INK : BORDER}`,
-                                    background: quizAnswers[q.id] === opt ? `${INK}0d` : 'transparent',
-                                    cursor: 'pointer',
-                                    fontSize: '0.9rem',
-                                    color: TEXT,
-                                    transition: 'border-color 0.1s',
-                                  }}
+                                  className={`flex items-center gap-3 px-3.5 py-2.5 rounded-lg border-[1.5px] cursor-pointer text-[0.9rem] text-[#2c2c2c] transition-colors ${
+                                    quizAnswers[q.id] === opt
+                                      ? 'border-[#1e3a5f] bg-[#1e3a5f]/5'
+                                      : 'border-[#d4cfc7] hover:border-[#1e3a5f]/40'
+                                  }`}
                                 >
                                   <input
                                     type="radio"
@@ -833,7 +815,7 @@ export function FeedbackPage() {
                                     value={opt}
                                     checked={quizAnswers[q.id] === opt}
                                     onChange={() => setQuizAnswers((prev) => ({ ...prev, [q.id]: opt }))}
-                                    style={{ accentColor: INK, flexShrink: 0 }}
+                                    className="accent-[#1e3a5f] shrink-0"
                                   />
                                   {opt}
                                 </label>
@@ -842,7 +824,7 @@ export function FeedbackPage() {
                           </div>
                         ))}
                       </div>
-                      <div style={{ marginTop: '1.5rem', textAlign: 'center' }}>
+                      <div className="mt-6 text-center">
                         <Button
                           onClick={submitQuiz}
                           disabled={Object.keys(quizAnswers).length < quizQuestions.length}
@@ -855,46 +837,45 @@ export function FeedbackPage() {
 
                   {quizSubmitted && quizQuestions && (
                     <div>
-                      <div style={{ background: INK, borderRadius: 12, padding: '1.5rem 2rem', textAlign: 'center', marginBottom: '1.5rem', color: 'white' }}>
-                        <p style={{ fontSize: '0.7rem', fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'rgba(255,255,255,0.45)', marginBottom: '0.375rem' }}>
+                      <div className="bg-[#1e3a5f] rounded-xl px-8 py-6 text-center mb-6 text-white">
+                        <p className="text-[0.65rem] font-bold tracking-[0.1em] uppercase text-white/45 mb-1">
                           Quiz Score
                         </p>
-                        <div style={{ fontFamily: 'IBM Plex Mono, monospace', fontSize: '2.75rem', fontWeight: 700, color: GOLD }}>
+                        <div className="font-[IBM_Plex_Mono,monospace] text-[2.75rem] font-bold text-[#c9900a]">
                           {Object.values(quizResults).filter((r) => r.correct).length} / {quizQuestions.length}
                         </div>
-                        <p style={{ color: 'rgba(255,255,255,0.5)', fontSize: '0.875rem', marginTop: '0.375rem' }}>
+                        <p className="text-white/50 text-sm mt-1">
                           Review dates saved for spaced repetition
                         </p>
                       </div>
-                      <div style={{ display: 'flex', flexDirection: 'column', gap: '0.625rem' }}>
+                      <div className="flex flex-col gap-2.5">
                         {quizQuestions.map((q, qi) => {
                           const result = quizResults[q.id];
                           return (
                             <div
                               key={q.id}
-                              style={{
-                                background: result?.correct ? GREEN_BG : RED_BG,
-                                borderRadius: 10,
-                                padding: '1rem 1.25rem',
-                                border: `1px solid ${result?.correct ? '#bbf7d0' : '#fecaca'}`,
-                              }}
+                              className={`rounded-xl p-4 border ${
+                                result?.correct
+                                  ? 'bg-green-50 border-green-200'
+                                  : 'bg-red-50 border-red-200'
+                              }`}
                             >
-                              <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'flex-start', marginBottom: '0.375rem' }}>
-                                <span style={{ fontSize: '0.9rem' }}>{result?.correct ? '✅' : '❌'}</span>
-                                <p style={{ fontWeight: 600, color: TEXT, fontSize: '0.875rem', lineHeight: 1.5, margin: 0 }}>
+                              <div className="flex gap-2 items-start mb-1">
+                                <span className="text-[0.9rem]">{result?.correct ? '✅' : '❌'}</span>
+                                <p className="font-semibold text-[#2c2c2c] text-sm leading-snug">
                                   Q{qi + 1}: {q.question}
                                 </p>
                               </div>
                               {!result?.correct && (
-                                <p style={{ fontSize: '0.8125rem', color: RED, marginLeft: '1.5rem', marginBottom: '0.25rem' }}>
+                                <p className="text-[0.8rem] text-red-700 ml-6 mb-1">
                                   Your answer: {quizAnswers[q.id] ?? 'No answer'}
                                 </p>
                               )}
-                              <p style={{ fontSize: '0.8125rem', color: GREEN, marginLeft: '1.5rem', marginBottom: '0.25rem' }}>
+                              <p className="text-[0.8rem] text-green-700 ml-6 mb-1">
                                 ✓ Correct: {q.correctAnswer}
                               </p>
                               {result?.nextReviewDate && (
-                                <p style={{ fontSize: '0.75rem', color: MUTED, marginLeft: '1.5rem' }}>
+                                <p className="text-[0.75rem] text-gray-500 ml-6">
                                   Next review: {result.nextReviewDate.toLocaleDateString()}
                                 </p>
                               )}
@@ -902,7 +883,7 @@ export function FeedbackPage() {
                           );
                         })}
                       </div>
-                      <div style={{ marginTop: '1.25rem', textAlign: 'center' }}>
+                      <div className="mt-5 text-center">
                         <Button variant="secondary" size="sm" onClick={generateQuiz}>
                           Retake Quiz
                         </Button>
@@ -914,7 +895,7 @@ export function FeedbackPage() {
             </div>
           )}
 
-          <div style={{ textAlign: 'center', marginTop: '2.5rem' }}>
+          <div className="text-center mt-10">
             <Link to="/dashboard">
               <Button variant="secondary">← Try another question</Button>
             </Link>
