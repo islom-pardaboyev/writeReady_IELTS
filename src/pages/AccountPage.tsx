@@ -1,5 +1,6 @@
-import { useEffect } from 'react';
+import { useEffect, useLayoutEffect, useRef } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
+import gsap from 'gsap';
 import { useAuth } from '../contexts/AuthContext';
 import { useUsage } from '../hooks/useUsage';
 import { Layout } from '../components/layout/Layout';
@@ -24,10 +25,27 @@ export function AccountPage() {
   const { user, profile, logOut } = useAuth();
   const { usage } = useUsage(user?.uid ?? null);
   const navigate = useNavigate();
+  const rootRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     if (!user) navigate('/auth');
   }, [user]);
+
+  useLayoutEffect(() => {
+    if (!user || !profile) return;
+    const ctx = gsap.context(() => {
+      gsap.set('.gs-profile-card', { x: -30, opacity: 0 });
+      gsap.set('.gs-plan-card', { x: 30, opacity: 0 });
+      gsap.set('.gs-account-actions', { y: 20, opacity: 0 });
+
+      const tl = gsap.timeline({ defaults: { ease: 'power3.out' } });
+      tl.to('.gs-profile-card', { x: 0, opacity: 1, duration: 0.6 })
+        .to('.gs-plan-card', { x: 0, opacity: 1, duration: 0.65 }, '-=0.35')
+        .to('.gs-account-actions', { y: 0, opacity: 1, duration: 0.5 }, '-=0.3');
+    }, rootRef);
+
+    return () => ctx.revert();
+  }, [user, profile]);
 
   if (!user || !profile) return null;
 
@@ -47,11 +65,12 @@ export function AccountPage() {
 
   return (
     <Layout>
-      <div style={{ padding: '3rem 0', minHeight: 'calc(100vh - 120px)', background: '#f8fafc' }}>
-        <div className="container mx-auto" style={{ maxWidth: 560 }}>
+      <div ref={rootRef} style={{ padding: '3rem 0', minHeight: 'calc(100vh - 120px)', background: '#f8fafc' }}>
+        <div className="container" style={{ maxWidth: 560 }}>
 
           {/* ── Profile card ── */}
           <div
+            className="gs-profile-card"
             style={{
               background: 'white',
               borderRadius: 16,
@@ -116,6 +135,7 @@ export function AccountPage() {
           {/* ── Plan card ── */}
           {isPro ? (
             <div
+              className="gs-plan-card"
               style={{
                 background: 'linear-gradient(135deg, #0f172a 0%, #1e3a5f 100%)',
                 borderRadius: 16,
@@ -194,6 +214,7 @@ export function AccountPage() {
           ) : (
             /* Free plan card */
             <div
+              className="gs-plan-card"
               style={{
                 background: 'white',
                 borderRadius: 16,
@@ -218,6 +239,7 @@ export function AccountPage() {
 
           {/* ── Actions ── */}
           <div
+            className="gs-account-actions"
             style={{
               background: 'white',
               borderRadius: 16,

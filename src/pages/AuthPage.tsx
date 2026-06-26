@@ -1,5 +1,6 @@
-import { useState, useEffect, type FormEvent } from 'react';
+import { useState, useEffect, useLayoutEffect, useRef, type FormEvent } from 'react';
 import { useNavigate, useSearchParams, Link } from 'react-router-dom';
+import gsap from 'gsap';
 import { useAuth } from '../contexts/AuthContext';
 import { Button } from '../components/ui/Button';
 import { Card } from '../components/ui/Card';
@@ -14,10 +15,24 @@ export function AuthPage() {
   const [loading, setLoading] = useState(false);
   const { signIn, signUp, signInWithGoogle, user } = useAuth();
   const navigate = useNavigate();
+  const rootRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     if (user) navigate('/dashboard');
   }, [user, navigate]);
+
+  useLayoutEffect(() => {
+    const ctx = gsap.context(() => {
+      gsap.set('.gs-auth-logo', { y: -20, opacity: 0 });
+      gsap.set('.gs-auth-card', { y: 36, opacity: 0, scale: 0.97 });
+
+      const tl = gsap.timeline({ defaults: { ease: 'power3.out' } });
+      tl.to('.gs-auth-logo', { y: 0, opacity: 1, duration: 0.5 })
+        .to('.gs-auth-card', { y: 0, opacity: 1, scale: 1, duration: 0.6 }, '-=0.25');
+    }, rootRef);
+
+    return () => ctx.revert();
+  }, []);
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
@@ -54,9 +69,10 @@ export function AuthPage() {
 
   return (
     <div
+      ref={rootRef}
       style={{
         minHeight: '100vh',
-        background: 'var(--paper)',
+        background: '#f8fafc',
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
@@ -66,6 +82,7 @@ export function AuthPage() {
       <div style={{ width: '100%', maxWidth: 420 }}>
         <Link
           to="/"
+          className="gs-auth-logo"
           style={{
             display: 'block',
             textAlign: 'center',
@@ -73,115 +90,101 @@ export function AuthPage() {
             fontFamily: 'Fraunces, serif',
             fontWeight: 700,
             fontSize: '1.5rem',
-            color: 'var(--ink-blue)',
+            color: '#0f172a',
+            textDecoration: 'none',
           }}
         >
-          WriteReady <span style={{ color: 'var(--gold)' }}>IELTS</span>
+          WriteReady <span style={{ color: '#c9900a' }}>IELTS</span>
         </Link>
 
-        <Card padding="lg">
-          <h2
-            style={{
-              fontFamily: 'Fraunces, serif',
-              fontSize: '1.5rem',
-              marginBottom: '0.25rem',
-              textAlign: 'center',
-            }}
-          >
-            {mode === 'login' ? 'Welcome back' : 'Create account'}
-          </h2>
-          <p style={{ textAlign: 'center', color: 'var(--text-muted)', fontSize: '0.875rem', marginBottom: '1.5rem' }}>
-            {mode === 'login' ? 'Sign in to continue your IELTS prep' : 'Start practicing for free'}
-          </p>
-
-          {error && (
-            <div
+        <div className="gs-auth-card">
+          <Card padding="lg">
+            <h2
               style={{
-                background: 'rgba(224,101,75,0.08)',
-                border: '1px solid var(--coral)',
-                color: 'var(--coral)',
-                padding: '0.75rem 1rem',
-                borderRadius: 'var(--radius)',
-                fontSize: '0.875rem',
-                marginBottom: '1rem',
+                fontFamily: 'Fraunces, serif',
+                fontSize: '1.5rem',
+                marginBottom: '0.25rem',
+                textAlign: 'center',
+                color: '#0f172a',
               }}
             >
-              {error}
+              {mode === 'login' ? 'Welcome back' : 'Create account'}
+            </h2>
+            <p style={{ textAlign: 'center', color: '#64748b', fontSize: '0.875rem', marginBottom: '1.5rem' }}>
+              {mode === 'login' ? 'Sign in to continue your IELTS prep' : 'Start practicing for free'}
+            </p>
+
+            {error && (
+              <div style={{ background: '#fef2f2', border: '1px solid #fecaca', color: '#dc2626', padding: '0.75rem 1rem', borderRadius: 10, fontSize: '0.875rem', marginBottom: '1rem' }}>
+                {error}
+              </div>
+            )}
+
+            <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+              <div>
+                <label style={{ fontSize: '0.875rem', fontWeight: 600, color: '#374151', display: 'block', marginBottom: '0.375rem' }}>
+                  Email
+                </label>
+                <input
+                  type="email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  required
+                  placeholder="you@example.com"
+                  style={inputStyle}
+                />
+              </div>
+              <div>
+                <label style={{ fontSize: '0.875rem', fontWeight: 600, color: '#374151', display: 'block', marginBottom: '0.375rem' }}>
+                  Password
+                </label>
+                <input
+                  type="password"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  required
+                  placeholder={mode === 'signup' ? 'At least 6 characters' : '••••••••'}
+                  minLength={6}
+                  style={inputStyle}
+                />
+              </div>
+              <Button type="submit" loading={loading} size="lg" style={{ width: '100%', marginTop: '0.25rem', background: '#1d4ed8' } as React.CSSProperties}>
+                {mode === 'login' ? 'Sign In' : 'Create Account'}
+              </Button>
+            </form>
+
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', margin: '1.25rem 0' }}>
+              <div style={{ flex: 1, height: 1, background: '#e2e8f0' }} />
+              <span style={{ fontSize: '0.75rem', color: '#94a3b8' }}>or</span>
+              <div style={{ flex: 1, height: 1, background: '#e2e8f0' }} />
             </div>
-          )}
 
-          <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-            <div>
-              <label style={{ fontSize: '0.875rem', fontWeight: 600, color: 'var(--slate)', display: 'block', marginBottom: '0.375rem' }}>
-                Email
-              </label>
-              <input
-                type="email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                required
-                placeholder="you@example.com"
-                style={inputStyle}
-              />
-            </div>
-            <div>
-              <label style={{ fontSize: '0.875rem', fontWeight: 600, color: 'var(--slate)', display: 'block', marginBottom: '0.375rem' }}>
-                Password
-              </label>
-              <input
-                type="password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                required
-                placeholder={mode === 'signup' ? 'At least 6 characters' : '••••••••'}
-                minLength={6}
-                style={inputStyle}
-              />
-            </div>
-            <Button type="submit" loading={loading} size="lg" style={{ width: '100%', marginTop: '0.25rem' }}>
-              {mode === 'login' ? 'Sign In' : 'Create Account'}
-            </Button>
-          </form>
-
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', margin: '1.25rem 0' }}>
-            <div style={{ flex: 1, height: 1, background: 'var(--border)' }} />
-            <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>or</span>
-            <div style={{ flex: 1, height: 1, background: 'var(--border)' }} />
-          </div>
-
-          <button
-            onClick={handleGoogle}
-            disabled={loading}
-            style={{
-              width: '100%',
-              padding: '0.625rem 1.25rem',
-              border: '1.5px solid var(--border)',
-              borderRadius: 'var(--radius)',
-              background: 'white',
-              fontSize: '0.875rem',
-              fontWeight: 500,
-              color: 'var(--slate)',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              gap: '0.5rem',
-              cursor: 'pointer',
-            }}
-          >
-            <GoogleIcon />
-            Continue with Google
-          </button>
-
-          <p style={{ textAlign: 'center', marginTop: '1.25rem', fontSize: '0.875rem', color: 'var(--text-muted)' }}>
-            {mode === 'login' ? "Don't have an account? " : 'Already have an account? '}
             <button
-              onClick={() => setMode(mode === 'login' ? 'signup' : 'login')}
-              style={{ background: 'none', color: 'var(--ink-blue)', fontWeight: 600, fontSize: '0.875rem' }}
+              onClick={handleGoogle}
+              disabled={loading}
+              style={{
+                width: '100%', padding: '0.625rem 1.25rem',
+                border: '1.5px solid #e2e8f0', borderRadius: 10,
+                background: 'white', fontSize: '0.875rem', fontWeight: 500,
+                color: '#374151', display: 'flex', alignItems: 'center',
+                justifyContent: 'center', gap: '0.5rem', cursor: 'pointer',
+              }}
             >
-              {mode === 'login' ? 'Sign up free' : 'Sign in'}
+              <GoogleIcon />
+              Continue with Google
             </button>
-          </p>
-        </Card>
+
+            <p style={{ textAlign: 'center', marginTop: '1.25rem', fontSize: '0.875rem', color: '#64748b' }}>
+              {mode === 'login' ? "Don't have an account? " : 'Already have an account? '}
+              <button
+                onClick={() => setMode(mode === 'login' ? 'signup' : 'login')}
+                style={{ background: 'none', color: '#1d4ed8', fontWeight: 600, fontSize: '0.875rem', border: 'none', cursor: 'pointer' }}
+              >
+                {mode === 'login' ? 'Sign up free' : 'Sign in'}
+              </button>
+            </p>
+          </Card>
+        </div>
       </div>
     </div>
   );
@@ -190,13 +193,14 @@ export function AuthPage() {
 const inputStyle: React.CSSProperties = {
   width: '100%',
   padding: '0.625rem 0.875rem',
-  border: '1.5px solid var(--border)',
-  borderRadius: 'var(--radius)',
+  border: '1.5px solid #e2e8f0',
+  borderRadius: 10,
   fontSize: '0.9375rem',
-  color: 'var(--slate)',
+  color: '#0f172a',
   background: 'white',
   outline: 'none',
   transition: 'border-color 0.15s',
+  boxSizing: 'border-box',
 };
 
 function GoogleIcon() {
