@@ -1,8 +1,12 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
-import { initializeApp, getApps, cert } from 'firebase-admin/app';
-import { getAuth } from 'firebase-admin/auth';
-import { getFirestore, FieldValue } from 'firebase-admin/firestore';
+import * as admin from 'firebase-admin';
 
+if (!admin.apps.length) {
+  const serviceAccount = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT_KEY ?? '{}');
+  admin.initializeApp({ credential: admin.credential.cert(serviceAccount) });
+}
+
+const db = admin.firestore();
 const MONTHLY_LIMIT = 12;
 const ALLOWED_MODEL = 'claude-sonnet-4-6';
 const MAX_TOKENS = 8000;
@@ -10,17 +14,6 @@ const MAX_TOKENS = 8000;
 type CreditErrorCode = 'USER_NOT_FOUND' | 'NOT_PRO' | 'LIMIT_REACHED';
 class CreditError extends Error {
   constructor(public code: CreditErrorCode) { super(code); }
-}
-
-function initFirebase() {
-  if (getApps().length) return;
-  const projectId = process.env.FIREBASE_PROJECT_ID;
-  const clientEmail = process.env.FIREBASE_CLIENT_EMAIL;
-  const privateKey = process.env.FIREBASE_PRIVATE_KEY?.replace(/\\n/g, '\n');
-  if (!projectId || !clientEmail || !privateKey) {
-    throw new Error(`Missing Firebase env vars: projectId=${!!projectId} clientEmail=${!!clientEmail} privateKey=${!!privateKey}`);
-  }
-  initializeApp({ credential: cert({ projectId, clientEmail, privateKey }) });
 }
 
 function currentMonthKey(): string {
@@ -39,7 +32,7 @@ async function getUid(req: VercelRequest): Promise<string> {
   const auth = req.headers.authorization ?? '';
   const token = auth.startsWith('Bearer ') ? auth.slice(7) : null;
   if (!token) throw new Error('MISSING_TOKEN');
-  const decoded = await getAuth().verifyIdToken(token);
+  const decoded = await admin.auth().verifyIdToken(token);
   return decoded.uid;
 }
 
@@ -51,10 +44,6 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (req.method === 'OPTIONS') return res.status(200).end();
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
 
-  try { initFirebase(); } catch (e: unknown) {
-    return res.status(500).json({ error: `Firebase init failed: ${(e as Error).message}` });
-  }
-
   let uid: string;
   try { uid = await getUid(req); } catch {
     return res.status(401).json({ error: 'Invalid or missing auth token. Please sign in again.' });
@@ -65,11 +54,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     return res.status(400).json({ error: 'essayText and questionText are required.' });
   }
 
-  const db = getFirestore();
   const monthKey = currentMonthKey();
   const userRef = db.collection('users').doc(uid);
 
-  // Atomically verify subscription + consume credit
   try {
     await db.runTransaction(async (tx) => {
       const snap = await tx.get(userRef);
@@ -120,8 +107,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     };
 
     if (!claudeRes.ok) {
-      // Refund credit on Claude error
-      await userRef.set({ usage: { monthKey, count: FieldValue.increment(-1) } }, { merge: true }).catch(console.error);
+      await userRef.set({ usage: { monthKey, count: admin.firestore.FieldValue.increment(-1) } }, { merge: true }).catch(console.error);
       return res.status(claudeRes.status).json({ error: claudeData.error?.message ?? 'Claude API error.' });
     }
 
@@ -140,12 +126,12 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         ...(feedback.feedback?.lexicalResource?.issues ?? []),
         ...(feedback.feedback?.grammaticalRangeAccuracy?.issues ?? []),
       ],
-      createdAt: FieldValue.serverTimestamp(),
+      createdAt: admin.firestore.FieldValue.serverTimestamp(),
     }).catch(console.error);
 
     return res.status(200).json({ feedback });
   } catch (err) {
-    await userRef.set({ usage: { monthKey, count: FieldValue.increment(-1) } }, { merge: true }).catch(console.error);
+    await userRef.set({ usage: { monthKey, count: admin.firestore.FieldValue.increment(-1) } }, { merge: true }).catch(console.error);
     return res.status(500).json({ error: (err as Error).message ?? 'AI analysis failed. Please try again.' });
   }
 }
@@ -193,13 +179,13 @@ Return this EXACT JSON structure:
     "<second most impactful fix>",
     "<third most impactful fix>"
   ],
-  "bandGapAnalysis": "<Specific measurable steps to the next band level. E.g.: To move from Band 6.0 to Band 6.5: (1) Add discourse markers. (2) Vary sentence starters. (3) Eliminate repeated vocabulary.>",
+  "bandGapAnalysis": "<Specific measurable steps to the next band level>",
   "vocabulary": [
     {
       "word": "<word or phrase from the essay or relevant to the topic>",
       "uzbek": "<Uzbek translation>",
       "english": "<clear English definition>",
-      "exampleFromEssay": "<example sentence using this word tailored to THIS essay's topic>"
+      "exampleFromEssay": "<example sentence tailored to THIS essay topic>"
     }
   ],
   "grammar": [
@@ -219,7 +205,10 @@ STRICT RULES:
 - Overall = simple average of the 4 criteria scores rounded to nearest 0.5`;
 }
 
-function parseResponse(raw: string, wordCount: number, taskType: string): Record<string, unknown> {
+function parseResponse(raw: string, wordCount: number, taskType: string): Record<string, unknown> & {
+  feedback?: { taskAchievement?: { issues?: string[] }; coherenceCohesion?: { issues?: string[] }; lexicalResource?: { issues?: string[] }; grammaticalRangeAccuracy?: { issues?: string[] } };
+  taskType?: string; topic?: string; scores?: unknown;
+} {
   try {
     const cleaned = raw.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
     return JSON.parse(cleaned);

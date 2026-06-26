@@ -1,18 +1,13 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
-import { initializeApp, getApps, cert } from 'firebase-admin/app';
-import { getAuth } from 'firebase-admin/auth';
-import { getFirestore } from 'firebase-admin/firestore';
+import * as admin from 'firebase-admin';
 
-function initFirebase() {
-  if (getApps().length) return;
-  const projectId = process.env.FIREBASE_PROJECT_ID;
-  const clientEmail = process.env.FIREBASE_CLIENT_EMAIL;
-  const privateKey = process.env.FIREBASE_PRIVATE_KEY?.replace(/\\n/g, '\n');
-  if (!projectId || !clientEmail || !privateKey) {
-    throw new Error(`Missing Firebase env vars: projectId=${!!projectId} clientEmail=${!!clientEmail} privateKey=${!!privateKey}`);
-  }
-  initializeApp({ credential: cert({ projectId, clientEmail, privateKey }) });
+if (!admin.apps.length) {
+  const serviceAccount = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT_KEY ?? '{}');
+  admin.initializeApp({ credential: admin.credential.cert(serviceAccount) });
 }
+
+const db = admin.firestore();
+const GEMINI_URL = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent';
 
 function isProUser(subscription: unknown): boolean {
   if (subscription === 'forever') return true;
@@ -25,12 +20,9 @@ async function getUid(req: VercelRequest): Promise<string> {
   const auth = req.headers.authorization ?? '';
   const token = auth.startsWith('Bearer ') ? auth.slice(7) : null;
   if (!token) throw new Error('MISSING_TOKEN');
-  const decoded = await getAuth().verifyIdToken(token);
+  const decoded = await admin.auth().verifyIdToken(token);
   return decoded.uid;
 }
-
-// Gemini Flash — server-side only, key never exposed to client
-const GEMINI_URL = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent';
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   res.setHeader('Access-Control-Allow-Origin', '*');
@@ -39,10 +31,6 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
   if (req.method === 'OPTIONS') return res.status(200).end();
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
-
-  try { initFirebase(); } catch (e: unknown) {
-    return res.status(500).json({ error: `Firebase init failed: ${(e as Error).message}` });
-  }
 
   let uid: string;
   try { uid = await getUid(req); } catch {
@@ -54,13 +42,11 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     return res.status(400).json({ error: 'vocabulary and grammar are required.' });
   }
 
-  // Verify subscription (quiz is free for pro — no monthly credit consumed)
-  const db = getFirestore();
+  // Verify subscription (quiz does not consume monthly credit)
   const userSnap = await db.collection('users').doc(uid).get();
   if (!userSnap.exists) return res.status(404).json({ error: 'User profile not found.' });
 
-  const data = userSnap.data()!;
-  if (!isProUser(data.subscription)) {
+  if (!isProUser(userSnap.data()!.subscription)) {
     return res.status(403).json({ error: 'Pro subscription required to generate retention quizzes.' });
   }
 
@@ -83,7 +69,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       throw new Error(`Gemini API returned ${geminiRes.status}`);
     }
 
-    const geminiData = await geminiRes.json() as { candidates?: { content: { parts: { text: string }[] } }[] };
+    const geminiData = await geminiRes.json() as {
+      candidates?: { content: { parts: { text: string }[] } }[];
+    };
     const raw = geminiData?.candidates?.[0]?.content?.parts?.[0]?.text ?? '';
     const cleaned = raw.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
     const parsed = JSON.parse(cleaned) as { questions?: unknown[] };
@@ -133,9 +121,8 @@ Return this exact JSON:
 }
 
 Generate exactly 10 questions:
-- 6 vocabulary questions: test meaning, Uzbek translation, usage in context, synonyms
-- 4 grammar questions: test applying the rule, identifying correct/incorrect usage
+- 6 vocabulary questions: meaning, Uzbek translation, usage in context, synonyms
+- 4 grammar questions: applying the rule, identifying correct/incorrect usage
 - Each question must have exactly 4 options labeled A through D
-- correctAnswer must be the EXACT text of one of the options (including the letter prefix)
-- Make questions varied — avoid repeating the same question format`;
+- correctAnswer must be the EXACT text of one of the options (including letter prefix)`;
 }
