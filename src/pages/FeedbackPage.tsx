@@ -121,7 +121,7 @@ export function FeedbackPage() {
     const essay = selectedTask === 'task1' ? reportData.userText1 : reportData.userText2;
     const question =
       selectedTask === 'task1' ? (reportData.task1?.report ?? '') : (reportData.task2?.report ?? '');
-    const cacheKey = `feedback_${id}_${selectedTask}`;
+  const cacheKey = `feedback_${id}_${selectedTask}`;
 
     const cached = sessionStorage.getItem(cacheKey);
     if (cached) {
@@ -347,7 +347,7 @@ export function FeedbackPage() {
     return (
       <Layout>
         <div style={{ padding: '2.5rem 0', background: CREAM, minHeight: 'calc(100vh - 120px)' }}>
-          <div className="container" style={{ maxWidth: 640 }}>
+          <div className="container mx-auto" style={{ maxWidth: 640 }}>
             <div style={{ background: INK, borderRadius: 16, padding: '2.5rem', textAlign: 'center', color: 'white' }}>
               <div style={{ fontSize: '3rem', marginBottom: '1rem' }}>🔒</div>
               <h2 style={{ fontFamily: 'Fraunces, serif', marginBottom: '0.75rem', fontSize: '1.5rem' }}>
