@@ -48,7 +48,7 @@ export function AccountPage() {
   return (
     <Layout>
       <div style={{ padding: '3rem 0', minHeight: 'calc(100vh - 120px)', background: '#f8fafc' }}>
-        <div className="container" style={{ maxWidth: 560 }}>
+        <div className="container mx-auto" style={{ maxWidth: 560 }}>
 
           {/* ── Profile card ── */}
           <div

@@ -8,7 +8,7 @@ interface LayoutProps {
 
 export function Layout({ children, noHeader }: LayoutProps) {
   return (
-    <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column' }}>
+    <div>
       {!noHeader && <Header />}
       <main style={{ flex: 1 }}>{children}</main>
       <footer

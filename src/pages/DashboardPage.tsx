@@ -50,7 +50,7 @@ export function DashboardPage() {
   return (
     <Layout>
       <div style={{ padding: '2.5rem 0', minHeight: 'calc(100vh - 120px)', background: '#f8fafc' }}>
-        <div className="container">
+        <div style={{maxWidth: 1160}} className='mx-auto'>
 
           {/* Welcome header */}
           <div style={{ marginBottom: '2rem' }}>
@@ -147,80 +147,6 @@ export function DashboardPage() {
               </button>
             ))}
           </div>
-
-          {/* Question bank */}
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1rem' }}>
-            <h2 style={{ fontSize: '1.25rem', fontWeight: 700, color: '#0f172a' }}>Question Bank</h2>
-            {questions.length === 0 && !loadingQ && (
-              <Button size="sm" onClick={handleSeed} loading={seeding}>
-                Load sample questions
-              </Button>
-            )}
-          </div>
-
-          {loadingQ ? (
-            <p style={{ color: '#64748b' }}>Loading questions…</p>
-          ) : questions.length === 0 ? (
-            <div
-              style={{
-                background: 'white', borderRadius: 14, padding: '2rem',
-                border: '1px solid #e2e8f0', textAlign: 'center',
-              }}
-            >
-              <p style={{ color: '#64748b' }}>No questions yet. Click "Load sample questions" to seed some examples.</p>
-            </div>
-          ) : (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-              {questions.map((q) => (
-                <div
-                  key={q.id}
-                  style={{
-                    background: 'white',
-                    borderRadius: 14,
-                    padding: '1.125rem 1.25rem',
-                    border: '1px solid #e2e8f0',
-                    boxShadow: '0 1px 2px rgba(0,0,0,0.04)',
-                    display: 'flex',
-                    alignItems: 'flex-start',
-                    gap: '1rem',
-                  }}
-                >
-                  <div style={{ flex: 1 }}>
-                    <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '0.5rem', flexWrap: 'wrap' }}>
-                      <span style={tagStyle('#1d4ed8')}>
-                        {q.taskType === 'task2' ? 'Task 2' : 'Task 1'}
-                      </span>
-                      <span style={tagStyle('#c9900a')}>{q.category}</span>
-                      <span style={tagStyle('#64748b')}>{q.topic}</span>
-                    </div>
-                    <p style={{ fontSize: '0.9375rem', color: '#334155', lineHeight: 1.6, margin: 0 }}>
-                      {q.promptText.length > 150 ? q.promptText.slice(0, 150) + '…' : q.promptText}
-                    </p>
-                  </div>
-                  <div style={{ display: 'flex', gap: '0.5rem', flexShrink: 0, flexWrap: 'wrap' }}>
-                    {modes.map((m) => (
-                      <button
-                        key={m.id}
-                        onClick={() => startPractice(q.id, m.id as PracticeMode)}
-                        title={m.title}
-                        style={{
-                          background: m.id === 'mock' ? '#1d4ed8' : m.id === 'relax' ? '#f0fdf4' : '#f1f5f9',
-                          color: m.id === 'mock' ? 'white' : '#334155',
-                          border: 'none',
-                          borderRadius: 6,
-                          padding: '0.375rem 0.625rem',
-                          fontSize: '0.875rem',
-                          cursor: 'pointer',
-                        }}
-                      >
-                        {m.emoji}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
 
           {!isPro && (
             <div
