@@ -205,10 +205,25 @@ STRICT RULES:
 - Overall = simple average of the 4 criteria scores rounded to nearest 0.5`;
 }
 
-function parseResponse(raw: string, wordCount: number, taskType: string): Record<string, unknown> & {
-  feedback?: { taskAchievement?: { issues?: string[] }; coherenceCohesion?: { issues?: string[] }; lexicalResource?: { issues?: string[] }; grammaticalRangeAccuracy?: { issues?: string[] } };
-  taskType?: string; topic?: string; scores?: unknown;
-} {
+type CategoryFeedback = { strengths: string[]; issues: string[] };
+type ParsedFeedback = {
+  taskType?: string;
+  topic?: string;
+  wordCount?: number;
+  scores?: Record<string, number>;
+  feedback?: {
+    taskAchievement?: CategoryFeedback;
+    coherenceCohesion?: CategoryFeedback;
+    lexicalResource?: CategoryFeedback;
+    grammaticalRangeAccuracy?: CategoryFeedback;
+  };
+  priorityFixes?: string[];
+  bandGapAnalysis?: string;
+  vocabulary?: unknown[];
+  grammar?: unknown[];
+};
+
+function parseResponse(raw: string, wordCount: number, taskType: string): ParsedFeedback {
   try {
     const cleaned = raw.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
     return JSON.parse(cleaned);
