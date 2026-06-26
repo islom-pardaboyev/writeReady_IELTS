@@ -7,12 +7,13 @@ import {
   query,
   orderBy,
   limit,
+  where,
   addDoc,
   serverTimestamp,
   Timestamp,
 } from 'firebase/firestore';
 import { db } from './config';
-import type { UserProfile, UsageRecord, Question, Submission, Plan } from '../types';
+import type { UserProfile, UsageRecord, Question, Submission, Plan, SpacedRepItem } from '../types';
 
 function toDate(val: unknown): Date {
   if (val instanceof Timestamp) return val.toDate();
@@ -138,6 +139,76 @@ export async function getUserSubmissions(uid: string): Promise<Submission[]> {
     })
     .filter((s) => s.uid === uid);
 }
+
+// ── Spaced Repetition ─────────────────────────────────────────────────────
+
+export async function saveSpacedRepResult(
+  uid: string,
+  itemId: string,
+  itemLabel: string,
+  correct: boolean
+): Promise<{ nextReviewDate: Date }> {
+  const safeId = itemId.replace(/[^a-zA-Z0-9]/g, '_').slice(0, 80);
+  const docId = `${uid}_${safeId}`;
+  const ref = doc(db, 'spaced_rep', docId);
+  const snap = await getDoc(ref);
+
+  const prevStreak: number = snap.exists() ? (snap.data().correctStreak ?? 0) : 0;
+  const newStreak = correct ? prevStreak + 1 : 0;
+
+  // Anki-style intervals: 1 day → 3 days → 7 days → 14 days
+  const daysMap: Record<number, number> = { 0: 1, 1: 1, 2: 3, 3: 7 };
+  const days = !correct ? 1 : (daysMap[newStreak] ?? 14);
+  const nextReviewDate = new Date();
+  nextReviewDate.setDate(nextReviewDate.getDate() + days);
+
+  await setDoc(ref, {
+    uid,
+    itemId,
+    itemLabel,
+    correctStreak: newStreak,
+    lastReviewed: serverTimestamp(),
+    nextReviewDate: Timestamp.fromDate(nextReviewDate),
+  });
+
+  return { nextReviewDate };
+}
+
+export async function getDueSpacedRepItems(uid: string): Promise<SpacedRepItem[]> {
+  const now = Timestamp.fromDate(new Date());
+  const q = query(
+    collection(db, 'spaced_rep'),
+    where('uid', '==', uid),
+    where('nextReviewDate', '<=', now),
+    limit(20)
+  );
+  const snap = await getDocs(q);
+  return snap.docs.map((d) => {
+    const data = d.data();
+    return {
+      itemId: data.itemId,
+      uid: data.uid,
+      itemLabel: data.itemLabel,
+      correctStreak: data.correctStreak ?? 0,
+      lastReviewed: toDate(data.lastReviewed),
+      nextReviewDate: toDate(data.nextReviewDate),
+    };
+  });
+}
+
+// Returns issues from the last N feedback reports (for error-pattern tracking)
+export async function getFeedbackReportHistory(uid: string, n = 5): Promise<string[][]> {
+  const q = query(
+    collection(db, 'feedback_reports'),
+    where('uid', '==', uid),
+    orderBy('createdAt', 'desc'),
+    limit(n)
+  );
+  const snap = await getDocs(q);
+  return snap.docs.map((d) => (d.data().issues as string[]) ?? []);
+}
+
+// ── Questions ──────────────────────────────────────────────────────────────
 
 export async function seedQuestions(): Promise<void> {
   const sampleQuestions = [

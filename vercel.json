@@ -6,6 +6,12 @@
   "functions": {
     "api/analyze-essay.ts": {
       "maxDuration": 60
+    },
+    "api/feedback.ts": {
+      "maxDuration": 60
+    },
+    "api/retention-check.ts": {
+      "maxDuration": 30
     }
   }
 }

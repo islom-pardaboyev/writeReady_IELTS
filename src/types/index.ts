@@ -70,3 +70,70 @@ export interface AnalyzeRequest {
   mode: PracticeMode;
   idToken: string;
 }
+
+// ── Enhanced feedback (api/feedback.ts) ────────────────────────────────────
+
+export interface FeedbackScores {
+  taskAchievement: number;
+  coherenceCohesion: number;
+  lexicalResource: number;
+  grammaticalRangeAccuracy: number;
+  overall: number;
+}
+
+export interface CategoryFeedback {
+  strengths: string[];
+  issues: string[];
+}
+
+export interface EnhancedFeedbackCategories {
+  taskAchievement: CategoryFeedback;
+  coherenceCohesion: CategoryFeedback;
+  lexicalResource: CategoryFeedback;
+  grammaticalRangeAccuracy: CategoryFeedback;
+}
+
+export interface VocabItem {
+  word: string;
+  uzbek: string;
+  english: string;
+  exampleFromEssay: string;
+}
+
+export interface GrammarPoint {
+  point: string;
+  explanation: string;
+  example: string;
+}
+
+export interface EnhancedFeedbackResult {
+  taskType: 'Task 1' | 'Task 2';
+  topic: string;
+  wordCount: number;
+  scores: FeedbackScores;
+  feedback: EnhancedFeedbackCategories;
+  priorityFixes: string[];
+  bandGapAnalysis: string;
+  vocabulary: VocabItem[];
+  grammar: GrammarPoint[];
+}
+
+// ── Retention quiz (api/retention-check.ts) ────────────────────────────────
+
+export interface QuizQuestion {
+  id: string;
+  type: 'multiple-choice';
+  question: string;
+  options: string[];
+  correctAnswer: string;
+  itemRef: string;
+}
+
+export interface SpacedRepItem {
+  itemId: string;
+  uid: string;
+  itemLabel: string;
+  correctStreak: number;
+  lastReviewed: Date;
+  nextReviewDate: Date;
+}
