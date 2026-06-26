@@ -1,11 +1,11 @@
-import type { VercelRequest, VercelResponse } from '@vercel/node';
-import Anthropic from '@anthropic-ai/sdk';
-import * as admin from 'firebase-admin';
+import type { VercelRequest, VercelResponse } from "@vercel/node";
+import Anthropic from "@anthropic-ai/sdk";
+import * as admin from "firebase-admin";
 
 // Initialize Firebase Admin SDK once (cold start singleton)
 if (!admin.apps.length) {
   const serviceAccount = JSON.parse(
-    process.env.FIREBASE_SERVICE_ACCOUNT_KEY ?? '{}'
+    process.env.FIREBASE_SERVICE_ACCOUNT_KEY ?? "{}",
   );
   admin.initializeApp({
     credential: admin.credential.cert(serviceAccount),
@@ -13,15 +13,18 @@ if (!admin.apps.length) {
 }
 
 const adminDb = admin.firestore();
-const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
+const anthropic = new Anthropic({ apiKey: process.env.VITE_ANTHROPIC_API_KEY });
 
 function currentYearMonth(): string {
   return new Date().toISOString().slice(0, 7);
 }
 
-function isPlanActive(plan: string, expiresAt: admin.firestore.Timestamp | null): boolean {
-  if (plan === 'forever') return true;
-  if (plan === 'pro') {
+function isPlanActive(
+  plan: string,
+  expiresAt: admin.firestore.Timestamp | null,
+): boolean {
+  if (plan === "forever") return true;
+  if (plan === "pro") {
     if (!expiresAt) return true;
     return expiresAt.toDate() > new Date();
   }
@@ -29,14 +32,14 @@ function isPlanActive(plan: string, expiresAt: admin.firestore.Timestamp | null)
 }
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
-  if (req.method !== 'POST') {
-    return res.status(405).json({ error: 'Method not allowed' });
+  if (req.method !== "POST") {
+    return res.status(405).json({ error: "Method not allowed" });
   }
 
   const { essayText, questionText, mode, idToken } = req.body ?? {};
 
   if (!idToken || !essayText || !questionText) {
-    return res.status(400).json({ error: 'Missing required fields.' });
+    return res.status(400).json({ error: "Missing required fields." });
   }
 
   // Step 1: Verify Firebase ID token
@@ -45,29 +48,40 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     const decoded = await admin.auth().verifyIdToken(idToken);
     uid = decoded.uid;
   } catch {
-    return res.status(401).json({ error: 'Invalid or expired session. Please sign in again.' });
+    return res
+      .status(401)
+      .json({ error: "Invalid or expired session. Please sign in again." });
   }
 
   // Step 2: Look up user plan in Firestore
-  const userSnap = await adminDb.collection('users').doc(uid).get();
+  const userSnap = await adminDb.collection("users").doc(uid).get();
   if (!userSnap.exists) {
-    return res.status(403).json({ error: 'User profile not found.' });
+    return res.status(403).json({ error: "User profile not found." });
   }
 
   const userData = userSnap.data()!;
   const { plan, subscriptionExpiresAt } = userData;
 
-  if (plan === 'free') {
-    return res.status(403).json({ error: 'AI feedback requires a Pro or Lifetime plan. Upgrade to continue.' });
+  if (plan === "free") {
+    return res
+      .status(403)
+      .json({
+        error:
+          "AI feedback requires a Pro or Lifetime plan. Upgrade to continue.",
+      });
   }
 
   if (!isPlanActive(plan, subscriptionExpiresAt ?? null)) {
-    return res.status(403).json({ error: 'Your Pro subscription has expired. Please renew to continue.' });
+    return res
+      .status(403)
+      .json({
+        error: "Your Pro subscription has expired. Please renew to continue.",
+      });
   }
 
   // Step 3: Check and atomically increment usage
   const yearMonth = currentYearMonth();
-  const usageRef = adminDb.collection('usage').doc(`${uid}_${yearMonth}`);
+  const usageRef = adminDb.collection("usage").doc(`${uid}_${yearMonth}`);
 
   try {
     await adminDb.runTransaction(async (tx) => {
@@ -87,7 +101,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
       const { count } = usageSnap.data()!;
       if (count >= MONTHLY_LIMIT) {
-        throw Object.assign(new Error('Monthly limit reached.'), { code: 'LIMIT_REACHED' });
+        throw Object.assign(new Error("Monthly limit reached."), {
+          code: "LIMIT_REACHED",
+        });
       }
 
       tx.update(usageRef, {
@@ -96,11 +112,22 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       });
     });
   } catch (err: unknown) {
-    if (err instanceof Error && 'code' in err && (err as NodeJS.ErrnoException).code === 'LIMIT_REACHED') {
-      return res.status(429).json({ error: 'Monthly analysis limit reached. Your quota resets at the start of next month.' });
+    if (
+      err instanceof Error &&
+      "code" in err &&
+      (err as NodeJS.ErrnoException).code === "LIMIT_REACHED"
+    ) {
+      return res
+        .status(429)
+        .json({
+          error:
+            "Monthly analysis limit reached. Your quota resets at the start of next month.",
+        });
     }
-    console.error('Transaction error:', err);
-    return res.status(500).json({ error: 'Usage tracking error. Please try again.' });
+    console.error("Transaction error:", err);
+    return res
+      .status(500)
+      .json({ error: "Usage tracking error. Please try again." });
   }
 
   // Step 4: Call Claude API
@@ -108,17 +135,18 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
   try {
     const message = await anthropic.messages.create({
-      model: 'claude-sonnet-4-6',
+      model: "claude-sonnet-4-6",
       max_tokens: 4096,
-      messages: [{ role: 'user', content: prompt }],
+      messages: [{ role: "user", content: prompt }],
     });
 
-    const raw = message.content[0].type === 'text' ? message.content[0].text : '';
+    const raw =
+      message.content[0].type === "text" ? message.content[0].text : "";
     const feedback = parseClaudeResponse(raw, essayText);
 
     return res.status(200).json({ feedback });
   } catch (err) {
-    console.error('Claude API error:', err);
+    console.error("Claude API error:", err);
     // Roll back the usage count since analysis failed
     await adminDb.runTransaction(async (tx) => {
       const usageSnap = await tx.get(usageRef);
@@ -132,7 +160,12 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         }
       }
     });
-    return res.status(500).json({ error: 'AI analysis failed. Your usage count has not been charged. Please try again.' });
+    return res
+      .status(500)
+      .json({
+        error:
+          "AI analysis failed. Your usage count has not been charged. Please try again.",
+      });
   }
 }
 
@@ -186,24 +219,28 @@ Rules:
 
 function parseClaudeResponse(raw: string, essayText: string) {
   try {
-    const cleaned = raw.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
+    const cleaned = raw
+      .replace(/```json\n?/g, "")
+      .replace(/```\n?/g, "")
+      .trim();
     return JSON.parse(cleaned);
   } catch {
     // Fallback: return basic structure if JSON parsing fails
     const sentences = essayText.match(/[^.!?]+[.!?]+/g) ?? [essayText];
     return {
       sentenceFeedback: sentences.slice(0, 5).map((s) => ({
-        sentence: '1',
+        sentence: "1",
         original: s.trim(),
         correction: null,
         explanation: null,
-        type: 'ok',
+        type: "ok",
       })),
       vocabUpgrades: [],
-      taskAchievementNotes: 'Unable to parse detailed feedback. Please try again.',
+      taskAchievementNotes:
+        "Unable to parse detailed feedback. Please try again.",
       overallSummary: raw.slice(0, 300),
       bandEstimate: 6.0,
-      modelParagraph: '',
+      modelParagraph: "",
     };
   }
 }
