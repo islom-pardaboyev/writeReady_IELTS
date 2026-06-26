@@ -147,12 +147,14 @@ export function FeedbackPage() {
       const idToken = await user.getIdToken();
       const res = await fetch('/api/feedback', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${idToken}`,
+        },
         body: JSON.stringify({
           essayText: essay,
           questionText: question,
           taskType: selectedTask === 'task1' ? 'Task 1' : 'Task 2',
-          idToken,
         }),
       });
 
@@ -204,12 +206,14 @@ export function FeedbackPage() {
       const idToken = await user.getIdToken();
       const res = await fetch('/api/retention-check', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${idToken}`,
+        },
         body: JSON.stringify({
           vocabulary: feedback.vocabulary,
           grammar: feedback.grammar,
           topic: feedback.topic,
-          idToken,
         }),
       });
       const data = (await res.json()) as { questions?: QuizQuestion[]; error?: string };
