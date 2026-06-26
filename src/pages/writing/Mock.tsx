@@ -567,7 +567,7 @@ function Mock() {
                 </Button>
                 <Button
                   variant="secondary"
-                  onClick={handleDeclineFeedback}
+                  onClick={() => setShowFeedbackModal(false)}
                   disabled={checkingAccess}
                   className="w-full"
                 >

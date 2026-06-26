@@ -8,9 +8,9 @@ interface LayoutProps {
 
 export function Layout({ children, noHeader }: LayoutProps) {
   return (
-    <div>
+    <div >
       {!noHeader && <Header />}
-      <main style={{ flex: 1 }}>{children}</main>
+      <main>{children}</main>
       <footer
         style={{
           background: 'var(--ink-blue)',

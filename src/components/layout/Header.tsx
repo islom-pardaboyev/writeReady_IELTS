@@ -3,7 +3,7 @@ import { useAuth } from "../../contexts/AuthContext";
 import Logo from '/logo.png'
 
 export function Header() {
-  const { user, profile } = useAuth();
+  const { user } = useAuth();
 
   return (
     <header
