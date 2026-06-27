@@ -105,7 +105,7 @@ export function FeedbackPage() {
   // Writing practice quiz
   const [practiceInputs, setPracticeInputs] = useState<Record<string, string>>({});
   const [practiceRevealed, setPracticeRevealed] = useState<Record<string, boolean>>({});
-  const [practiceChecked, setPracticeChecked] = useState<Record<string, LTMatch[]>>({});
+  const [practiceChecked, setPracticeChecked] = useState<Record<string, { score: number; correct: boolean; feedback: string; improved: string }>>({});
   const [practiceChecking, setPracticeChecking] = useState<Record<string, boolean>>({});
 
   // Essay sentence analysis
@@ -260,18 +260,24 @@ export function FeedbackPage() {
     }
   };
 
-  const checkPracticeSentence = async (key: string, text: string) => {
-    if (!text.trim()) return;
+  const checkPracticeSentence = async (
+    key: string,
+    text: string,
+    targetItem: string,
+    targetType: 'vocab' | 'grammar',
+    example?: string,
+  ) => {
+    if (!text.trim() || !user) return;
     setPracticeChecking((p) => ({ ...p, [key]: true }));
     try {
-      const params = new URLSearchParams({ text, language: ltLang, disabledRules: 'WHITESPACE_RULE' });
-      const res = await fetch('https://api.languagetool.org/v2/check', {
+      const idToken = await user.getIdToken();
+      const res = await fetch('/api/check-practice', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-        body: params.toString(),
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${idToken}` },
+        body: JSON.stringify({ userSentence: text, targetItem, targetType, example }),
       });
-      const data = await res.json() as { matches: LTMatch[] };
-      setPracticeChecked((p) => ({ ...p, [key]: data.matches }));
+      const data = await res.json() as { score: number; correct: boolean; feedback: string; improved: string };
+      setPracticeChecked((p) => ({ ...p, [key]: data }));
     } catch { /* silent */ } finally {
       setPracticeChecking((p) => ({ ...p, [key]: false }));
     }
@@ -845,11 +851,23 @@ export function FeedbackPage() {
                                     {s.sentence}
                                   </p>
                                   {isOpen && (
-                                    <div className="mt-2.5 pt-2.5 border-t border-current/10">
-                                      <span className={`text-[0.65rem] font-bold uppercase tracking-widest mr-2 ${style.dot.replace('bg-', 'text-')}`}>
-                                        {style.label}
-                                      </span>
-                                      <span className="text-sm text-gray-700">{s.feedback}</span>
+                                    <div className="mt-2.5 pt-2.5 border-t border-current/10 flex flex-col gap-2">
+                                      <div>
+                                        <span className={`text-[0.65rem] font-bold uppercase tracking-widest mr-2 ${style.dot.replace('bg-', 'text-')}`}>
+                                          {style.label}
+                                        </span>
+                                        <span className="text-sm text-gray-700">{s.feedback}</span>
+                                      </div>
+                                      {s.improved && s.type !== 'ok' && (
+                                        <div className="bg-[var(--ink-blue)]/6 border border-[var(--ink-blue)]/20 rounded-lg px-3 py-2.5">
+                                          <p className="text-[0.65rem] font-bold uppercase tracking-widest text-[var(--ink-blue)] mb-1">
+                                            ✨ Improved version
+                                          </p>
+                                          <p className="font-['Georgia'] text-sm text-[var(--ink-blue)] leading-relaxed m-0 italic">
+                                            {s.improved}
+                                          </p>
+                                        </div>
+                                      )}
                                     </div>
                                   )}
                                 </div>
@@ -1016,30 +1034,37 @@ export function FeedbackPage() {
                           />
                           <div className="mt-2 flex items-center gap-3 flex-wrap">
                             <button
-                              onClick={() => checkPracticeSentence(key, practiceInputs[key] ?? '')}
+                              onClick={() => checkPracticeSentence(key, practiceInputs[key] ?? '', v.word, 'vocab', v.exampleFromEssay)}
                               disabled={practiceChecking[key] || !(practiceInputs[key] ?? '').trim()}
                               className="text-xs bg-[var(--ink-blue)] text-white px-3 py-1 rounded cursor-pointer border-none disabled:opacity-40"
                             >
-                              {practiceChecking[key] ? 'Checking…' : 'Check'}
+                              {practiceChecking[key] ? 'Tekshirilmoqda…' : '🤖 Gemini bilan tekshir'}
                             </button>
                             <button
                               onClick={() => setPracticeRevealed((p) => ({ ...p, [key]: !p[key] }))}
                               className="text-xs text-[var(--ink-blue)] underline cursor-pointer bg-transparent border-none"
                             >
-                              {practiceRevealed[key] ? 'Hide example' : 'Show example'}
+                              {practiceRevealed[key] ? 'Yashirish' : "Namuna ko'rish"}
                             </button>
                           </div>
-                          {(practiceChecked[key]?.length ?? 0) > 0 && (
-                            <div className="mt-2 flex flex-col gap-1">
-                              {practiceChecked[key].map((m, mi) => (
-                                <p key={mi} className="text-xs text-red-700 bg-red-50 rounded px-2.5 py-1.5 m-0">
-                                  <strong>"{(practiceInputs[key] ?? '').slice(m.offset, m.offset + m.length)}"</strong> — {m.message}
-                                </p>
-                              ))}
+                          {practiceChecked[key] && (
+                            <div className={`mt-2 rounded-lg px-3 py-2.5 border ${practiceChecked[key].correct ? 'bg-green-50 border-green-200' : 'bg-red-50 border-red-200'}`}>
+                              <div className="flex items-center gap-2 mb-1.5">
+                                <span className={`text-xs font-bold ${practiceChecked[key].correct ? 'text-green-700' : 'text-red-700'}`}>
+                                  {practiceChecked[key].correct ? '✓ To\'g\'ri ishlatilgan' : '✗ Xato bor'}
+                                </span>
+                                <span className="ml-auto text-xs font-mono font-bold text-gray-600">
+                                  {practiceChecked[key].score}/100
+                                </span>
+                              </div>
+                              <p className="text-xs text-gray-700 leading-relaxed m-0 mb-2">{practiceChecked[key].feedback}</p>
+                              {practiceChecked[key].improved && (
+                                <div className="bg-white/70 rounded px-2.5 py-2 border border-current/10">
+                                  <p className="text-[0.65rem] font-bold uppercase tracking-widest text-[var(--ink-blue)] mb-1">✨ Yaxshilangan versiya</p>
+                                  <p className="font-['Georgia'] text-xs text-[var(--ink-blue)] italic m-0">{practiceChecked[key].improved}</p>
+                                </div>
+                              )}
                             </div>
-                          )}
-                          {practiceChecked[key] && practiceChecked[key].length === 0 && (practiceInputs[key] ?? '').trim() && (
-                            <p className="mt-2 text-xs text-green-700 bg-green-50 rounded px-2.5 py-1.5">✓ No grammar issues found</p>
                           )}
                           {practiceRevealed[key] && (
                             <p className="mt-2 font-['Georgia'] text-sm text-[var(--ink-blue)] italic bg-[var(--ink-blue)]/5 rounded-lg px-3 py-2">
@@ -1067,30 +1092,37 @@ export function FeedbackPage() {
                           />
                           <div className="mt-2 flex items-center gap-3 flex-wrap">
                             <button
-                              onClick={() => checkPracticeSentence(key, practiceInputs[key] ?? '')}
+                              onClick={() => checkPracticeSentence(key, practiceInputs[key] ?? '', g.point, 'grammar', g.example)}
                               disabled={practiceChecking[key] || !(practiceInputs[key] ?? '').trim()}
                               className="text-xs bg-amber-700 text-white px-3 py-1 rounded cursor-pointer border-none disabled:opacity-40"
                             >
-                              {practiceChecking[key] ? 'Checking…' : 'Check'}
+                              {practiceChecking[key] ? 'Tekshirilmoqda…' : '🤖 Gemini bilan tekshir'}
                             </button>
                             <button
                               onClick={() => setPracticeRevealed((p) => ({ ...p, [key]: !p[key] }))}
                               className="text-xs text-amber-700 underline cursor-pointer bg-transparent border-none"
                             >
-                              {practiceRevealed[key] ? 'Hide example' : 'Show example'}
+                              {practiceRevealed[key] ? 'Yashirish' : "Namuna ko'rish"}
                             </button>
                           </div>
-                          {(practiceChecked[key]?.length ?? 0) > 0 && (
-                            <div className="mt-2 flex flex-col gap-1">
-                              {practiceChecked[key].map((m, mi) => (
-                                <p key={mi} className="text-xs text-red-700 bg-red-50 rounded px-2.5 py-1.5 m-0">
-                                  <strong>"{(practiceInputs[key] ?? '').slice(m.offset, m.offset + m.length)}"</strong> — {m.message}
-                                </p>
-                              ))}
+                          {practiceChecked[key] && (
+                            <div className={`mt-2 rounded-lg px-3 py-2.5 border ${practiceChecked[key].correct ? 'bg-green-50 border-green-200' : 'bg-red-50 border-red-200'}`}>
+                              <div className="flex items-center gap-2 mb-1.5">
+                                <span className={`text-xs font-bold ${practiceChecked[key].correct ? 'text-green-700' : 'text-red-700'}`}>
+                                  {practiceChecked[key].correct ? '✓ To\'g\'ri ishlatilgan' : '✗ Xato bor'}
+                                </span>
+                                <span className="ml-auto text-xs font-mono font-bold text-gray-600">
+                                  {practiceChecked[key].score}/100
+                                </span>
+                              </div>
+                              <p className="text-xs text-gray-700 leading-relaxed m-0 mb-2">{practiceChecked[key].feedback}</p>
+                              {practiceChecked[key].improved && (
+                                <div className="bg-white/70 rounded px-2.5 py-2 border border-current/10">
+                                  <p className="text-[0.65rem] font-bold uppercase tracking-widest text-amber-800 mb-1">✨ Yaxshilangan versiya</p>
+                                  <p className="font-['Georgia'] text-xs text-amber-900 italic m-0">{practiceChecked[key].improved}</p>
+                                </div>
+                              )}
                             </div>
-                          )}
-                          {practiceChecked[key] && practiceChecked[key].length === 0 && (practiceInputs[key] ?? '').trim() && (
-                            <p className="mt-2 text-xs text-green-700 bg-green-50 rounded px-2.5 py-1.5">✓ No grammar issues found</p>
                           )}
                           {practiceRevealed[key] && (
                             <p className="mt-2 font-['Georgia'] text-sm text-amber-900 italic bg-amber-50 rounded-lg px-3 py-2">

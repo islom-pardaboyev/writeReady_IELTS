@@ -196,7 +196,8 @@ Return this EXACT JSON structure:
     {
       "sentence": "<copy the EXACT sentence from the student essay>",
       "type": "<one of: word_choice | grammar | coherence | structure | ok>",
-      "feedback": "<specific, actionable feedback for this sentence. If type is ok, write what is good about it>"
+      "feedback": "<specific, actionable feedback for this sentence. If type is ok, write what is good about it>",
+      "improved": "<rewrite this exact sentence at band 7-8 level fixing all issues. If type is ok, keep it the same or make minor enhancements>"
     }
   ],
   "vocabulary": [

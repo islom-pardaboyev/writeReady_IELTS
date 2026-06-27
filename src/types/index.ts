@@ -112,6 +112,7 @@ export interface SentenceAnalysis {
   sentence: string;
   type: SentenceIssueType;
   feedback: string;
+  improved: string;
 }
 
 export interface EnhancedFeedbackResult {
