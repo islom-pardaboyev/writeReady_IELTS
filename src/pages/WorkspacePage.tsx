@@ -189,10 +189,10 @@ export function WorkspacePage() {
 
           {/* Mock start overlay */}
           {mode === 'mock' && !started && (
-            <Card style={{ textAlign: 'center', padding: '3rem', marginBottom: '1.5rem' }}>
-              <div style={{ fontSize: '3rem', marginBottom: '1rem' }}>⏱</div>
-              <h2 style={{ marginBottom: '0.75rem' }}>Ready for your Mock exam?</h2>
-              <p style={{ color: 'var(--text-muted)', marginBottom: '0.5rem', maxWidth: 420, margin: '0 auto 1rem' }}>
+            <Card className="text-center p-12 mb-6">
+              <div className="text-5xl mb-4">⏱</div>
+              <h2 className="mb-3">Ready for your Mock exam?</h2>
+              <p className="text-[var(--text-muted)] max-w-[420px] mx-auto mb-4">
                 You'll have <strong>40 minutes</strong> to complete this essay. The timer starts the moment you press Begin. No pausing, no hints.
               </p>
               <Button size="lg" onClick={startTimer}>
