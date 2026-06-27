@@ -5,7 +5,7 @@ import { getQuestion, saveSubmission } from '../firebase/firestore';
 import { Layout } from '../components/layout/Layout';
 import { Button } from '../components/ui/Button';
 import { Card } from '../components/ui/Card';
-import type { Question, PracticeMode, FeedbackResult } from '../types';
+import type { Question, PracticeMode } from '../types';
 
 const MOCK_SECONDS = 40 * 60;
 
@@ -76,53 +76,15 @@ export function WorkspacePage() {
       setTimerRunning(false);
     }
 
-    if (!isPro) {
-      const submissionId = await saveSubmission(user.uid, {
-        questionId: question.id,
-        questionText: question.promptText,
-        essayText: essay,
-        mode,
-      });
-      navigate(`/feedback/${submissionId}?locked=true`);
-      return;
-    }
-
     try {
-      const idToken = await user.getIdToken();
-      const res = await fetch('/api/analyze-essay', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          essayText: essay,
-          questionText: question.promptText,
-          mode,
-          idToken,
-        }),
-      });
-
-      const data = await res.json();
-
-      if (!res.ok) {
-        if (res.status === 403) {
-          setError(data.error || 'Access denied. Please check your subscription.');
-        } else if (res.status === 429) {
-          setError('Monthly limit reached. Your quota resets next month.');
-        } else {
-          setError(data.error || 'Analysis failed. Please try again.');
-        }
-        setSubmitting(false);
-        return;
-      }
-
       const submissionId = await saveSubmission(user.uid, {
         questionId: question.id,
         questionText: question.promptText,
         essayText: essay,
         mode,
-        feedback: data.feedback as FeedbackResult,
       });
-
-      navigate(`/feedback/${submissionId}`);
+      // FeedbackPage auto-triggers /api/feedback for Pro users; locked=true for free users
+      navigate(`/feedback/${submissionId}${isPro ? '' : '?locked=true'}`);
     } catch {
       setError('Network error. Please check your connection and try again.');
       setSubmitting(false);
