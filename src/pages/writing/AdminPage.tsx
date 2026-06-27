@@ -12,48 +12,6 @@ interface FoundUser { id: string; email: string; plan: string; subscription?: st
 
 const CREDENTIALS = { login: '2026SPRING', password: 'paidOFF' };
 
-// ── shared primitives ──────────────────────────────────────────
-const inp: React.CSSProperties = {
-  width: '100%', padding: '0.625rem 0.875rem',
-  border: '1.5px solid #e2e8f0', borderRadius: 10,
-  fontSize: '0.9rem', color: '#0f172a', background: 'white',
-  outline: 'none', boxSizing: 'border-box',
-};
-const ta: React.CSSProperties = {
-  ...inp, resize: 'vertical' as const, minHeight: 120,
-  fontFamily: 'inherit', lineHeight: 1.6,
-};
-const btn = (bg: string, color = 'white'): React.CSSProperties => ({
-  background: bg, color, border: 'none', borderRadius: 10,
-  padding: '0.625rem 1.25rem', fontWeight: 600,
-  fontSize: '0.875rem', cursor: 'pointer', transition: 'opacity 0.15s',
-  display: 'inline-flex', alignItems: 'center', gap: '0.375rem',
-});
-const outlineBtn = (color: string): React.CSSProperties => ({
-  background: 'white', color, border: `1.5px solid ${color}`,
-  borderRadius: 8, padding: '0.4rem 0.875rem',
-  fontWeight: 600, fontSize: '0.8125rem', cursor: 'pointer',
-});
-const card: React.CSSProperties = {
-  background: 'white', borderRadius: 16,
-  border: '1px solid #e2e8f0',
-  boxShadow: '0 1px 4px rgba(0,0,0,0.06)',
-};
-const lbl: React.CSSProperties = {
-  fontSize: '0.8125rem', fontWeight: 600,
-  color: '#374151', marginBottom: 4, display: 'block',
-};
-const errorBox: React.CSSProperties = {
-  background: '#fef2f2', border: '1px solid #fecaca',
-  borderRadius: 8, padding: '0.625rem 0.875rem',
-  fontSize: '0.875rem', color: '#dc2626',
-};
-const successBox: React.CSSProperties = {
-  background: '#f0fdf4', border: '1px solid #bbf7d0',
-  borderRadius: 8, padding: '0.625rem 0.875rem',
-  fontSize: '0.875rem', color: '#16a34a',
-};
-
 function nextMonthDate() {
   const d = new Date();
   d.setMonth(d.getMonth() + 1);
@@ -62,10 +20,10 @@ function nextMonthDate() {
 
 function planBadge(plan: string, subscription?: string) {
   if (subscription === 'forever' || plan === 'forever')
-    return { label: 'Lifetime', bg: '#fffbeb', color: '#c9900a', border: '#fde68a' };
+    return { label: 'Lifetime', className: 'bg-amber-50 text-[#c9900a] border border-amber-200' };
   if (plan === 'pro' || (subscription && new Date(subscription) > new Date()))
-    return { label: 'Pro', bg: '#eff6ff', color: '#1d4ed8', border: '#bfdbfe' };
-  return { label: 'Free', bg: '#f8fafc', color: '#64748b', border: '#e2e8f0' };
+    return { label: 'Pro', className: 'bg-blue-50 text-blue-700 border border-blue-200' };
+  return { label: 'Free', className: 'bg-slate-50 text-slate-500 border border-slate-200' };
 }
 
 // ── Login screen ───────────────────────────────────────────────
@@ -84,27 +42,45 @@ function LoginScreen({ onLogin }: { onLogin: () => void }) {
   };
 
   return (
-    <div style={{ minHeight: '100vh', background: '#f8fafc', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '2rem' }}>
-      <div style={{ width: '100%', maxWidth: 420 }}>
-        <div style={{ background: 'linear-gradient(135deg, #0f172a 0%, #1e3a5f 100%)', borderRadius: '16px 16px 0 0', padding: '2.5rem 2rem', textAlign: 'center', color: 'white' }}>
-          <div style={{ width: 52, height: 52, background: 'rgba(255,255,255,0.15)', borderRadius: 14, display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 1rem', fontFamily: 'Fraunces, serif', fontSize: '1.5rem', fontWeight: 700 }}>W</div>
-          <div style={{ fontSize: '0.7rem', fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: 'rgba(255,255,255,0.5)', marginBottom: 6 }}>Admin Access</div>
-          <h1 style={{ fontFamily: 'Fraunces, serif', fontSize: '1.625rem', fontWeight: 800, margin: 0 }}>WriteReady Admin</h1>
-          <p style={{ fontSize: '0.875rem', color: 'rgba(255,255,255,0.55)', marginTop: 8, lineHeight: 1.5 }}>Manage exam prompts and keep your writing library fresh.</p>
+    <div className="min-h-screen bg-slate-50 flex items-center justify-center p-8">
+      <div className="w-full max-w-[420px]">
+        <div className="bg-gradient-to-br from-[#0f172a] to-[#1e3a5f] rounded-t-2xl px-8 py-10 text-center text-white">
+          <div className="w-13 h-13 bg-white/15 rounded-[14px] flex items-center justify-center mx-auto mb-4 font-fraunces text-2xl font-bold">W</div>
+          <div className="text-[0.7rem] font-bold tracking-[0.12em] uppercase text-white/50 mb-1.5">Admin Access</div>
+          <h1 className="font-fraunces text-[1.625rem] font-extrabold m-0">WriteReady Admin</h1>
+          <p className="text-sm text-white/55 mt-2 leading-relaxed">Manage exam prompts and keep your writing library fresh.</p>
         </div>
-        <div style={{ ...card, borderRadius: '0 0 16px 16px', padding: '2rem', borderTop: 'none' }}>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+        <div className="bg-white rounded-b-2xl border border-t-0 border-slate-200 shadow-sm p-8">
+          <div className="flex flex-col gap-4">
             <div>
-              <label style={lbl}>Login</label>
-              <input style={inp} placeholder="Login kiriting" value={login} onChange={e => setLogin(e.target.value)} />
+              <label className="text-[0.8125rem] font-semibold text-gray-700 mb-1 block">Login</label>
+              <input
+                className="w-full px-3.5 py-2.5 border-[1.5px] border-slate-200 rounded-[10px] text-[0.9rem] text-slate-900 bg-white outline-none box-border"
+                placeholder="Login kiriting"
+                value={login}
+                onChange={e => setLogin(e.target.value)}
+              />
             </div>
             <div>
-              <label style={lbl}>Parol</label>
-              <input style={inp} type="password" placeholder="Parol kiriting" value={password}
-                onChange={e => setPassword(e.target.value)} onKeyDown={e => e.key === 'Enter' && handle()} />
+              <label className="text-[0.8125rem] font-semibold text-gray-700 mb-1 block">Parol</label>
+              <input
+                className="w-full px-3.5 py-2.5 border-[1.5px] border-slate-200 rounded-[10px] text-[0.9rem] text-slate-900 bg-white outline-none box-border"
+                type="password"
+                placeholder="Parol kiriting"
+                value={password}
+                onChange={e => setPassword(e.target.value)}
+                onKeyDown={e => e.key === 'Enter' && handle()}
+              />
             </div>
-            {error && <div style={errorBox}>{error}</div>}
-            <button style={{ ...btn('#1d4ed8'), width: '100%', padding: '0.75rem', justifyContent: 'center' }} onClick={handle}>Kirish</button>
+            {error && (
+              <div className="bg-red-50 border border-red-200 rounded-lg px-3.5 py-2.5 text-sm text-red-600">{error}</div>
+            )}
+            <button
+              className="w-full bg-blue-700 text-white border-none rounded-[10px] py-3 font-semibold text-sm cursor-pointer flex items-center justify-center gap-1.5 transition-opacity hover:opacity-90"
+              onClick={handle}
+            >
+              Kirish
+            </button>
           </div>
         </div>
       </div>
@@ -248,47 +224,49 @@ export default function Admin() {
   if (!isLoggedIn) return <LoginScreen onLogin={() => setIsLoggedIn(true)} />;
 
   return (
-    <div style={{ minHeight: '100vh', background: '#f8fafc', padding: '2rem 1rem' }}>
-      <div style={{ maxWidth: 1200, margin: '0 auto', display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+    <div className="min-h-screen bg-slate-50 py-8 px-4">
+      <div className="max-w-[1200px] mx-auto flex flex-col gap-6">
 
         {/* ── Top bar ── */}
-        <div style={{ ...card, padding: '1.5rem 2rem' }}>
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '1rem', marginBottom: '1.5rem' }}>
+        <div className="bg-white rounded-2xl border border-slate-200 shadow-sm px-8 py-6">
+          <div className="flex items-center justify-between flex-wrap gap-4 mb-6">
             <div>
-              <div style={{ fontSize: '0.7rem', fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: '#1d4ed8', marginBottom: 4 }}>Admin Dashboard</div>
-              <h1 style={{ fontFamily: 'Fraunces, serif', fontSize: '1.75rem', fontWeight: 800, color: '#0f172a', margin: 0 }}>WriteReady Control Panel</h1>
-              <p style={{ fontSize: '0.875rem', color: '#64748b', marginTop: 4 }}>Manage prompts and user subscriptions.</p>
+              <div className="text-[0.7rem] font-bold tracking-[0.1em] uppercase text-blue-700 mb-1">Admin Dashboard</div>
+              <h1 className="font-fraunces text-[1.75rem] font-extrabold text-slate-900 m-0">WriteReady Control Panel</h1>
+              <p className="text-sm text-slate-500 mt-1">Manage prompts and user subscriptions.</p>
             </div>
-            <button style={{ ...outlineBtn('#ef4444'), padding: '0.5rem 1.25rem' }}
-              onClick={() => { setIsLoggedIn(false); localStorage.removeItem('adminLoggedIn'); }}>
+            <button
+              className="bg-white text-red-500 border-[1.5px] border-red-500 rounded-lg py-2 px-5 font-semibold text-[0.8125rem] cursor-pointer hover:opacity-80 transition-opacity"
+              onClick={() => { setIsLoggedIn(false); localStorage.removeItem('adminLoggedIn'); }}
+            >
               Chiqish
             </button>
           </div>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: '1rem' }}>
+          <div className="grid grid-cols-[repeat(auto-fit,minmax(160px,1fr))] gap-4">
             {[
-              { label: 'Task 1 items', value: task1List.length, color: '#1d4ed8', bg: '#eff6ff' },
-              { label: 'Task 2 items', value: task2List.length, color: '#16a34a', bg: '#f0fdf4' },
-              { label: 'Total prompts', value: task1List.length + task2List.length, color: '#c9900a', bg: '#fffbeb' },
+              { label: 'Task 1 items', value: task1List.length, colorClass: 'text-blue-700', bgClass: 'bg-blue-50', borderClass: 'border-blue-100' },
+              { label: 'Task 2 items', value: task2List.length, colorClass: 'text-green-700', bgClass: 'bg-green-50', borderClass: 'border-green-100' },
+              { label: 'Total prompts', value: task1List.length + task2List.length, colorClass: 'text-[#c9900a]', bgClass: 'bg-amber-50', borderClass: 'border-amber-100' },
             ].map(s => (
-              <div key={s.label} style={{ background: s.bg, borderRadius: 12, padding: '1rem 1.25rem', border: `1px solid ${s.color}22` }}>
-                <div style={{ fontSize: '0.8125rem', color: s.color, fontWeight: 600, marginBottom: 6 }}>{s.label}</div>
-                <div style={{ fontFamily: 'IBM Plex Mono, monospace', fontSize: '2rem', fontWeight: 700, color: '#0f172a' }}>{s.value}</div>
+              <div key={s.label} className={`${s.bgClass} rounded-xl px-5 py-4 border ${s.borderClass}`}>
+                <div className={`text-[0.8125rem] ${s.colorClass} font-semibold mb-1.5`}>{s.label}</div>
+                <div className="font-mono text-[2rem] font-bold text-slate-900">{s.value}</div>
               </div>
             ))}
           </div>
         </div>
 
         {/* ── User Management Panel ── */}
-        <div style={{ ...card, padding: '1.75rem' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', paddingBottom: '1.25rem', borderBottom: '1px solid #f1f5f9', marginBottom: '1.5rem' }}>
-            <span style={{ background: '#fdf4ff', color: '#9333ea', fontSize: '0.7rem', fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', padding: '0.3rem 0.75rem', borderRadius: 20 }}>Users</span>
-            <h2 style={{ fontSize: '1.125rem', fontWeight: 700, color: '#0f172a', margin: 0 }}>User Management</h2>
+        <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-7">
+          <div className="flex items-center gap-3 pb-5 border-b border-slate-100 mb-6">
+            <span className="bg-purple-50 text-purple-600 text-[0.7rem] font-bold tracking-[0.08em] uppercase py-1.5 px-3 rounded-full">Users</span>
+            <h2 className="text-lg font-bold text-slate-900 m-0">User Management</h2>
           </div>
 
           {/* Search */}
-          <div style={{ display: 'flex', gap: '0.75rem', marginBottom: '1.25rem' }}>
+          <div className="flex gap-3 mb-5">
             <input
-              style={{ ...inp, flex: 1 }}
+              className="flex-1 px-3.5 py-2.5 border-[1.5px] border-slate-200 rounded-[10px] text-[0.9rem] text-slate-900 bg-white outline-none"
               type="email"
               placeholder="Enter user email address..."
               value={userEmail}
@@ -296,7 +274,7 @@ export default function Admin() {
               onKeyDown={e => e.key === 'Enter' && findUser()}
             />
             <button
-              style={{ ...btn(userLoading ? '#94a3b8' : '#9333ea'), padding: '0.625rem 1.5rem', flexShrink: 0 }}
+              className={`${userLoading ? 'bg-slate-400' : 'bg-purple-600'} text-white border-none rounded-[10px] px-6 py-2.5 font-semibold text-sm cursor-pointer flex-shrink-0 flex items-center gap-1.5 transition-opacity hover:opacity-90`}
               onClick={findUser}
               disabled={userLoading}
             >
@@ -304,8 +282,8 @@ export default function Admin() {
             </button>
           </div>
 
-          {userError && <div style={{ ...errorBox, marginBottom: '1rem' }}>{userError}</div>}
-          {userSuccess && <div style={{ ...successBox, marginBottom: '1rem' }}>{userSuccess}</div>}
+          {userError && <div className="bg-red-50 border border-red-200 rounded-lg px-3.5 py-2.5 text-sm text-red-600 mb-4">{userError}</div>}
+          {userSuccess && <div className="bg-green-50 border border-green-200 rounded-lg px-3.5 py-2.5 text-sm text-green-700 mb-4">{userSuccess}</div>}
 
           {/* Found user card */}
           {foundUser && (() => {
@@ -317,49 +295,49 @@ export default function Admin() {
               : null;
 
             return (
-              <div style={{ background: '#fafafa', border: '1.5px solid #e2e8f0', borderRadius: 14, padding: '1.5rem', display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+              <div className="bg-[#fafafa] border-[1.5px] border-slate-200 rounded-2xl p-6 flex flex-col gap-5">
                 {/* User info */}
-                <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: '1rem', flexWrap: 'wrap' }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-                    <div style={{ width: 44, height: 44, borderRadius: '50%', background: '#9333ea', color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 700, fontSize: '1rem', flexShrink: 0 }}>
+                <div className="flex items-start justify-between gap-4 flex-wrap">
+                  <div className="flex items-center gap-4">
+                    <div className="w-11 h-11 rounded-full bg-purple-600 text-white flex items-center justify-center font-bold text-base flex-shrink-0">
                       {foundUser.email.slice(0, 2).toUpperCase()}
                     </div>
                     <div>
-                      <div style={{ fontWeight: 700, color: '#0f172a', fontSize: '0.9375rem' }}>{foundUser.email}</div>
-                      <div style={{ fontSize: '0.8125rem', color: '#64748b', marginTop: 2 }}>
+                      <div className="font-bold text-slate-900 text-[0.9375rem]">{foundUser.email}</div>
+                      <div className="text-[0.8125rem] text-slate-500 mt-0.5">
                         {isForever ? 'Lifetime — never expires'
                           : subExpiry ? `Pro until ${subExpiry}`
                           : 'No active subscription'}
                       </div>
                     </div>
                   </div>
-                  <span style={{ background: badge.bg, color: badge.color, border: `1px solid ${badge.border}`, fontSize: '0.75rem', fontWeight: 700, padding: '0.3rem 0.875rem', borderRadius: 20, textTransform: 'uppercase', letterSpacing: '0.06em', flexShrink: 0 }}>
+                  <span className={`text-xs font-bold py-1.5 px-3.5 rounded-full uppercase tracking-[0.06em] flex-shrink-0 ${badge.className}`}>
                     {badge.label}
                   </span>
                 </div>
 
                 {/* Subscription actions */}
                 <div>
-                  <div style={{ fontSize: '0.8rem', fontWeight: 600, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.07em', marginBottom: '0.75rem' }}>
+                  <div className="text-[0.8rem] font-semibold text-slate-400 uppercase tracking-[0.07em] mb-3">
                     Set Subscription
                   </div>
-                  <div style={{ display: 'flex', gap: '0.625rem', flexWrap: 'wrap' }}>
+                  <div className="flex gap-2.5 flex-wrap">
                     <button
-                      style={{ ...btn('#1d4ed8'), opacity: isPro ? 0.5 : 1 }}
+                      className={`bg-blue-700 text-white border-none rounded-[10px] px-5 py-2.5 font-semibold text-sm cursor-pointer flex items-center gap-1.5 transition-opacity ${isPro ? 'opacity-50' : 'hover:opacity-90'}`}
                       onClick={() => setSubscription('month')}
                       disabled={userLoading}
                     >
                       + 1 Month Pro
                     </button>
                     <button
-                      style={{ ...btn('#c9900a'), opacity: isForever ? 0.5 : 1 }}
+                      className={`bg-[#c9900a] text-white border-none rounded-[10px] px-5 py-2.5 font-semibold text-sm cursor-pointer flex items-center gap-1.5 transition-opacity ${isForever ? 'opacity-50' : 'hover:opacity-90'}`}
                       onClick={() => setSubscription('forever')}
                       disabled={userLoading}
                     >
                       Lifetime Forever
                     </button>
                     <button
-                      style={{ ...btn('white', '#ef4444'), border: '1.5px solid #fecaca', opacity: foundUser.plan === 'free' && !foundUser.subscription ? 0.5 : 1 }}
+                      className={`bg-white text-red-500 border-[1.5px] border-red-200 rounded-[10px] px-5 py-2.5 font-semibold text-sm cursor-pointer flex items-center gap-1.5 transition-opacity ${foundUser.plan === 'free' && !foundUser.subscription ? 'opacity-50' : 'hover:opacity-90'}`}
                       onClick={() => setSubscription('free')}
                       disabled={userLoading}
                     >
@@ -373,58 +351,81 @@ export default function Admin() {
         </div>
 
         {/* ── Task 1 & Task 2 grid ── */}
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(480px, 1fr))', gap: '1.5rem' }}>
+        <div className="grid grid-cols-[repeat(auto-fit,minmax(480px,1fr))] gap-6">
 
           {/* Task 1 */}
-          <div style={{ ...card, padding: '1.75rem', display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', paddingBottom: '1.25rem', borderBottom: '1px solid #f1f5f9' }}>
-              <span style={{ background: '#eff6ff', color: '#1d4ed8', fontSize: '0.7rem', fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', padding: '0.3rem 0.75rem', borderRadius: 20 }}>Task 1</span>
-              <h2 style={{ fontSize: '1.125rem', fontWeight: 700, color: '#0f172a', margin: 0 }}>Rasm + savol qo'shish</h2>
+          <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-7 flex flex-col gap-5">
+            <div className="flex items-center gap-3 pb-5 border-b border-slate-100">
+              <span className="bg-blue-50 text-blue-700 text-[0.7rem] font-bold tracking-[0.08em] uppercase py-1.5 px-3 rounded-full">Task 1</span>
+              <h2 className="text-lg font-bold text-slate-900 m-0">Rasm + savol qo'shish</h2>
             </div>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.875rem' }}>
+            <div className="flex flex-col gap-3.5">
               <div>
-                <label style={lbl}>Rasm yuklash</label>
-                <input type="file" accept="image/*"
+                <label className="text-[0.8125rem] font-semibold text-gray-700 mb-1 block">Rasm yuklash</label>
+                <input
+                  type="file"
+                  accept="image/*"
                   onChange={async e => { const f = e.target.files?.[0]; if (f) { const url = await uploadImage(f); if (url) setT1Image(url); } }}
-                  style={{ display: 'block', width: '100%', fontSize: '0.875rem', color: '#374151' }} />
+                  className="block w-full text-sm text-gray-700"
+                />
               </div>
               {uploading && (
-                <div style={{ background: '#eff6ff', border: '1px solid #bfdbfe', borderRadius: 8, padding: '0.625rem 0.875rem', fontSize: '0.875rem', color: '#1d4ed8', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                <div className="bg-blue-50 border border-blue-200 rounded-lg px-3.5 py-2.5 text-sm text-blue-700 flex items-center gap-2">
                   <Spinner color="#1d4ed8" /> Yuklanmoqda...
                 </div>
               )}
               {t1Image && (
-                <div style={{ borderRadius: 12, overflow: 'hidden', border: '1px solid #e2e8f0' }}>
-                  <img src={t1Image} alt="preview" style={{ width: '100%', height: 160, objectFit: 'cover', display: 'block' }} />
+                <div className="rounded-xl overflow-hidden border border-slate-200">
+                  <img src={t1Image} alt="preview" className="w-full h-40 object-cover block" />
                 </div>
               )}
               <div>
-                <label style={lbl}>Savol matni</label>
-                <textarea style={ta} placeholder="Task 1 savol matnini kiriting..." value={t1Report} onChange={e => setT1Report(e.target.value)} rows={4} />
+                <label className="text-[0.8125rem] font-semibold text-gray-700 mb-1 block">Savol matni</label>
+                <textarea
+                  className="w-full px-3.5 py-2.5 border-[1.5px] border-slate-200 rounded-[10px] text-[0.9rem] text-slate-900 bg-white outline-none resize-y min-h-[120px] leading-relaxed font-inherit box-border"
+                  placeholder="Task 1 savol matnini kiriting..."
+                  value={t1Report}
+                  onChange={e => setT1Report(e.target.value)}
+                  rows={4}
+                />
               </div>
-              {t1Error && <div style={errorBox}>{t1Error}</div>}
-              <button style={{ ...btn(t1Loading || uploading ? '#94a3b8' : '#1d4ed8'), padding: '0.75rem', justifyContent: 'center' }}
-                onClick={addTask1} disabled={t1Loading || uploading}>
+              {t1Error && <div className="bg-red-50 border border-red-200 rounded-lg px-3.5 py-2.5 text-sm text-red-600">{t1Error}</div>}
+              <button
+                className={`${t1Loading || uploading ? 'bg-slate-400' : 'bg-blue-700'} text-white border-none rounded-[10px] py-3 font-semibold text-sm cursor-pointer flex items-center justify-center gap-1.5 transition-opacity hover:opacity-90`}
+                onClick={addTask1}
+                disabled={t1Loading || uploading}
+              >
                 {t1Loading ? <><Spinner color="white" /> Saqlanmoqda...</> : "+ Qo'shish"}
               </button>
             </div>
 
             {task1List.length > 0 && (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.875rem' }}>
-                <span style={{ fontSize: '0.75rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em', color: '#94a3b8' }}>
+              <div className="flex flex-col gap-3.5">
+                <span className="text-xs font-bold uppercase tracking-[0.08em] text-slate-400">
                   {filteredT1.length}/{task1List.length} prompts
                 </span>
-                <input style={inp} placeholder="Search Task 1..." value={task1Search} onChange={e => setTask1Search(e.target.value)} />
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', maxHeight: 480, overflowY: 'auto' }}>
+                <input
+                  className="w-full px-3.5 py-2.5 border-[1.5px] border-slate-200 rounded-[10px] text-[0.9rem] text-slate-900 bg-white outline-none box-border"
+                  placeholder="Search Task 1..."
+                  value={task1Search}
+                  onChange={e => setTask1Search(e.target.value)}
+                />
+                <div className="flex flex-col gap-3 max-h-[480px] overflow-y-auto">
                   {filteredT1.length === 0
-                    ? <p style={{ textAlign: 'center', color: '#94a3b8', padding: '2rem 0', fontSize: '0.875rem' }}>No results.</p>
+                    ? <p className="text-center text-slate-400 py-8 text-sm">No results.</p>
                     : filteredT1.map(t => (
-                      <div key={t.id} style={{ background: '#f8fafc', borderRadius: 12, border: '1px solid #e2e8f0', padding: '0.875rem', display: 'flex', flexDirection: 'column', gap: '0.625rem' }}>
-                        <img src={t.image} alt="" style={{ width: '100%', height: 120, objectFit: 'cover', borderRadius: 8 }} />
-                        <p style={{ fontSize: '0.875rem', color: '#334155', lineHeight: 1.5, margin: 0, display: '-webkit-box', WebkitLineClamp: 3, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>{t.report}</p>
-                        <div style={{ display: 'flex', gap: '0.5rem' }}>
-                          <button style={{ ...outlineBtn('#1d4ed8'), flex: 1 }} onClick={() => { setEditT1(t); setEditImage(t.image); setEditReport(t.report); }}>Edit</button>
-                          <button style={{ ...outlineBtn('#ef4444'), flex: 1 }} onClick={() => deleteTask1(t.id)}>Delete</button>
+                      <div key={t.id} className="bg-slate-50 rounded-xl border border-slate-200 p-3.5 flex flex-col gap-2.5">
+                        <img src={t.image} alt="" className="w-full h-[120px] object-cover rounded-lg" />
+                        <p className="text-sm text-slate-700 leading-relaxed m-0 line-clamp-3">{t.report}</p>
+                        <div className="flex gap-2">
+                          <button
+                            className="flex-1 bg-white text-blue-700 border-[1.5px] border-blue-700 rounded-lg py-1.5 px-3.5 font-semibold text-[0.8125rem] cursor-pointer hover:opacity-80 transition-opacity"
+                            onClick={() => { setEditT1(t); setEditImage(t.image); setEditReport(t.report); }}
+                          >Edit</button>
+                          <button
+                            className="flex-1 bg-white text-red-500 border-[1.5px] border-red-500 rounded-lg py-1.5 px-3.5 font-semibold text-[0.8125rem] cursor-pointer hover:opacity-80 transition-opacity"
+                            onClick={() => deleteTask1(t.id)}
+                          >Delete</button>
                         </div>
                       </div>
                     ))
@@ -435,38 +436,58 @@ export default function Admin() {
           </div>
 
           {/* Task 2 */}
-          <div style={{ ...card, padding: '1.75rem', display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', paddingBottom: '1.25rem', borderBottom: '1px solid #f1f5f9' }}>
-              <span style={{ background: '#f0fdf4', color: '#16a34a', fontSize: '0.7rem', fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', padding: '0.3rem 0.75rem', borderRadius: 20 }}>Task 2</span>
-              <h2 style={{ fontSize: '1.125rem', fontWeight: 700, color: '#0f172a', margin: 0 }}>Savol qo'shish</h2>
+          <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-7 flex flex-col gap-5">
+            <div className="flex items-center gap-3 pb-5 border-b border-slate-100">
+              <span className="bg-green-50 text-green-700 text-[0.7rem] font-bold tracking-[0.08em] uppercase py-1.5 px-3 rounded-full">Task 2</span>
+              <h2 className="text-lg font-bold text-slate-900 m-0">Savol qo'shish</h2>
             </div>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.875rem' }}>
+            <div className="flex flex-col gap-3.5">
               <div>
-                <label style={lbl}>Savol matni</label>
-                <textarea style={ta} placeholder="Task 2 savol matnini kiriting..." value={t2Report} onChange={e => setT2Report(e.target.value)} rows={5} />
+                <label className="text-[0.8125rem] font-semibold text-gray-700 mb-1 block">Savol matni</label>
+                <textarea
+                  className="w-full px-3.5 py-2.5 border-[1.5px] border-slate-200 rounded-[10px] text-[0.9rem] text-slate-900 bg-white outline-none resize-y min-h-[120px] leading-relaxed font-inherit box-border"
+                  placeholder="Task 2 savol matnini kiriting..."
+                  value={t2Report}
+                  onChange={e => setT2Report(e.target.value)}
+                  rows={5}
+                />
               </div>
-              {t2Error && <div style={errorBox}>{t2Error}</div>}
-              <button style={{ ...btn(t2Loading ? '#94a3b8' : '#16a34a'), padding: '0.75rem', justifyContent: 'center' }}
-                onClick={addTask2} disabled={t2Loading}>
+              {t2Error && <div className="bg-red-50 border border-red-200 rounded-lg px-3.5 py-2.5 text-sm text-red-600">{t2Error}</div>}
+              <button
+                className={`${t2Loading ? 'bg-slate-400' : 'bg-green-700'} text-white border-none rounded-[10px] py-3 font-semibold text-sm cursor-pointer flex items-center justify-center gap-1.5 transition-opacity hover:opacity-90`}
+                onClick={addTask2}
+                disabled={t2Loading}
+              >
                 {t2Loading ? <><Spinner color="white" /> Saqlanmoqda...</> : "+ Qo'shish"}
               </button>
             </div>
 
             {task2List.length > 0 && (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.875rem' }}>
-                <span style={{ fontSize: '0.75rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em', color: '#94a3b8' }}>
+              <div className="flex flex-col gap-3.5">
+                <span className="text-xs font-bold uppercase tracking-[0.08em] text-slate-400">
                   {filteredT2.length}/{task2List.length} prompts
                 </span>
-                <input style={inp} placeholder="Search Task 2..." value={task2Search} onChange={e => setTask2Search(e.target.value)} />
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', maxHeight: 520, overflowY: 'auto' }}>
+                <input
+                  className="w-full px-3.5 py-2.5 border-[1.5px] border-slate-200 rounded-[10px] text-[0.9rem] text-slate-900 bg-white outline-none box-border"
+                  placeholder="Search Task 2..."
+                  value={task2Search}
+                  onChange={e => setTask2Search(e.target.value)}
+                />
+                <div className="flex flex-col gap-3 max-h-[520px] overflow-y-auto">
                   {filteredT2.length === 0
-                    ? <p style={{ textAlign: 'center', color: '#94a3b8', padding: '2rem 0', fontSize: '0.875rem' }}>No results.</p>
+                    ? <p className="text-center text-slate-400 py-8 text-sm">No results.</p>
                     : filteredT2.map(t => (
-                      <div key={t.id} style={{ background: '#f8fafc', borderRadius: 12, border: '1px solid #e2e8f0', padding: '0.875rem', display: 'flex', flexDirection: 'column', gap: '0.625rem' }}>
-                        <p style={{ fontSize: '0.875rem', color: '#334155', lineHeight: 1.6, margin: 0 }}>{t.report}</p>
-                        <div style={{ display: 'flex', gap: '0.5rem' }}>
-                          <button style={{ ...outlineBtn('#16a34a'), flex: 1 }} onClick={() => { setEditT2(t); setEditReport(t.report); }}>Edit</button>
-                          <button style={{ ...outlineBtn('#ef4444'), flex: 1 }} onClick={() => deleteTask2(t.id)}>Delete</button>
+                      <div key={t.id} className="bg-slate-50 rounded-xl border border-slate-200 p-3.5 flex flex-col gap-2.5">
+                        <p className="text-sm text-slate-700 leading-relaxed m-0">{t.report}</p>
+                        <div className="flex gap-2">
+                          <button
+                            className="flex-1 bg-white text-green-700 border-[1.5px] border-green-700 rounded-lg py-1.5 px-3.5 font-semibold text-[0.8125rem] cursor-pointer hover:opacity-80 transition-opacity"
+                            onClick={() => { setEditT2(t); setEditReport(t.report); }}
+                          >Edit</button>
+                          <button
+                            className="flex-1 bg-white text-red-500 border-[1.5px] border-red-500 rounded-lg py-1.5 px-3.5 font-semibold text-[0.8125rem] cursor-pointer hover:opacity-80 transition-opacity"
+                            onClick={() => deleteTask2(t.id)}
+                          >Delete</button>
                         </div>
                       </div>
                     ))
@@ -481,20 +502,34 @@ export default function Admin() {
       {/* ── Edit Task 1 modal ── */}
       {editT1 && (
         <Modal onClose={() => setEditT1(null)}>
-          <h2 style={{ fontFamily: 'Fraunces, serif', fontSize: '1.25rem', fontWeight: 800, color: '#0f172a', margin: 0 }}>Edit Task 1</h2>
-          <img src={editImage} alt="" style={{ width: '100%', height: 140, objectFit: 'cover', borderRadius: 10 }} />
+          <h2 className="font-fraunces text-[1.25rem] font-extrabold text-slate-900 m-0">Edit Task 1</h2>
+          <img src={editImage} alt="" className="w-full h-[140px] object-cover rounded-[10px]" />
           <div>
-            <label style={lbl}>Replace Image (optional)</label>
-            <input type="file" accept="image/*"
-              onChange={async e => { const f = e.target.files?.[0]; if (f) { const url = await uploadImage(f); if (url) setEditImage(url); } }} />
+            <label className="text-[0.8125rem] font-semibold text-gray-700 mb-1 block">Replace Image (optional)</label>
+            <input
+              type="file"
+              accept="image/*"
+              onChange={async e => { const f = e.target.files?.[0]; if (f) { const url = await uploadImage(f); if (url) setEditImage(url); } }}
+            />
           </div>
           <div>
-            <label style={lbl}>Savol matni</label>
-            <textarea style={ta} value={editReport} onChange={e => setEditReport(e.target.value)} rows={5} />
+            <label className="text-[0.8125rem] font-semibold text-gray-700 mb-1 block">Savol matni</label>
+            <textarea
+              className="w-full px-3.5 py-2.5 border-[1.5px] border-slate-200 rounded-[10px] text-[0.9rem] text-slate-900 bg-white outline-none resize-y min-h-[120px] leading-relaxed font-inherit box-border"
+              value={editReport}
+              onChange={e => setEditReport(e.target.value)}
+              rows={5}
+            />
           </div>
-          <div style={{ display: 'flex', gap: '0.75rem' }}>
-            <button style={{ ...btn('#1d4ed8'), flex: 1, padding: '0.75rem', justifyContent: 'center' }} onClick={saveEditT1}>Save</button>
-            <button style={{ ...btn('white', '#374151'), flex: 1, padding: '0.75rem', border: '1.5px solid #e2e8f0', justifyContent: 'center' }} onClick={() => setEditT1(null)}>Cancel</button>
+          <div className="flex gap-3">
+            <button
+              className="flex-1 bg-blue-700 text-white border-none rounded-[10px] py-3 font-semibold text-sm cursor-pointer flex items-center justify-center gap-1.5 hover:opacity-90 transition-opacity"
+              onClick={saveEditT1}
+            >Save</button>
+            <button
+              className="flex-1 bg-white text-gray-700 border-[1.5px] border-slate-200 rounded-[10px] py-3 font-semibold text-sm cursor-pointer flex items-center justify-center gap-1.5 hover:opacity-80 transition-opacity"
+              onClick={() => setEditT1(null)}
+            >Cancel</button>
           </div>
         </Modal>
       )}
@@ -502,14 +537,25 @@ export default function Admin() {
       {/* ── Edit Task 2 modal ── */}
       {editT2 && (
         <Modal onClose={() => setEditT2(null)}>
-          <h2 style={{ fontFamily: 'Fraunces, serif', fontSize: '1.25rem', fontWeight: 800, color: '#0f172a', margin: 0 }}>Edit Task 2</h2>
+          <h2 className="font-fraunces text-[1.25rem] font-extrabold text-slate-900 m-0">Edit Task 2</h2>
           <div>
-            <label style={lbl}>Savol matni</label>
-            <textarea style={ta} value={editReport} onChange={e => setEditReport(e.target.value)} rows={7} />
+            <label className="text-[0.8125rem] font-semibold text-gray-700 mb-1 block">Savol matni</label>
+            <textarea
+              className="w-full px-3.5 py-2.5 border-[1.5px] border-slate-200 rounded-[10px] text-[0.9rem] text-slate-900 bg-white outline-none resize-y min-h-[120px] leading-relaxed font-inherit box-border"
+              value={editReport}
+              onChange={e => setEditReport(e.target.value)}
+              rows={7}
+            />
           </div>
-          <div style={{ display: 'flex', gap: '0.75rem' }}>
-            <button style={{ ...btn('#16a34a'), flex: 1, padding: '0.75rem', justifyContent: 'center' }} onClick={saveEditT2}>Save</button>
-            <button style={{ ...btn('white', '#374151'), flex: 1, padding: '0.75rem', border: '1.5px solid #e2e8f0', justifyContent: 'center' }} onClick={() => setEditT2(null)}>Cancel</button>
+          <div className="flex gap-3">
+            <button
+              className="flex-1 bg-green-700 text-white border-none rounded-[10px] py-3 font-semibold text-sm cursor-pointer flex items-center justify-center gap-1.5 hover:opacity-90 transition-opacity"
+              onClick={saveEditT2}
+            >Save</button>
+            <button
+              className="flex-1 bg-white text-gray-700 border-[1.5px] border-slate-200 rounded-[10px] py-3 font-semibold text-sm cursor-pointer flex items-center justify-center gap-1.5 hover:opacity-80 transition-opacity"
+              onClick={() => setEditT2(null)}
+            >Cancel</button>
           </div>
         </Modal>
       )}
@@ -528,10 +574,14 @@ function Spinner({ color }: { color: string }) {
 
 function Modal({ children, onClose }: { children: React.ReactNode; onClose: () => void }) {
   return (
-    <div style={{ position: 'fixed', inset: 0, background: 'rgba(15,23,42,0.5)', zIndex: 50, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1rem' }}
-      onClick={onClose}>
-      <div style={{ background: 'white', borderRadius: 16, border: '1px solid #e2e8f0', boxShadow: '0 20px 60px rgba(0,0,0,0.15)', width: '100%', maxWidth: 520, padding: '1.75rem', display: 'flex', flexDirection: 'column', gap: '1rem' }}
-        onClick={e => e.stopPropagation()}>
+    <div
+      className="fixed inset-0 bg-[rgba(15,23,42,0.5)] z-50 flex items-center justify-center p-4"
+      onClick={onClose}
+    >
+      <div
+        className="bg-white rounded-2xl border border-slate-200 shadow-[0_20px_60px_rgba(0,0,0,0.15)] w-full max-w-[520px] p-7 flex flex-col gap-4"
+        onClick={e => e.stopPropagation()}
+      >
         {children}
       </div>
     </div>
