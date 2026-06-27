@@ -70,59 +70,34 @@ export function AuthPage() {
   return (
     <div
       ref={rootRef}
-      style={{
-        minHeight: '100vh',
-        background: '#f8fafc',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        padding: '2rem 1rem',
-      }}
+      className="min-h-screen bg-slate-50 flex items-center justify-center px-4 py-8"
     >
-      <div style={{ width: '100%', maxWidth: 420 }}>
+      <div className="w-full max-w-[420px]">
         <Link
           to="/"
-          className="gs-auth-logo"
-          style={{
-            display: 'block',
-            textAlign: 'center',
-            marginBottom: '2rem',
-            fontFamily: 'Fraunces, serif',
-            fontWeight: 700,
-            fontSize: '1.5rem',
-            color: '#0f172a',
-            textDecoration: 'none',
-          }}
+          className="gs-auth-logo block text-center mb-8 font-[Fraunces,serif] font-bold text-2xl text-slate-900 no-underline"
         >
-          WriteReady <span style={{ color: '#c9900a' }}>IELTS</span>
+          WriteReady <span className="text-[#c9900a]">IELTS</span>
         </Link>
 
         <div className="gs-auth-card">
           <Card padding="lg">
-            <h2
-              style={{
-                fontFamily: 'Fraunces, serif',
-                fontSize: '1.5rem',
-                marginBottom: '0.25rem',
-                textAlign: 'center',
-                color: '#0f172a',
-              }}
-            >
+            <h2 className="font-[Fraunces,serif] text-2xl mb-1 text-center text-slate-900">
               {mode === 'login' ? 'Welcome back' : 'Create account'}
             </h2>
-            <p style={{ textAlign: 'center', color: '#64748b', fontSize: '0.875rem', marginBottom: '1.5rem' }}>
+            <p className="text-center text-slate-500 text-sm mb-6">
               {mode === 'login' ? 'Sign in to continue your IELTS prep' : 'Start practicing for free'}
             </p>
 
             {error && (
-              <div style={{ background: '#fef2f2', border: '1px solid #fecaca', color: '#dc2626', padding: '0.75rem 1rem', borderRadius: 10, fontSize: '0.875rem', marginBottom: '1rem' }}>
+              <div className="bg-red-50 border border-red-200 text-red-600 px-4 py-3 rounded-[10px] text-sm mb-4">
                 {error}
               </div>
             )}
 
-            <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+            <form onSubmit={handleSubmit} className="flex flex-col gap-4">
               <div>
-                <label style={{ fontSize: '0.875rem', fontWeight: 600, color: '#374151', display: 'block', marginBottom: '0.375rem' }}>
+                <label className="text-sm font-semibold text-gray-700 block mb-[0.375rem]">
                   Email
                 </label>
                 <input
@@ -131,11 +106,11 @@ export function AuthPage() {
                   onChange={(e) => setEmail(e.target.value)}
                   required
                   placeholder="you@example.com"
-                  style={inputStyle}
+                  className="w-full px-[0.875rem] py-[0.625rem] border-[1.5px] border-slate-200 rounded-[10px] text-[0.9375rem] text-slate-900 bg-white outline-none transition-[border-color] duration-150 box-border"
                 />
               </div>
               <div>
-                <label style={{ fontSize: '0.875rem', fontWeight: 600, color: '#374151', display: 'block', marginBottom: '0.375rem' }}>
+                <label className="text-sm font-semibold text-gray-700 block mb-[0.375rem]">
                   Password
                 </label>
                 <input
@@ -145,40 +120,34 @@ export function AuthPage() {
                   required
                   placeholder={mode === 'signup' ? 'At least 6 characters' : '••••••••'}
                   minLength={6}
-                  style={inputStyle}
+                  className="w-full px-[0.875rem] py-[0.625rem] border-[1.5px] border-slate-200 rounded-[10px] text-[0.9375rem] text-slate-900 bg-white outline-none transition-[border-color] duration-150 box-border"
                 />
               </div>
-              <Button type="submit" loading={loading} size="lg" style={{ width: '100%', marginTop: '0.25rem', background: '#1d4ed8' } as React.CSSProperties}>
+              <Button type="submit" loading={loading} size="lg" className="w-full mt-1 bg-blue-700">
                 {mode === 'login' ? 'Sign In' : 'Create Account'}
               </Button>
             </form>
 
-            <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', margin: '1.25rem 0' }}>
-              <div style={{ flex: 1, height: 1, background: '#e2e8f0' }} />
-              <span style={{ fontSize: '0.75rem', color: '#94a3b8' }}>or</span>
-              <div style={{ flex: 1, height: 1, background: '#e2e8f0' }} />
+            <div className="flex items-center gap-3 my-5">
+              <div className="flex-1 h-px bg-slate-200" />
+              <span className="text-[0.75rem] text-slate-400">or</span>
+              <div className="flex-1 h-px bg-slate-200" />
             </div>
 
             <button
               onClick={handleGoogle}
               disabled={loading}
-              style={{
-                width: '100%', padding: '0.625rem 1.25rem',
-                border: '1.5px solid #e2e8f0', borderRadius: 10,
-                background: 'white', fontSize: '0.875rem', fontWeight: 500,
-                color: '#374151', display: 'flex', alignItems: 'center',
-                justifyContent: 'center', gap: '0.5rem', cursor: 'pointer',
-              }}
+              className="w-full px-5 py-[0.625rem] border-[1.5px] border-slate-200 rounded-[10px] bg-white text-sm font-medium text-gray-700 flex items-center justify-center gap-2 cursor-pointer"
             >
               <GoogleIcon />
               Continue with Google
             </button>
 
-            <p style={{ textAlign: 'center', marginTop: '1.25rem', fontSize: '0.875rem', color: '#64748b' }}>
+            <p className="text-center mt-5 text-sm text-slate-500">
               {mode === 'login' ? "Don't have an account? " : 'Already have an account? '}
               <button
                 onClick={() => setMode(mode === 'login' ? 'signup' : 'login')}
-                style={{ background: 'none', color: '#1d4ed8', fontWeight: 600, fontSize: '0.875rem', border: 'none', cursor: 'pointer' }}
+                className="bg-transparent text-blue-700 font-semibold text-sm border-0 cursor-pointer"
               >
                 {mode === 'login' ? 'Sign up free' : 'Sign in'}
               </button>
@@ -189,19 +158,6 @@ export function AuthPage() {
     </div>
   );
 }
-
-const inputStyle: React.CSSProperties = {
-  width: '100%',
-  padding: '0.625rem 0.875rem',
-  border: '1.5px solid #e2e8f0',
-  borderRadius: 10,
-  fontSize: '0.9375rem',
-  color: '#0f172a',
-  background: 'white',
-  outline: 'none',
-  transition: 'border-color 0.15s',
-  boxSizing: 'border-box',
-};
 
 function GoogleIcon() {
   return (

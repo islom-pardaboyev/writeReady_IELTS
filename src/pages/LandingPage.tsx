@@ -63,101 +63,96 @@ export function LandingPage() {
   }, []);
 
   return (
-    <div ref={rootRef} style={{ fontFamily: 'Inter, sans-serif', color: '#0f172a', background: 'white' }}>
+    <div ref={rootRef} className="font-sans text-slate-900 bg-white">
 
       {/* ── Nav ── */}
       <Header />
 
       {/* ── Hero ── */}
-      <section style={{ maxWidth: 1160, margin: '0 auto', padding: '5rem 1.5rem 4rem', display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '4rem', alignItems: 'center' }}>
+      <section className="max-w-[1160px] mx-auto px-6 pt-20 pb-16 grid grid-cols-2 gap-16 items-center">
         {/* Left */}
         <div>
-          <div className="gs-hero-badge" style={{ display: 'inline-flex', alignItems: 'center', gap: '0.5rem', background: '#eff6ff', border: '1px solid #bfdbfe', color: '#1d4ed8', fontSize: '0.75rem', fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase', padding: '0.35rem 0.875rem', borderRadius: 20, marginBottom: '1.75rem' }}>
-            <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#22c55e', display: 'inline-block' }} />
+          <div className="gs-hero-badge inline-flex items-center gap-2 bg-blue-50 border border-blue-200 text-blue-700 text-[0.75rem] font-bold tracking-[0.06em] uppercase px-[0.875rem] py-[0.35rem] rounded-[20px] mb-7">
+            <span className="w-[6px] h-[6px] rounded-full bg-green-500 inline-block" />
             AI-Powered · Uzbek & English
           </div>
 
-          <h1 className="gs-hero-title" style={{ fontSize: 'clamp(2.25rem, 4.5vw, 3.25rem)', fontWeight: 900, lineHeight: 1.1, color: '#0f172a', marginBottom: '1.25rem', letterSpacing: '-0.02em' }}>
+          <h1 className="gs-hero-title text-[clamp(2.25rem,4.5vw,3.25rem)] font-black leading-[1.1] text-slate-900 mb-5 tracking-[-0.02em]">
             IELTS Writing{' '}
-            <span style={{ color: '#1d4ed8' }}>Feedback.</span>
+            <span className="text-blue-700">Feedback.</span>
             <br />
             Delivered instantly
             <br />
             through AI.
           </h1>
 
-          <p className="gs-hero-sub" style={{ fontSize: '1.0625rem', color: '#64748b', lineHeight: 1.75, marginBottom: '2rem', maxWidth: 440 }}>
+          <p className="gs-hero-sub text-[1.0625rem] text-slate-500 leading-[1.75] mb-8 max-w-[440px]">
             WriteReady combines real IELTS exam prompts with AI to deliver sentence-level feedback, vocabulary upgrades, and a band score — in both Uzbek and English.
           </p>
 
-          <div className="gs-hero-ctas" style={{ display: 'flex', gap: '0.875rem', alignItems: 'center', marginBottom: '2rem', flexWrap: 'wrap' }}>
-            <Link to="/auth?mode=signup" style={{ display: 'inline-flex', alignItems: 'center', gap: '0.5rem', background: '#1e3a5f', color: 'white', fontWeight: 700, fontSize: '0.9375rem', padding: '0.75rem 1.75rem', borderRadius: 50, textDecoration: 'none' }}>
+          <div className="gs-hero-ctas flex gap-[0.875rem] items-center mb-8 flex-wrap">
+            <Link to="/auth?mode=signup" className="inline-flex items-center gap-2 bg-[#1e3a5f] text-white font-bold text-[0.9375rem] px-7 py-3 rounded-[50px] no-underline">
               Check My Essay →
             </Link>
-            <Link to="/writing/mock" style={{ display: 'inline-flex', alignItems: 'center', gap: '0.375rem', color: '#334155', fontWeight: 600, fontSize: '0.9375rem', textDecoration: 'none' }}>
+            <Link to="/writing/mock" className="inline-flex items-center gap-[0.375rem] text-slate-700 font-semibold text-[0.9375rem] no-underline">
               Try a Test →
             </Link>
           </div>
 
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.5rem 1.5rem' }}>
+          <div className="grid grid-cols-2 gap-x-6 gap-y-2">
             {['First analysis free', 'No credit card required', 'Real exam-style prompts', 'Sentence-level feedback'].map((t) => (
-              <div key={t} className="gs-hero-bullet" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.875rem', color: '#475569' }}>
-                <span style={{ color: '#22c55e', fontWeight: 700, fontSize: '1rem' }}>✓</span> {t}
+              <div key={t} className="gs-hero-bullet flex items-center gap-2 text-sm text-slate-600">
+                <span className="text-green-500 font-bold text-base">✓</span> {t}
               </div>
             ))}
           </div>
         </div>
 
         {/* Right — feedback UI mockup */}
-        <div className="gs-hero-right" style={{ position: 'relative' }}>
-          <div style={{ background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: 16, padding: '1.5rem', boxShadow: '0 20px 60px rgba(0,0,0,0.08)' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '1rem', paddingBottom: '0.875rem', borderBottom: '1px solid #e2e8f0' }}>
-              <div style={{ width: 10, height: 10, borderRadius: '50%', background: '#f87171' }} />
-              <div style={{ width: 10, height: 10, borderRadius: '50%', background: '#fbbf24' }} />
-              <div style={{ width: 10, height: 10, borderRadius: '50%', background: '#34d399' }} />
-              <span style={{ marginLeft: 'auto', fontSize: '0.75rem', color: '#94a3b8', fontFamily: 'monospace' }}>AI Feedback Report</span>
+        <div className="gs-hero-right relative">
+          <div className="bg-slate-50 border border-slate-200 rounded-2xl p-6 shadow-[0_20px_60px_rgba(0,0,0,0.08)]">
+            <div className="flex items-center gap-2 mb-4 pb-[0.875rem] border-b border-slate-200">
+              <div className="w-[10px] h-[10px] rounded-full bg-red-400" />
+              <div className="w-[10px] h-[10px] rounded-full bg-amber-400" />
+              <div className="w-[10px] h-[10px] rounded-full bg-emerald-400" />
+              <span className="ml-auto text-[0.75rem] text-slate-400 font-mono">AI Feedback Report</span>
             </div>
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1rem' }}>
-              <span style={{ fontSize: '0.8125rem', fontWeight: 600, color: '#475569' }}>Task 2 — Opinion Essay</span>
-              <div style={{ background: '#1e3a5f', color: 'white', fontSize: '0.8125rem', fontWeight: 700, padding: '0.25rem 0.875rem', borderRadius: 20 }}>
+            <div className="flex items-center justify-between mb-4">
+              <span className="text-[0.8125rem] font-semibold text-slate-600">Task 2 — Opinion Essay</span>
+              <div className="bg-[#1e3a5f] text-white text-[0.8125rem] font-bold px-[0.875rem] py-1 rounded-[20px]">
                 Band 7.0
               </div>
             </div>
-            <div style={{ fontFamily: 'Georgia, serif', fontSize: '0.9rem', lineHeight: 2, color: '#334155', marginBottom: '1rem', background: 'white', borderRadius: 8, padding: '1rem', border: '1px solid #e2e8f0' }}>
+            <div className="font-serif text-[0.9rem] leading-[2] text-slate-700 mb-4 bg-white rounded-lg p-4 border border-slate-200">
               <p>
                 Technology{' '}
-                <span style={{ textDecoration: 'underline wavy #ef4444', textUnderlineOffset: 3 }}>have</span>{' '}
+                <span className="underline decoration-red-500 decoration-wavy underline-offset-[3px]">have</span>{' '}
                 changed our lives{' '}
-                <span style={{ background: 'rgba(234,179,8,0.15)', borderRadius: 3, padding: '0 3px', fontWeight: 500 }}>dramatically</span>{' '}
+                <span className="bg-yellow-100/50 rounded-[3px] px-[3px] font-medium">dramatically</span>{' '}
                 in recent years.
               </p>
             </div>
-            <div style={{ borderLeft: '3px solid #ef4444', paddingLeft: '0.875rem', marginBottom: '0.875rem' }}>
-              <p style={{ fontSize: '0.8rem', color: '#ef4444', fontWeight: 600, marginBottom: '0.125rem' }}>Grammar</p>
-              <p style={{ fontSize: '0.8rem', color: '#64748b' }}>"Technology" is singular → use "has changed"</p>
+            <div className="border-l-[3px] border-red-500 pl-[0.875rem] mb-[0.875rem]">
+              <p className="text-[0.8rem] text-red-500 font-semibold mb-[0.125rem]">Grammar</p>
+              <p className="text-[0.8rem] text-slate-500">"Technology" is singular → use "has changed"</p>
             </div>
-            <div style={{ background: 'rgba(234,179,8,0.07)', border: '1px solid rgba(234,179,8,0.25)', borderRadius: 8, padding: '0.75rem' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.375rem' }}>
-                <span style={{ fontSize: '0.8rem', fontWeight: 700, color: '#92400e' }}>dramatically</span>
-                <span style={{ fontSize: '0.75rem', color: '#94a3b8' }}>→</span>
-                <span style={{ fontSize: '0.8rem', fontWeight: 600, color: '#0f172a' }}>profoundly</span>
+            <div className="bg-yellow-50/70 border border-yellow-300/25 rounded-lg p-3">
+              <div className="flex items-center gap-2 mb-[0.375rem]">
+                <span className="text-[0.8rem] font-bold text-amber-900">dramatically</span>
+                <span className="text-[0.75rem] text-slate-400">→</span>
+                <span className="text-[0.8rem] font-semibold text-slate-900">profoundly</span>
               </div>
-              <p style={{ fontSize: '0.75rem', color: '#94a3b8' }}>O'zbek: keskin darajada · C1 level</p>
+              <p className="text-[0.75rem] text-slate-400">O'zbek: keskin darajada · C1 level</p>
             </div>
           </div>
 
           {/* Floating band card */}
-          <div className="gs-floating-card" style={{
-            position: 'absolute', bottom: -20, right: -20,
-            background: 'white', borderRadius: 12, padding: '1rem 1.25rem',
-            boxShadow: '0 8px 32px rgba(0,0,0,0.12)', border: '1px solid #e2e8f0',
-            minWidth: 160,
-          }}>
-            <p style={{ fontSize: '0.7rem', color: '#94a3b8', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: '0.25rem' }}>Criteria scores</p>
+          <div className="gs-floating-card absolute -bottom-5 -right-5 bg-white rounded-xl px-5 py-4 shadow-[0_8px_32px_rgba(0,0,0,0.12)] border border-slate-200 min-w-[160px]">
+            <p className="text-[0.7rem] text-slate-400 font-semibold uppercase tracking-[0.06em] mb-1">Criteria scores</p>
             {[['Task Achievement', '7.0'], ['Coherence', '7.5'], ['Lexical Resource', '6.5'], ['Grammar', '7.0']].map(([k, v]) => (
-              <div key={k} style={{ display: 'flex', justifyContent: 'space-between', gap: '1rem', fontSize: '0.8rem', color: '#334155', padding: '0.125rem 0' }}>
+              <div key={k} className="flex justify-between gap-4 text-[0.8rem] text-slate-700 py-[0.125rem]">
                 <span>{k}</span>
-                <span style={{ fontWeight: 700, color: '#1d4ed8' }}>{v}</span>
+                <span className="font-bold text-blue-700">{v}</span>
               </div>
             ))}
           </div>
@@ -165,68 +160,68 @@ export function LandingPage() {
       </section>
 
       {/* ── Stats ── */}
-      <section className="gs-stats" style={{ background: '#f8fafc', borderTop: '1px solid #e2e8f0', borderBottom: '1px solid #e2e8f0' }}>
-        <div style={{ maxWidth: 1160, margin: '0 auto', padding: '2.5rem 1.5rem', display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1rem' }}>
+      <section className="gs-stats bg-slate-50 border-t border-b border-slate-200">
+        <div className="max-w-[1160px] mx-auto px-6 py-10 grid grid-cols-[repeat(auto-fit,minmax(200px,1fr))] gap-4">
           {[
             { value: 'Band 7+', sub: 'Target score', note: 'IELTS Writing' },
             { value: '4', sub: 'Scoring criteria', note: 'TA · CC · LR · GRA' },
             { value: 'Instant', sub: 'AI feedback', note: 'Uzbek & English' },
             { value: '3 modes', sub: 'Practice styles', note: 'Mock · Practice · Relax' },
           ].map((s) => (
-            <div key={s.sub} className="gs-stat-item" style={{ padding: '1.25rem 1.5rem' }}>
-              <div style={{ fontSize: '1.75rem', fontWeight: 900, color: '#0f172a', letterSpacing: '-0.02em', marginBottom: '0.125rem' }}>{s.value}</div>
-              <div style={{ fontSize: '0.8125rem', fontWeight: 700, color: '#334155', marginBottom: '0.125rem', textTransform: 'uppercase', letterSpacing: '0.04em' }}>{s.sub}</div>
-              <div style={{ fontSize: '0.75rem', color: '#94a3b8' }}>{s.note}</div>
+            <div key={s.sub} className="gs-stat-item px-6 py-5">
+              <div className="text-[1.75rem] font-black text-slate-900 tracking-[-0.02em] mb-[0.125rem]">{s.value}</div>
+              <div className="text-[0.8125rem] font-bold text-slate-700 mb-[0.125rem] uppercase tracking-[0.04em]">{s.sub}</div>
+              <div className="text-[0.75rem] text-slate-400">{s.note}</div>
             </div>
           ))}
         </div>
       </section>
 
       {/* ── How it works ── */}
-      <section className="gs-how" style={{ maxWidth: 1160, margin: '0 auto', padding: '5rem 1.5rem' }}>
-        <div className="gs-how-header" style={{ marginBottom: '3rem' }}>
-          <p style={{ fontSize: '0.8125rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em', color: '#1d4ed8', marginBottom: '0.5rem' }}>Simple process</p>
-          <h2 style={{ fontSize: 'clamp(1.75rem, 3vw, 2.25rem)', fontWeight: 900, color: '#0f172a', letterSpacing: '-0.02em' }}>Three steps to a higher band</h2>
+      <section className="gs-how max-w-[1160px] mx-auto px-6 py-20">
+        <div className="gs-how-header mb-12">
+          <p className="text-[0.8125rem] font-bold uppercase tracking-[0.08em] text-blue-700 mb-2">Simple process</p>
+          <h2 className="text-[clamp(1.75rem,3vw,2.25rem)] font-black text-slate-900 tracking-[-0.02em]">Three steps to a higher band</h2>
         </div>
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: '1.5rem' }}>
+        <div className="grid grid-cols-[repeat(auto-fit,minmax(260px,1fr))] gap-6">
           {[
             { n: '01', title: 'Choose your mode', desc: 'Mock exam for pressure, Practice for pace, or Relax for free writing with your own prompt.' },
             { n: '02', title: 'Write your essay', desc: 'Real IELTS Task 1 and Task 2 prompts, selected randomly from our exam bank.' },
             { n: '03', title: 'Get AI feedback', desc: 'Sentence-level grammar notes, vocabulary upgrades with Uzbek meanings, and a band score estimate.' },
           ].map((s) => (
-            <div key={s.n} className="gs-step-card" style={{ background: '#f8fafc', borderRadius: 12, padding: '2rem', border: '1px solid #e2e8f0' }}>
-              <div style={{ fontSize: '2.25rem', fontWeight: 900, color: '#e2e8f0', lineHeight: 1, marginBottom: '1rem', letterSpacing: '-0.02em' }}>{s.n}</div>
-              <h3 style={{ fontSize: '1.0625rem', fontWeight: 700, color: '#0f172a', marginBottom: '0.5rem' }}>{s.title}</h3>
-              <p style={{ fontSize: '0.9rem', color: '#64748b', lineHeight: 1.7 }}>{s.desc}</p>
+            <div key={s.n} className="gs-step-card bg-slate-50 rounded-xl p-8 border border-slate-200">
+              <div className="text-[2.25rem] font-black text-slate-200 leading-none mb-4 tracking-[-0.02em]">{s.n}</div>
+              <h3 className="text-[1.0625rem] font-bold text-slate-900 mb-2">{s.title}</h3>
+              <p className="text-[0.9rem] text-slate-500 leading-[1.7]">{s.desc}</p>
             </div>
           ))}
         </div>
       </section>
 
       {/* ── Modes ── */}
-      <section className="gs-modes" style={{ background: '#f8fafc', borderTop: '1px solid #e2e8f0' }}>
-        <div style={{ maxWidth: 1160, margin: '0 auto', padding: '5rem 1.5rem' }}>
-          <div className="gs-modes-header" style={{ marginBottom: '3rem' }}>
-            <p style={{ fontSize: '0.8125rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em', color: '#1d4ed8', marginBottom: '0.5rem' }}>Practice modes</p>
-            <h2 style={{ fontSize: 'clamp(1.75rem, 3vw, 2.25rem)', fontWeight: 900, color: '#0f172a', letterSpacing: '-0.02em' }}>One goal, three ways to train</h2>
+      <section className="gs-modes bg-slate-50 border-t border-slate-200">
+        <div className="max-w-[1160px] mx-auto px-6 py-20">
+          <div className="gs-modes-header mb-12">
+            <p className="text-[0.8125rem] font-bold uppercase tracking-[0.08em] text-blue-700 mb-2">Practice modes</p>
+            <h2 className="text-[clamp(1.75rem,3vw,2.25rem)] font-black text-slate-900 tracking-[-0.02em]">One goal, three ways to train</h2>
           </div>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: '1.25rem' }}>
+          <div className="grid grid-cols-[repeat(auto-fit,minmax(260px,1fr))] gap-5">
             {[
               { emoji: '⏱', title: 'Mock Exam', tag: 'Exam simulation', desc: '60-minute timer, both Task 1 and Task 2. Mirrors the real IELTS on-computer experience.', bg: '#1e3a5f', light: true },
               { emoji: '✏️', title: 'Practice Mode', tag: 'Targeted improvement', desc: 'No timer pressure. Work through tasks at your own pace with randomly selected prompts.', bg: 'white', light: false },
               { emoji: '☕', title: 'Relax Mode', tag: 'Free writing', desc: 'Use your own custom prompt. Enter any question you like, optionally upload a chart, and write freely.', bg: '#eff6ff', light: false },
             ].map((m) => (
-              <Link key={m.title} to="/writing/mock" style={{ textDecoration: 'none' }}>
+              <Link key={m.title} to="/writing/mock" className="no-underline">
                 <div
-                  className="gs-mode-card"
-                  style={{ background: m.bg, borderRadius: 12, padding: '2rem', border: m.light ? 'none' : '1px solid #e2e8f0', height: '100%', transition: 'transform 0.15s, box-shadow 0.15s', display: 'block', cursor: 'pointer' }}
+                  className="gs-mode-card rounded-xl p-8 h-full block cursor-pointer transition-[transform,box-shadow] duration-150"
+                  style={{ background: m.bg, border: m.light ? 'none' : '1px solid #e2e8f0' }}
                   onMouseEnter={(e) => { (e.currentTarget as HTMLDivElement).style.transform = 'translateY(-2px)'; (e.currentTarget as HTMLDivElement).style.boxShadow = '0 8px 24px rgba(0,0,0,0.1)'; }}
                   onMouseLeave={(e) => { (e.currentTarget as HTMLDivElement).style.transform = ''; (e.currentTarget as HTMLDivElement).style.boxShadow = ''; }}
                 >
-                  <div style={{ fontSize: '1.75rem', marginBottom: '1rem' }}>{m.emoji}</div>
-                  <div style={{ fontSize: '0.7rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em', color: m.light ? 'rgba(255,255,255,0.5)' : '#94a3b8', marginBottom: '0.375rem' }}>{m.tag}</div>
-                  <h3 style={{ fontSize: '1.125rem', fontWeight: 800, color: m.light ? 'white' : '#0f172a', marginBottom: '0.5rem', letterSpacing: '-0.01em' }}>{m.title}</h3>
-                  <p style={{ fontSize: '0.875rem', color: m.light ? 'rgba(255,255,255,0.7)' : '#64748b', lineHeight: 1.7 }}>{m.desc}</p>
+                  <div className="text-[1.75rem] mb-4">{m.emoji}</div>
+                  <div className={`text-[0.7rem] font-bold uppercase tracking-[0.08em] mb-[0.375rem] ${m.light ? 'text-white/50' : 'text-slate-400'}`}>{m.tag}</div>
+                  <h3 className={`text-[1.125rem] font-extrabold mb-2 tracking-[-0.01em] ${m.light ? 'text-white' : 'text-slate-900'}`}>{m.title}</h3>
+                  <p className={`text-[0.875rem] leading-[1.7] ${m.light ? 'text-white/70' : 'text-slate-500'}`}>{m.desc}</p>
                 </div>
               </Link>
             ))}
@@ -235,23 +230,23 @@ export function LandingPage() {
       </section>
 
       {/* ── CTA ── */}
-      <section className="gs-cta" style={{ background: '#0f172a', padding: '5rem 1.5rem', textAlign: 'center' }}>
-        <div className="gs-cta-content" style={{ maxWidth: 600, margin: '0 auto' }}>
-          <h2 style={{ fontSize: 'clamp(1.75rem, 4vw, 2.5rem)', fontWeight: 900, color: 'white', letterSpacing: '-0.02em', marginBottom: '1rem' }}>
+      <section className="gs-cta bg-slate-900 px-6 py-20 text-center">
+        <div className="gs-cta-content max-w-[600px] mx-auto">
+          <h2 className="text-[clamp(1.75rem,4vw,2.5rem)] font-black text-white tracking-[-0.02em] mb-4">
             Ready to reach your target band?
           </h2>
-          <p style={{ color: 'rgba(255,255,255,0.55)', fontSize: '1rem', marginBottom: '2rem', lineHeight: 1.7 }}>
+          <p className="text-white/55 text-base mb-8 leading-[1.7]">
             Free to start. Upgrade for unlimited AI feedback in Uzbek and English.
           </p>
-          <Link to="/auth?mode=signup" style={{ display: 'inline-flex', alignItems: 'center', gap: '0.5rem', background: '#c9900a', color: 'white', fontWeight: 700, fontSize: '1rem', padding: '0.875rem 2rem', borderRadius: 50, textDecoration: 'none' }}>
+          <Link to="/auth?mode=signup" className="inline-flex items-center gap-2 bg-[#c9900a] text-white font-bold text-base px-8 py-[0.875rem] rounded-[50px] no-underline">
             Create Free Account →
           </Link>
         </div>
       </section>
 
       {/* ── Footer ── */}
-      <footer style={{ background: '#0f172a', borderTop: '1px solid rgba(255,255,255,0.06)', padding: '1.5rem', textAlign: 'center' }}>
-        <p style={{ fontSize: '0.8125rem', color: 'rgba(255,255,255,0.3)' }}>
+      <footer className="bg-slate-900 border-t border-white/[0.06] px-6 py-6 text-center">
+        <p className="text-[0.8125rem] text-white/30">
           © {new Date().getFullYear()} WriteReady IELTS · AI-powered writing coach
         </p>
       </footer>
