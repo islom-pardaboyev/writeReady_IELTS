@@ -1,18 +1,9 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
-import * as admin from 'firebase-admin';
+import { initializeApp, getApps, cert } from 'firebase-admin/app';
+import { getAuth } from 'firebase-admin/auth';
+import { getFirestore, FieldValue, type DocumentReference } from 'firebase-admin/firestore';
 import Anthropic from '@anthropic-ai/sdk';
 
-let db: admin.firestore.Firestore;
-try {
-  if (!admin.apps.length) {
-    const serviceAccount = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT_KEY ?? '{}');
-    admin.initializeApp({ credential: admin.credential.cert(serviceAccount) });
-  }
-  db = admin.firestore();
-} catch (initErr) {
-  console.error('Firebase init error:', initErr);
-  db = null as unknown as admin.firestore.Firestore;
-}
 const MONTHLY_LIMIT = 12;
 const ALLOWED_MODEL = 'claude-sonnet-4-6';
 const MAX_TOKENS = 8000;
@@ -20,6 +11,22 @@ const MAX_TOKENS = 8000;
 type CreditErrorCode = 'USER_NOT_FOUND' | 'NOT_PRO' | 'LIMIT_REACHED';
 class CreditError extends Error {
   constructor(public code: CreditErrorCode) { super(code); }
+}
+
+function initFirebase() {
+  if (getApps().length) return;
+
+  const projectId = process.env.FIREBASE_PROJECT_ID;
+  const clientEmail = process.env.FIREBASE_CLIENT_EMAIL;
+  const privateKey = process.env.FIREBASE_PRIVATE_KEY?.replace(/\\n/g, '\n');
+
+  if (!projectId || !clientEmail || !privateKey) {
+    throw new Error(
+      `Missing Firebase env vars. Got: projectId=${!!projectId}, clientEmail=${!!clientEmail}, privateKey=${!!privateKey}`
+    );
+  }
+
+  initializeApp({ credential: cert({ projectId, clientEmail, privateKey }) });
 }
 
 function currentMonthKey(): string {
@@ -38,8 +45,29 @@ async function getUid(req: VercelRequest): Promise<string> {
   const auth = req.headers.authorization ?? '';
   const token = auth.startsWith('Bearer ') ? auth.slice(7) : null;
   if (!token) throw new Error('MISSING_TOKEN');
-  const decoded = await admin.auth().verifyIdToken(token);
+  const decoded = await getAuth().verifyIdToken(token);
   return decoded.uid;
+}
+
+async function consumeCredit(uid: string, monthKey: string): Promise<DocumentReference> {
+  const db = getFirestore();
+  const userRef = db.collection('users').doc(uid);
+
+  await db.runTransaction(async (tx) => {
+    const snap = await tx.get(userRef);
+    if (!snap.exists) throw new CreditError('USER_NOT_FOUND');
+
+    const data = snap.data()!;
+    if (!isProUser(data.subscription)) throw new CreditError('NOT_PRO');
+
+    const usage = data.usage ?? {};
+    const used = usage.monthKey === monthKey ? (usage.count ?? 0) : 0;
+    if (used >= MONTHLY_LIMIT) throw new CreditError('LIMIT_REACHED');
+
+    tx.set(userRef, { usage: { monthKey, count: used + 1 } }, { merge: true });
+  });
+
+  return userRef;
 }
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
@@ -49,7 +77,12 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
   if (req.method === 'OPTIONS') return res.status(200).end();
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
-  if (!db) return res.status(500).json({ error: 'Firebase not initialized. Check FIREBASE_SERVICE_ACCOUNT_KEY env var.' });
+
+  try {
+    initFirebase();
+  } catch (e: unknown) {
+    return res.status(500).json({ error: `Firebase init failed: ${(e as Error).message}` });
+  }
 
   let uid: string;
   try { uid = await getUid(req); } catch {
@@ -62,22 +95,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   }
 
   const monthKey = currentMonthKey();
-  const userRef = db.collection('users').doc(uid);
+  let userRef: DocumentReference;
 
   try {
-    await db.runTransaction(async (tx) => {
-      const snap = await tx.get(userRef);
-      if (!snap.exists) throw new CreditError('USER_NOT_FOUND');
-
-      const data = snap.data()!;
-      if (!isProUser(data.subscription)) throw new CreditError('NOT_PRO');
-
-      const usage = data.usage ?? {};
-      const used = usage.monthKey === monthKey ? (usage.count ?? 0) : 0;
-      if (used >= MONTHLY_LIMIT) throw new CreditError('LIMIT_REACHED');
-
-      tx.set(userRef, { usage: { monthKey, count: used + 1 } }, { merge: true });
-    });
+    userRef = await consumeCredit(uid, monthKey);
   } catch (e: unknown) {
     if (e instanceof CreditError) {
       if (e.code === 'NOT_PRO') return res.status(403).json({ error: 'AI feedback requires a Pro or Lifetime plan.' });
@@ -104,7 +125,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     const raw = message.content[0]?.type === 'text' ? message.content[0].text : '';
     const feedback = parseResponse(raw, wordCount, resolvedTask);
 
-    // Save issues for recurring error-pattern tracking (non-blocking)
+    const db = getFirestore();
     db.collection('feedback_reports').add({
       uid,
       taskType: feedback.taskType,
@@ -116,12 +137,12 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         ...(feedback.feedback?.lexicalResource?.issues ?? []),
         ...(feedback.feedback?.grammaticalRangeAccuracy?.issues ?? []),
       ],
-      createdAt: admin.firestore.FieldValue.serverTimestamp(),
+      createdAt: FieldValue.serverTimestamp(),
     }).catch(console.error);
 
     return res.status(200).json({ feedback });
   } catch (err) {
-    await userRef.set({ usage: { monthKey, count: admin.firestore.FieldValue.increment(-1) } }, { merge: true }).catch(console.error);
+    await userRef.set({ usage: { monthKey, count: FieldValue.increment(-1) } }, { merge: true }).catch(console.error);
     return res.status(500).json({ error: (err as Error).message ?? 'AI analysis failed. Please try again.' });
   }
 }
