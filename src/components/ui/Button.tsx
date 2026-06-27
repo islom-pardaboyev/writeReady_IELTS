@@ -22,12 +22,12 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(
           'inline-flex items-center justify-center gap-2 font-semibold rounded-lg transition-all focus-visible:outline-none disabled:pointer-events-none disabled:opacity-60',
           {
             'bg-[var(--ink-blue)] text-white hover:opacity-90': variant === 'primary',
-            'bg-gray-100 text-gray-900 hover:bg-gray-200': variant === 'secondary',
-            'text-[var(--slate)] hover:bg-gray-100': variant === 'ghost',
+            'bg-[var(--bg-subtle)] text-[var(--text-primary)] hover:opacity-80 border border-[var(--border-color)]': variant === 'secondary',
+            'text-[var(--text-primary)] hover:bg-[var(--bg-subtle)]': variant === 'ghost',
             'bg-[var(--coral)] text-white hover:opacity-90': variant === 'danger' || variant === 'destructive',
             'bg-[var(--gold)] text-white hover:opacity-90': variant === 'gold',
             'bg-blue-600 text-white hover:bg-blue-700': variant === 'default',
-            'border border-gray-300 bg-white text-gray-700 hover:bg-gray-50': variant === 'outline',
+            'border border-[var(--border-color)] bg-[var(--bg-card)] text-[var(--text-primary)] hover:bg-[var(--bg-subtle)]': variant === 'outline',
           },
           {
             'h-8 px-3 text-xs': size === 'sm',
@@ -50,7 +50,7 @@ Button.displayName = 'Button';
 function Spinner() {
   return (
     <svg
-      style={{ animation: 'spin 0.8s linear infinite', width: 14, height: 14 }}
+      className="animate-spin w-3.5 h-3.5"
       viewBox="0 0 24 24"
       fill="none"
       stroke="currentColor"

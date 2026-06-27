@@ -1,70 +1,83 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
-import * as admin from 'firebase-admin';
+import { initializeApp, getApps, cert } from 'firebase-admin/app';
+import { getAuth } from 'firebase-admin/auth';
+import { getFirestore } from 'firebase-admin/firestore';
 
-if (!admin.apps.length) {
-  const serviceAccount = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT_KEY ?? '{}');
-  admin.initializeApp({ credential: admin.credential.cert(serviceAccount) });
-}
-
-const adminDb = admin.firestore();
-
-// Gemini 1.5 Flash — update model name when Gemini 3 Flash is GA
 const GEMINI_URL = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent';
 
-function isPlanActive(
-  plan: string,
-  subscription: string | null,
-  subscriptionExpiresAt: admin.firestore.Timestamp | null
-): boolean {
-  if (plan === 'forever' || subscription === 'forever') return true;
-  if (plan === 'pro') {
-    if (subscription && new Date(subscription) > new Date()) return true;
-    if (!subscriptionExpiresAt) return true;
-    return subscriptionExpiresAt.toDate() > new Date();
+function initFirebase() {
+  if (getApps().length) return;
+
+  const projectId = process.env.FIREBASE_PROJECT_ID;
+  const clientEmail = process.env.FIREBASE_CLIENT_EMAIL;
+  const privateKey = process.env.FIREBASE_PRIVATE_KEY?.replace(/\\n/g, '\n');
+
+  if (!projectId || !clientEmail || !privateKey) {
+    throw new Error(
+      `Missing Firebase env vars. Got: projectId=${!!projectId}, clientEmail=${!!clientEmail}, privateKey=${!!privateKey}`
+    );
   }
-  return false;
+
+  initializeApp({ credential: cert({ projectId, clientEmail, privateKey }) });
+}
+
+function isProUser(subscription: unknown): boolean {
+  if (subscription === 'forever') return true;
+  if (typeof subscription !== 'string') return false;
+  const expiry = new Date(subscription);
+  return !Number.isNaN(expiry.getTime()) && expiry > new Date();
+}
+
+async function getUid(req: VercelRequest): Promise<string> {
+  const auth = req.headers.authorization ?? '';
+  const token = auth.startsWith('Bearer ') ? auth.slice(7) : null;
+  if (!token) throw new Error('MISSING_TOKEN');
+  const decoded = await getAuth().verifyIdToken(token);
+  return decoded.uid;
 }
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
+  res.setHeader('Access-Control-Allow-Origin', '*');
+  res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+
+  if (req.method === 'OPTIONS') return res.status(200).end();
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
 
-  const { vocabulary, grammar, topic, idToken } = req.body ?? {};
-  if (!idToken || !vocabulary || !grammar) {
-    return res.status(400).json({ error: 'Missing required fields: vocabulary, grammar, idToken.' });
-  }
-
-  // 1. Verify token
-  let uid: string;
   try {
-    const decoded = await admin.auth().verifyIdToken(idToken);
-    uid = decoded.uid;
-  } catch {
-    return res.status(401).json({ error: 'Invalid or expired session. Please sign in again.' });
+    initFirebase();
+  } catch (e: unknown) {
+    return res.status(500).json({ error: `Firebase init failed: ${(e as Error).message}` });
   }
 
-  // 2. Check subscription (quiz generation is free for pro users — no monthly credit consumed)
-  const userSnap = await adminDb.collection('users').doc(uid).get();
-  if (!userSnap.exists) return res.status(403).json({ error: 'User profile not found.' });
+  let uid: string;
+  try { uid = await getUid(req); } catch {
+    return res.status(401).json({ error: 'Invalid or missing auth token. Please sign in again.' });
+  }
 
-  const { plan, subscription, subscriptionExpiresAt } = userSnap.data()!;
-  if (!isPlanActive(plan ?? 'free', subscription ?? null, subscriptionExpiresAt ?? null)) {
+  const { vocabulary, grammar, topic } = req.body ?? {};
+  if (!vocabulary || !grammar) {
+    return res.status(400).json({ error: 'vocabulary and grammar are required.' });
+  }
+
+  // Verify subscription (quiz does not consume monthly credit)
+  const db = getFirestore();
+  const userSnap = await db.collection('users').doc(uid).get();
+  if (!userSnap.exists) return res.status(404).json({ error: 'User profile not found.' });
+
+  if (!isProUser(userSnap.data()!.subscription)) {
     return res.status(403).json({ error: 'Pro subscription required to generate retention quizzes.' });
   }
 
-  // 3. Call Gemini Flash (server-side only — key never exposed to client)
   const apiKey = process.env.GOOGLE_GEMINI_FLASH_API_KEY;
-  if (!apiKey) {
-    return res.status(500).json({ error: 'Quiz service is not configured.' });
-  }
-
-  const prompt = buildQuizPrompt(vocabulary, grammar, topic ?? 'General');
+  if (!apiKey) return res.status(500).json({ error: 'Quiz service is not configured.' });
 
   try {
     const geminiRes = await fetch(`${GEMINI_URL}?key=${apiKey}`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        contents: [{ parts: [{ text: prompt }] }],
+        contents: [{ parts: [{ text: buildQuizPrompt(vocabulary, grammar, topic ?? 'General') }] }],
         generationConfig: { temperature: 0.7, maxOutputTokens: 2048 },
       }),
     });
@@ -75,10 +88,12 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       throw new Error(`Gemini API returned ${geminiRes.status}`);
     }
 
-    const data = await geminiRes.json();
-    const raw: string = data?.candidates?.[0]?.content?.parts?.[0]?.text ?? '';
+    const geminiData = await geminiRes.json() as {
+      candidates?: { content: { parts: { text: string }[] } }[];
+    };
+    const raw = geminiData?.candidates?.[0]?.content?.parts?.[0]?.text ?? '';
     const cleaned = raw.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
-    const parsed = JSON.parse(cleaned);
+    const parsed = JSON.parse(cleaned) as { questions?: unknown[] };
 
     return res.status(200).json({ questions: parsed.questions ?? [] });
   } catch (err) {
@@ -90,11 +105,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 type VocabItem = { word: string; uzbek: string; english: string };
 type GrammarPoint = { point: string; explanation: string; example: string };
 
-function buildQuizPrompt(
-  vocabulary: VocabItem[],
-  grammar: GrammarPoint[],
-  topic: string
-): string {
+function buildQuizPrompt(vocabulary: VocabItem[], grammar: GrammarPoint[], topic: string): string {
   const vocabList = vocabulary
     .slice(0, 15)
     .map((v, i) => `${i + 1}. "${v.word}" — Uzbek: ${v.uzbek} | English: ${v.english}`)
@@ -129,10 +140,8 @@ Return this exact JSON:
 }
 
 Generate exactly 10 questions:
-- 6 vocabulary questions: test meaning, Uzbek translation, usage in context, synonyms
-- 4 grammar questions: test applying the rule, identifying correct/incorrect usage
+- 6 vocabulary questions: meaning, Uzbek translation, usage in context, synonyms
+- 4 grammar questions: applying the rule, identifying correct/incorrect usage
 - Each question must have exactly 4 options labeled A through D
-- correctAnswer must be the EXACT text of one of the options (including the letter prefix)
-- Make questions varied — avoid repeating the same question format
-- Questions should test understanding and application, not just rote recall`;
+- correctAnswer must be the EXACT text of one of the options (including letter prefix)`;
 }

@@ -56,16 +56,11 @@ export async function createUserProfile(uid: string, email: string): Promise<voi
 
 export async function getUsage(uid: string): Promise<UsageRecord | null> {
   const yearMonth = new Date().toISOString().slice(0, 7);
-  const snap = await getDoc(doc(db, 'usage', `${uid}_${yearMonth}`));
+  const snap = await getDoc(doc(db, 'users', uid));
   if (!snap.exists()) return null;
-  const d = snap.data();
-  return {
-    uid: d.uid,
-    yearMonth: d.yearMonth,
-    count: d.count,
-    limit: d.limit,
-    updatedAt: toDate(d.updatedAt),
-  };
+  const usage = snap.data()?.usage;
+  const count = usage?.monthKey === yearMonth ? (usage?.count ?? 0) : 0;
+  return { uid, yearMonth, count, limit: 12, updatedAt: new Date() };
 }
 
 export async function getQuestions(count = 10): Promise<Question[]> {

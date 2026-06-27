@@ -18,6 +18,10 @@ function readFileAsDataUrl(file: File): Promise<string> {
   });
 }
 
+function isPdf(src: string) {
+  return src.startsWith('data:application/pdf') || /\.pdf(\?|$)/i.test(src);
+}
+
 function isPro(subscription: string | null): boolean {
   if (!subscription) return false;
   if (subscription === "forever") return true;
@@ -145,7 +149,7 @@ function Relax() {
   /* ── Step 1: select ── */
   if (step === "select") {
     return (
-      <div className="flex flex-col min-h-screen bg-white font-sans">
+      <div className="flex flex-col min-h-screen bg-[var(--bg-base)] font-sans">
         <div className="sticky top-0 z-30 bg-slate-900 border-b border-slate-800">
           <div className="flex items-center justify-between gap-4 px-5 py-2.5">
             <div className="flex items-center gap-2">
@@ -197,7 +201,7 @@ function Relax() {
   /* ── Step 2: configure ── */
   if (step === "configure" && activeTask) {
     return (
-      <div className="flex flex-col min-h-screen bg-white font-sans">
+      <div className="flex flex-col min-h-screen bg-[var(--bg-base)] font-sans">
         <div className="sticky top-0 z-30 bg-slate-900 border-b border-slate-800">
           <div className="flex items-center justify-between gap-4 px-5 py-2.5">
             <div className="flex items-center gap-2">
@@ -236,7 +240,7 @@ function Relax() {
                       value={prompt}
                       onChange={(e) => setPrompt(e.target.value)}
                       placeholder="The chart below shows… Summarise the information by selecting and reporting the main features…"
-                      className="w-full h-28 px-4 py-3 text-sm text-slate-800 border border-slate-200 outline-none resize-none rounded-lg focus:border-blue-500 focus:ring-1 focus:ring-blue-500 focus:bg-white transition placeholder:text-slate-300"
+                      className="w-full h-28 px-4 py-3 text-sm text-slate-800 border border-slate-200 outline-none resize-none rounded-lg focus:border-blue-500 focus:ring-1 focus:ring-blue-500 bg-white transition placeholder:text-slate-300"
                     />
                   </div>
 
@@ -249,7 +253,7 @@ function Relax() {
                       <span className="text-sm text-slate-400">{imageLoading ? "Loading…" : "Click to upload an image"}</span>
                       <input
                         type="file"
-                        accept="image/*"
+                        accept="image/*,application/pdf"
                         className="sr-only"
                         disabled={imageLoading}
                         onChange={(e) => { const f = e.target.files?.[0]; if (f) handleImageUpload(f); }}
@@ -257,7 +261,13 @@ function Relax() {
                     </label>
                     {imageUrl && !imageLoading && (
                       <div className="mt-3 overflow-hidden border border-slate-200 rounded-lg">
-                        <img src={imageUrl} alt="Preview" className="object-cover w-full max-h-64" />
+                        {isPdf(imageUrl) ? (
+                          <object data={imageUrl} type="application/pdf" className="w-full h-64">
+                            <iframe src={imageUrl} className="w-full h-64 border-0" title="Task 1 chart" />
+                          </object>
+                        ) : (
+                          <img src={imageUrl} alt="Preview" className="object-cover w-full max-h-64" />
+                        )}
                       </div>
                     )}
                   </div>
@@ -300,7 +310,7 @@ function Relax() {
 
   /* ── Step 3: write ── */
   return (
-    <div className="flex flex-col min-h-screen bg-white font-sans">
+    <div className="flex flex-col min-h-screen bg-[var(--bg-base)] font-sans">
 
       {/* Top bar */}
       <div className="sticky top-0 z-30 bg-slate-900 border-b border-slate-800">
@@ -370,8 +380,7 @@ function Relax() {
           onPointerDown={handleSplitPointerDown}
           onPointerMove={handleSplitPointerMove}
           onPointerUp={handleSplitPointerUp}
-          className="relative hidden w-1.5 shrink-0 cursor-col-resize select-none bg-slate-100 hover:bg-blue-200 active:bg-blue-300 transition-colors md:flex items-center justify-center group"
-          style={{ touchAction: "none" }}
+          className="relative hidden w-1.5 shrink-0 cursor-col-resize select-none touch-none bg-slate-100 hover:bg-blue-200 active:bg-blue-300 transition-colors md:flex items-center justify-center group"
         >
           <div className="flex flex-col gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
             <span className="w-1 h-1 rounded-full bg-blue-400" />
@@ -392,8 +401,7 @@ function Relax() {
             data-gramm="false"
             data-gramm_editor="false"
             data-enable-grammarly="false"
-            className="flex-1 w-full p-6 text-[15px] leading-relaxed text-slate-800 bg-transparent outline-none resize-none placeholder:text-slate-300 focus:bg-white transition-colors duration-200"
-            style={{ scrollbarGutter: "stable", minHeight: "300px" }}
+            className="flex-1 w-full p-6 text-[15px] leading-relaxed text-slate-800 bg-transparent outline-none resize-none placeholder:text-slate-300 focus:bg-white transition-colors duration-200 min-h-[300px] [scrollbar-gutter:stable]"
           />
 
           <div className="flex items-center justify-between gap-4 px-5 py-3 border-t border-slate-200 bg-white">
@@ -439,7 +447,7 @@ function Relax() {
                 <Button onClick={handleAcceptFeedback} disabled={checkingAccess} className="w-full bg-blue-600 hover:bg-blue-700 text-white">
                   {checkingAccess ? "Checking…" : "Get AI feedback"}
                 </Button>
-                <Button variant="secondary" onClick={() => {}} disabled={checkingAccess} className="w-full">
+                <Button variant="secondary" onClick={() => setShowFeedbackModal(false)} disabled={checkingAccess} className="w-full">
                   No thanks
                 </Button>
               </div>

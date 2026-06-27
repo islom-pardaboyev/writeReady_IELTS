@@ -20,11 +20,12 @@ export function encodeReport(data: ReportData): string {
   const binString = Array.from(bytes)
     .map((b) => String.fromCodePoint(b))
     .join('');
-  return btoa(binString);
+  return btoa(binString).replace(/\+/g, '-').replace(/\//g, '_').replace(/=/g, '');
 }
 
 export function decodeReport(encoded: string): ReportData {
-  const binString = atob(encoded);
+  const padded = encoded.replace(/-/g, '+').replace(/_/g, '/');
+  const binString = atob(padded);
   const bytes = Uint8Array.from(binString, (m) => m.codePointAt(0)!);
   const json = new TextDecoder().decode(bytes);
   return JSON.parse(json) as ReportData;

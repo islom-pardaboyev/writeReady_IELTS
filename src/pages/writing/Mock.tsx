@@ -271,12 +271,10 @@ function Mock() {
     }
   };
 
-  const handleDeclineFeedback = () => setShowFeedbackModal(false);
-
   /* ── Loading ── */
   if (loading) {
     return (
-      <div className="flex items-center justify-center min-h-screen bg-slate-50">
+      <div className="flex items-center justify-center min-h-screen bg-[var(--bg-base)]">
         <div className="flex flex-col items-center gap-4">
           <div className="w-8 h-8 border-2 border-blue-600 border-t-transparent rounded-full animate-spin" />
           <p className="text-sm text-slate-500 tracking-wide">Setting up your exam…</p>
@@ -296,7 +294,7 @@ function Mock() {
   const currentProgress = activeTask === 1 ? taskProgress1 : taskProgress2;
 
   return (
-    <div className="flex flex-col min-h-screen bg-white font-sans">
+    <div className="flex flex-col min-h-screen bg-[var(--bg-base)] font-sans">
 
       {/* ── Top bar ── */}
       <div
@@ -462,8 +460,7 @@ function Mock() {
           onPointerDown={handleSplitPointerDown}
           onPointerMove={handleSplitPointerMove}
           onPointerUp={handleSplitPointerUp}
-          className="relative hidden w-1.5 shrink-0 cursor-col-resize select-none bg-slate-100 hover:bg-blue-200 active:bg-blue-300 transition-colors md:flex items-center justify-center group"
-          style={{ touchAction: "none" }}
+          className="relative hidden w-1.5 shrink-0 cursor-col-resize select-none touch-none bg-slate-100 hover:bg-blue-200 active:bg-blue-300 transition-colors md:flex items-center justify-center group"
         >
           <div className="flex flex-col gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
             <span className="w-1 h-1 rounded-full bg-blue-400" />
@@ -492,8 +489,7 @@ function Mock() {
             data-gramm="false"
             data-gramm_editor="false"
             data-enable-grammarly="false"
-            className="flex-1 w-full p-6 text-sm text-slate-800 outline-none resize-none placeholder:text-slate-300 focus:bg-white bg-white transition-colors duration-200"
-            style={{ scrollbarGutter: "stable", minHeight: "300px" }}
+            className="flex-1 w-full p-6 text-sm text-slate-800 outline-none resize-none placeholder:text-slate-300 focus:bg-white bg-white transition-colors duration-200 min-h-[300px] [scrollbar-gutter:stable]"
           />
 
           {/* Status bar */}

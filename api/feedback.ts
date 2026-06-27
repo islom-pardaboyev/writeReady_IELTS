@@ -1,132 +1,153 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
+import { initializeApp, getApps, cert } from 'firebase-admin/app';
+import { getAuth } from 'firebase-admin/auth';
+import { getFirestore, FieldValue, type DocumentReference } from 'firebase-admin/firestore';
 import Anthropic from '@anthropic-ai/sdk';
-import * as admin from 'firebase-admin';
 
-if (!admin.apps.length) {
-  const serviceAccount = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT_KEY ?? '{}');
-  admin.initializeApp({ credential: admin.credential.cert(serviceAccount) });
+const MONTHLY_LIMIT = 12;
+const ALLOWED_MODEL = 'claude-sonnet-4-6';
+const MAX_TOKENS = 8000;
+
+type CreditErrorCode = 'USER_NOT_FOUND' | 'NOT_PRO' | 'LIMIT_REACHED';
+class CreditError extends Error {
+  constructor(public code: CreditErrorCode) { super(code); }
 }
 
-const adminDb = admin.firestore();
-const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
+function initFirebase() {
+  if (getApps().length) return;
 
-function currentYearMonth(): string {
-  return new Date().toISOString().slice(0, 7);
-}
+  const projectId = process.env.FIREBASE_PROJECT_ID;
+  const clientEmail = process.env.FIREBASE_CLIENT_EMAIL;
+  const privateKey = process.env.FIREBASE_PRIVATE_KEY?.replace(/\\n/g, '\n');
 
-function isPlanActive(
-  plan: string,
-  subscription: string | null,
-  subscriptionExpiresAt: admin.firestore.Timestamp | null
-): boolean {
-  if (plan === 'forever' || subscription === 'forever') return true;
-  if (plan === 'pro') {
-    if (subscription && new Date(subscription) > new Date()) return true;
-    if (!subscriptionExpiresAt) return true;
-    return subscriptionExpiresAt.toDate() > new Date();
+  if (!projectId || !clientEmail || !privateKey) {
+    throw new Error(
+      `Missing Firebase env vars. Got: projectId=${!!projectId}, clientEmail=${!!clientEmail}, privateKey=${!!privateKey}`
+    );
   }
-  return false;
+
+  initializeApp({ credential: cert({ projectId, clientEmail, privateKey }) });
+}
+
+function currentMonthKey(): string {
+  const now = new Date();
+  return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+}
+
+function isProUser(subscription: unknown): boolean {
+  if (subscription === 'forever') return true;
+  if (typeof subscription !== 'string') return false;
+  const expiry = new Date(subscription);
+  return !Number.isNaN(expiry.getTime()) && expiry > new Date();
+}
+
+async function getUid(req: VercelRequest): Promise<string> {
+  const auth = req.headers.authorization ?? '';
+  const token = auth.startsWith('Bearer ') ? auth.slice(7) : null;
+  if (!token) throw new Error('MISSING_TOKEN');
+  const decoded = await getAuth().verifyIdToken(token);
+  return decoded.uid;
+}
+
+async function consumeCredit(uid: string, monthKey: string): Promise<DocumentReference> {
+  const db = getFirestore();
+  const userRef = db.collection('users').doc(uid);
+
+  await db.runTransaction(async (tx) => {
+    const snap = await tx.get(userRef);
+    if (!snap.exists) throw new CreditError('USER_NOT_FOUND');
+
+    const data = snap.data()!;
+    if (!isProUser(data.subscription)) throw new CreditError('NOT_PRO');
+
+    const usage = data.usage ?? {};
+    const used = usage.monthKey === monthKey ? (usage.count ?? 0) : 0;
+    if (used >= MONTHLY_LIMIT) throw new CreditError('LIMIT_REACHED');
+
+    tx.set(userRef, { usage: { monthKey, count: used + 1 } }, { merge: true });
+  });
+
+  return userRef;
 }
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
+  res.setHeader('Access-Control-Allow-Origin', '*');
+  res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+
+  if (req.method === 'OPTIONS') return res.status(200).end();
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
 
-  const { essayText, questionText, taskType, idToken } = req.body ?? {};
-  if (!idToken || !essayText || !questionText) {
-    return res.status(400).json({ error: 'Missing required fields: essayText, questionText, idToken.' });
+  try {
+    initFirebase();
+  } catch (e: unknown) {
+    return res.status(500).json({ error: `Firebase init failed: ${(e as Error).message}` });
   }
 
-  // 1. Verify Firebase ID token
   let uid: string;
-  try {
-    const decoded = await admin.auth().verifyIdToken(idToken);
-    uid = decoded.uid;
-  } catch {
-    return res.status(401).json({ error: 'Invalid or expired session. Please sign in again.' });
+  try { uid = await getUid(req); } catch {
+    return res.status(401).json({ error: 'Invalid or missing auth token. Please sign in again.' });
   }
 
-  // 2. Check user plan
-  const userSnap = await adminDb.collection('users').doc(uid).get();
-  if (!userSnap.exists) return res.status(403).json({ error: 'User profile not found.' });
-
-  const { plan, subscription, subscriptionExpiresAt } = userSnap.data()!;
-  if (!isPlanActive(plan ?? 'free', subscription ?? null, subscriptionExpiresAt ?? null)) {
-    return res.status(403).json({
-      error: plan === 'free'
-        ? 'AI feedback requires a Pro or Lifetime plan. Upgrade to continue.'
-        : 'Your subscription has expired. Please renew to continue.',
-    });
+  const { essayText, questionText, taskType } = req.body ?? {};
+  if (!essayText || !questionText) {
+    return res.status(400).json({ error: 'essayText and questionText are required.' });
   }
 
-  // 3. Atomically increment usage
-  const yearMonth = currentYearMonth();
-  const usageRef = adminDb.collection('usage').doc(`${uid}_${yearMonth}`);
+  const monthKey = currentMonthKey();
+  let userRef: DocumentReference;
 
   try {
-    await adminDb.runTransaction(async (tx) => {
-      const usageSnap = await tx.get(usageRef);
-      const MONTHLY_LIMIT = 12;
-      if (!usageSnap.exists) {
-        tx.set(usageRef, { uid, yearMonth, count: 1, limit: MONTHLY_LIMIT, updatedAt: admin.firestore.FieldValue.serverTimestamp() });
-        return;
-      }
-      const { count } = usageSnap.data()!;
-      if (count >= MONTHLY_LIMIT) throw Object.assign(new Error('Limit'), { code: 'LIMIT_REACHED' });
-      tx.update(usageRef, { count: count + 1, updatedAt: admin.firestore.FieldValue.serverTimestamp() });
-    });
-  } catch (err: unknown) {
-    if (err instanceof Error && 'code' in err && (err as { code?: string }).code === 'LIMIT_REACHED') {
-      return res.status(429).json({ error: 'Monthly analysis limit reached. Your quota resets at the start of next month.' });
+    userRef = await consumeCredit(uid, monthKey);
+  } catch (e: unknown) {
+    if (e instanceof CreditError) {
+      if (e.code === 'NOT_PRO') return res.status(403).json({ error: 'AI feedback requires a Pro or Lifetime plan.' });
+      if (e.code === 'LIMIT_REACHED') return res.status(429).json({ error: 'Monthly analysis limit reached. Quota resets next month.' });
+      if (e.code === 'USER_NOT_FOUND') return res.status(404).json({ error: 'User profile not found.' });
     }
-    console.error('Transaction error:', err);
     return res.status(500).json({ error: 'Usage tracking error. Please try again.' });
   }
 
-  // 4. Call Claude API
-  const resolvedTaskType: string = taskType ?? 'Task 2';
+  const apiKey = process.env.VITE_ANTHROPIC_API_KEY;
+  if (!apiKey) return res.status(500).json({ error: 'Claude API key is not configured.' });
+
+  const resolvedTask = (taskType as string) ?? 'Task 2';
+  const wordCount = (essayText as string).trim().split(/\s+/).filter(Boolean).length;
 
   try {
+    const anthropic = new Anthropic({ apiKey });
     const message = await anthropic.messages.create({
-      model: 'claude-sonnet-4-6',
-      max_tokens: 8192,
-      messages: [{ role: 'user', content: buildPrompt(essayText, questionText, resolvedTaskType) }],
+      model: ALLOWED_MODEL,
+      max_tokens: MAX_TOKENS,
+      messages: [{ role: 'user', content: buildPrompt(essayText as string, questionText as string, resolvedTask, wordCount) }],
     });
 
-    const raw = message.content[0].type === 'text' ? message.content[0].text : '';
-    const feedback = parseResponse(raw, essayText, resolvedTaskType);
+    const raw = message.content[0]?.type === 'text' ? message.content[0].text : '';
+    const feedback = parseResponse(raw, wordCount, resolvedTask);
 
-    // 5. Save issues to Firestore for error-pattern tracking (client queries this)
-    await adminDb.collection('feedback_reports').add({
+    const db = getFirestore();
+    db.collection('feedback_reports').add({
       uid,
       taskType: feedback.taskType,
       topic: feedback.topic,
       scores: feedback.scores,
       issues: [
-        ...((feedback.feedback as { taskAchievement?: { issues?: string[] } })?.taskAchievement?.issues ?? []),
-        ...((feedback.feedback as { coherenceCohesion?: { issues?: string[] } })?.coherenceCohesion?.issues ?? []),
-        ...((feedback.feedback as { lexicalResource?: { issues?: string[] } })?.lexicalResource?.issues ?? []),
-        ...((feedback.feedback as { grammaticalRangeAccuracy?: { issues?: string[] } })?.grammaticalRangeAccuracy?.issues ?? []),
+        ...(feedback.feedback?.taskAchievement?.issues ?? []),
+        ...(feedback.feedback?.coherenceCohesion?.issues ?? []),
+        ...(feedback.feedback?.lexicalResource?.issues ?? []),
+        ...(feedback.feedback?.grammaticalRangeAccuracy?.issues ?? []),
       ],
-      createdAt: admin.firestore.FieldValue.serverTimestamp(),
-    });
+      createdAt: FieldValue.serverTimestamp(),
+    }).catch(console.error);
 
     return res.status(200).json({ feedback });
   } catch (err) {
-    console.error('Claude API error:', err);
-    // Roll back usage count
-    await adminDb.runTransaction(async (tx) => {
-      const snap = await tx.get(usageRef);
-      if (snap.exists) {
-        const { count } = snap.data()!;
-        if (count > 0) tx.update(usageRef, { count: count - 1, updatedAt: admin.firestore.FieldValue.serverTimestamp() });
-      }
-    }).catch(console.error);
-    return res.status(500).json({ error: 'AI analysis failed. Your usage count has not been charged. Please try again.' });
+    await userRef.set({ usage: { monthKey, count: FieldValue.increment(-1) } }, { merge: true }).catch(console.error);
+    return res.status(500).json({ error: (err as Error).message ?? 'AI analysis failed. Please try again.' });
   }
 }
 
-function buildPrompt(essay: string, question: string, taskType: string): string {
-  const wordCount = essay.trim().split(/\s+/).filter(Boolean).length;
+function buildPrompt(essay: string, question: string, taskType: string, wordCount: number): string {
   return `You are a professional IELTS examiner with 10+ years of experience. Analyze this student essay using official IELTS band descriptors. Return ONLY valid JSON — no markdown, no backticks, no extra text.
 
 TASK TYPE: ${taskType}
@@ -165,44 +186,71 @@ Return this EXACT JSON structure:
     }
   },
   "priorityFixes": [
-    "<most impactful fix — specific and actionable, e.g. 'Replace weak verbs (get/make/do) with precise academic alternatives (facilitate/demonstrate/implement)'>",
+    "<most impactful fix — specific and actionable>",
     "<second most impactful fix>",
     "<third most impactful fix>"
   ],
-  "bandGapAnalysis": "<Specific measurable steps to the next band level. E.g.: To move from Band 6.0 to Band 6.5: (1) Add discourse markers (Furthermore, Consequently, Nevertheless) between paragraphs. (2) Vary sentence starters beyond Subject+Verb. (3) Eliminate repeated vocabulary by using 2-3 synonyms for key terms.>",
+  "bandGapAnalysis": "<Specific measurable steps to the next band level>",
+  "sampleResponse": "<A high-band (band 7-8) model response for THIS exact question — 2-3 paragraphs showing correct structure, vocabulary, and grammar. For Task 1 describe the data clearly; for Task 2 argue both sides or one side with evidence>",
+  "sentenceAnalysis": [
+    {
+      "sentence": "<copy the EXACT sentence from the student essay>",
+      "type": "<one of: word_choice | grammar | coherence | structure | ok>",
+      "feedback": "<specific, actionable feedback for this sentence. If type is ok, write what is good about it>",
+      "improved": "<rewrite this exact sentence at band 7-8 level fixing all issues. If type is ok, keep it the same or make minor enhancements>"
+    }
+  ],
   "vocabulary": [
     {
       "word": "<word or phrase from the essay or relevant to the topic>",
       "uzbek": "<Uzbek translation>",
       "english": "<clear English definition>",
-      "exampleFromEssay": "<a new example sentence using this word specifically about this essay's topic — NOT a generic example>"
+      "exampleFromEssay": "<example sentence tailored to THIS essay topic>"
     }
   ],
   "grammar": [
     {
-      "point": "<grammar rule name e.g. 'Subject-verb agreement with collective nouns'>",
-      "explanation": "<clear explanation of the rule in plain English>",
+      "point": "<grammar rule name>",
+      "explanation": "<clear explanation in plain English>",
       "example": "<a correct example sentence>"
     }
   ]
 }
 
 STRICT RULES:
-- EXACTLY 15 vocabulary items: mix of words from the essay + high-value IELTS academic vocabulary for this topic
-- EXACTLY 10 grammar points: issues found in this essay + advanced patterns the student should use
-- Every category MUST have at least 1 strength — do not only list problems
-- priorityFixes: the 3 changes with the HIGHEST impact on the band score
-- bandGapAnalysis: be specific and measurable, not generic platitudes
+- sentenceAnalysis: cover EVERY sentence in the essay, in order
+- EXACTLY 15 vocabulary items
+- EXACTLY 10 grammar points
+- Every category MUST have at least 1 strength
 - Band scores are realistic: most students score 5.0-7.0; 8.0+ is very rare
 - Overall = simple average of the 4 criteria scores rounded to nearest 0.5`;
 }
 
-function parseResponse(raw: string, essay: string, taskType: string): Record<string, unknown> {
+type CategoryFeedback = { strengths: string[]; issues: string[] };
+type ParsedFeedback = {
+  taskType?: string;
+  topic?: string;
+  wordCount?: number;
+  scores?: Record<string, number>;
+  feedback?: {
+    taskAchievement?: CategoryFeedback;
+    coherenceCohesion?: CategoryFeedback;
+    lexicalResource?: CategoryFeedback;
+    grammaticalRangeAccuracy?: CategoryFeedback;
+  };
+  priorityFixes?: string[];
+  bandGapAnalysis?: string;
+  sampleResponse?: string;
+  sentenceAnalysis?: unknown[];
+  vocabulary?: unknown[];
+  grammar?: unknown[];
+};
+
+function parseResponse(raw: string, wordCount: number, taskType: string): ParsedFeedback {
   try {
     const cleaned = raw.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
     return JSON.parse(cleaned);
   } catch {
-    const wordCount = essay.trim().split(/\s+/).filter(Boolean).length;
     return {
       taskType,
       topic: 'General',
@@ -215,7 +263,7 @@ function parseResponse(raw: string, essay: string, taskType: string): Record<str
         grammaticalRangeAccuracy: { strengths: ['Ideas are communicated'], issues: [] },
       },
       priorityFixes: ['Please generate a new analysis for detailed recommendations.'],
-      bandGapAnalysis: 'Detailed band gap analysis unavailable. Please try again.',
+      bandGapAnalysis: 'Detailed analysis unavailable. Please try again.',
       vocabulary: [],
       grammar: [],
     };

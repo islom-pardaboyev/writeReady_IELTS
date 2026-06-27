@@ -1,16 +1,15 @@
 {
   "rewrites": [
-    { "source": "/api/(.*)", "destination": "/api/$1" },
-    { "source": "/(.*)", "destination": "/index.html" }
+    { "source": "/api/(.*)", "destination": "/api/$1" }
   ],
   "functions": {
-    "api/analyze-essay.ts": {
-      "maxDuration": 60
-    },
     "api/feedback.ts": {
       "maxDuration": 60
     },
     "api/retention-check.ts": {
+      "maxDuration": 30
+    },
+    "api/check-practice.ts": {
       "maxDuration": 30
     }
   }

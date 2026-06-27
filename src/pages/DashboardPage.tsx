@@ -21,7 +21,6 @@ export function DashboardPage() {
   const navigate = useNavigate();
   const rootRef = useRef<HTMLDivElement>(null);
 
-
   useLayoutEffect(() => {
     const ctx = gsap.context(() => {
       gsap.set('.gs-db-welcome', { y: 28, opacity: 0 });
@@ -33,11 +32,6 @@ export function DashboardPage() {
         .to('.gs-db-quota', { y: 0, opacity: 1, duration: 0.5 }, '-=0.3')
         .to('.gs-db-mode-card', { y: 0, opacity: 1, duration: 0.5, stagger: 0.1 }, '-=0.25');
 
-      gsap.from('.gs-db-question', {
-        scrollTrigger: { trigger: '.gs-db-questions', start: 'top 85%' },
-        y: 24, opacity: 0, duration: 0.45, stagger: 0.08, ease: 'power2.out',
-      });
-
       gsap.from('.gs-db-upsell', {
         scrollTrigger: { trigger: '.gs-db-upsell', start: 'top 88%' },
         y: 36, opacity: 0, duration: 0.65, ease: 'power3.out',
@@ -47,7 +41,6 @@ export function DashboardPage() {
     return () => ctx.revert();
   }, []);
 
-
   const isPro = profile?.plan === 'pro' || profile?.plan === 'forever';
   const usedCount = usage?.count ?? 0;
   const usageLimit = usage?.limit ?? 12;
@@ -56,133 +49,85 @@ export function DashboardPage() {
 
   return (
     <Layout>
-      <div style={{ padding: '2.5rem 0', background: '#f8fafc' }}>
-        <div className="container mx-auto" ref={rootRef}>
+      <div className="py-10">
+        <div className="max-w-[1160px] mx-auto px-6" ref={rootRef}>
 
           {/* Welcome header */}
-          <div className="gs-db-welcome" style={{ marginBottom: '2rem' }}>
-            <h1 style={{ fontFamily: 'Fraunces, serif', fontSize: '2rem', fontWeight: 800, color: '#0f172a', marginBottom: '0.375rem' }}>
+          <div className="gs-db-welcome mb-8">
+            <h1 className="font-fraunces text-4xl font-extrabold text-[var(--text-primary)] mb-1.5">
               Welcome back{user?.email ? `, ${user.email.split('@')[0]}` : ''}
             </h1>
-            <p style={{ color: '#64748b' }}>
+            <p className="text-[var(--text-secondary)]">
               {isPro
                 ? `${remaining} AI analyses remaining this month`
                 : 'Free plan — upgrade to unlock AI feedback'}
             </p>
           </div>
 
-          {/* Quota bar for pro users */}
+          {/* Quota bar */}
           {isPro && usage && (
-            <div
-              className="gs-db-quota"
-              style={{
-                background: 'white',
-                borderRadius: 16,
-                padding: '1.25rem 1.5rem',
-                border: '1px solid #e2e8f0',
-                boxShadow: '0 1px 3px rgba(0,0,0,0.05)',
-                marginBottom: '2rem',
-              }}
-            >
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.75rem' }}>
-                <span style={{ fontWeight: 600, fontSize: '0.9375rem', color: '#0f172a' }}>Monthly AI Feedback Quota</span>
-                <span
-                  style={{
-                    fontFamily: 'IBM Plex Mono, monospace',
-                    fontSize: '0.9375rem',
-                    fontWeight: 500,
-                    color: usagePct >= 85 ? '#ef4444' : '#1d4ed8',
-                  }}
-                >
+            <div className="gs-db-quota bg-[var(--bg-card)] rounded-2xl px-6 py-5 border border-[var(--border-color)] shadow-[var(--shadow-sm)] mb-8">
+              <div className="flex items-center justify-between mb-3">
+                <span className="font-semibold text-[0.9375rem] text-[var(--text-primary)]">Monthly AI Feedback Quota</span>
+                <span className={`font-mono text-[0.9375rem] font-medium ${usagePct >= 85 ? 'text-red-500' : 'text-blue-600 dark:text-blue-400'}`}>
                   {usedCount}/{usageLimit}
                 </span>
               </div>
-              <div style={{ height: 6, background: '#f1f5f9', borderRadius: 4, overflow: 'hidden' }}>
+              <div className="h-1.5 bg-[var(--bg-subtle)] rounded-full overflow-hidden">
                 <div
-                  style={{
-                    height: '100%',
-                    width: `${usagePct}%`,
-                    background: usagePct >= 85 ? '#ef4444' : '#1d4ed8',
-                    borderRadius: 4,
-                    transition: 'width 0.3s ease',
-                  }}
+                  className={`h-full rounded-full transition-[width] duration-300 ${usagePct >= 85 ? 'bg-red-500' : 'bg-blue-600'}`}
+                  style={{ width: `${usagePct}%` }}
                 />
               </div>
             </div>
           )}
 
           {/* Mode picker */}
-          <h2 style={{ fontSize: '1.25rem', fontWeight: 700, color: '#0f172a', marginBottom: '1rem' }}>Choose a practice mode</h2>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1rem', marginBottom: '2.5rem' }}>
+          <h2 className="text-xl font-bold text-[var(--text-primary)] mb-4">Choose a practice mode</h2>
+          <div className="grid grid-cols-[repeat(auto-fit,minmax(200px,1fr))] gap-4 mb-10">
             {modes.map((m) => (
               <button
                 key={m.id}
-                className="gs-db-mode-card"
+                className={`gs-db-mode-card rounded-[14px] p-6 text-left cursor-pointer transition-[transform,box-shadow] duration-150 shadow-[var(--shadow-sm)] border-[1.5px] ${
+                  m.id === 'mock'
+                    ? 'bg-blue-700 border-transparent dark:bg-blue-800'
+                    : m.id === 'relax'
+                    ? 'bg-green-50 border-green-200 dark:bg-green-900/20 dark:border-green-800'
+                    : 'bg-[var(--bg-card)] border-[var(--border-color)]'
+                }`}
                 onClick={() => navigate(`/writing/${m.id}`)}
-                style={{
-                  background: m.id === 'mock' ? '#1d4ed8' : m.id === 'relax' ? '#f0fdf4' : 'white',
-                  border: `1.5px solid ${m.id === 'mock' ? 'transparent' : m.id === 'relax' ? '#bbf7d0' : '#e2e8f0'}`,
-                  borderRadius: 14,
-                  padding: '1.5rem',
-                  textAlign: 'left',
-                  cursor: 'pointer',
-                  transition: 'transform 0.15s, box-shadow 0.15s',
-                  boxShadow: '0 1px 3px rgba(0,0,0,0.06)',
-                }}
                 onMouseEnter={(e) => {
                   (e.currentTarget as HTMLButtonElement).style.transform = 'translateY(-2px)';
-                  (e.currentTarget as HTMLButtonElement).style.boxShadow = '0 6px 20px rgba(0,0,0,0.1)';
+                  (e.currentTarget as HTMLButtonElement).style.boxShadow = '0 6px 20px rgba(0,0,0,0.15)';
                 }}
                 onMouseLeave={(e) => {
                   (e.currentTarget as HTMLButtonElement).style.transform = '';
-                  (e.currentTarget as HTMLButtonElement).style.boxShadow = '0 1px 3px rgba(0,0,0,0.06)';
+                  (e.currentTarget as HTMLButtonElement).style.boxShadow = '';
                 }}
               >
-                <div style={{ fontSize: '1.75rem', marginBottom: '0.5rem' }}>{m.emoji}</div>
-                <div
-                  style={{
-                    fontFamily: 'Fraunces, serif',
-                    fontSize: '1.125rem',
-                    fontWeight: 700,
-                    color: m.id === 'mock' ? 'white' : '#0f172a',
-                    marginBottom: '0.25rem',
-                  }}
-                >
+                <div className="text-[1.75rem] mb-2">{m.emoji}</div>
+                <div className={`font-fraunces text-lg font-bold mb-1 ${m.id === 'mock' ? 'text-white' : 'text-[var(--text-primary)]'}`}>
                   {m.title}
                 </div>
-                <div style={{ fontSize: '0.8125rem', color: m.id === 'mock' ? 'rgba(255,255,255,0.75)' : '#64748b' }}>
+                <div className={`text-[0.8125rem] ${m.id === 'mock' ? 'text-white/75' : 'text-[var(--text-secondary)]'}`}>
                   {m.desc}
                 </div>
               </button>
             ))}
           </div>
 
-
           {!isPro && (
-            <div
-              className="gs-db-upsell"
-              style={{
-                marginTop: '3rem',
-                background: 'linear-gradient(135deg, #0f172a 0%, #1e3a5f 100%)',
-                borderRadius: 16,
-                padding: '2rem',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'space-between',
-                gap: '1rem',
-                flexWrap: 'wrap',
-              }}
-            >
+            <div className="gs-db-upsell mt-12 bg-gradient-to-br from-slate-900 to-[#1e3a5f] rounded-2xl p-8 flex items-center justify-between gap-4 flex-wrap">
               <div>
-                <h3 style={{ fontFamily: 'Fraunces, serif', color: 'white', marginBottom: '0.375rem', fontSize: '1.25rem' }}>
+                <h3 className="font-fraunces text-white mb-1.5 text-xl">
                   Unlock AI Feedback
                 </h3>
-                <p style={{ color: 'rgba(255,255,255,0.65)', fontSize: '0.9375rem', margin: 0 }}>
+                <p className="text-white/65 text-[0.9375rem] m-0">
                   Get sentence-level corrections, vocabulary upgrades, and a band score estimate.
                 </p>
               </div>
               <Link to="/pricing">
-                <Button style={{ background: '#c9900a', flexShrink: 0 } as React.CSSProperties}>
+                <Button className="bg-[#c9900a] shrink-0 hover:bg-[#b8820a]">
                   Upgrade to Pro
                 </Button>
               </Link>
