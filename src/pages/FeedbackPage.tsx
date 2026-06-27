@@ -230,7 +230,7 @@ export function FeedbackPage() {
         // Invalidate cache if it's missing the improved field (old format)
         const hasImproved = parsed.sentenceAnalysis?.some(s => 'improved' in s);
         if (hasImproved || !parsed.sentenceAnalysis?.length) {
-          setFeedback(parsed);
+          setFeedbacks((p) => ({ ...p, [selectedTask]: parsed }));
           return;
         }
         sessionStorage.removeItem(cacheKey);

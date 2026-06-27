@@ -8,7 +8,7 @@ import { Header } from '@/components/layout/Header';
 gsap.registerPlugin(ScrollTrigger);
 
 export function LandingPage() {
-  const { user } = useAuth();
+  useAuth();
   const rootRef = useRef<HTMLDivElement>(null);
 
   useLayoutEffect(() => {

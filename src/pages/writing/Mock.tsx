@@ -271,8 +271,6 @@ function Mock() {
     }
   };
 
-  const handleDeclineFeedback = () => setShowFeedbackModal(false);
-
   /* ── Loading ── */
   if (loading) {
     return (
