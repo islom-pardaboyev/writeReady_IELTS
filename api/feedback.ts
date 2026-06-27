@@ -192,6 +192,13 @@ Return this EXACT JSON structure:
   ],
   "bandGapAnalysis": "<Specific measurable steps to the next band level>",
   "sampleResponse": "<A high-band (band 7-8) model response for THIS exact question — 2-3 paragraphs showing correct structure, vocabulary, and grammar. For Task 1 describe the data clearly; for Task 2 argue both sides or one side with evidence>",
+  "sentenceAnalysis": [
+    {
+      "sentence": "<copy the EXACT sentence from the student essay>",
+      "type": "<one of: word_choice | grammar | coherence | structure | ok>",
+      "feedback": "<specific, actionable feedback for this sentence. If type is ok, write what is good about it>"
+    }
+  ],
   "vocabulary": [
     {
       "word": "<word or phrase from the essay or relevant to the topic>",
@@ -210,6 +217,7 @@ Return this EXACT JSON structure:
 }
 
 STRICT RULES:
+- sentenceAnalysis: cover EVERY sentence in the essay, in order
 - EXACTLY 15 vocabulary items
 - EXACTLY 10 grammar points
 - Every category MUST have at least 1 strength
@@ -232,6 +240,7 @@ type ParsedFeedback = {
   priorityFixes?: string[];
   bandGapAnalysis?: string;
   sampleResponse?: string;
+  sentenceAnalysis?: unknown[];
   vocabulary?: unknown[];
   grammar?: unknown[];
 };

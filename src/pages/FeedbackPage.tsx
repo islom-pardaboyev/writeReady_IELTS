@@ -9,12 +9,13 @@ import type { ReportData } from '../lib/reportEncoding';
 import { getFeedbackReportHistory } from '../firebase/firestore';
 import type { EnhancedFeedbackResult } from '../types';
 
-type Tab = 'overview' | 'priority' | 'detailed' | 'sample' | 'vocabulary' | 'grammar' | 'spelling' | 'quiz';
+type Tab = 'overview' | 'priority' | 'detailed' | 'essay' | 'sample' | 'vocabulary' | 'grammar' | 'spelling' | 'quiz';
 
 const TABS: { id: Tab; label: string; icon: string }[] = [
   { id: 'overview', label: 'Overview', icon: '📊' },
   { id: 'priority', label: 'Priority Fixes', icon: '🎯' },
   { id: 'detailed', label: 'Detailed', icon: '📝' },
+  { id: 'essay', label: 'Essay', icon: '🖊️' },
   { id: 'sample', label: 'Sample', icon: '✍️' },
   { id: 'vocabulary', label: 'Vocabulary', icon: '📚' },
   { id: 'grammar', label: 'Grammar', icon: '✏️' },
@@ -782,6 +783,66 @@ export function FeedbackPage() {
                   ))}
                 </div>
               )}
+
+              {/* ── ESSAY ANALYSIS ── */}
+              {activeTab === 'essay' && (() => {
+                const sentences = feedback.sentenceAnalysis ?? [];
+                const typeColor: Record<string, { bg: string; border: string; label: string; dot: string }> = {
+                  word_choice: { bg: 'bg-purple-50', border: 'border-purple-200', label: 'Word Choice', dot: 'bg-purple-500' },
+                  grammar:     { bg: 'bg-amber-50',  border: 'border-amber-200',  label: 'Grammar',     dot: 'bg-amber-500'  },
+                  coherence:   { bg: 'bg-blue-50',   border: 'border-blue-200',   label: 'Coherence',   dot: 'bg-blue-500'   },
+                  structure:   { bg: 'bg-red-50',    border: 'border-red-200',    label: 'Structure',   dot: 'bg-red-500'    },
+                  ok:          { bg: 'bg-green-50',  border: 'border-green-200',  label: 'Good',        dot: 'bg-green-500'  },
+                };
+                const [activeSentence, setActiveSentence] = useState<number | null>(null);
+                return (
+                  <div>
+                    <div className="flex flex-wrap gap-2 mb-5">
+                      {Object.entries(typeColor).map(([type, style]) => (
+                        <span key={type} className={`flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold border ${style.bg} ${style.border}`}>
+                          <span className={`w-2 h-2 rounded-full ${style.dot}`} />
+                          {style.label}
+                        </span>
+                      ))}
+                    </div>
+                    {sentences.length === 0 ? (
+                      <p className="text-[var(--text-muted)] text-sm">No sentence analysis available.</p>
+                    ) : (
+                      <div className="flex flex-col gap-3">
+                        {sentences.map((s, i) => {
+                          const style = typeColor[s.type] ?? typeColor.ok;
+                          const isOpen = activeSentence === i;
+                          return (
+                            <div
+                              key={i}
+                              className={`rounded-xl border px-5 py-3.5 cursor-pointer transition-all ${style.bg} ${style.border}`}
+                              onClick={() => setActiveSentence(isOpen ? null : i)}
+                            >
+                              <div className="flex items-start gap-3">
+                                <span className={`mt-1.5 w-2 h-2 rounded-full shrink-0 ${style.dot}`} />
+                                <div className="flex-1 min-w-0">
+                                  <p className="text-[0.9375rem] font-['Georgia'] text-gray-800 leading-relaxed m-0">
+                                    {s.sentence}
+                                  </p>
+                                  {isOpen && (
+                                    <div className="mt-2.5 pt-2.5 border-t border-current/10">
+                                      <span className={`text-[0.65rem] font-bold uppercase tracking-widest mr-2 ${style.dot.replace('bg-', 'text-')}`}>
+                                        {style.label}
+                                      </span>
+                                      <span className="text-sm text-gray-700">{s.feedback}</span>
+                                    </div>
+                                  )}
+                                </div>
+                                <span className="text-[var(--text-muted)] text-xs shrink-0 mt-1">{isOpen ? '▲' : '▼'}</span>
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    )}
+                  </div>
+                );
+              })()}
 
               {/* ── SAMPLE RESPONSE ── */}
               {activeTab === 'sample' && (

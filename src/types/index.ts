@@ -106,6 +106,14 @@ export interface GrammarPoint {
   example: string;
 }
 
+export type SentenceIssueType = 'word_choice' | 'grammar' | 'coherence' | 'structure' | 'ok';
+
+export interface SentenceAnalysis {
+  sentence: string;
+  type: SentenceIssueType;
+  feedback: string;
+}
+
 export interface EnhancedFeedbackResult {
   taskType: 'Task 1' | 'Task 2';
   topic: string;
@@ -115,6 +123,7 @@ export interface EnhancedFeedbackResult {
   priorityFixes: string[];
   bandGapAnalysis: string;
   sampleResponse: string;
+  sentenceAnalysis: SentenceAnalysis[];
   vocabulary: VocabItem[];
   grammar: GrammarPoint[];
 }
