@@ -69,7 +69,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     return res.status(403).json({ error: 'Pro subscription required to generate retention quizzes.' });
   }
 
-  const apiKey = 'AQ.Ab8RN6JC2or_pD17ktzwwBtiSKPdX0EzbVlVdDZLcUhFADpxRg';
+  const apiKey = process.env.GOOGLE_GEMINI_FLASH_API_KEY;
   if (!apiKey) return res.status(500).json({ error: 'Quiz service is not configured.' });
 
   try {

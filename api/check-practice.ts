@@ -60,7 +60,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     return res.status(400).json({ error: 'userSentence, targetItem, and targetType are required.' });
   }
 
-  const apiKey = 'AQ.Ab8RN6JC2or_pD17ktzwwBtiSKPdX0EzbVlVdDZLcUhFADpxRg';
+  const apiKey = process.env.GOOGLE_GEMINI_FLASH_API_KEY;
   if (!apiKey) return res.status(500).json({ error: 'Gemini API key not configured.' });
 
   const prompt = buildPrompt(userSentence as string, targetItem as string, targetType as string, example as string | undefined);
