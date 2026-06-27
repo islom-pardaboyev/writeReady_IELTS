@@ -1,13 +1,25 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
-import * as admin from 'firebase-admin';
+import { initializeApp, getApps, cert } from 'firebase-admin/app';
+import { getAuth } from 'firebase-admin/auth';
+import { getFirestore } from 'firebase-admin/firestore';
 
-if (!admin.apps.length) {
-  const serviceAccount = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT_KEY ?? '{}');
-  admin.initializeApp({ credential: admin.credential.cert(serviceAccount) });
-}
-
-const db = admin.firestore();
 const GEMINI_URL = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent';
+
+function initFirebase() {
+  if (getApps().length) return;
+
+  const projectId = process.env.FIREBASE_PROJECT_ID;
+  const clientEmail = process.env.FIREBASE_CLIENT_EMAIL;
+  const privateKey = process.env.FIREBASE_PRIVATE_KEY?.replace(/\\n/g, '\n');
+
+  if (!projectId || !clientEmail || !privateKey) {
+    throw new Error(
+      `Missing Firebase env vars. Got: projectId=${!!projectId}, clientEmail=${!!clientEmail}, privateKey=${!!privateKey}`
+    );
+  }
+
+  initializeApp({ credential: cert({ projectId, clientEmail, privateKey }) });
+}
 
 function isProUser(subscription: unknown): boolean {
   if (subscription === 'forever') return true;
@@ -20,7 +32,7 @@ async function getUid(req: VercelRequest): Promise<string> {
   const auth = req.headers.authorization ?? '';
   const token = auth.startsWith('Bearer ') ? auth.slice(7) : null;
   if (!token) throw new Error('MISSING_TOKEN');
-  const decoded = await admin.auth().verifyIdToken(token);
+  const decoded = await getAuth().verifyIdToken(token);
   return decoded.uid;
 }
 
@@ -31,6 +43,12 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
   if (req.method === 'OPTIONS') return res.status(200).end();
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
+
+  try {
+    initFirebase();
+  } catch (e: unknown) {
+    return res.status(500).json({ error: `Firebase init failed: ${(e as Error).message}` });
+  }
 
   let uid: string;
   try { uid = await getUid(req); } catch {
@@ -43,6 +61,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   }
 
   // Verify subscription (quiz does not consume monthly credit)
+  const db = getFirestore();
   const userSnap = await db.collection('users').doc(uid).get();
   if (!userSnap.exists) return res.status(404).json({ error: 'User profile not found.' });
 
