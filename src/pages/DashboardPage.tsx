@@ -54,7 +54,7 @@ export function DashboardPage() {
 
   return (
     <Layout>
-      <div className="py-10 bg-slate-50">
+      <div className="py-10">
         <div className="container mx-auto" ref={rootRef}>
 
           {/* Welcome header */}
