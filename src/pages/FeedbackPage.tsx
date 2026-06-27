@@ -69,6 +69,53 @@ function categorizeIssue(issue: string): string | null {
   return null;
 }
 
+function PracticeResult({ result, accentClass }: {
+  result: { score: number; correct: boolean; feedback: string; improved: string };
+  accentClass?: string;
+}) {
+  const isSystemError = result.score === 0 && !result.correct && (
+    result.feedback.includes('Tekshirib bo\'lmadi') ||
+    result.feedback.includes('Tarmoq xatosi') ||
+    result.feedback.includes('Evaluation failed') ||
+    result.feedback.includes('not configured') ||
+    result.feedback.includes('required')
+  );
+
+  if (isSystemError) {
+    return (
+      <div className="mt-2 rounded-lg px-3 py-2.5 border bg-amber-50 border-amber-200">
+        <p className="text-xs font-bold text-amber-700 mb-1">⚠️ Tekshirib bo'lmadi</p>
+        <p className="text-xs text-amber-800 m-0">{result.feedback}</p>
+      </div>
+    );
+  }
+
+  const improved = result.improved?.trim();
+  return (
+    <div className={`mt-2 rounded-lg px-3 py-2.5 border ${result.correct ? 'bg-green-50 border-green-200' : 'bg-red-50 border-red-200'}`}>
+      <div className="flex items-center gap-2 mb-2">
+        <span className={`text-xs font-bold ${result.correct ? 'text-green-700' : 'text-red-700'}`}>
+          {result.correct ? '✓ To\'g\'ri ishlatilgan' : '✗ Xato topildi'}
+        </span>
+        <span className="ml-auto text-xs font-mono font-bold text-gray-500">{result.score}/100</span>
+      </div>
+      {result.feedback && (
+        <p className="text-sm text-gray-800 leading-relaxed m-0 mb-2">{result.feedback}</p>
+      )}
+      {improved && (
+        <div className={`bg-white/80 rounded-lg px-3 py-2.5 border ${result.correct ? 'border-green-200' : 'border-red-200'}`}>
+          <p className={`text-[0.65rem] font-bold uppercase tracking-widest mb-1 ${accentClass ?? 'text-[var(--ink-blue)]'}`}>
+            ✨ Yaxshilangan versiya
+          </p>
+          <p className={`font-['Georgia'] text-sm leading-relaxed m-0 italic ${accentClass?.replace('text-', 'text-') ?? 'text-[var(--ink-blue)]'}`}>
+            {improved}
+          </p>
+        </div>
+      )}
+    </div>
+  );
+}
+
 function ScoreBadge({ score }: { score: number }) {
   const color =
     score >= 7
@@ -1075,23 +1122,7 @@ export function FeedbackPage() {
                             </button>
                           </div>
                           {practiceChecked[key] && (
-                            <div className={`mt-2 rounded-lg px-3 py-2.5 border ${practiceChecked[key].correct ? 'bg-green-50 border-green-200' : 'bg-red-50 border-red-200'}`}>
-                              <div className="flex items-center gap-2 mb-1.5">
-                                <span className={`text-xs font-bold ${practiceChecked[key].correct ? 'text-green-700' : 'text-red-700'}`}>
-                                  {practiceChecked[key].correct ? '✓ To\'g\'ri ishlatilgan' : '✗ Xato bor'}
-                                </span>
-                                <span className="ml-auto text-xs font-mono font-bold text-gray-600">
-                                  {practiceChecked[key].score}/100
-                                </span>
-                              </div>
-                              <p className="text-xs text-gray-700 leading-relaxed m-0 mb-2">{practiceChecked[key].feedback}</p>
-                              {practiceChecked[key].improved && (
-                                <div className="bg-white/70 rounded px-2.5 py-2 border border-current/10">
-                                  <p className="text-[0.65rem] font-bold uppercase tracking-widest text-[var(--ink-blue)] mb-1">✨ Yaxshilangan versiya</p>
-                                  <p className="font-['Georgia'] text-xs text-[var(--ink-blue)] italic m-0">{practiceChecked[key].improved}</p>
-                                </div>
-                              )}
-                            </div>
+                            <PracticeResult result={practiceChecked[key]} accentClass="text-[var(--ink-blue)]" />
                           )}
                           {practiceRevealed[key] && (
                             <p className="mt-2 font-['Georgia'] text-sm text-[var(--ink-blue)] italic bg-[var(--ink-blue)]/5 rounded-lg px-3 py-2">
@@ -1133,23 +1164,7 @@ export function FeedbackPage() {
                             </button>
                           </div>
                           {practiceChecked[key] && (
-                            <div className={`mt-2 rounded-lg px-3 py-2.5 border ${practiceChecked[key].correct ? 'bg-green-50 border-green-200' : 'bg-red-50 border-red-200'}`}>
-                              <div className="flex items-center gap-2 mb-1.5">
-                                <span className={`text-xs font-bold ${practiceChecked[key].correct ? 'text-green-700' : 'text-red-700'}`}>
-                                  {practiceChecked[key].correct ? '✓ To\'g\'ri ishlatilgan' : '✗ Xato bor'}
-                                </span>
-                                <span className="ml-auto text-xs font-mono font-bold text-gray-600">
-                                  {practiceChecked[key].score}/100
-                                </span>
-                              </div>
-                              <p className="text-xs text-gray-700 leading-relaxed m-0 mb-2">{practiceChecked[key].feedback}</p>
-                              {practiceChecked[key].improved && (
-                                <div className="bg-white/70 rounded px-2.5 py-2 border border-current/10">
-                                  <p className="text-[0.65rem] font-bold uppercase tracking-widest text-amber-800 mb-1">✨ Yaxshilangan versiya</p>
-                                  <p className="font-['Georgia'] text-xs text-amber-900 italic m-0">{practiceChecked[key].improved}</p>
-                                </div>
-                              )}
-                            </div>
+                            <PracticeResult result={practiceChecked[key]} accentClass="text-amber-800" />
                           )}
                           {practiceRevealed[key] && (
                             <p className="mt-2 font-['Georgia'] text-sm text-amber-900 italic bg-amber-50 rounded-lg px-3 py-2">
