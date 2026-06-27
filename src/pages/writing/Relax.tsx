@@ -18,6 +18,10 @@ function readFileAsDataUrl(file: File): Promise<string> {
   });
 }
 
+function isPdf(src: string) {
+  return src.startsWith('data:application/pdf') || /\.pdf(\?|$)/i.test(src);
+}
+
 function isPro(subscription: string | null): boolean {
   if (!subscription) return false;
   if (subscription === "forever") return true;
@@ -249,7 +253,7 @@ function Relax() {
                       <span className="text-sm text-slate-400">{imageLoading ? "Loading…" : "Click to upload an image"}</span>
                       <input
                         type="file"
-                        accept="image/*"
+                        accept="image/*,application/pdf"
                         className="sr-only"
                         disabled={imageLoading}
                         onChange={(e) => { const f = e.target.files?.[0]; if (f) handleImageUpload(f); }}
@@ -257,7 +261,13 @@ function Relax() {
                     </label>
                     {imageUrl && !imageLoading && (
                       <div className="mt-3 overflow-hidden border border-slate-200 rounded-lg">
-                        <img src={imageUrl} alt="Preview" className="object-cover w-full max-h-64" />
+                        {isPdf(imageUrl) ? (
+                          <object data={imageUrl} type="application/pdf" className="w-full h-64">
+                            <iframe src={imageUrl} className="w-full h-64 border-0" title="Task 1 chart" />
+                          </object>
+                        ) : (
+                          <img src={imageUrl} alt="Preview" className="object-cover w-full max-h-64" />
+                        )}
                       </div>
                     )}
                   </div>
@@ -437,7 +447,7 @@ function Relax() {
                 <Button onClick={handleAcceptFeedback} disabled={checkingAccess} className="w-full bg-blue-600 hover:bg-blue-700 text-white">
                   {checkingAccess ? "Checking…" : "Get AI feedback"}
                 </Button>
-                <Button variant="secondary" onClick={() => {}} disabled={checkingAccess} className="w-full">
+                <Button variant="secondary" onClick={() => setShowFeedbackModal(false)} disabled={checkingAccess} className="w-full">
                   No thanks
                 </Button>
               </div>

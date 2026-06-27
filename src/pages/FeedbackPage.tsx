@@ -141,10 +141,14 @@ export function FeedbackPage() {
   const [decodeError, setDecodeError] = useState(false);
   const [hasBothTasks, setHasBothTasks] = useState(false);
 
-  const [loading, setLoading] = useState(false);
-  const [feedback, setFeedback] = useState<EnhancedFeedbackResult | null>(null);
-  const [feedbackError, setFeedbackError] = useState<string | null>(null);
+  const [loadings, setLoadings] = useState<Record<string, boolean>>({});
+  const [feedbacks, setFeedbacks] = useState<Record<string, EnhancedFeedbackResult>>({});
+  const [feedbackErrors, setFeedbackErrors] = useState<Record<string, string>>({});
   const [activeTab, setActiveTab] = useState<Tab>('overview');
+
+  const loading = loadings[selectedTask] ?? false;
+  const feedback = feedbacks[selectedTask] ?? null;
+  const feedbackError = feedbackErrors[selectedTask] ?? null;
 
   const [flipped, setFlipped] = useState<Record<number, boolean>>({});
   const [expandedCat, setExpandedCat] = useState<string | null>('taskAchievement');
@@ -233,9 +237,9 @@ export function FeedbackPage() {
       } catch { /* ignore */ }
     }
 
-    setLoading(true);
-    setFeedbackError(null);
-    setFeedback(null);
+    const taskKey = selectedTask;
+    setLoadings((p) => ({ ...p, [taskKey]: true }));
+    setFeedbackErrors((p) => { const n = { ...p }; delete n[taskKey]; return n; });
 
     try {
       const idToken = await user.getIdToken();
@@ -257,7 +261,7 @@ export function FeedbackPage() {
       try { data = JSON.parse(text); } catch { throw new Error(`Server error (${res.status}): ${text.slice(0, 200)}`); }
       if (!res.ok) throw new Error(data.error ?? 'Feedback generation failed');
 
-      setFeedback(data.feedback!);
+      setFeedbacks((p) => ({ ...p, [taskKey]: data.feedback! }));
       sessionStorage.setItem(cacheKey, JSON.stringify(data.feedback));
 
       getFeedbackReportHistory(user.uid, 5)
@@ -275,19 +279,19 @@ export function FeedbackPage() {
         })
         .catch(() => {/* non-critical */});
     } catch (err) {
-      setFeedbackError(err instanceof Error ? err.message : 'Something went wrong.');
+      setFeedbackErrors((p) => ({ ...p, [taskKey]: err instanceof Error ? err.message : 'Something went wrong.' }));
     } finally {
-      setLoading(false);
+      setLoadings((p) => ({ ...p, [taskKey]: false }));
     }
   }, [reportData, selectedTask, user, id]);
 
-  // Auto-load feedback when ready
+  // Auto-load feedback when ready (per task)
   useEffect(() => {
     if (reportData && user && isPro && !feedback && !loading && !feedbackError) {
       loadFeedback();
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [reportData, user, isPro]);
+  }, [reportData, user, isPro, selectedTask]);
 
   const runSpellCheck = async (text: string) => {
     if (!text.trim()) return;
@@ -553,24 +557,24 @@ export function FeedbackPage() {
           {/* ── Task selector ── */}
           {hasBothTasks && (
             <div className="flex gap-2 mb-5">
-              {(['task1', 'task2'] as const).map((t) => (
-                <button
-                  key={t}
-                  onClick={() => {
-                    setSelectedTask(t);
-                    setFeedback(null);
-                    setFeedbackError(null);
-                    setActiveTab('overview');
-                  }}
-                  className={`px-5 py-1.5 rounded-full border-2 font-semibold text-sm transition-colors cursor-pointer ${
-                    selectedTask === t
-                      ? 'border-[var(--ink-blue)] bg-[var(--ink-blue)] text-white'
-                      : 'border-[var(--border)] bg-white text-gray-700 hover:border-[var(--ink-blue)]'
-                  }`}
-                >
-                  {t === 'task1' ? 'Task 1' : 'Task 2'}
-                </button>
-              ))}
+              {(['task1', 'task2'] as const).map((t) => {
+                const hasFb = !!feedbacks[t];
+                const isLoading = loadings[t];
+                return (
+                  <button
+                    key={t}
+                    onClick={() => { setSelectedTask(t); setActiveTab('overview'); }}
+                    className={`px-5 py-1.5 rounded-full border-2 font-semibold text-sm transition-colors cursor-pointer flex items-center gap-2 ${
+                      selectedTask === t
+                        ? 'border-[var(--ink-blue)] bg-[var(--ink-blue)] text-white'
+                        : 'border-[var(--border)] bg-white text-gray-700 hover:border-[var(--ink-blue)]'
+                    }`}
+                  >
+                    {t === 'task1' ? 'Task 1' : 'Task 2'}
+                    {isLoading ? <span className="text-xs opacity-60">⏳</span> : hasFb ? <span className="text-xs opacity-80">✓</span> : null}
+                  </button>
+                );
+              })}
             </div>
           )}
 
@@ -587,11 +591,21 @@ export function FeedbackPage() {
               {selectedTask === 'task1' ? 'Task 1' : 'Task 2'} Question
             </p>
             {selectedTask === 'task1' && reportData.task1?.image && (
-              <img
-                src={reportData.task1.image}
-                alt="Task 1 chart"
-                className="w-full max-h-72 object-contain rounded-lg border border-[var(--border)] mb-3"
-              />
+              (() => {
+                const src = reportData.task1.image;
+                const pdf = src.startsWith('data:application/pdf') || /\.pdf(\?|$)/i.test(src);
+                return pdf ? (
+                  <object data={src} type="application/pdf" className="w-full h-[400px] rounded-lg border border-[var(--border)] mb-3">
+                    <iframe src={src} className="w-full h-[400px] border-0 rounded-lg mb-3" title="Task 1 chart" />
+                  </object>
+                ) : (
+                  <img
+                    src={src}
+                    alt="Task 1 chart"
+                    className="w-full max-h-72 object-contain rounded-lg border border-[var(--border)] mb-3"
+                  />
+                );
+              })()
             )}
             <p className="font-['Georgia'] leading-relaxed text-gray-800 text-[0.9375rem] m-0">
               {selectedTask === 'task1' ? reportData.task1?.report : reportData.task2?.report}
