@@ -541,7 +541,7 @@ export function FeedbackPage() {
             <div className="bg-white rounded-xl border border-[var(--border)] p-12 text-center">
               <div className="text-5xl mb-4">🤖</div>
               <p className="font-semibold text-[var(--ink-blue)] mb-1">Analysing your essay…</p>
-              <p className="text-sm text-[var(--text-muted)]">This usually takes 15–30 seconds.</p>
+              <p className="text-sm text-[var(--text-muted)]">This usually takes 1-2 minutes.</p>
             </div>
           )}
 

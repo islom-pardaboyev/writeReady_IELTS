@@ -236,7 +236,7 @@ function Relax() {
                       value={prompt}
                       onChange={(e) => setPrompt(e.target.value)}
                       placeholder="The chart below shows… Summarise the information by selecting and reporting the main features…"
-                      className="w-full h-28 px-4 py-3 text-sm text-slate-800 border border-slate-200 outline-none resize-none rounded-lg focus:border-blue-500 focus:ring-1 focus:ring-blue-500 focus:bg-white transition placeholder:text-slate-300"
+                      className="w-full h-28 px-4 py-3 text-sm text-slate-800 border border-slate-200 outline-none resize-none rounded-lg focus:border-blue-500 focus:ring-1 focus:ring-blue-500 bg-white transition placeholder:text-slate-300"
                     />
                   </div>
 
