@@ -202,29 +202,22 @@ export function WorkspacePage() {
           )}
 
           {(mode !== 'mock' || started) && (
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '1.5rem' }}>
+            <div className="grid grid-cols-1 gap-6">
               {/* Question */}
               <Card>
-                <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '0.875rem', flexWrap: 'wrap' }}>
-                  <span style={tagStyle}>
+                <div className="flex gap-2 mb-[0.875rem] flex-wrap">
+                  <span className={tagClassName}>
                     {question.taskType === 'task2' ? 'Task 2' : 'Task 1'}
                   </span>
-                  <span style={{ ...tagStyle, background: 'rgba(217,164,65,0.1)', color: 'var(--gold)' }}>
+                  <span className={`${tagClassName} !bg-[rgba(217,164,65,0.1)] !text-[var(--gold)]`}>
                     {question.category}
                   </span>
                 </div>
-                <p
-                  style={{
-                    fontFamily: 'Georgia, serif',
-                    fontSize: '1.0625rem',
-                    lineHeight: 1.85,
-                    color: 'var(--slate)',
-                  }}
-                >
+                <p className="font-serif text-[1.0625rem] leading-[1.85] text-[var(--slate)]">
                   {question.promptText}
                 </p>
                 {question.taskType === 'task2' && (
-                  <p style={{ marginTop: '0.875rem', fontSize: '0.875rem', color: 'var(--text-muted)' }}>
+                  <p className="mt-[0.875rem] text-sm text-[var(--text-muted)]">
                     Write at least 250 words. You should spend about 40 minutes on this task.
                   </p>
                 )}
