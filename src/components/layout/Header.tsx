@@ -5,6 +5,10 @@ import Logo from '/logo.png'
 export function Header() {
   const { user } = useAuth();
 
+  const firstName = user?.displayName
+    ? user.displayName.split(' ')[0]
+    : user?.email?.split('@')[0] ?? '';
+
   return (
     <header
       className="sticky top-0 z-[100] bg-[rgba(255,255,255,0.95)] backdrop-blur-[8px] border-b border-[#e2e8f0]"
@@ -37,9 +41,20 @@ export function Header() {
           {user ? (
             <Link
               to="/account"
-              className="ml-2 bg-[#1e3a5f] text-white text-sm font-semibold px-5 py-2 rounded-lg no-underline"
+              className="ml-2 flex items-center gap-2 bg-[#1e3a5f] text-white text-sm font-semibold pl-1.5 pr-4 py-1.5 rounded-lg no-underline"
             >
-              My Account
+              {user.photoURL ? (
+                <img
+                  src={user.photoURL}
+                  alt={firstName}
+                  className="w-7 h-7 rounded-full object-cover shrink-0"
+                />
+              ) : (
+                <span className="w-7 h-7 rounded-full bg-white/20 flex items-center justify-center text-xs font-bold shrink-0">
+                  {firstName.charAt(0).toUpperCase()}
+                </span>
+              )}
+              {firstName}
             </Link>
           ) : (
             <>
