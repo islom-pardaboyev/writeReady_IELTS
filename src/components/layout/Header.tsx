@@ -8,6 +8,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { Button } from "../ui/Button";
 
 function SubscriptionBadge({
   plan,
@@ -23,10 +24,14 @@ function SubscriptionBadge({
       </span>
     );
   }
-  if (subscription && subscription !== "" && new Date(subscription) > new Date()) {
+  if (
+    subscription &&
+    subscription !== "" &&
+    new Date(subscription) > new Date()
+  ) {
     const exp = new Date(subscription);
     const months = Math.round(
-      (exp.getTime() - Date.now()) / (1000 * 60 * 60 * 24 * 30)
+      (exp.getTime() - Date.now()) / (1000 * 60 * 60 * 24 * 30),
     );
     const label =
       months <= 1
@@ -51,7 +56,7 @@ export function Header() {
 
   const firstName = user?.displayName
     ? user.displayName.split(" ")[0]
-    : user?.email?.split("@")[0] ?? "";
+    : (user?.email?.split("@")[0] ?? "");
 
   const handleLogout = async () => {
     await logOut();
@@ -59,7 +64,7 @@ export function Header() {
   };
 
   return (
-    <header className="sticky top-0 py-2 z-[100] bg-[rgba(255,255,255,0.95)] backdrop-blur-[8px] border-b border-[#e2e8f0]">
+    <header className="sticky top-0 py-2 z-10 bg-[rgba(255,255,255,0.95)] backdrop-blur-[8px] border-b border-[#e2e8f0]">
       <div className="max-w-[1160px] mx-auto px-6 h-[60px] flex items-center justify-between">
         <Link to="/" className="flex items-center gap-2 no-underline">
           <img src={Logo} width={70} alt="" />
@@ -85,7 +90,7 @@ export function Header() {
           {user ? (
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <button className="ml-2 flex items-center gap-2 bg-[#1e3a5f] text-white text-sm font-semibold pl-1.5 pr-3 py-1.5 rounded-lg border-none cursor-pointer outline-none select-none hover:bg-[#2d5a8e] transition-colors">
+                <Button variant="outline" className="px-4! hover:shadow-lg">
                   {user.photoURL ? (
                     <img
                       src={user.photoURL}
@@ -94,7 +99,7 @@ export function Header() {
                       className="rounded-full object-cover shrink-0"
                     />
                   ) : (
-                    <span className="w-7 h-7 rounded-full bg-white/20 flex items-center justify-center text-xs font-bold shrink-0">
+                    <span className="w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold shrink-0">
                       {firstName.charAt(0).toUpperCase()}
                     </span>
                   )}
@@ -114,16 +119,22 @@ export function Header() {
                       strokeLinejoin="round"
                     />
                   </svg>
-                </button>
+                </Button>
               </DropdownMenuTrigger>
 
-              <DropdownMenuContent align="end" sideOffset={8} className="w-56 py-1">
+              <DropdownMenuContent
+                align="end"
+                sideOffset={8}
+                className="w-56 py-1 relative z-20"
+              >
                 {/* User info */}
                 <div className="px-3 py-2.5 border-b border-slate-100">
                   <p className="text-sm font-semibold text-slate-900 truncate">
                     {user.displayName ?? firstName}
                   </p>
-                  <p className="text-xs text-slate-500 truncate">{user.email}</p>
+                  <p className="text-xs text-slate-500 truncate">
+                    {user.email}
+                  </p>
                   <div className="mt-2">
                     <SubscriptionBadge
                       plan={profile?.plan ?? "free"}

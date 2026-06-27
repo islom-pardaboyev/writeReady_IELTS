@@ -1045,7 +1045,7 @@ export function FeedbackPage() {
                         )}
                         {ltPopover && (
                           <div
-                            className="absolute z-50 bg-[#0f172a] border border-[#1e3a5f] rounded-xl p-3.5 max-w-[280px] shadow-xl"
+                            className="absolute zoom-110 bg-[#0f172a] border border-[#1e3a5f] rounded-xl p-3.5 max-w-[280px] shadow-xl"
                             style={{ left: ltPopover.x, top: ltPopover.y }}
                             onClick={(e) => e.stopPropagation()}
                           >

@@ -55,7 +55,7 @@ export function DashboardPage() {
   return (
     <Layout>
       <div className="py-10">
-        <div className="container mx-auto" ref={rootRef}>
+        <div className="max-w-[1160px] mx-auto mx-auto" ref={rootRef}>
 
           {/* Welcome header */}
           <div className="gs-db-welcome mb-8">
