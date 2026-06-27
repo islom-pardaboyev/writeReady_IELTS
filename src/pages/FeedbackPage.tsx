@@ -822,14 +822,12 @@ export function FeedbackPage() {
                     {feedback.vocabulary.map((v, i) => (
                       <div
                         key={i}
-                        className="fp-flip-card"
-                        style={{ height: 185 }}
+                        className="fp-flip-card h-[185px]"
                         onClick={() => setFlipped((prev) => ({ ...prev, [i]: !prev[i] }))}
                       >
-                        <div className={`fp-flip-inner${flipped[i] ? ' is-flipped' : ''}`} style={{ height: '100%' }}>
+                        <div className={`fp-flip-inner h-full${flipped[i] ? ' is-flipped' : ''}`}>
                           <div
-                            className="fp-flip-face"
-                            style={{ background: 'var(--ink-blue)', color: 'white', border: '1px solid var(--ink-blue)' }}
+                            className="fp-flip-face bg-[var(--ink-blue)] text-white border border-[var(--ink-blue)]"
                           >
                             <p className="text-[0.65rem] font-bold tracking-widest uppercase text-white/40 mb-3">
                               Word {i + 1} of {feedback.vocabulary.length}
@@ -840,8 +838,7 @@ export function FeedbackPage() {
                             <p className="text-[0.7rem] text-white/35 mt-auto">tap to flip ↩</p>
                           </div>
                           <div
-                            className="fp-flip-face fp-flip-back"
-                            style={{ background: 'var(--paper)', border: '1px solid var(--border)' }}
+                            className="fp-flip-face fp-flip-back bg-[var(--paper)] border border-[var(--border)]"
                           >
                             <div className="w-full">
                               <span className="bg-[var(--gold)] text-white text-[0.65rem] font-bold px-2 py-0.5 rounded-full inline-block mb-2 uppercase tracking-wide">

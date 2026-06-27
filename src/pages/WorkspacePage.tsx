@@ -134,7 +134,7 @@ export function WorkspacePage() {
   if (loading) {
     return (
       <Layout>
-        <div style={{ padding: '4rem', textAlign: 'center', color: 'var(--text-muted)' }}>
+        <div className="py-16 text-center text-[var(--text-muted)]">
           Loading question…
         </div>
       </Layout>
@@ -144,8 +144,8 @@ export function WorkspacePage() {
   if (!question) {
     return (
       <Layout>
-        <div style={{ padding: '4rem', textAlign: 'center' }}>
-          <p style={{ color: 'var(--text-muted)', marginBottom: '1rem' }}>Question not found.</p>
+        <div className="py-16 text-center">
+          <p className="text-[var(--text-muted)] mb-4">Question not found.</p>
           <Link to="/dashboard"><Button>Back to Dashboard</Button></Link>
         </div>
       </Layout>
@@ -154,49 +154,32 @@ export function WorkspacePage() {
 
   return (
     <Layout>
-      <div style={{ background: bgColor, minHeight: 'calc(100vh - 120px)', padding: '2rem 0' }}>
+      <div
+        className="min-h-[calc(100vh-120px)] py-8"
+        style={{ background: bgColor }}
+      >
         <div className="container">
           {/* Top bar */}
-          <div
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'space-between',
-              marginBottom: '1.5rem',
-              flexWrap: 'wrap',
-              gap: '0.75rem',
-            }}
-          >
-            <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-              <Link to="/dashboard" style={{ color: 'var(--text-muted)', fontSize: '0.875rem' }}>
+          <div className="flex items-center justify-between mb-6 flex-wrap gap-3">
+            <div className="flex items-center gap-3">
+              <Link to="/dashboard" className="text-[var(--text-muted)] text-sm">
                 ← Dashboard
               </Link>
               <ModeBadge mode={mode} />
             </div>
 
-            <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-              <span
-                style={{
-                  fontFamily: 'IBM Plex Mono, monospace',
-                  fontSize: '0.875rem',
-                  color: 'var(--text-muted)',
-                }}
-              >
+            <div className="flex items-center gap-4">
+              <span className="font-mono text-sm text-[var(--text-muted)]">
                 {wordCount} words
               </span>
 
               {mode === 'mock' && (
                 <span
-                  style={{
-                    fontFamily: 'IBM Plex Mono, monospace',
-                    fontSize: '1.25rem',
-                    fontWeight: 500,
-                    color: timerUrgent ? 'var(--coral)' : 'var(--ink-blue)',
-                    padding: '0.25rem 0.75rem',
-                    background: timerUrgent ? 'rgba(224,101,75,0.08)' : 'rgba(28,58,94,0.06)',
-                    borderRadius: 'var(--radius)',
-                    border: `1px solid ${timerUrgent ? 'rgba(224,101,75,0.3)' : 'rgba(28,58,94,0.15)'}`,
-                  }}
+                  className={`font-mono text-xl font-medium px-3 py-1 rounded-[var(--radius)] border ${
+                    timerUrgent
+                      ? 'text-[var(--coral)] bg-[rgba(224,101,75,0.08)] border-[rgba(224,101,75,0.3)]'
+                      : 'text-[var(--ink-blue)] bg-[rgba(28,58,94,0.06)] border-[rgba(28,58,94,0.15)]'
+                  }`}
                 >
                   {timerStr}
                 </span>
