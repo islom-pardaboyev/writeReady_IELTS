@@ -105,9 +105,13 @@ export function FeedbackPage() {
   // Writing practice quiz
   const [practiceInputs, setPracticeInputs] = useState<Record<string, string>>({});
   const [practiceRevealed, setPracticeRevealed] = useState<Record<string, boolean>>({});
+  const [practiceChecked, setPracticeChecked] = useState<Record<string, LTMatch[]>>({});
+  const [practiceChecking, setPracticeChecking] = useState<Record<string, boolean>>({});
 
-  // Spelling checker
-  const [ltText, setLtText] = useState('');
+  // Essay sentence analysis
+  const [activeSentence, setActiveSentence] = useState<number | null>(null);
+
+  // Spelling checker (auto-filled from user's essay)
   const [ltMatches, setLtMatches] = useState<LTMatch[]>([]);
   const [ltCorrected, setLtCorrected] = useState('');
   const [ltChecked, setLtChecked] = useState(false);
@@ -232,13 +236,13 @@ export function FeedbackPage() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [reportData, user, isPro]);
 
-  const runSpellCheck = async () => {
-    if (!ltText.trim()) return;
+  const runSpellCheck = async (text: string) => {
+    if (!text.trim()) return;
     setLtLoading(true);
     setLtError(null);
     setLtPopover(null);
     try {
-      const params = new URLSearchParams({ text: ltText, language: ltLang, disabledRules: 'WHITESPACE_RULE' });
+      const params = new URLSearchParams({ text, language: ltLang, disabledRules: 'WHITESPACE_RULE' });
       const res = await fetch('https://api.languagetool.org/v2/check', {
         method: 'POST',
         headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
@@ -247,12 +251,29 @@ export function FeedbackPage() {
       if (!res.ok) throw new Error('LanguageTool API error');
       const data = await res.json() as { matches: LTMatch[] };
       setLtMatches(data.matches);
-      setLtCorrected(ltText);
+      setLtCorrected(text);
       setLtChecked(true);
     } catch {
       setLtError('Could not reach spelling checker. Please try again.');
     } finally {
       setLtLoading(false);
+    }
+  };
+
+  const checkPracticeSentence = async (key: string, text: string) => {
+    if (!text.trim()) return;
+    setPracticeChecking((p) => ({ ...p, [key]: true }));
+    try {
+      const params = new URLSearchParams({ text, language: ltLang, disabledRules: 'WHITESPACE_RULE' });
+      const res = await fetch('https://api.languagetool.org/v2/check', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        body: params.toString(),
+      });
+      const data = await res.json() as { matches: LTMatch[] };
+      setPracticeChecked((p) => ({ ...p, [key]: data.matches }));
+    } catch { /* silent */ } finally {
+      setPracticeChecking((p) => ({ ...p, [key]: false }));
     }
   };
 
@@ -794,7 +815,6 @@ export function FeedbackPage() {
                   structure:   { bg: 'bg-red-50',    border: 'border-red-200',    label: 'Structure',   dot: 'bg-red-500'    },
                   ok:          { bg: 'bg-green-50',  border: 'border-green-200',  label: 'Good',        dot: 'bg-green-500'  },
                 };
-                const [activeSentence, setActiveSentence] = useState<number | null>(null);
                 return (
                   <div>
                     <div className="flex flex-wrap gap-2 mb-5">
@@ -857,7 +877,9 @@ export function FeedbackPage() {
               )}
 
               {/* ── SPELLING CHECKER ── */}
-              {activeTab === 'spelling' && (
+              {activeTab === 'spelling' && (() => {
+                const essayText = selectedTask === 'task1' ? reportData.userText1 : reportData.userText2;
+                return (
                 <div>
                   {!ltChecked ? (
                     <div className="bg-white rounded-xl border border-[var(--border)] overflow-hidden">
@@ -877,16 +899,13 @@ export function FeedbackPage() {
                             </button>
                           ))}
                         </div>
-                        <Button size="sm" onClick={runSpellCheck} disabled={ltLoading || !ltText.trim()}>
-                          {ltLoading ? 'Checking…' : 'Check Writing'}
+                        <Button size="sm" onClick={() => runSpellCheck(essayText)} disabled={ltLoading || !essayText.trim()}>
+                          {ltLoading ? 'Checking…' : 'Check my essay'}
                         </Button>
                       </div>
-                      <textarea
-                        className="w-full px-5 py-4 border-none outline-none resize-y text-[0.9375rem] leading-relaxed text-gray-800 min-h-[280px]"
-                        placeholder="Paste your essay here to check spelling and grammar…"
-                        value={ltText}
-                        onChange={(e) => setLtText(e.target.value)}
-                      />
+                      <div className="px-5 py-4 text-[0.9375rem] leading-relaxed text-gray-500 whitespace-pre-wrap min-h-[200px] font-['Georgia']">
+                        {essayText || <span className="italic">No essay text available.</span>}
+                      </div>
                       {ltError && <p className="px-5 pb-3 text-sm text-red-600">{ltError}</p>}
                     </div>
                   ) : (
@@ -896,10 +915,10 @@ export function FeedbackPage() {
                           {ltMatches.length === 0 ? '✓ No issues found' : `${ltMatches.length} issue${ltMatches.length !== 1 ? 's' : ''} found`}
                         </span>
                         <button
-                          onClick={() => { setLtChecked(false); setLtMatches([]); setLtPopover(null); setLtText(ltCorrected); }}
+                          onClick={() => { setLtChecked(false); setLtMatches([]); setLtPopover(null); }}
                           className="text-sm text-[var(--text-muted)] underline cursor-pointer bg-transparent border-none"
                         >
-                          Edit text
+                          Reset
                         </button>
                       </div>
                       <div
@@ -969,7 +988,8 @@ export function FeedbackPage() {
                     </div>
                   )}
                 </div>
-              )}
+                );
+              })()}
 
               {/* ── WRITING PRACTICE ── */}
               {activeTab === 'quiz' && (
@@ -994,7 +1014,14 @@ export function FeedbackPage() {
                             value={practiceInputs[key] ?? ''}
                             onChange={(e) => setPracticeInputs((p) => ({ ...p, [key]: e.target.value }))}
                           />
-                          <div className="mt-2 flex items-center gap-3">
+                          <div className="mt-2 flex items-center gap-3 flex-wrap">
+                            <button
+                              onClick={() => checkPracticeSentence(key, practiceInputs[key] ?? '')}
+                              disabled={practiceChecking[key] || !(practiceInputs[key] ?? '').trim()}
+                              className="text-xs bg-[var(--ink-blue)] text-white px-3 py-1 rounded cursor-pointer border-none disabled:opacity-40"
+                            >
+                              {practiceChecking[key] ? 'Checking…' : 'Check'}
+                            </button>
                             <button
                               onClick={() => setPracticeRevealed((p) => ({ ...p, [key]: !p[key] }))}
                               className="text-xs text-[var(--ink-blue)] underline cursor-pointer bg-transparent border-none"
@@ -1002,6 +1029,18 @@ export function FeedbackPage() {
                               {practiceRevealed[key] ? 'Hide example' : 'Show example'}
                             </button>
                           </div>
+                          {(practiceChecked[key]?.length ?? 0) > 0 && (
+                            <div className="mt-2 flex flex-col gap-1">
+                              {practiceChecked[key].map((m, mi) => (
+                                <p key={mi} className="text-xs text-red-700 bg-red-50 rounded px-2.5 py-1.5 m-0">
+                                  <strong>"{(practiceInputs[key] ?? '').slice(m.offset, m.offset + m.length)}"</strong> — {m.message}
+                                </p>
+                              ))}
+                            </div>
+                          )}
+                          {practiceChecked[key] && practiceChecked[key].length === 0 && (practiceInputs[key] ?? '').trim() && (
+                            <p className="mt-2 text-xs text-green-700 bg-green-50 rounded px-2.5 py-1.5">✓ No grammar issues found</p>
+                          )}
                           {practiceRevealed[key] && (
                             <p className="mt-2 font-['Georgia'] text-sm text-[var(--ink-blue)] italic bg-[var(--ink-blue)]/5 rounded-lg px-3 py-2">
                               "{v.exampleFromEssay}"
@@ -1026,7 +1065,14 @@ export function FeedbackPage() {
                             value={practiceInputs[key] ?? ''}
                             onChange={(e) => setPracticeInputs((p) => ({ ...p, [key]: e.target.value }))}
                           />
-                          <div className="mt-2">
+                          <div className="mt-2 flex items-center gap-3 flex-wrap">
+                            <button
+                              onClick={() => checkPracticeSentence(key, practiceInputs[key] ?? '')}
+                              disabled={practiceChecking[key] || !(practiceInputs[key] ?? '').trim()}
+                              className="text-xs bg-amber-700 text-white px-3 py-1 rounded cursor-pointer border-none disabled:opacity-40"
+                            >
+                              {practiceChecking[key] ? 'Checking…' : 'Check'}
+                            </button>
                             <button
                               onClick={() => setPracticeRevealed((p) => ({ ...p, [key]: !p[key] }))}
                               className="text-xs text-amber-700 underline cursor-pointer bg-transparent border-none"
@@ -1034,6 +1080,18 @@ export function FeedbackPage() {
                               {practiceRevealed[key] ? 'Hide example' : 'Show example'}
                             </button>
                           </div>
+                          {(practiceChecked[key]?.length ?? 0) > 0 && (
+                            <div className="mt-2 flex flex-col gap-1">
+                              {practiceChecked[key].map((m, mi) => (
+                                <p key={mi} className="text-xs text-red-700 bg-red-50 rounded px-2.5 py-1.5 m-0">
+                                  <strong>"{(practiceInputs[key] ?? '').slice(m.offset, m.offset + m.length)}"</strong> — {m.message}
+                                </p>
+                              ))}
+                            </div>
+                          )}
+                          {practiceChecked[key] && practiceChecked[key].length === 0 && (practiceInputs[key] ?? '').trim() && (
+                            <p className="mt-2 text-xs text-green-700 bg-green-50 rounded px-2.5 py-1.5">✓ No grammar issues found</p>
+                          )}
                           {practiceRevealed[key] && (
                             <p className="mt-2 font-['Georgia'] text-sm text-amber-900 italic bg-amber-50 rounded-lg px-3 py-2">
                               "{g.example}"
