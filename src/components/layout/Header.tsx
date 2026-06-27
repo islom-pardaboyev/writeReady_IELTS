@@ -1,9 +1,21 @@
-import * as DropdownMenu from "@radix-ui/react-dropdown-menu";
 import { Link, useNavigate } from "react-router-dom";
 import { useAuth } from "../../contexts/AuthContext";
 import Logo from "/logo.png";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 
-function SubscriptionBadge({ plan, subscription }: { plan: string; subscription?: string }) {
+function SubscriptionBadge({
+  plan,
+  subscription,
+}: {
+  plan: string;
+  subscription?: string;
+}) {
   if (plan === "forever" || subscription === "forever") {
     return (
       <span className="inline-flex items-center gap-1 text-[0.65rem] font-bold uppercase tracking-wider bg-amber-100 text-amber-700 border border-amber-200 rounded-full px-2 py-0.5">
@@ -13,10 +25,13 @@ function SubscriptionBadge({ plan, subscription }: { plan: string; subscription?
   }
   if (subscription && subscription !== "" && new Date(subscription) > new Date()) {
     const exp = new Date(subscription);
-    const months = Math.round((exp.getTime() - Date.now()) / (1000 * 60 * 60 * 24 * 30));
-    const label = months <= 1
-      ? exp.toLocaleDateString("en-GB", { day: "numeric", month: "short" })
-      : `${months}m`;
+    const months = Math.round(
+      (exp.getTime() - Date.now()) / (1000 * 60 * 60 * 24 * 30)
+    );
+    const label =
+      months <= 1
+        ? exp.toLocaleDateString("en-GB", { day: "numeric", month: "short" })
+        : `${months}m`;
     return (
       <span className="inline-flex items-center gap-1 text-[0.65rem] font-bold uppercase tracking-wider bg-blue-50 text-blue-700 border border-blue-200 rounded-full px-2 py-0.5">
         ✓ Active ({label})
@@ -68,8 +83,8 @@ export function Header() {
           </Link>
 
           {user ? (
-            <DropdownMenu.Root>
-              <DropdownMenu.Trigger asChild>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
                 <button className="ml-2 flex items-center gap-2 bg-[#1e3a5f] text-white text-sm font-semibold pl-1.5 pr-3 py-1.5 rounded-lg border-none cursor-pointer outline-none select-none hover:bg-[#2d5a8e] transition-colors">
                   {user.photoURL ? (
                     <img
@@ -84,75 +99,78 @@ export function Header() {
                     </span>
                   )}
                   {firstName}
-                  <svg width="12" height="12" viewBox="0 0 12 12" fill="none" className="opacity-60 shrink-0">
-                    <path d="M2 4l4 4 4-4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+                  <svg
+                    width="12"
+                    height="12"
+                    viewBox="0 0 12 12"
+                    fill="none"
+                    className="opacity-60 shrink-0"
+                  >
+                    <path
+                      d="M2 4l4 4 4-4"
+                      stroke="currentColor"
+                      strokeWidth="1.5"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                    />
                   </svg>
                 </button>
-              </DropdownMenu.Trigger>
+              </DropdownMenuTrigger>
 
-              <DropdownMenu.Portal>
-                <DropdownMenu.Content
-                  align="end"
-                  sideOffset={8}
-                  className="z-[200] min-w-[220px] bg-white rounded-xl border border-slate-200 shadow-lg overflow-hidden py-1"
-                >
-                  {/* User info header */}
-                  <div className="px-4 py-3 border-b border-slate-100">
-                    <p className="text-sm font-semibold text-slate-900 truncate">{user.displayName ?? firstName}</p>
-                    <p className="text-xs text-slate-500 truncate">{user.email}</p>
-                    <div className="mt-2">
-                      <SubscriptionBadge
-                        plan={profile?.plan ?? "free"}
-                        subscription={profile?.subscription}
-                      />
-                    </div>
+              <DropdownMenuContent align="end" sideOffset={8} className="w-56 py-1">
+                {/* User info */}
+                <div className="px-3 py-2.5 border-b border-slate-100">
+                  <p className="text-sm font-semibold text-slate-900 truncate">
+                    {user.displayName ?? firstName}
+                  </p>
+                  <p className="text-xs text-slate-500 truncate">{user.email}</p>
+                  <div className="mt-2">
+                    <SubscriptionBadge
+                      plan={profile?.plan ?? "free"}
+                      subscription={profile?.subscription}
+                    />
                   </div>
+                </div>
 
-                  {/* Menu items */}
-                  <DropdownMenu.Item asChild>
-                    <Link
-                      to="/dashboard"
-                      className="flex items-center gap-3 px-4 py-2.5 text-sm text-slate-700 no-underline cursor-pointer outline-none hover:bg-slate-50 transition-colors"
-                    >
-                      <span className="text-base">🏠</span>
-                      Dashboard
-                    </Link>
-                  </DropdownMenu.Item>
-
-                  <DropdownMenu.Item asChild>
-                    <Link
-                      to="/account"
-                      className="flex items-center gap-3 px-4 py-2.5 text-sm text-slate-700 no-underline cursor-pointer outline-none hover:bg-slate-50 transition-colors"
-                    >
-                      <span className="text-base">👤</span>
-                      My Account
-                    </Link>
-                  </DropdownMenu.Item>
-
-                  {(profile?.plan === "free" || !profile?.subscription) && (
-                    <DropdownMenu.Item asChild>
-                      <Link
-                        to="/pricing"
-                        className="flex items-center gap-3 px-4 py-2.5 text-sm text-amber-700 font-semibold no-underline cursor-pointer outline-none hover:bg-amber-50 transition-colors"
-                      >
-                        <span className="text-base">⭐</span>
-                        Upgrade to Pro
-                      </Link>
-                    </DropdownMenu.Item>
-                  )}
-
-                  <DropdownMenu.Separator className="h-px bg-slate-100 my-1" />
-
-                  <DropdownMenu.Item
-                    onSelect={handleLogout}
-                    className="flex items-center gap-3 px-4 py-2.5 text-sm text-red-600 cursor-pointer outline-none hover:bg-red-50 transition-colors"
+                <DropdownMenuItem asChild>
+                  <Link
+                    to="/dashboard"
+                    className="flex items-center gap-2.5 px-3 py-2 text-sm text-slate-700 no-underline cursor-pointer hover:bg-slate-50 rounded-md mx-1"
                   >
-                    <span className="text-base">↩</span>
-                    Log out
-                  </DropdownMenu.Item>
-                </DropdownMenu.Content>
-              </DropdownMenu.Portal>
-            </DropdownMenu.Root>
+                    <span>🏠</span> Dashboard
+                  </Link>
+                </DropdownMenuItem>
+
+                <DropdownMenuItem asChild>
+                  <Link
+                    to="/account"
+                    className="flex items-center gap-2.5 px-3 py-2 text-sm text-slate-700 no-underline cursor-pointer hover:bg-slate-50 rounded-md mx-1"
+                  >
+                    <span>👤</span> My Account
+                  </Link>
+                </DropdownMenuItem>
+
+                {(profile?.plan === "free" || !profile?.subscription) && (
+                  <DropdownMenuItem asChild>
+                    <Link
+                      to="/pricing"
+                      className="flex items-center gap-2.5 px-3 py-2 text-sm text-amber-700 font-semibold no-underline cursor-pointer hover:bg-amber-50 rounded-md mx-1"
+                    >
+                      <span>⭐</span> Upgrade to Pro
+                    </Link>
+                  </DropdownMenuItem>
+                )}
+
+                <DropdownMenuSeparator className="my-1 bg-slate-100" />
+
+                <DropdownMenuItem
+                  onSelect={handleLogout}
+                  className="flex items-center gap-2.5 px-3 py-2 text-sm text-red-600 cursor-pointer hover:bg-red-50 rounded-md mx-1"
+                >
+                  <span>↩</span> Log out
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
           ) : (
             <>
               <Link
