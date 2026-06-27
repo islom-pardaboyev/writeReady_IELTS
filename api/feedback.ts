@@ -191,6 +191,7 @@ Return this EXACT JSON structure:
     "<third most impactful fix>"
   ],
   "bandGapAnalysis": "<Specific measurable steps to the next band level>",
+  "sampleResponse": "<A high-band (band 7-8) model response for THIS exact question — 2-3 paragraphs showing correct structure, vocabulary, and grammar. For Task 1 describe the data clearly; for Task 2 argue both sides or one side with evidence>",
   "vocabulary": [
     {
       "word": "<word or phrase from the essay or relevant to the topic>",
@@ -230,6 +231,7 @@ type ParsedFeedback = {
   };
   priorityFixes?: string[];
   bandGapAnalysis?: string;
+  sampleResponse?: string;
   vocabulary?: unknown[];
   grammar?: unknown[];
 };

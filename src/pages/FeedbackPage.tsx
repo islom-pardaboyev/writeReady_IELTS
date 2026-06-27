@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import jsPDF from 'jspdf';
 import { useAuth } from '../contexts/AuthContext';
@@ -6,19 +6,47 @@ import { Layout } from '../components/layout/Layout';
 import { Button } from '../components/ui/Button';
 import { decodeReport } from '../lib/reportEncoding';
 import type { ReportData } from '../lib/reportEncoding';
-import { saveSpacedRepResult, getFeedbackReportHistory } from '../firebase/firestore';
-import type { EnhancedFeedbackResult, QuizQuestion } from '../types';
+import { getFeedbackReportHistory } from '../firebase/firestore';
+import type { EnhancedFeedbackResult } from '../types';
 
-type Tab = 'overview' | 'priority' | 'detailed' | 'vocabulary' | 'grammar' | 'quiz';
+type Tab = 'overview' | 'priority' | 'detailed' | 'sample' | 'vocabulary' | 'grammar' | 'spelling' | 'quiz';
 
 const TABS: { id: Tab; label: string; icon: string }[] = [
   { id: 'overview', label: 'Overview', icon: '📊' },
   { id: 'priority', label: 'Priority Fixes', icon: '🎯' },
   { id: 'detailed', label: 'Detailed', icon: '📝' },
+  { id: 'sample', label: 'Sample', icon: '✍️' },
   { id: 'vocabulary', label: 'Vocabulary', icon: '📚' },
   { id: 'grammar', label: 'Grammar', icon: '✏️' },
-  { id: 'quiz', label: 'Quiz', icon: '🧠' },
+  { id: 'spelling', label: 'Spelling', icon: '🔍' },
+  { id: 'quiz', label: 'Practice', icon: '🧠' },
 ];
+
+// ── LanguageTool spelling checker ──────────────────────────────────────────
+interface LTMatch {
+  message: string;
+  offset: number;
+  length: number;
+  replacements: { value: string }[];
+  rule: { issueType: string; category: { name: string } };
+}
+function ltColor(issueType: string) {
+  if (issueType === 'misspelling') return '#ef4444';
+  if (issueType === 'grammar') return '#f59e0b';
+  return '#3b82f6';
+}
+function buildSegments(text: string, matches: LTMatch[]) {
+  const sorted = [...matches].sort((a, b) => a.offset - b.offset);
+  const segs: { text: string; match?: LTMatch }[] = [];
+  let cur = 0;
+  for (const m of sorted) {
+    if (m.offset > cur) segs.push({ text: text.slice(cur, m.offset) });
+    segs.push({ text: text.slice(m.offset, m.offset + m.length), match: m });
+    cur = m.offset + m.length;
+  }
+  if (cur < text.length) segs.push({ text: text.slice(cur) });
+  return segs;
+}
 
 const CAT_LABELS: Record<string, string> = {
   taskAchievement: 'Task Achievement',
@@ -73,12 +101,20 @@ export function FeedbackPage() {
   const [flipped, setFlipped] = useState<Record<number, boolean>>({});
   const [expandedCat, setExpandedCat] = useState<string | null>('taskAchievement');
 
-  const [quizLoading, setQuizLoading] = useState(false);
-  const [quizQuestions, setQuizQuestions] = useState<QuizQuestion[] | null>(null);
-  const [quizAnswers, setQuizAnswers] = useState<Record<string, string>>({});
-  const [quizSubmitted, setQuizSubmitted] = useState(false);
-  const [quizResults, setQuizResults] = useState<Record<string, { correct: boolean; nextReviewDate: Date }>>({});
-  const [quizError, setQuizError] = useState<string | null>(null);
+  // Writing practice quiz
+  const [practiceInputs, setPracticeInputs] = useState<Record<string, string>>({});
+  const [practiceRevealed, setPracticeRevealed] = useState<Record<string, boolean>>({});
+
+  // Spelling checker
+  const [ltText, setLtText] = useState('');
+  const [ltMatches, setLtMatches] = useState<LTMatch[]>([]);
+  const [ltCorrected, setLtCorrected] = useState('');
+  const [ltChecked, setLtChecked] = useState(false);
+  const [ltLoading, setLtLoading] = useState(false);
+  const [ltError, setLtError] = useState<string | null>(null);
+  const [ltPopover, setLtPopover] = useState<{ match: LTMatch; x: number; y: number } | null>(null);
+  const [ltLang, setLtLang] = useState<'en-GB' | 'en-US'>('en-GB');
+  const ltOverlayRef = useRef<HTMLDivElement>(null);
 
   const [recurringIssues, setRecurringIssues] = useState<string[]>([]);
   const [exporting, setExporting] = useState(false);
@@ -195,49 +231,34 @@ export function FeedbackPage() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [reportData, user, isPro]);
 
-  const generateQuiz = async () => {
-    if (!feedback || !user) return;
-    setQuizLoading(true);
-    setQuizError(null);
-    setQuizQuestions(null);
-    setQuizAnswers({});
-    setQuizSubmitted(false);
-    setQuizResults({});
-
+  const runSpellCheck = async () => {
+    if (!ltText.trim()) return;
+    setLtLoading(true);
+    setLtError(null);
+    setLtPopover(null);
     try {
-      const idToken = await user.getIdToken();
-      const res = await fetch('/api/retention-check', {
+      const params = new URLSearchParams({ text: ltText, language: ltLang, disabledRules: 'WHITESPACE_RULE' });
+      const res = await fetch('https://api.languagetool.org/v2/check', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${idToken}`,
-        },
-        body: JSON.stringify({
-          vocabulary: feedback.vocabulary,
-          grammar: feedback.grammar,
-          topic: feedback.topic,
-        }),
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        body: params.toString(),
       });
-      const data = (await res.json()) as { questions?: QuizQuestion[]; error?: string };
-      if (!res.ok) throw new Error(data.error ?? 'Quiz generation failed');
-      setQuizQuestions(data.questions ?? []);
-    } catch (err) {
-      setQuizError(err instanceof Error ? err.message : 'Failed to generate quiz.');
+      if (!res.ok) throw new Error('LanguageTool API error');
+      const data = await res.json() as { matches: LTMatch[] };
+      setLtMatches(data.matches);
+      setLtCorrected(ltText);
+      setLtChecked(true);
+    } catch {
+      setLtError('Could not reach spelling checker. Please try again.');
     } finally {
-      setQuizLoading(false);
+      setLtLoading(false);
     }
   };
 
-  const submitQuiz = async () => {
-    if (!quizQuestions || !user) return;
-    const results: Record<string, { correct: boolean; nextReviewDate: Date }> = {};
-    for (const q of quizQuestions) {
-      const correct = quizAnswers[q.id] === q.correctAnswer;
-      const { nextReviewDate } = await saveSpacedRepResult(user.uid, q.itemRef, q.itemRef, correct);
-      results[q.id] = { correct, nextReviewDate };
-    }
-    setQuizResults(results);
-    setQuizSubmitted(true);
+  const applyLtFix = (match: LTMatch, replacement: string) => {
+    setLtCorrected((prev) => prev.slice(0, match.offset) + replacement + prev.slice(match.offset + match.length));
+    setLtMatches((prev) => prev.filter((m) => m !== match));
+    setLtPopover(null);
   };
 
   const exportPDF = async () => {
@@ -463,6 +484,13 @@ export function FeedbackPage() {
             <p className="text-xs font-bold tracking-widest uppercase text-[var(--text-muted)] mb-2">
               {selectedTask === 'task1' ? 'Task 1' : 'Task 2'} Question
             </p>
+            {selectedTask === 'task1' && reportData.task1?.image && (
+              <img
+                src={reportData.task1.image}
+                alt="Task 1 chart"
+                className="w-full max-h-72 object-contain rounded-lg border border-[var(--border)] mb-3"
+              />
+            )}
             <p className="font-['Georgia'] leading-relaxed text-gray-800 text-[0.9375rem] m-0">
               {selectedTask === 'task1' ? reportData.task1?.report : reportData.task2?.report}
             </p>
@@ -755,140 +783,205 @@ export function FeedbackPage() {
                 </div>
               )}
 
-              {/* ── RETENTION QUIZ ── */}
-              {activeTab === 'quiz' && (
+              {/* ── SAMPLE RESPONSE ── */}
+              {activeTab === 'sample' && (
+                <div className="bg-white rounded-xl border border-[var(--border)] border-l-4 border-l-[var(--gold)] px-6 py-6">
+                  <p className="text-xs font-bold tracking-widest uppercase text-[var(--gold)] mb-4">
+                    ✍️ Band 7–8 Sample Response
+                  </p>
+                  <p className="font-['Georgia'] text-gray-800 leading-[1.9] text-[0.9375rem] whitespace-pre-wrap">
+                    {feedback.sampleResponse ?? 'Sample response not available for this analysis.'}
+                  </p>
+                </div>
+              )}
+
+              {/* ── SPELLING CHECKER ── */}
+              {activeTab === 'spelling' && (
                 <div>
-                  {!quizQuestions && !quizLoading && (
-                    <div className="bg-white rounded-xl p-10 text-center border border-[var(--border)]">
-                      <div className="text-5xl mb-4">🧠</div>
-                      <h3 className="font-['Fraunces'] text-[var(--ink-blue)] text-xl mb-2">
-                        Test Your Retention
-                      </h3>
-                      <p className="text-[var(--text-muted)] leading-relaxed max-w-sm mx-auto mb-6">
-                        Generate a 10-question quiz to reinforce vocabulary and grammar from this
-                        session. Your results are tracked for spaced repetition review.
-                      </p>
-                      {quizError && (
-                        <p className="text-red-600 text-sm mb-4">{quizError}</p>
-                      )}
-                      <Button onClick={generateQuiz}>Generate Quiz</Button>
-                    </div>
-                  )}
-
-                  {quizLoading && (
-                    <div className="bg-white rounded-xl p-12 text-center border border-[var(--border)]">
-                      <div className="text-4xl mb-4">✨</div>
-                      <p className="font-semibold text-[var(--ink-blue)]">Generating your quiz…</p>
-                    </div>
-                  )}
-
-                  {quizQuestions && !quizSubmitted && (
-                    <div>
-                      <div className="flex items-center justify-between mb-5">
-                        <p className="font-bold text-[var(--ink-blue)]">{quizQuestions.length} questions</p>
-                        <p className="text-sm text-[var(--text-muted)]">
-                          {Object.keys(quizAnswers).length} / {quizQuestions.length} answered
-                        </p>
-                      </div>
-                      <div className="flex flex-col gap-4">
-                        {quizQuestions.map((q, qi) => (
-                          <div key={q.id} className="bg-white rounded-xl px-6 py-5 border border-[var(--border)]">
-                            <p className="font-semibold text-[var(--ink-blue)] mb-4 leading-snug">
-                              <span className="font-mono text-[0.8rem] text-[var(--text-muted)] mr-2">Q{qi + 1}</span>
-                              {q.question}
-                            </p>
-                            <div className="flex flex-col gap-2">
-                              {q.options.map((opt) => (
-                                <label
-                                  key={opt}
-                                  className={`flex items-center gap-3 px-3.5 py-2.5 rounded-lg border cursor-pointer text-sm text-gray-700 transition-colors ${
-                                    quizAnswers[q.id] === opt
-                                      ? 'border-[var(--ink-blue)] bg-[var(--ink-blue)]/5 font-medium'
-                                      : 'border-[var(--border)] hover:border-gray-400'
-                                  }`}
-                                >
-                                  <input
-                                    type="radio"
-                                    name={q.id}
-                                    value={opt}
-                                    checked={quizAnswers[q.id] === opt}
-                                    onChange={() => setQuizAnswers((prev) => ({ ...prev, [q.id]: opt }))}
-                                    className="accent-[var(--ink-blue)] shrink-0"
-                                  />
-                                  {opt}
-                                </label>
-                              ))}
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                      <div className="mt-6 text-center">
-                        <Button
-                          onClick={submitQuiz}
-                          disabled={Object.keys(quizAnswers).length < quizQuestions.length}
-                        >
-                          Submit Answers
-                        </Button>
-                      </div>
-                    </div>
-                  )}
-
-                  {quizSubmitted && quizQuestions && (
-                    <div>
-                      <div className="bg-[var(--ink-blue)] rounded-xl px-8 py-6 text-center mb-6 text-white">
-                        <p className="text-[0.7rem] font-bold tracking-widest uppercase text-white/45 mb-1">
-                          Quiz Score
-                        </p>
-                        <div className="font-['IBM_Plex_Mono'] text-[2.75rem] font-bold text-[var(--gold)]">
-                          {Object.values(quizResults).filter((r) => r.correct).length} /{' '}
-                          {quizQuestions.length}
-                        </div>
-                        <p className="text-white/50 text-sm mt-1">
-                          Review dates saved for spaced repetition
-                        </p>
-                      </div>
-                      <div className="flex flex-col gap-2.5">
-                        {quizQuestions.map((q, qi) => {
-                          const result = quizResults[q.id];
-                          return (
-                            <div
-                              key={q.id}
-                              className={`rounded-xl px-5 py-4 border ${
-                                result?.correct
-                                  ? 'bg-green-50 border-green-200'
-                                  : 'bg-red-50 border-red-200'
+                  {!ltChecked ? (
+                    <div className="bg-white rounded-xl border border-[var(--border)] overflow-hidden">
+                      <div className="flex items-center justify-between px-5 py-3 border-b border-[var(--border)] bg-slate-50">
+                        <div className="flex gap-1">
+                          {(['en-GB', 'en-US'] as const).map((lang) => (
+                            <button
+                              key={lang}
+                              onClick={() => setLtLang(lang)}
+                              className={`px-3 py-1 rounded-full text-xs font-semibold border transition-colors cursor-pointer ${
+                                ltLang === lang
+                                  ? 'bg-[var(--ink-blue)] text-white border-[var(--ink-blue)]'
+                                  : 'bg-white text-gray-600 border-[var(--border)]'
                               }`}
                             >
-                              <div className="flex gap-2 items-start mb-1">
-                                <span className="text-base">{result?.correct ? '✅' : '❌'}</span>
-                                <p className="font-semibold text-gray-800 text-sm leading-snug m-0">
-                                  Q{qi + 1}: {q.question}
-                                </p>
-                              </div>
-                              {!result?.correct && (
-                                <p className="text-[0.8125rem] text-red-700 ml-6 mb-1">
-                                  Your answer: {quizAnswers[q.id] ?? 'No answer'}
-                                </p>
-                              )}
-                              <p className="text-[0.8125rem] text-green-700 ml-6 mb-1">
-                                ✓ Correct: {q.correctAnswer}
-                              </p>
-                              {result?.nextReviewDate && (
-                                <p className="text-xs text-[var(--text-muted)] ml-6">
-                                  Next review: {result.nextReviewDate.toLocaleDateString()}
-                                </p>
-                              )}
-                            </div>
-                          );
-                        })}
-                      </div>
-                      <div className="mt-5 text-center">
-                        <Button variant="secondary" size="sm" onClick={generateQuiz}>
-                          Retake Quiz
+                              {lang === 'en-GB' ? '🇬🇧 British' : '🇺🇸 American'}
+                            </button>
+                          ))}
+                        </div>
+                        <Button size="sm" onClick={runSpellCheck} disabled={ltLoading || !ltText.trim()}>
+                          {ltLoading ? 'Checking…' : 'Check Writing'}
                         </Button>
+                      </div>
+                      <textarea
+                        className="w-full px-5 py-4 border-none outline-none resize-y text-[0.9375rem] leading-relaxed text-gray-800 min-h-[280px]"
+                        placeholder="Paste your essay here to check spelling and grammar…"
+                        value={ltText}
+                        onChange={(e) => setLtText(e.target.value)}
+                      />
+                      {ltError && <p className="px-5 pb-3 text-sm text-red-600">{ltError}</p>}
+                    </div>
+                  ) : (
+                    <div className="bg-white rounded-xl border border-[var(--border)] overflow-hidden">
+                      <div className="flex items-center justify-between px-5 py-3 border-b border-[var(--border)] bg-slate-50">
+                        <span className={`text-sm font-semibold ${ltMatches.length === 0 ? 'text-green-700' : 'text-red-600'}`}>
+                          {ltMatches.length === 0 ? '✓ No issues found' : `${ltMatches.length} issue${ltMatches.length !== 1 ? 's' : ''} found`}
+                        </span>
+                        <button
+                          onClick={() => { setLtChecked(false); setLtMatches([]); setLtPopover(null); setLtText(ltCorrected); }}
+                          className="text-sm text-[var(--text-muted)] underline cursor-pointer bg-transparent border-none"
+                        >
+                          Edit text
+                        </button>
+                      </div>
+                      <div
+                        className="relative px-5 py-4 text-[0.9375rem] leading-relaxed text-gray-800 whitespace-pre-wrap min-h-[200px] cursor-default"
+                        ref={ltOverlayRef}
+                        onClick={() => setLtPopover(null)}
+                      >
+                        {buildSegments(ltCorrected, ltMatches).map((seg, i) =>
+                          seg.match ? (
+                            <mark
+                              key={i}
+                              style={{ background: 'transparent', borderBottom: `2px solid ${ltColor(seg.match.rule.issueType)}`, cursor: 'pointer' }}
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                const r = (e.target as HTMLElement).getBoundingClientRect();
+                                const cr = ltOverlayRef.current!.getBoundingClientRect();
+                                setLtPopover({ match: seg.match!, x: r.left - cr.left, y: r.bottom - cr.top + 6 });
+                              }}
+                            >{seg.text}</mark>
+                          ) : <span key={i}>{seg.text}</span>
+                        )}
+                        {ltPopover && (
+                          <div
+                            className="absolute z-50 bg-[#0f172a] border border-[#1e3a5f] rounded-xl p-3.5 max-w-[280px] shadow-xl"
+                            style={{ left: ltPopover.x, top: ltPopover.y }}
+                            onClick={(e) => e.stopPropagation()}
+                          >
+                            <p className="text-[0.8rem] text-slate-300 mb-2.5 leading-snug">{ltPopover.match.message}</p>
+                            {ltPopover.match.replacements.length > 0 && (
+                              <div className="flex flex-wrap gap-1.5">
+                                {ltPopover.match.replacements.slice(0, 5).map((r, i) => (
+                                  <button
+                                    key={i}
+                                    onClick={() => applyLtFix(ltPopover.match, r.value)}
+                                    className="px-2.5 py-1 bg-blue-600 hover:bg-blue-500 text-white text-xs font-semibold rounded cursor-pointer border-none"
+                                  >{r.value}</button>
+                                ))}
+                              </div>
+                            )}
+                            <p className="text-[0.65rem] text-slate-500 mt-2 uppercase tracking-wider">
+                              {ltPopover.match.rule.category.name}
+                            </p>
+                          </div>
+                        )}
                       </div>
                     </div>
                   )}
+
+                  {ltChecked && ltMatches.length > 0 && (
+                    <div className="mt-4 flex flex-col gap-2">
+                      <p className="text-xs font-bold uppercase tracking-widest text-[var(--text-muted)] mb-1">All Issues</p>
+                      {ltMatches.map((m, i) => (
+                        <div key={i} className="bg-white rounded-xl px-4 py-3 border border-[var(--border)] flex items-center gap-3">
+                          <span className="w-2 h-2 rounded-full shrink-0" style={{ background: ltColor(m.rule.issueType) }} />
+                          <div className="flex-1 min-w-0">
+                            <span className="font-semibold text-sm text-gray-900 block">"{ltCorrected.slice(m.offset, m.offset + m.length)}"</span>
+                            <span className="text-xs text-[var(--text-muted)]">{m.message}</span>
+                          </div>
+                          {m.replacements.length > 0 && (
+                            <button
+                              onClick={() => applyLtFix(m, m.replacements[0].value)}
+                              className="px-3 py-1 bg-blue-600 text-white text-xs font-semibold rounded cursor-pointer border-none shrink-0"
+                            >{m.replacements[0].value}</button>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* ── WRITING PRACTICE ── */}
+              {activeTab === 'quiz' && (
+                <div>
+                  <p className="text-sm text-[var(--text-muted)] mb-5">
+                    Write a sentence using each word or grammar rule. Tap <strong>Show example</strong> to check.
+                  </p>
+                  <div className="flex flex-col gap-4">
+                    {feedback.vocabulary.map((v, i) => {
+                      const key = `vocab_${i}`;
+                      return (
+                        <div key={key} className="bg-white rounded-xl px-5 py-4 border border-[var(--border)]">
+                          <div className="flex items-center gap-3 mb-3">
+                            <span className="bg-[var(--ink-blue)]/10 text-[var(--ink-blue)] text-xs font-bold px-2 py-0.5 rounded-full uppercase tracking-wide">Vocab</span>
+                            <span className="font-['Georgia'] font-bold text-[var(--ink-blue)] text-base">{v.word}</span>
+                            <span className="text-xs text-[var(--text-muted)]">— {v.uzbek}</span>
+                          </div>
+                          <textarea
+                            className="w-full border border-[var(--border)] rounded-lg px-3 py-2 text-sm text-gray-800 resize-none outline-none focus:border-[var(--ink-blue)] transition-colors"
+                            rows={2}
+                            placeholder={`Write a sentence using "${v.word}"…`}
+                            value={practiceInputs[key] ?? ''}
+                            onChange={(e) => setPracticeInputs((p) => ({ ...p, [key]: e.target.value }))}
+                          />
+                          <div className="mt-2 flex items-center gap-3">
+                            <button
+                              onClick={() => setPracticeRevealed((p) => ({ ...p, [key]: !p[key] }))}
+                              className="text-xs text-[var(--ink-blue)] underline cursor-pointer bg-transparent border-none"
+                            >
+                              {practiceRevealed[key] ? 'Hide example' : 'Show example'}
+                            </button>
+                          </div>
+                          {practiceRevealed[key] && (
+                            <p className="mt-2 font-['Georgia'] text-sm text-[var(--ink-blue)] italic bg-[var(--ink-blue)]/5 rounded-lg px-3 py-2">
+                              "{v.exampleFromEssay}"
+                            </p>
+                          )}
+                        </div>
+                      );
+                    })}
+                    {feedback.grammar.map((g, i) => {
+                      const key = `grammar_${i}`;
+                      return (
+                        <div key={key} className="bg-white rounded-xl px-5 py-4 border border-[var(--border)]">
+                          <div className="flex items-center gap-3 mb-1">
+                            <span className="bg-[var(--gold)]/20 text-amber-800 text-xs font-bold px-2 py-0.5 rounded-full uppercase tracking-wide">Grammar</span>
+                            <span className="font-bold text-gray-800 text-sm">{g.point}</span>
+                          </div>
+                          <p className="text-xs text-[var(--text-muted)] mb-3">{g.explanation}</p>
+                          <textarea
+                            className="w-full border border-[var(--border)] rounded-lg px-3 py-2 text-sm text-gray-800 resize-none outline-none focus:border-[var(--gold)] transition-colors"
+                            rows={2}
+                            placeholder={`Write an example using this rule…`}
+                            value={practiceInputs[key] ?? ''}
+                            onChange={(e) => setPracticeInputs((p) => ({ ...p, [key]: e.target.value }))}
+                          />
+                          <div className="mt-2">
+                            <button
+                              onClick={() => setPracticeRevealed((p) => ({ ...p, [key]: !p[key] }))}
+                              className="text-xs text-amber-700 underline cursor-pointer bg-transparent border-none"
+                            >
+                              {practiceRevealed[key] ? 'Hide example' : 'Show example'}
+                            </button>
+                          </div>
+                          {practiceRevealed[key] && (
+                            <p className="mt-2 font-['Georgia'] text-sm text-amber-900 italic bg-amber-50 rounded-lg px-3 py-2">
+                              "{g.example}"
+                            </p>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
                 </div>
               )}
             </div>

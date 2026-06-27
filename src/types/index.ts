@@ -114,6 +114,7 @@ export interface EnhancedFeedbackResult {
   feedback: EnhancedFeedbackCategories;
   priorityFixes: string[];
   bandGapAnalysis: string;
+  sampleResponse: string;
   vocabulary: VocabItem[];
   grammar: GrammarPoint[];
 }
