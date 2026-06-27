@@ -235,48 +235,22 @@ export function WorkspacePage() {
                       ? 'Write your response here. You can submit paragraph by paragraph for targeted feedback…'
                       : 'Write your essay here…'
                   }
-                  style={{
-                    width: '100%',
-                    minHeight: 400,
-                    padding: '1.5rem',
-                    fontFamily: 'Georgia, serif',
-                    fontSize: '1.0625rem',
-                    lineHeight: 2,
-                    color: 'var(--slate)',
-                    background: 'white',
-                    border: '1.5px solid var(--border)',
-                    borderRadius: 'var(--radius-lg)',
-                    resize: 'vertical',
-                    outline: 'none',
-                    boxShadow: 'var(--shadow-sm)',
-                    transition: 'border-color 0.15s',
-                  }}
-                  onFocus={(e) => { e.currentTarget.style.borderColor = 'var(--ink-blue)'; }}
-                  onBlur={(e) => { e.currentTarget.style.borderColor = 'var(--border)'; }}
+                  className="w-full min-h-[400px] p-6 font-serif text-[1.0625rem] leading-loose text-[var(--slate)] bg-white border-[1.5px] border-[var(--border)] rounded-[var(--radius-lg)] resize-y outline-none shadow-[var(--shadow-sm)] transition-[border-color] duration-150 focus:border-[var(--ink-blue)]"
                 />
-                <div
-                  style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'space-between',
-                    marginTop: '0.75rem',
-                    flexWrap: 'wrap',
-                    gap: '0.75rem',
-                  }}
-                >
-                  <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
-                    <span style={{ fontFamily: 'IBM Plex Mono, monospace', fontSize: '0.8125rem', color: wordCount < 250 ? 'var(--text-muted)' : 'var(--ink-blue)' }}>
+                <div className="flex items-center justify-between mt-3 flex-wrap gap-3">
+                  <div className="flex gap-4 items-center">
+                    <span className={`font-mono text-[0.8125rem] ${wordCount < 250 ? 'text-[var(--text-muted)]' : 'text-[var(--ink-blue)]'}`}>
                       {wordCount} / 250+ words
                     </span>
                     {!isPro && (
-                      <span style={{ fontSize: '0.8125rem', color: 'var(--text-muted)' }}>
+                      <span className="text-[0.8125rem] text-[var(--text-muted)]">
                         ⚠️ Upgrade to Pro for AI feedback
                       </span>
                     )}
                   </div>
-                  <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center' }}>
+                  <div className="flex gap-3 items-center">
                     {error && (
-                      <span style={{ fontSize: '0.875rem', color: 'var(--coral)' }}>{error}</span>
+                      <span className="text-sm text-[var(--coral)]">{error}</span>
                     )}
                     <Link to="/dashboard">
                       <Button variant="secondary" size="sm">Cancel</Button>
@@ -294,24 +268,16 @@ export function WorkspacePage() {
 
               {/* Timer expired warning for mock */}
               {mode === 'mock' && timeLeft === 0 && (
-                <div
-                  style={{
-                    background: 'rgba(224,101,75,0.08)',
-                    border: '1.5px solid var(--coral)',
-                    borderRadius: 'var(--radius-lg)',
-                    padding: '1.25rem',
-                    textAlign: 'center',
-                  }}
-                >
-                  <strong style={{ color: 'var(--coral)' }}>Time's up!</strong>{' '}
-                  <span style={{ color: 'var(--slate)' }}>Your 40 minutes have ended. Please submit your essay now.</span>
+                <div className="bg-[rgba(224,101,75,0.08)] border-[1.5px] border-[var(--coral)] rounded-[var(--radius-lg)] p-5 text-center">
+                  <strong className="text-[var(--coral)]">Time's up!</strong>{' '}
+                  <span className="text-[var(--slate)]">Your 40 minutes have ended. Please submit your essay now.</span>
                 </div>
               )}
 
               {/* Mode tips */}
               {mode === 'relax' && (
-                <Card style={{ background: 'rgba(215,226,234,0.5)', border: '1px solid rgba(28,58,94,0.1)' }}>
-                  <p style={{ fontSize: '0.875rem', color: 'var(--ink-blue)', fontWeight: 500 }}>
+                <Card className="bg-[rgba(215,226,234,0.5)] border border-[rgba(28,58,94,0.1)]">
+                  <p className="text-sm text-[var(--ink-blue)] font-medium">
                     ☕ Relax mode: No timer, no pressure. Use this space to brainstorm, explore vocabulary, or draft ideas before a real attempt.
                   </p>
                 </Card>
@@ -325,38 +291,19 @@ export function WorkspacePage() {
 }
 
 function ModeBadge({ mode }: { mode: PracticeMode }) {
-  const colors: Record<PracticeMode, { bg: string; color: string; label: string }> = {
-    mock: { bg: 'var(--ink-blue)', color: 'white', label: '⏱ Mock' },
-    practice: { bg: 'var(--paper-dark)', color: 'var(--slate)', label: '✏️ Practice' },
-    relax: { bg: 'var(--mist)', color: 'var(--ink-blue)', label: '☕ Relax' },
+  const colors: Record<PracticeMode, { className: string; label: string }> = {
+    mock: { className: 'bg-[var(--ink-blue)] text-white', label: '⏱ Mock' },
+    practice: { className: 'bg-[var(--paper-dark)] text-[var(--slate)]', label: '✏️ Practice' },
+    relax: { className: 'bg-[var(--mist)] text-[var(--ink-blue)]', label: '☕ Relax' },
   };
   const c = colors[mode];
   return (
     <span
-      style={{
-        background: c.bg,
-        color: c.color,
-        fontSize: '0.75rem',
-        fontWeight: 700,
-        padding: '0.25rem 0.75rem',
-        borderRadius: 20,
-        textTransform: 'uppercase',
-        letterSpacing: '0.05em',
-      }}
+      className={`${c.className} text-[0.75rem] font-bold px-3 py-1 rounded-full uppercase tracking-[0.05em]`}
     >
       {c.label}
     </span>
   );
 }
 
-const tagStyle: React.CSSProperties = {
-  display: 'inline-block',
-  padding: '0.1875rem 0.5rem',
-  background: 'rgba(28,58,94,0.07)',
-  color: 'var(--ink-blue)',
-  borderRadius: 20,
-  fontSize: '0.6875rem',
-  fontWeight: 700,
-  textTransform: 'uppercase',
-  letterSpacing: '0.05em',
-};
+const tagClassName = 'inline-block px-2 py-[0.1875rem] bg-[rgba(28,58,94,0.07)] text-[var(--ink-blue)] rounded-full text-[0.6875rem] font-bold uppercase tracking-[0.05em]';
