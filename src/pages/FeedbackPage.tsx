@@ -158,7 +158,9 @@ export function FeedbackPage() {
         }),
       });
 
-      const data = (await res.json()) as { feedback?: EnhancedFeedbackResult; error?: string };
+      const text = await res.text();
+      let data: { feedback?: EnhancedFeedbackResult; error?: string } = {};
+      try { data = JSON.parse(text); } catch { throw new Error(`Server error (${res.status}): ${text.slice(0, 200)}`); }
       if (!res.ok) throw new Error(data.error ?? 'Feedback generation failed');
 
       setFeedback(data.feedback!);

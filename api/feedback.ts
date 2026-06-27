@@ -1,12 +1,17 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import * as admin from 'firebase-admin';
 
-if (!admin.apps.length) {
-  const serviceAccount = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT_KEY ?? '{}');
-  admin.initializeApp({ credential: admin.credential.cert(serviceAccount) });
+let db: admin.firestore.Firestore;
+try {
+  if (!admin.apps.length) {
+    const serviceAccount = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT_KEY ?? '{}');
+    admin.initializeApp({ credential: admin.credential.cert(serviceAccount) });
+  }
+  db = admin.firestore();
+} catch (initErr) {
+  console.error('Firebase init error:', initErr);
+  db = null as unknown as admin.firestore.Firestore;
 }
-
-const db = admin.firestore();
 const MONTHLY_LIMIT = 12;
 const ALLOWED_MODEL = 'claude-sonnet-4-6';
 const MAX_TOKENS = 8000;
@@ -43,6 +48,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
   if (req.method === 'OPTIONS') return res.status(200).end();
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
+  if (!db) return res.status(500).json({ error: 'Firebase not initialized. Check FIREBASE_SERVICE_ACCOUNT_KEY env var.' });
 
   let uid: string;
   try { uid = await getUid(req); } catch {
