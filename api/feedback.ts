@@ -1,5 +1,6 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import * as admin from 'firebase-admin';
+import Anthropic from '@anthropic-ai/sdk';
 
 let db: admin.firestore.Firestore;
 try {
@@ -93,31 +94,14 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   const wordCount = (essayText as string).trim().split(/\s+/).filter(Boolean).length;
 
   try {
-    const claudeRes = await fetch('https://api.anthropic.com/v1/messages', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'x-api-key': apiKey,
-        'anthropic-version': '2023-06-01',
-      },
-      body: JSON.stringify({
-        model: ALLOWED_MODEL,
-        max_tokens: MAX_TOKENS,
-        messages: [{ role: 'user', content: buildPrompt(essayText as string, questionText as string, resolvedTask, wordCount) }],
-      }),
+    const anthropic = new Anthropic({ apiKey });
+    const message = await anthropic.messages.create({
+      model: ALLOWED_MODEL,
+      max_tokens: MAX_TOKENS,
+      messages: [{ role: 'user', content: buildPrompt(essayText as string, questionText as string, resolvedTask, wordCount) }],
     });
 
-    const claudeData = await claudeRes.json() as {
-      content?: { type: string; text: string }[];
-      error?: { message: string };
-    };
-
-    if (!claudeRes.ok) {
-      await userRef.set({ usage: { monthKey, count: admin.firestore.FieldValue.increment(-1) } }, { merge: true }).catch(console.error);
-      return res.status(claudeRes.status).json({ error: claudeData.error?.message ?? 'Claude API error.' });
-    }
-
-    const raw = claudeData.content?.[0]?.type === 'text' ? claudeData.content[0].text : '';
+    const raw = message.content[0]?.type === 'text' ? message.content[0].text : '';
     const feedback = parseResponse(raw, wordCount, resolvedTask);
 
     // Save issues for recurring error-pattern tracking (non-blocking)
