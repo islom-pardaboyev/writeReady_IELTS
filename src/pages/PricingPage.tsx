@@ -232,22 +232,10 @@ export function PricingPage() {
       gsap.set(".gs-pricing-header", { y: 32, opacity: 0 });
       gsap.set(".gs-plan-card", { y: 40, opacity: 0, scale: 0.97 });
 
-      gsap.to(".gs-pricing-header", {
-        y: 0,
-        opacity: 1,
-        duration: 0.65,
-        ease: "power3.out",
-        delay: 0.1,
-      });
-
+      gsap.to(".gs-pricing-header", { y: 0, opacity: 1, duration: 0.65, ease: "power3.out", delay: 0.1 });
       gsap.to(".gs-plan-card", {
         scrollTrigger: { trigger: ".gs-plans", start: "top 82%" },
-        y: 0,
-        opacity: 1,
-        scale: 1,
-        duration: 0.65,
-        stagger: 0.15,
-        ease: "power2.out",
+        y: 0, opacity: 1, scale: 1, duration: 0.65, stagger: 0.15, ease: "power2.out",
       });
     }, rootRef);
 
@@ -258,17 +246,17 @@ export function PricingPage() {
 
   return (
     <Layout>
-      <div ref={rootRef} className="bg-slate-50 min-h-[calc(100vh-120px)] py-20">
-        <div className="container mx-auto">
+      <div ref={rootRef} className="bg-[var(--bg-base)] min-h-[calc(100vh-120px)] py-20">
+        <div className="container mx-auto px-6">
           {/* Header */}
           <div className="gs-pricing-header text-center mb-14">
-            <div className="inline-block bg-blue-50 text-blue-700 text-xs font-bold tracking-[0.08em] uppercase px-4 py-1.5 rounded-[20px] mb-5">
+            <div className="inline-block bg-blue-50 text-blue-700 text-xs font-bold tracking-[0.08em] uppercase px-4 py-1.5 rounded-[20px] mb-5 dark:bg-blue-900/30 dark:text-blue-300">
               Pricing
             </div>
-            <h1 className={`${FONT_SERIF} text-[clamp(2rem,5vw,2.75rem)] font-extrabold text-slate-900 mb-3 leading-[1.15]`}>
+            <h1 className={`${FONT_SERIF} text-[clamp(2rem,5vw,2.75rem)] font-extrabold text-[var(--text-primary)] mb-3 leading-[1.15]`}>
               Simple, honest pricing
             </h1>
-            <p className="text-slate-500 text-[1.0625rem] max-w-[460px] mx-auto">
+            <p className="text-[var(--text-secondary)] text-[1.0625rem] max-w-[460px] mx-auto">
               Start free. Upgrade when you're ready for AI-powered feedback.
             </p>
           </div>
@@ -276,30 +264,27 @@ export function PricingPage() {
           {/* Plans */}
           <div className="gs-plans grid grid-cols-[repeat(auto-fit,minmax(280px,1fr))] gap-6 max-w-[1080px] mx-auto">
             {/* Free plan */}
-            <div className="gs-plan-card hover:-translate-y-2 hover:shadow-2xl transition-all duration-200 bg-white rounded-[20px] p-8 border border-slate-200 shadow-[0_1px_4px_rgba(0,0,0,0.06)] flex flex-col">
+            <div className="gs-plan-card hover:-translate-y-2 hover:shadow-2xl transition-all duration-200 bg-[var(--bg-card)] rounded-[20px] p-8 border border-[var(--border-color)] shadow-[var(--shadow-sm)] flex flex-col">
               <div className="mb-6">
-                <div className={`${FONT_SERIF} text-[1.375rem] font-bold text-slate-900 mb-1`}>Free</div>
-                <div className="text-sm text-slate-500">Get started with unlimited writing practice</div>
+                <div className={`${FONT_SERIF} text-[1.375rem] font-bold text-[var(--text-primary)] mb-1`}>Free</div>
+                <div className="text-sm text-[var(--text-secondary)]">Get started with unlimited writing practice</div>
               </div>
-
               <div className="mb-8">
-                <span className={`${FONT_MONO} text-4xl font-semibold text-slate-900`}>$0</span>
-                <span className="text-sm text-slate-400 ml-1.5">forever</span>
+                <span className={`${FONT_MONO} text-4xl font-semibold text-[var(--text-primary)]`}>$0</span>
+                <span className="text-sm text-[var(--text-secondary)] ml-1.5">forever</span>
               </div>
-
               <ul className="flex flex-col gap-3 mb-8 flex-1">
                 {FREE_FEATURES.map((f) => (
-                  <li key={f} className="flex items-start gap-2.5 text-[0.9rem] text-slate-700">
+                  <li key={f} className="flex items-start gap-2.5 text-[0.9rem] text-[var(--text-primary)]">
                     <span className="text-green-500 font-bold shrink-0 mt-px">✓</span>
                     {f}
                   </li>
                 ))}
-                <li className="flex items-start gap-2.5 text-[0.9rem] text-slate-400">
+                <li className="flex items-start gap-2.5 text-[0.9rem] text-[var(--text-secondary)]">
                   <span className="shrink-0 mt-px">✗</span>
                   No AI feedback
                 </li>
               </ul>
-
               <Link to={user ? "/dashboard" : "/auth?mode=signup"} className="block">
                 <Button variant="secondary" className={`w-full ${isFree ? "opacity-[0.55]" : "opacity-100"}`} disabled={isFree}>
                   {isFree ? "Current plan" : "Downgrade to Free"}
@@ -312,17 +297,14 @@ export function PricingPage() {
               <div className="absolute -top-[13px] left-1/2 -translate-x-1/2 bg-[#c9900a] text-white text-[0.6875rem] font-bold tracking-[0.08em] uppercase px-4 py-[0.3rem] rounded-[20px] whitespace-nowrap">
                 Most popular
               </div>
-
               <div className="mb-6">
                 <div className={`${FONT_SERIF} text-[1.375rem] font-bold text-white mb-1`}>Pro</div>
                 <div className="text-sm text-white/55">AI feedback to accelerate your improvement</div>
               </div>
-
               <div className="mb-8">
                 <span className={`${FONT_MONO} text-4xl font-semibold text-white`}>25,000</span>
                 <span className="text-sm text-white/50 ml-1.5">UZS / month</span>
               </div>
-
               <ul className="flex flex-col gap-3 mb-8 flex-1">
                 {PRO_FEATURES.map((f) => (
                   <li key={f} className="flex items-start gap-2.5 text-[0.9rem] text-white/85">
@@ -331,10 +313,9 @@ export function PricingPage() {
                   </li>
                 ))}
               </ul>
-
               <Button
                 onClick={() => openPaymentModal(PRO_PLAN)}
-                className={`w-full bg-[#c9900a] border-0 ${isPro ? "opacity-[0.55]" : "opacity-100"}`}
+                className={`w-full bg-[#c9900a] border-0 hover:bg-[#b8820a] ${isPro ? "opacity-[0.55]" : "opacity-100"}`}
                 disabled={isPro}
               >
                 {isPro ? "Current plan" : "Get Pro →"}
@@ -383,59 +364,58 @@ export function PricingPage() {
       {showPaymentModal && (
         <div
           onClick={() => setShowPaymentModal(false)}
-          className="fixed inset-0 bg-slate-900/45 backdrop-blur-sm flex items-center justify-center p-6 z-[1000]"
+          className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-6 z-[1000]"
         >
           <div
             onClick={(e) => e.stopPropagation()}
-            className="bg-white rounded-3xl max-w-[480px] w-full max-h-[90vh] overflow-y-auto shadow-[0_20px_60px_rgba(15,23,42,0.25)] p-8"
+            className="bg-[var(--bg-card)] rounded-3xl max-w-[480px] w-full max-h-[90vh] overflow-y-auto shadow-[var(--shadow-lg)] p-8"
           >
-            {/* Header */}
             <div className="flex justify-between items-start mb-6">
               <div>
-                <h2 className={`${FONT_SERIF} text-2xl font-extrabold text-slate-900 mb-1`}>Complete payment</h2>
-                <p className="text-[0.95rem] text-slate-500">
+                <h2 className={`${FONT_SERIF} text-2xl font-extrabold text-[var(--text-primary)] mb-1`}>Complete payment</h2>
+                <p className="text-[0.95rem] text-[var(--text-secondary)]">
                   {selectedPlan.name} · {selectedPlan.price} {selectedPlan.period}
                 </p>
               </div>
               <button
                 onClick={() => setShowPaymentModal(false)}
-                className="bg-transparent border-0 cursor-pointer text-slate-400 p-1 hover:text-slate-600 transition-colors"
+                className="bg-transparent border-0 cursor-pointer text-[var(--text-secondary)] p-1 hover:text-[var(--text-primary)] transition-colors"
                 aria-label="Close"
               >
                 <CloseIcon />
               </button>
             </div>
 
-            <div className="border-t border-slate-200 -mx-8 mb-6" />
+            <div className="border-t border-[var(--border-color)] -mx-8 mb-6" />
 
             {/* Plan / amount summary */}
-            <div className="bg-slate-50 rounded-2xl p-5 mb-7 border border-slate-100">
+            <div className="bg-[var(--bg-subtle)] rounded-2xl p-5 mb-7 border border-[var(--border-color)]">
               <div className="flex items-center justify-between gap-4">
                 <div className="flex items-center gap-3">
-                  <span className="w-10 h-10 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center shrink-0">
+                  <span className="w-10 h-10 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center shrink-0 dark:bg-blue-900/30 dark:text-blue-400">
                     <PlanGlyphIcon />
                   </span>
                   <div>
-                    <div className="text-xs text-slate-500 mb-0.5">Plan</div>
-                    <div className="text-base font-bold text-slate-900">{selectedPlan.name}</div>
+                    <div className="text-xs text-[var(--text-secondary)] mb-0.5">Plan</div>
+                    <div className="text-base font-bold text-[var(--text-primary)]">{selectedPlan.name}</div>
                   </div>
                 </div>
                 <div className="text-right">
-                  <div className="text-xs text-slate-500 mb-0.5">Amount</div>
-                  <div className={`${FONT_MONO} text-base font-bold text-slate-900`}>{selectedPlan.price}</div>
+                  <div className="text-xs text-[var(--text-secondary)] mb-0.5">Amount</div>
+                  <div className={`${FONT_MONO} text-base font-bold text-[var(--text-primary)]`}>{selectedPlan.price}</div>
                 </div>
               </div>
 
-              <div className="border-t border-slate-200 my-4" />
+              <div className="border-t border-[var(--border-color)] my-4" />
 
-              <div className="flex items-center gap-2 text-sm text-slate-500">
+              <div className="flex items-center gap-2 text-sm text-[var(--text-secondary)]">
                 <CheckIcon />
                 {selectedPlan.billingNote}
               </div>
             </div>
 
             {/* Payment method selection */}
-            <h3 className="text-[0.95rem] font-bold text-slate-900 mb-3">Select payment method</h3>
+            <h3 className="text-[0.95rem] font-bold text-[var(--text-primary)] mb-3">Select payment method</h3>
             <div className="grid grid-cols-3 gap-3 mb-7">
               {PAYMENT_METHODS.map((method) => (
                 <PaymentMethodCard
@@ -449,42 +429,38 @@ export function PricingPage() {
 
             {/* Step 1 */}
             <div className="flex items-center gap-3 mb-4">
-              <span className="w-7 h-7 rounded-full bg-blue-600 text-white flex items-center justify-center font-bold text-sm shrink-0">
-                1
-              </span>
-              <h3 className="text-[1.05rem] font-bold text-slate-900">Transfer to this card</h3>
+              <span className="w-7 h-7 rounded-full bg-blue-600 text-white flex items-center justify-center font-bold text-sm shrink-0">1</span>
+              <h3 className="text-[1.05rem] font-bold text-[var(--text-primary)]">Transfer to this card</h3>
             </div>
 
-            <div className="bg-slate-50 rounded-2xl px-6 py-5 mb-7">
-              <div className="flex items-center gap-2 text-slate-500 text-sm mb-3">
+            <div className="bg-[var(--bg-subtle)] rounded-2xl px-6 py-5 mb-7">
+              <div className="flex items-center gap-2 text-[var(--text-secondary)] text-sm mb-3">
                 <CardIcon />
                 Card number
               </div>
               <div className="flex items-center justify-between gap-4 mb-4">
-                <span className={`${FONT_MONO} text-[1.375rem] font-semibold text-slate-900 tracking-[0.02em]`}>{CARD_NUMBER}</span>
+                <span className={`${FONT_MONO} text-[1.375rem] font-semibold text-[var(--text-primary)] tracking-[0.02em]`}>{CARD_NUMBER}</span>
                 <button
                   onClick={handleCopyCard}
-                  className="flex items-center gap-1.5 border border-slate-200 rounded-[20px] px-4 py-2 bg-white text-sm font-semibold text-slate-900 cursor-pointer whitespace-nowrap hover:bg-slate-50 transition-colors"
+                  className="flex items-center gap-1.5 border border-[var(--border-color)] rounded-[20px] px-4 py-2 bg-[var(--bg-card)] text-sm font-semibold text-[var(--text-primary)] cursor-pointer whitespace-nowrap hover:bg-[var(--bg-subtle)] transition-colors"
                 >
                   <CopyIcon />
                   {copied ? "Copied!" : "Copy"}
                 </button>
               </div>
-              <div className="text-sm text-slate-500">
-                Cardholder: <strong className="text-slate-900">{CARDHOLDER}</strong>
+              <div className="text-sm text-[var(--text-secondary)]">
+                Cardholder: <strong className="text-[var(--text-primary)]">{CARDHOLDER}</strong>
               </div>
             </div>
 
-            {/* Step 2 */}
             <div className="flex items-center gap-3 mb-4">
-              <span className="w-7 h-7 rounded-full bg-blue-600 text-white flex items-center justify-center font-bold text-sm shrink-0">
-                2
-              </span>
-              <h3 className="text-[1.05rem] font-bold text-slate-900">Send the payment receipt</h3>
+              <span className="w-7 h-7 rounded-full bg-blue-600 text-white flex items-center justify-center font-bold text-sm shrink-0">2</span>
+              <h3 className="text-[1.05rem] font-bold text-[var(--text-primary)]">Send the payment receipt</h3>
             </div>
 
-            <p className="text-[0.9375rem] text-slate-600 leading-[1.6] mb-5">
-              Send a screenshot of the transfer on Telegram to <strong className="text-slate-900">@{TELEGRAM_USERNAME}</strong>. Your{" "}
+            <p className="text-[0.9375rem] text-[var(--text-secondary)] leading-[1.6] mb-5">
+              Send a screenshot of the transfer on Telegram to{" "}
+              <strong className="text-[var(--text-primary)]">@{TELEGRAM_USERNAME}</strong>. Your{" "}
               {selectedPlan.name} access will be activated within 24 hours.
             </p>
 
@@ -498,7 +474,7 @@ export function PricingPage() {
               Pay with {selectedMethodLabel}
             </a>
 
-            <p className="text-center text-[0.8125rem] text-slate-400">More payment options will be added soon.</p>
+            <p className="text-center text-[0.8125rem] text-[var(--text-secondary)]">More payment options will be added soon.</p>
           </div>
         </div>
       )}

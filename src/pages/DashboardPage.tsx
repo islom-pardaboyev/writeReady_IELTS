@@ -32,11 +32,6 @@ export function DashboardPage() {
         .to('.gs-db-quota', { y: 0, opacity: 1, duration: 0.5 }, '-=0.3')
         .to('.gs-db-mode-card', { y: 0, opacity: 1, duration: 0.5, stagger: 0.1 }, '-=0.25');
 
-      gsap.from('.gs-db-question', {
-        scrollTrigger: { trigger: '.gs-db-questions', start: 'top 85%' },
-        y: 24, opacity: 0, duration: 0.45, stagger: 0.08, ease: 'power2.out',
-      });
-
       gsap.from('.gs-db-upsell', {
         scrollTrigger: { trigger: '.gs-db-upsell', start: 'top 88%' },
         y: 36, opacity: 0, duration: 0.65, ease: 'power3.out',
@@ -55,32 +50,32 @@ export function DashboardPage() {
   return (
     <Layout>
       <div className="py-10">
-        <div className="max-w-[1160px] mx-auto mx-auto" ref={rootRef}>
+        <div className="max-w-[1160px] mx-auto px-6" ref={rootRef}>
 
           {/* Welcome header */}
           <div className="gs-db-welcome mb-8">
-            <h1 className="font-fraunces text-4xl font-extrabold text-slate-900 mb-1.5">
+            <h1 className="font-fraunces text-4xl font-extrabold text-[var(--text-primary)] mb-1.5">
               Welcome back{user?.email ? `, ${user.email.split('@')[0]}` : ''}
             </h1>
-            <p className="text-slate-500">
+            <p className="text-[var(--text-secondary)]">
               {isPro
                 ? `${remaining} AI analyses remaining this month`
                 : 'Free plan — upgrade to unlock AI feedback'}
             </p>
           </div>
 
-          {/* Quota bar for pro users */}
+          {/* Quota bar */}
           {isPro && usage && (
-            <div className="gs-db-quota bg-white rounded-2xl px-6 py-5 border border-slate-200 shadow-sm mb-8">
+            <div className="gs-db-quota bg-[var(--bg-card)] rounded-2xl px-6 py-5 border border-[var(--border-color)] shadow-[var(--shadow-sm)] mb-8">
               <div className="flex items-center justify-between mb-3">
-                <span className="font-semibold text-[0.9375rem] text-slate-900">Monthly AI Feedback Quota</span>
-                <span className={`font-mono text-[0.9375rem] font-medium ${usagePct >= 85 ? 'text-red-500' : 'text-blue-700'}`}>
+                <span className="font-semibold text-[0.9375rem] text-[var(--text-primary)]">Monthly AI Feedback Quota</span>
+                <span className={`font-mono text-[0.9375rem] font-medium ${usagePct >= 85 ? 'text-red-500' : 'text-blue-600 dark:text-blue-400'}`}>
                   {usedCount}/{usageLimit}
                 </span>
               </div>
-              <div className="h-1.5 bg-slate-100 rounded-full overflow-hidden">
+              <div className="h-1.5 bg-[var(--bg-subtle)] rounded-full overflow-hidden">
                 <div
-                  className={`h-full rounded-full transition-[width] duration-300 ${usagePct >= 85 ? 'bg-red-500' : 'bg-blue-700'}`}
+                  className={`h-full rounded-full transition-[width] duration-300 ${usagePct >= 85 ? 'bg-red-500' : 'bg-blue-600'}`}
                   style={{ width: `${usagePct}%` }}
                 />
               </div>
@@ -88,22 +83,22 @@ export function DashboardPage() {
           )}
 
           {/* Mode picker */}
-          <h2 className="text-xl font-bold text-slate-900 mb-4">Choose a practice mode</h2>
+          <h2 className="text-xl font-bold text-[var(--text-primary)] mb-4">Choose a practice mode</h2>
           <div className="grid grid-cols-[repeat(auto-fit,minmax(200px,1fr))] gap-4 mb-10">
             {modes.map((m) => (
               <button
                 key={m.id}
-                className={`gs-db-mode-card rounded-[14px] p-6 text-left cursor-pointer transition-[transform,box-shadow] duration-150 shadow-sm border-[1.5px] ${
+                className={`gs-db-mode-card rounded-[14px] p-6 text-left cursor-pointer transition-[transform,box-shadow] duration-150 shadow-[var(--shadow-sm)] border-[1.5px] ${
                   m.id === 'mock'
-                    ? 'bg-blue-700 border-transparent'
+                    ? 'bg-blue-700 border-transparent dark:bg-blue-800'
                     : m.id === 'relax'
-                    ? 'bg-green-50 border-green-200'
-                    : 'bg-white border-slate-200'
+                    ? 'bg-green-50 border-green-200 dark:bg-green-900/20 dark:border-green-800'
+                    : 'bg-[var(--bg-card)] border-[var(--border-color)]'
                 }`}
                 onClick={() => navigate(`/writing/${m.id}`)}
                 onMouseEnter={(e) => {
                   (e.currentTarget as HTMLButtonElement).style.transform = 'translateY(-2px)';
-                  (e.currentTarget as HTMLButtonElement).style.boxShadow = '0 6px 20px rgba(0,0,0,0.1)';
+                  (e.currentTarget as HTMLButtonElement).style.boxShadow = '0 6px 20px rgba(0,0,0,0.15)';
                 }}
                 onMouseLeave={(e) => {
                   (e.currentTarget as HTMLButtonElement).style.transform = '';
@@ -111,10 +106,10 @@ export function DashboardPage() {
                 }}
               >
                 <div className="text-[1.75rem] mb-2">{m.emoji}</div>
-                <div className={`font-fraunces text-lg font-bold mb-1 ${m.id === 'mock' ? 'text-white' : 'text-slate-900'}`}>
+                <div className={`font-fraunces text-lg font-bold mb-1 ${m.id === 'mock' ? 'text-white' : 'text-[var(--text-primary)]'}`}>
                   {m.title}
                 </div>
-                <div className={`text-[0.8125rem] ${m.id === 'mock' ? 'text-white/75' : 'text-slate-500'}`}>
+                <div className={`text-[0.8125rem] ${m.id === 'mock' ? 'text-white/75' : 'text-[var(--text-secondary)]'}`}>
                   {m.desc}
                 </div>
               </button>
@@ -132,7 +127,7 @@ export function DashboardPage() {
                 </p>
               </div>
               <Link to="/pricing">
-                <Button className="bg-[#c9900a] shrink-0">
+                <Button className="bg-[#c9900a] shrink-0 hover:bg-[#b8820a]">
                   Upgrade to Pro
                 </Button>
               </Link>

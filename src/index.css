@@ -1,10 +1,8 @@
 @import url('https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,300;0,9..144,700;0,9..144,900;1,9..144,300&family=IBM+Plex+Mono:wght@400;500&family=Inter:wght@300;400;500;600;700&display=swap');
 @import "tailwindcss";
-@import "tw-animate-css";
-@import "shadcn/tailwind.css";
-@import "@fontsource-variable/geist";
 
-@custom-variant dark (&:is(.dark *));
+/* Tailwind v4: class-based dark mode */
+@custom-variant dark (&:where(.dark, .dark *));
 
 @theme {
   --font-fraunces: 'Fraunces', serif;
@@ -12,21 +10,38 @@
   --font-sans: 'Inter', sans-serif;
 }
 
+/* ── Light theme ──────────────────────────────────────────────────────────── */
 :root {
+  color-scheme: light;
+
+  /* Brand */
   --ink-blue: #1C3A5E;
+  --ink-light: #2D527E;
   --paper: #F6F3EC;
   --slate: #1A2230;
   --coral: #E0654B;
   --gold: #D9A441;
   --mist: #D7E2EA;
-  --ink-light: #2D527E;
   --paper-dark: #EDE9E0;
   --border: oklch(0.922 0 0);
   --text-muted: #6B7280;
   --white: #FFFFFF;
+
+  /* Semantic surface tokens */
+  --bg-base: #F6F3EC;
+  --bg-card: #FFFFFF;
+  --bg-subtle: #F8FAFC;
+  --bg-input: #FFFFFF;
+  --text-primary: #0F172A;
+  --text-secondary: #475569;
+  --border-color: #E2E8F0;
+  --border-strong: #CBD5E1;
+
+  /* Shadows */
   --shadow-sm: 0 1px 3px rgba(28,58,94,0.08);
   --shadow-md: 0 4px 16px rgba(28,58,94,0.12);
   --shadow-lg: 0 8px 32px rgba(28,58,94,0.16);
+
   --radius: 0.625rem;
   --radius-lg: 14px;
   --background: oklch(1 0 0);
@@ -105,6 +120,37 @@
 }
 
 .dark {
+  color-scheme: dark;
+
+  /* Brand — adjusted for dark bg */
+  --ink-blue: #60A5FA;
+  --ink-light: #93C5FD;
+  --paper: #0F172A;
+  --slate: #E2E8F0;
+  --coral: #FB7185;
+  --gold: #FCD34D;
+  --mist: #1E3A5F;
+  --paper-dark: #1E293B;
+  --border: #334155;
+  --text-muted: #94A3B8;
+  --white: #1E293B;
+
+  /* Semantic surface tokens */
+  --bg-base: #0F172A;
+  --bg-card: #1E293B;
+  --bg-subtle: #1E293B;
+  --bg-input: #0F172A;
+  --text-primary: #F1F5F9;
+  --text-secondary: #94A3B8;
+  --border-color: #334155;
+  --border-strong: #475569;
+
+  /* Shadows */
+  --shadow-sm: 0 1px 3px rgba(0,0,0,0.3);
+  --shadow-md: 0 4px 16px rgba(0,0,0,0.4);
+  --shadow-lg: 0 8px 32px rgba(0,0,0,0.5);
+
+  /* shadcn oklch tokens */
   --background: oklch(0.145 0 0);
   --foreground: oklch(0.985 0 0);
   --card: oklch(0.205 0 0);
@@ -120,14 +166,8 @@
   --accent: oklch(0.269 0 0);
   --accent-foreground: oklch(0.985 0 0);
   --destructive: oklch(0.704 0.191 22.216);
-  --border: oklch(1 0 0 / 10%);
   --input: oklch(1 0 0 / 15%);
   --ring: oklch(0.556 0 0);
-  --chart-1: oklch(0.87 0 0);
-  --chart-2: oklch(0.556 0 0);
-  --chart-3: oklch(0.439 0 0);
-  --chart-4: oklch(0.371 0 0);
-  --chart-5: oklch(0.269 0 0);
   --sidebar: oklch(0.205 0 0);
   --sidebar-foreground: oklch(0.985 0 0);
   --sidebar-primary: oklch(0.488 0.243 264.376);
@@ -138,14 +178,20 @@
   --sidebar-ring: oklch(0.556 0 0);
 }
 
+/* ── Global base ──────────────────────────────────────────────────────────── */
 @layer base {
   * {
     @apply border-border outline-ring/50;
   }
-  body {
-    @apply bg-background text-foreground;
-  }
   html {
+    transition: background-color 0.2s ease, color 0.2s ease;
     @apply font-sans;
+  }
+  body {
+    background-color: var(--bg-base);
+    color: var(--text-primary);
+  }
+  html.dark {
+    background-color: #0F172A;
   }
 }

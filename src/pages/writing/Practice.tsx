@@ -267,7 +267,7 @@ function Practice() {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center min-h-screen bg-slate-50">
+      <div className="flex items-center justify-center min-h-screen bg-[var(--bg-base)]">
         <div className="flex flex-col items-center gap-4">
           <div className="w-8 h-8 border-2 border-blue-600 border-t-transparent rounded-full animate-spin" />
           <p className="text-sm text-slate-500 tracking-wide">
@@ -279,7 +279,7 @@ function Practice() {
   }
 
   return (
-    <div className="flex flex-col min-h-screen bg-white font-sans">
+    <div className="flex flex-col min-h-screen bg-[var(--bg-base)] font-sans">
       {/* ── Top bar ── */}
       <div className="sticky top-0 z-30 bg-slate-900 border-b border-slate-800">
         <div className="flex items-center justify-between gap-4 px-5 py-2.5">

@@ -70,34 +70,34 @@ export function AuthPage() {
   return (
     <div
       ref={rootRef}
-      className="min-h-screen bg-slate-50 flex items-center justify-center px-4 py-8"
+      className="min-h-screen bg-[var(--bg-base)] flex items-center justify-center px-4 py-8"
     >
       <div className="w-full max-w-[420px]">
         <Link
           to="/"
-          className="gs-auth-logo block text-center mb-8 font-[Fraunces,serif] font-bold text-2xl text-slate-900 no-underline"
+          className="gs-auth-logo block text-center mb-8 font-[Fraunces,serif] font-bold text-2xl text-[var(--text-primary)] no-underline"
         >
-          WriteReady <span className="text-[#c9900a]">IELTS</span>
+          WriteReady <span className="text-[#c9900a] dark:text-amber-400">IELTS</span>
         </Link>
 
         <div className="gs-auth-card">
           <Card padding="lg">
-            <h2 className="font-[Fraunces,serif] text-2xl mb-1 text-center text-slate-900">
+            <h2 className="font-[Fraunces,serif] text-2xl mb-1 text-center text-[var(--text-primary)]">
               {mode === 'login' ? 'Welcome back' : 'Create account'}
             </h2>
-            <p className="text-center text-slate-500 text-sm mb-6">
+            <p className="text-center text-[var(--text-secondary)] text-sm mb-6">
               {mode === 'login' ? 'Sign in to continue your IELTS prep' : 'Start practicing for free'}
             </p>
 
             {error && (
-              <div className="bg-red-50 border border-red-200 text-red-600 px-4 py-3 rounded-[10px] text-sm mb-4">
+              <div className="bg-red-50 border border-red-200 text-red-600 px-4 py-3 rounded-[10px] text-sm mb-4 dark:bg-red-900/20 dark:border-red-800 dark:text-red-400">
                 {error}
               </div>
             )}
 
             <form onSubmit={handleSubmit} className="flex flex-col gap-4">
               <div>
-                <label className="text-sm font-semibold text-gray-700 block mb-[0.375rem]">
+                <label className="text-sm font-semibold text-[var(--text-primary)] block mb-[0.375rem]">
                   Email
                 </label>
                 <input
@@ -106,11 +106,11 @@ export function AuthPage() {
                   onChange={(e) => setEmail(e.target.value)}
                   required
                   placeholder="you@example.com"
-                  className="w-full px-[0.875rem] py-[0.625rem] border-[1.5px] border-slate-200 rounded-[10px] text-[0.9375rem] text-slate-900 bg-white outline-none transition-[border-color] duration-150 box-border"
+                  className="w-full px-[0.875rem] py-[0.625rem] border-[1.5px] border-[var(--border-color)] rounded-[10px] text-[0.9375rem] text-[var(--text-primary)] bg-[var(--bg-input)] outline-none transition-[border-color] duration-150 box-border placeholder:text-[var(--text-secondary)] focus:border-blue-500"
                 />
               </div>
               <div>
-                <label className="text-sm font-semibold text-gray-700 block mb-[0.375rem]">
+                <label className="text-sm font-semibold text-[var(--text-primary)] block mb-[0.375rem]">
                   Password
                 </label>
                 <input
@@ -120,7 +120,7 @@ export function AuthPage() {
                   required
                   placeholder={mode === 'signup' ? 'At least 6 characters' : '••••••••'}
                   minLength={6}
-                  className="w-full px-[0.875rem] py-[0.625rem] border-[1.5px] border-slate-200 rounded-[10px] text-[0.9375rem] text-slate-900 bg-white outline-none transition-[border-color] duration-150 box-border"
+                  className="w-full px-[0.875rem] py-[0.625rem] border-[1.5px] border-[var(--border-color)] rounded-[10px] text-[0.9375rem] text-[var(--text-primary)] bg-[var(--bg-input)] outline-none transition-[border-color] duration-150 box-border placeholder:text-[var(--text-secondary)] focus:border-blue-500"
                 />
               </div>
               <Button type="submit" loading={loading} size="lg" className="w-full mt-1 bg-blue-700">
@@ -129,25 +129,25 @@ export function AuthPage() {
             </form>
 
             <div className="flex items-center gap-3 my-5">
-              <div className="flex-1 h-px bg-slate-200" />
-              <span className="text-[0.75rem] text-slate-400">or</span>
-              <div className="flex-1 h-px bg-slate-200" />
+              <div className="flex-1 h-px bg-[var(--border-color)]" />
+              <span className="text-[0.75rem] text-[var(--text-secondary)]">or</span>
+              <div className="flex-1 h-px bg-[var(--border-color)]" />
             </div>
 
             <button
               onClick={handleGoogle}
               disabled={loading}
-              className="w-full px-5 py-[0.625rem] border-[1.5px] border-slate-200 rounded-[10px] bg-white text-sm font-medium text-gray-700 flex items-center justify-center gap-2 cursor-pointer"
+              className="w-full px-5 py-[0.625rem] border-[1.5px] border-[var(--border-color)] rounded-[10px] bg-[var(--bg-card)] text-sm font-medium text-[var(--text-primary)] flex items-center justify-center gap-2 cursor-pointer hover:bg-[var(--bg-subtle)] transition-colors"
             >
               <GoogleIcon />
               Continue with Google
             </button>
 
-            <p className="text-center mt-5 text-sm text-slate-500">
+            <p className="text-center mt-5 text-sm text-[var(--text-secondary)]">
               {mode === 'login' ? "Don't have an account? " : 'Already have an account? '}
               <button
                 onClick={() => setMode(mode === 'login' ? 'signup' : 'login')}
-                className="bg-transparent text-blue-700 font-semibold text-sm border-0 cursor-pointer"
+                className="bg-transparent text-blue-600 dark:text-blue-400 font-semibold text-sm border-0 cursor-pointer"
               >
                 {mode === 'login' ? 'Sign up free' : 'Sign in'}
               </button>

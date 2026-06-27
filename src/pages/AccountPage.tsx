@@ -65,32 +65,28 @@ export function AccountPage() {
 
   return (
     <Layout>
-      <div ref={rootRef} className="py-12 min-h-[calc(100vh-120px)] bg-slate-50">
-        <div className="container mx-auto max-w-[560px]">
+      <div ref={rootRef} className="py-12 min-h-[calc(100vh-120px)] bg-[var(--bg-base)]">
+        <div className="container mx-auto max-w-[560px] px-6">
 
           {/* Profile card */}
-          <div className="gs-profile-card bg-white rounded-2xl p-6 border border-slate-200 shadow-sm flex items-center gap-[1.125rem] mb-4">
+          <div className="gs-profile-card bg-[var(--bg-card)] rounded-2xl p-6 border border-[var(--border-color)] shadow-[var(--shadow-sm)] flex items-center gap-[1.125rem] mb-4">
             {user.photoURL ? (
-              <img
-                src={user.photoURL}
-                alt={displayName}
-                className="w-14 h-14 rounded-full object-cover shrink-0"
-              />
+              <img src={user.photoURL} alt={displayName} className="w-14 h-14 rounded-full object-cover shrink-0" />
             ) : (
               <div className="w-14 h-14 rounded-full bg-blue-700 text-white flex items-center justify-center font-fraunces text-xl font-bold shrink-0">
                 {initials}
               </div>
             )}
             <div className="flex-1 min-w-0">
-              <div className="font-bold text-base text-slate-900 mb-0.5">
+              <div className="font-bold text-base text-[var(--text-primary)] mb-0.5">
                 {user.displayName || displayName}
               </div>
-              <div className="text-sm text-slate-500 overflow-hidden text-ellipsis whitespace-nowrap">
+              <div className="text-sm text-[var(--text-secondary)] overflow-hidden text-ellipsis whitespace-nowrap">
                 {user.email}
               </div>
             </div>
             {isPro && (
-              <span className="text-[0.7rem] font-bold text-[#c9900a] border border-[#c9900a] px-2.5 py-1 rounded-full uppercase tracking-[0.05em] shrink-0">
+              <span className="text-[0.7rem] font-bold text-[#c9900a] border border-[#c9900a] px-2.5 py-1 rounded-full uppercase tracking-[0.05em] shrink-0 dark:text-amber-400 dark:border-amber-500">
                 {isForever ? 'Lifetime' : 'Pro'}
               </span>
             )}
@@ -102,7 +98,6 @@ export function AccountPage() {
               <div className="inline-flex items-center gap-1.5 bg-[rgba(201,144,10,0.2)] border border-[rgba(201,144,10,0.5)] text-yellow-400 text-[0.7rem] font-bold tracking-[0.1em] uppercase px-3 py-1.5 rounded-full mb-4">
                 <span>⚡</span> {isForever ? 'LIFETIME' : 'PRO'}
               </div>
-
               <div className="font-fraunces text-2xl font-extrabold mb-1">
                 {isForever ? 'Lifetime Access' : 'Pro Plan'}
               </div>
@@ -113,14 +108,10 @@ export function AccountPage() {
                     ? `Active until ${new Date(profile.subscription).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}`
                     : 'Active subscription'}
               </div>
-
-              {/* Usage bar */}
               <div className="mb-7">
                 <div className="flex items-center justify-between mb-2">
                   <span className="text-[0.8125rem] text-white/55">AI analyses used this month</span>
-                  <span className="text-[0.8125rem] font-semibold text-white/80 font-mono">
-                    {usedCount}/{usageLimit}
-                  </span>
+                  <span className="text-[0.8125rem] font-semibold text-white/80 font-mono">{usedCount}/{usageLimit}</span>
                 </div>
                 <div className="h-1.5 bg-white/10 rounded-full overflow-hidden">
                   <div
@@ -129,8 +120,6 @@ export function AccountPage() {
                   />
                 </div>
               </div>
-
-              {/* Features */}
               <div className="flex flex-col gap-2.5">
                 {PRO_FEATURES.map((f) => (
                   <div key={f} className="flex items-center gap-2.5">
@@ -143,27 +132,25 @@ export function AccountPage() {
               </div>
             </div>
           ) : (
-            <div className="gs-plan-card bg-white rounded-2xl p-8 border border-slate-200 mb-4">
-              <div className="font-fraunces text-xl text-slate-900 mb-1.5">Free Plan</div>
-              <p className="text-sm text-slate-500 mb-6 leading-relaxed">
+            <div className="gs-plan-card bg-[var(--bg-card)] rounded-2xl p-8 border border-[var(--border-color)] mb-4">
+              <div className="font-fraunces text-xl text-[var(--text-primary)] mb-1.5">Free Plan</div>
+              <p className="text-sm text-[var(--text-secondary)] mb-6 leading-relaxed">
                 You're on the free plan. Upgrade to Pro to unlock AI feedback, band score estimates, and vocabulary upgrades.
               </p>
               <Link to="/pricing">
-                <Button className="bg-blue-700">
-                  Upgrade to Pro
-                </Button>
+                <Button className="bg-blue-700">Upgrade to Pro</Button>
               </Link>
             </div>
           )}
 
           {/* Actions */}
-          <div className="gs-account-actions bg-white rounded-2xl px-6 py-4 border border-slate-200 flex items-center justify-between">
-            <Link to="/writing" className="text-sm text-blue-700 font-medium">
+          <div className="gs-account-actions bg-[var(--bg-card)] rounded-2xl px-6 py-4 border border-[var(--border-color)] flex items-center justify-between">
+            <Link to="/writing" className="text-sm text-blue-600 dark:text-blue-400 font-medium">
               Go to Writing →
             </Link>
             <button
               onClick={handleLogout}
-              className="bg-transparent text-slate-400 text-sm py-1 border-none cursor-pointer"
+              className="bg-transparent text-[var(--text-secondary)] text-sm py-1 border-none cursor-pointer hover:text-red-500 transition-colors"
             >
               Sign out
             </button>

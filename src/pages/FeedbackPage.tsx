@@ -586,7 +586,7 @@ export function FeedbackPage() {
           )}
 
           {/* ── Question card ── */}
-          <div className="bg-white rounded-xl px-6 py-5 border border-[var(--border)] border-l-4 border-l-[var(--ink-blue)] mb-6">
+          <div className="bg-[var(--bg-card)] rounded-xl px-6 py-5 border border-[var(--border)] border-l-4 border-l-[var(--ink-blue)] mb-6">
             <p className="text-xs font-bold tracking-widest uppercase text-[var(--text-muted)] mb-2">
               {selectedTask === 'task1' ? 'Task 1' : 'Task 2'} Question
             </p>
@@ -614,7 +614,7 @@ export function FeedbackPage() {
 
           {/* ── Loading ── */}
           {loading && (
-            <div className="bg-white rounded-xl border border-[var(--border)] p-12 text-center">
+            <div className="bg-[var(--bg-card)] rounded-xl border border-[var(--border)] p-12 text-center">
               <div className="text-5xl mb-4">🤖</div>
               <p className="font-semibold text-[var(--ink-blue)] mb-1">Analysing your essay…</p>
               <p className="text-sm text-[var(--text-muted)]">This usually takes 1-2 minutes.</p>
@@ -691,7 +691,7 @@ export function FeedbackPage() {
               )}
 
               {/* Tab bar */}
-              <div className="flex gap-1 mb-6 bg-white border border-[var(--border)] rounded-xl p-1.5 overflow-x-auto">
+              <div className="flex gap-1 mb-6 bg-[var(--bg-card)] border border-[var(--border-color)] rounded-xl p-1.5 overflow-x-auto">
                 {TABS.map((tab) => (
                   <button
                     key={tab.id}
@@ -718,7 +718,7 @@ export function FeedbackPage() {
                       ['Lexical Resource', feedback.scores.lexicalResource],
                       ['Grammatical Range', feedback.scores.grammaticalRangeAccuracy],
                     ] as [string, number][]).map(([name, score]) => (
-                      <div key={name} className="bg-white rounded-xl p-5 border border-[var(--border)] text-center">
+                      <div key={name} className="bg-[var(--bg-card)] rounded-xl p-5 border border-[var(--border)] text-center">
                         <p className="text-[0.7rem] font-bold text-[var(--text-muted)] uppercase tracking-wider mb-2 leading-snug">
                           {name}
                         </p>
@@ -735,7 +735,7 @@ export function FeedbackPage() {
                     ))}
                   </div>
 
-                  <div className="bg-white rounded-xl p-6 border border-[var(--border)] border-l-4 border-l-[var(--gold)]">
+                  <div className="bg-[var(--bg-card)] rounded-xl p-6 border border-[var(--border)] border-l-4 border-l-[var(--gold)]">
                     <p className="font-bold text-[var(--ink-blue)] mb-3">📈 Band Gap Analysis</p>
                     <p className="font-['Georgia'] leading-relaxed text-gray-800 text-[0.9375rem] m-0">
                       {feedback.bandGapAnalysis}
@@ -754,7 +754,7 @@ export function FeedbackPage() {
                     return (
                       <div
                         key={i}
-                        className="bg-white rounded-xl px-6 py-5 border border-[var(--border)] flex gap-5 items-start"
+                        className="bg-[var(--bg-card)] rounded-xl px-6 py-5 border border-[var(--border)] flex gap-5 items-start"
                         style={{ borderLeft: `4px solid ${accent}` }}
                       >
                         <div
@@ -780,7 +780,7 @@ export function FeedbackPage() {
                 <div className="flex flex-col gap-3">
                   {(Object.entries(feedback.feedback) as [string, { strengths: string[]; issues: string[] }][]).map(
                     ([key, cat]) => (
-                      <div key={key} className="bg-white rounded-xl border border-[var(--border)] overflow-hidden">
+                      <div key={key} className="bg-[var(--bg-card)] rounded-xl border border-[var(--border)] overflow-hidden">
                         <button
                           onClick={() => setExpandedCat(expandedCat === key ? null : key)}
                           className="w-full px-5 py-4 bg-transparent border-none flex items-center justify-between cursor-pointer"
@@ -876,7 +876,7 @@ export function FeedbackPage() {
               {activeTab === 'grammar' && (
                 <div className="flex flex-col gap-3">
                   {feedback.grammar.map((g, i) => (
-                    <div key={i} className="bg-white rounded-xl px-6 py-5 border border-[var(--border)]">
+                    <div key={i} className="bg-[var(--bg-card)] rounded-xl px-6 py-5 border border-[var(--border)]">
                       <div className="flex gap-4 items-start">
                         <div className="w-8 h-8 rounded-lg flex items-center justify-center bg-[var(--ink-blue)]/10 text-[var(--ink-blue)] font-mono font-bold text-sm shrink-0">
                           {i + 1}
@@ -969,7 +969,7 @@ export function FeedbackPage() {
 
               {/* ── SAMPLE RESPONSE ── */}
               {activeTab === 'sample' && (
-                <div className="bg-white rounded-xl border border-[var(--border)] border-l-4 border-l-[var(--gold)] px-6 py-6">
+                <div className="bg-[var(--bg-card)] rounded-xl border border-[var(--border)] border-l-4 border-l-[var(--gold)] px-6 py-6">
                   <p className="text-xs font-bold tracking-widest uppercase text-[var(--gold)] mb-4">
                     ✍️ Band 7–8 Sample Response
                   </p>
@@ -985,7 +985,7 @@ export function FeedbackPage() {
                 return (
                 <div>
                   {!ltChecked ? (
-                    <div className="bg-white rounded-xl border border-[var(--border)] overflow-hidden">
+                    <div className="bg-[var(--bg-card)] rounded-xl border border-[var(--border)] overflow-hidden">
                       <div className="flex items-center justify-between px-5 py-3 border-b border-[var(--border)] bg-slate-50">
                         <div className="flex gap-1">
                           {(['en-GB', 'en-US'] as const).map((lang) => (
@@ -1012,7 +1012,7 @@ export function FeedbackPage() {
                       {ltError && <p className="px-5 pb-3 text-sm text-red-600">{ltError}</p>}
                     </div>
                   ) : (
-                    <div className="bg-white rounded-xl border border-[var(--border)] overflow-hidden">
+                    <div className="bg-[var(--bg-card)] rounded-xl border border-[var(--border)] overflow-hidden">
                       <div className="flex items-center justify-between px-5 py-3 border-b border-[var(--border)] bg-slate-50">
                         <span className={`text-sm font-semibold ${ltMatches.length === 0 ? 'text-green-700' : 'text-red-600'}`}>
                           {ltMatches.length === 0 ? '✓ No issues found' : `${ltMatches.length} issue${ltMatches.length !== 1 ? 's' : ''} found`}
@@ -1074,7 +1074,7 @@ export function FeedbackPage() {
                     <div className="mt-4 flex flex-col gap-2">
                       <p className="text-xs font-bold uppercase tracking-widest text-[var(--text-muted)] mb-1">All Issues</p>
                       {ltMatches.map((m, i) => (
-                        <div key={i} className="bg-white rounded-xl px-4 py-3 border border-[var(--border)] flex items-center gap-3">
+                        <div key={i} className="bg-[var(--bg-card)] rounded-xl px-4 py-3 border border-[var(--border)] flex items-center gap-3">
                           <span className="w-2 h-2 rounded-full shrink-0" style={{ background: ltColor(m.rule.issueType) }} />
                           <div className="flex-1 min-w-0">
                             <span className="font-semibold text-sm text-gray-900 block">"{ltCorrected.slice(m.offset, m.offset + m.length)}"</span>
@@ -1104,7 +1104,7 @@ export function FeedbackPage() {
                     {feedback.vocabulary.map((v, i) => {
                       const key = `vocab_${i}`;
                       return (
-                        <div key={key} className="bg-white rounded-xl px-5 py-4 border border-[var(--border)]">
+                        <div key={key} className="bg-[var(--bg-card)] rounded-xl px-5 py-4 border border-[var(--border)]">
                           <div className="flex items-center gap-3 mb-3">
                             <span className="bg-[var(--ink-blue)]/10 text-[var(--ink-blue)] text-xs font-bold px-2 py-0.5 rounded-full uppercase tracking-wide">Vocab</span>
                             <span className="font-['Georgia'] font-bold text-[var(--ink-blue)] text-base">{v.word}</span>
@@ -1146,7 +1146,7 @@ export function FeedbackPage() {
                     {feedback.grammar.map((g, i) => {
                       const key = `grammar_${i}`;
                       return (
-                        <div key={key} className="bg-white rounded-xl px-5 py-4 border border-[var(--border)]">
+                        <div key={key} className="bg-[var(--bg-card)] rounded-xl px-5 py-4 border border-[var(--border)]">
                           <div className="flex items-center gap-3 mb-1">
                             <span className="bg-[var(--gold)]/20 text-amber-800 text-xs font-bold px-2 py-0.5 rounded-full uppercase tracking-wide">Grammar</span>
                             <span className="font-bold text-gray-800 text-sm">{g.point}</span>
