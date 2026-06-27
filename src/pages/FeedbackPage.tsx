@@ -277,8 +277,20 @@ export function FeedbackPage() {
         body: JSON.stringify({ userSentence: text, targetItem, targetType, example }),
       });
       const data = await res.json() as { score: number; correct: boolean; feedback: string; improved: string };
-      setPracticeChecked((p) => ({ ...p, [key]: data }));
-    } catch { /* silent */ } finally {
+      setPracticeChecked((p) => ({ ...p, [key]: {
+        score: Number(data.score) || 0,
+        correct: Boolean(data.correct),
+        feedback: data.feedback ?? '',
+        improved: data.improved ?? '',
+      }}));
+    } catch (err) {
+      setPracticeChecked((p) => ({ ...p, [key]: {
+        score: 0,
+        correct: false,
+        feedback: `Tekshirib bo'lmadi: ${(err as Error).message}`,
+        improved: '',
+      }}));
+    } finally {
       setPracticeChecking((p) => ({ ...p, [key]: false }));
     }
   };

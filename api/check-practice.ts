@@ -75,19 +75,41 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       }),
     });
 
-    if (!geminiRes.ok) throw new Error(`Gemini API returned ${geminiRes.status}`);
+    if (!geminiRes.ok) {
+      const body = await geminiRes.text();
+      throw new Error(`Gemini API returned ${geminiRes.status}: ${body.slice(0, 200)}`);
+    }
 
     const data = await geminiRes.json() as {
       candidates?: { content: { parts: { text: string }[] } }[];
     };
     const raw = data?.candidates?.[0]?.content?.parts?.[0]?.text ?? '';
-    const cleaned = raw.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
-    const parsed = JSON.parse(cleaned) as { score: number; correct: boolean; feedback: string; improved: string };
 
-    return res.status(200).json(parsed);
+    // Extract JSON — handle markdown code fences and leading/trailing text
+    const jsonMatch = raw.match(/\{[\s\S]*\}/);
+    if (!jsonMatch) throw new Error(`No JSON found in Gemini response: ${raw.slice(0, 200)}`);
+
+    const parsed = JSON.parse(jsonMatch[0]) as {
+      score: number | string;
+      correct: boolean | string;
+      feedback: string;
+      improved: string;
+    };
+
+    return res.status(200).json({
+      score: Number(parsed.score) || 0,
+      correct: parsed.correct === true || parsed.correct === 'true',
+      feedback: parsed.feedback ?? '',
+      improved: parsed.improved ?? '',
+    });
   } catch (err) {
     console.error('check-practice error:', err);
-    return res.status(500).json({ error: 'Evaluation failed. Please try again.' });
+    return res.status(500).json({
+      score: 0,
+      correct: false,
+      feedback: `Evaluation failed: ${(err as Error).message}`,
+      improved: '',
+    });
   }
 }
 
