@@ -65,104 +65,48 @@ export function AccountPage() {
 
   return (
     <Layout>
-      <div ref={rootRef} style={{ padding: '3rem 0', minHeight: 'calc(100vh - 120px)', background: '#f8fafc' }}>
-        <div className="container mx-auto" style={{ maxWidth: 560 }}>
+      <div ref={rootRef} className="py-12 min-h-[calc(100vh-120px)] bg-slate-50">
+        <div className="container mx-auto max-w-[560px]">
 
-          {/* ── Profile card ── */}
-          <div
-            className="gs-profile-card"
-            style={{
-              background: 'white',
-              borderRadius: 16,
-              padding: '1.5rem',
-              border: '1px solid #e2e8f0',
-              boxShadow: '0 1px 3px rgba(0,0,0,0.06)',
-              display: 'flex',
-              alignItems: 'center',
-              gap: '1.125rem',
-              marginBottom: '1rem',
-            }}
-          >
+          {/* Profile card */}
+          <div className="gs-profile-card bg-white rounded-2xl p-6 border border-slate-200 shadow-sm flex items-center gap-[1.125rem] mb-4">
             {user.photoURL ? (
               <img
                 src={user.photoURL}
                 alt={displayName}
-                style={{ width: 56, height: 56, borderRadius: '50%', objectFit: 'cover', flexShrink: 0 }}
+                className="w-14 h-14 rounded-full object-cover shrink-0"
               />
             ) : (
-              <div
-                style={{
-                  width: 56, height: 56, borderRadius: '50%',
-                  background: '#1d4ed8',
-                  color: 'white',
-                  display: 'flex', alignItems: 'center', justifyContent: 'center',
-                  fontFamily: 'Fraunces, serif',
-                  fontSize: '1.25rem',
-                  fontWeight: 700,
-                  flexShrink: 0,
-                }}
-              >
+              <div className="w-14 h-14 rounded-full bg-blue-700 text-white flex items-center justify-center font-fraunces text-xl font-bold shrink-0">
                 {initials}
               </div>
             )}
-            <div style={{ flex: 1, minWidth: 0 }}>
-              <div style={{ fontWeight: 700, fontSize: '1rem', color: '#0f172a', marginBottom: 2 }}>
+            <div className="flex-1 min-w-0">
+              <div className="font-bold text-base text-slate-900 mb-0.5">
                 {user.displayName || displayName}
               </div>
-              <div style={{ fontSize: '0.875rem', color: '#64748b', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+              <div className="text-sm text-slate-500 overflow-hidden text-ellipsis whitespace-nowrap">
                 {user.email}
               </div>
             </div>
             {isPro && (
-              <span
-                style={{
-                  fontSize: '0.7rem',
-                  fontWeight: 700,
-                  color: '#c9900a',
-                  border: '1px solid #c9900a',
-                  padding: '0.25rem 0.625rem',
-                  borderRadius: 20,
-                  textTransform: 'uppercase',
-                  letterSpacing: '0.05em',
-                  flexShrink: 0,
-                }}
-              >
+              <span className="text-[0.7rem] font-bold text-[#c9900a] border border-[#c9900a] px-2.5 py-1 rounded-full uppercase tracking-[0.05em] shrink-0">
                 {isForever ? 'Lifetime' : 'Pro'}
               </span>
             )}
           </div>
 
-          {/* ── Plan card ── */}
+          {/* Plan card */}
           {isPro ? (
-            <div
-              className="gs-plan-card"
-              style={{
-                background: 'linear-gradient(135deg, #0f172a 0%, #1e3a5f 100%)',
-                borderRadius: 16,
-                padding: '2rem',
-                marginBottom: '1rem',
-                color: 'white',
-              }}
-            >
-              {/* Badge */}
-              <div
-                style={{
-                  display: 'inline-flex', alignItems: 'center', gap: '0.375rem',
-                  background: 'rgba(201,144,10,0.2)',
-                  border: '1px solid rgba(201,144,10,0.5)',
-                  color: '#fbbf24',
-                  fontSize: '0.7rem', fontWeight: 700, letterSpacing: '0.1em',
-                  textTransform: 'uppercase',
-                  padding: '0.3rem 0.75rem', borderRadius: 20, marginBottom: '1rem',
-                }}
-              >
+            <div className="gs-plan-card bg-gradient-to-br from-slate-900 to-[#1e3a5f] rounded-2xl p-8 mb-4 text-white">
+              <div className="inline-flex items-center gap-1.5 bg-[rgba(201,144,10,0.2)] border border-[rgba(201,144,10,0.5)] text-yellow-400 text-[0.7rem] font-bold tracking-[0.1em] uppercase px-3 py-1.5 rounded-full mb-4">
                 <span>⚡</span> {isForever ? 'LIFETIME' : 'PRO'}
               </div>
 
-              <div style={{ fontFamily: 'Fraunces, serif', fontSize: '1.5rem', fontWeight: 800, marginBottom: '0.25rem' }}>
+              <div className="font-fraunces text-2xl font-extrabold mb-1">
                 {isForever ? 'Lifetime Access' : 'Pro Plan'}
               </div>
-              <div style={{ fontSize: '0.875rem', color: 'rgba(255,255,255,0.5)', marginBottom: '1.75rem' }}>
+              <div className="text-sm text-white/50 mb-7">
                 {isForever
                   ? 'Never expires — full access forever'
                   : profile.subscription
@@ -171,98 +115,55 @@ export function AccountPage() {
               </div>
 
               {/* Usage bar */}
-              <div style={{ marginBottom: '1.75rem' }}>
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.5rem' }}>
-                  <span style={{ fontSize: '0.8125rem', color: 'rgba(255,255,255,0.55)' }}>AI analyses used this month</span>
-                  <span style={{ fontSize: '0.8125rem', fontWeight: 600, color: 'rgba(255,255,255,0.8)', fontFamily: 'IBM Plex Mono, monospace' }}>
+              <div className="mb-7">
+                <div className="flex items-center justify-between mb-2">
+                  <span className="text-[0.8125rem] text-white/55">AI analyses used this month</span>
+                  <span className="text-[0.8125rem] font-semibold text-white/80 font-mono">
                     {usedCount}/{usageLimit}
                   </span>
                 </div>
-                <div style={{ height: 6, background: 'rgba(255,255,255,0.1)', borderRadius: 4, overflow: 'hidden' }}>
+                <div className="h-1.5 bg-white/10 rounded-full overflow-hidden">
                   <div
-                    style={{
-                      height: '100%',
-                      width: `${usagePct}%`,
-                      background: usagePct >= 85 ? '#f87171' : '#60a5fa',
-                      borderRadius: 4,
-                      transition: 'width 0.4s ease',
-                    }}
+                    className={`h-full rounded-full transition-[width] duration-[400ms] ${usagePct >= 85 ? 'bg-red-400' : 'bg-blue-400'}`}
+                    style={{ width: `${usagePct}%` }}
                   />
                 </div>
               </div>
 
               {/* Features */}
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.625rem' }}>
+              <div className="flex flex-col gap-2.5">
                 {PRO_FEATURES.map((f) => (
-                  <div key={f} style={{ display: 'flex', alignItems: 'center', gap: '0.625rem' }}>
-                    <div
-                      style={{
-                        width: 18, height: 18, borderRadius: '50%',
-                        background: 'rgba(96,165,250,0.2)',
-                        border: '1px solid rgba(96,165,250,0.4)',
-                        display: 'flex', alignItems: 'center', justifyContent: 'center',
-                        flexShrink: 0,
-                      }}
-                    >
-                      <span style={{ color: '#93c5fd', fontSize: '0.6rem', fontWeight: 700 }}>✓</span>
+                  <div key={f} className="flex items-center gap-2.5">
+                    <div className="w-[18px] h-[18px] rounded-full bg-blue-400/20 border border-blue-400/40 flex items-center justify-center shrink-0">
+                      <span className="text-blue-300 text-[0.6rem] font-bold">✓</span>
                     </div>
-                    <span style={{ fontSize: '0.875rem', color: 'rgba(255,255,255,0.8)' }}>{f}</span>
+                    <span className="text-sm text-white/80">{f}</span>
                   </div>
                 ))}
               </div>
             </div>
           ) : (
-            /* Free plan card */
-            <div
-              className="gs-plan-card"
-              style={{
-                background: 'white',
-                borderRadius: 16,
-                padding: '2rem',
-                border: '1px solid #e2e8f0',
-                marginBottom: '1rem',
-              }}
-            >
-              <div style={{ fontFamily: 'Fraunces, serif', fontSize: '1.25rem', color: '#0f172a', marginBottom: '0.375rem' }}>
-                Free Plan
-              </div>
-              <p style={{ fontSize: '0.875rem', color: '#64748b', marginBottom: '1.5rem', lineHeight: 1.6 }}>
+            <div className="gs-plan-card bg-white rounded-2xl p-8 border border-slate-200 mb-4">
+              <div className="font-fraunces text-xl text-slate-900 mb-1.5">Free Plan</div>
+              <p className="text-sm text-slate-500 mb-6 leading-relaxed">
                 You're on the free plan. Upgrade to Pro to unlock AI feedback, band score estimates, and vocabulary upgrades.
               </p>
               <Link to="/pricing">
-                <Button style={{ background: '#1d4ed8' } as React.CSSProperties}>
+                <Button className="bg-blue-700">
                   Upgrade to Pro
                 </Button>
               </Link>
             </div>
           )}
 
-          {/* ── Actions ── */}
-          <div
-            className="gs-account-actions"
-            style={{
-              background: 'white',
-              borderRadius: 16,
-              padding: '1rem 1.5rem',
-              border: '1px solid #e2e8f0',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'space-between',
-            }}
-          >
-            <Link to="/writing" style={{ fontSize: '0.875rem', color: '#1d4ed8', fontWeight: 500 }}>
+          {/* Actions */}
+          <div className="gs-account-actions bg-white rounded-2xl px-6 py-4 border border-slate-200 flex items-center justify-between">
+            <Link to="/writing" className="text-sm text-blue-700 font-medium">
               Go to Writing →
             </Link>
             <button
               onClick={handleLogout}
-              style={{
-                background: 'transparent',
-                color: '#94a3b8',
-                fontSize: '0.875rem',
-                padding: '0.25rem 0',
-                border: 'none',
-                cursor: 'pointer',
-              }}
+              className="bg-transparent text-slate-400 text-sm py-1 border-none cursor-pointer"
             >
               Sign out
             </button>
