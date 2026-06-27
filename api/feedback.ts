@@ -148,7 +148,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 }
 
 function buildPrompt(essay: string, question: string, taskType: string, wordCount: number): string {
-  return `Act as an official IELTS Writing Examiner. Evaluate the following essay based on the four official IELTS grading criteria: Task Achievement/Response, Coherence & Cohesion, Lexical Resource, and Grammatical Range & Accuracy. Without any fancy words etc that make the writing longer without any meaning. you may effective collocations that are related to the topic.
+  return `You are a professional IELTS examiner with 10+ years of experience. Analyze this student essay using official IELTS band descriptors. Return ONLY valid JSON — no markdown, no backticks, no extra text.
 
 TASK TYPE: ${taskType}
 QUESTION: ${question}
