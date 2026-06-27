@@ -175,8 +175,14 @@ export function FeedbackPage() {
     const cached = sessionStorage.getItem(cacheKey);
     if (cached) {
       try {
-        setFeedback(JSON.parse(cached) as EnhancedFeedbackResult);
-        return;
+        const parsed = JSON.parse(cached) as EnhancedFeedbackResult;
+        // Invalidate cache if it's missing the improved field (old format)
+        const hasImproved = parsed.sentenceAnalysis?.some(s => 'improved' in s);
+        if (hasImproved || !parsed.sentenceAnalysis?.length) {
+          setFeedback(parsed);
+          return;
+        }
+        sessionStorage.removeItem(cacheKey);
       } catch { /* ignore */ }
     }
 
@@ -276,7 +282,16 @@ export function FeedbackPage() {
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${idToken}` },
         body: JSON.stringify({ userSentence: text, targetItem, targetType, example }),
       });
-      const data = await res.json() as { score: number; correct: boolean; feedback: string; improved: string };
+      const data = await res.json() as { score?: number; correct?: boolean; feedback?: string; improved?: string; error?: string };
+      if (!res.ok || data.error) {
+        setPracticeChecked((p) => ({ ...p, [key]: {
+          score: 0,
+          correct: false,
+          feedback: data.error ?? 'Tekshirib bo\'lmadi. Qayta urinib ko\'ring.',
+          improved: '',
+        }}));
+        return;
+      }
       setPracticeChecked((p) => ({ ...p, [key]: {
         score: Number(data.score) || 0,
         correct: Boolean(data.correct),
@@ -287,7 +302,7 @@ export function FeedbackPage() {
       setPracticeChecked((p) => ({ ...p, [key]: {
         score: 0,
         correct: false,
-        feedback: `Tekshirib bo'lmadi: ${(err as Error).message}`,
+        feedback: `Tarmoq xatosi: ${(err as Error).message}`,
         improved: '',
       }}));
     } finally {
