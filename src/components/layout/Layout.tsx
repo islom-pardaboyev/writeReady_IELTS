@@ -12,14 +12,7 @@ export function Layout({ children, noHeader }: LayoutProps) {
       {!noHeader && <Header />}
       <main>{children}</main>
       <footer
-        style={{
-          background: 'var(--ink-blue)',
-          color: 'rgba(255,255,255,0.5)',
-          fontSize: '0.8125rem',
-          textAlign: 'center',
-          padding: '1.25rem',
-          marginTop: 'auto',
-        }}
+        className="bg-[var(--ink-blue)] text-[rgba(255,255,255,0.5)] text-[0.8125rem] text-center p-5 mt-auto"
       >
         © {new Date().getFullYear()} WriteReady IELTS · Built for IELTS learners
       </footer>

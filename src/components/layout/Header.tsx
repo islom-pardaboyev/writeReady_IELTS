@@ -7,80 +7,37 @@ export function Header() {
 
   return (
     <header
-      style={{
-        position: "sticky",
-        top: 0,
-        zIndex: 100,
-        background: "rgba(255,255,255,0.95)",
-        backdropFilter: "blur(8px)",
-        borderBottom: "1px solid #e2e8f0",
-      }}
+      className="sticky top-0 z-[100] bg-[rgba(255,255,255,0.95)] backdrop-blur-[8px] border-b border-[#e2e8f0]"
     >
       <div
-        style={{
-          maxWidth: 1160,
-          margin: "0 auto",
-          padding: "0 1.5rem",
-          height: 60,
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "space-between",
-        }}
+        className="max-w-[1160px] mx-auto px-6 h-[60px] flex items-center justify-between"
       >
         <Link
           to="/"
-          style={{
-            display: "flex",
-            alignItems: "center",
-            gap: "0.5rem",
-            textDecoration: "none",
-          }}
+          className="flex items-center gap-2 no-underline"
         >
           <img src={Logo} width={50} alt="" />
-          <span style={{ fontWeight: 700, fontSize: "1rem", color: "#0f172a" }}>
-            WriteReady <span style={{ color: "#c9900a" }}>IELTS</span>
+          <span className="font-bold text-base text-[#0f172a]">
+            WriteReady <span className="text-[#c9900a]">IELTS</span>
           </span>
         </Link>
-        <nav style={{ display: "flex", alignItems: "center", gap: "0.25rem" }}>
+        <nav className="flex items-center gap-1">
           <Link
             to="/writing/mock"
-            style={{
-              color: "#475569",
-              fontSize: "0.875rem",
-              fontWeight: 500,
-              padding: "0.375rem 0.875rem",
-              borderRadius: 6,
-              textDecoration: "none",
-            }}
+            className="text-[#475569] text-sm font-medium px-[0.875rem] py-[0.375rem] rounded-[6px] no-underline"
           >
             Writing
           </Link>
           <Link
             to="/pricing"
-            style={{
-              color: "#475569",
-              fontSize: "0.875rem",
-              fontWeight: 500,
-              padding: "0.375rem 0.875rem",
-              borderRadius: 6,
-              textDecoration: "none",
-            }}
+            className="text-[#475569] text-sm font-medium px-[0.875rem] py-[0.375rem] rounded-[6px] no-underline"
           >
             Pricing
           </Link>
           {user ? (
             <Link
               to="/account"
-              style={{
-                marginLeft: "0.5rem",
-                background: "#1e3a5f",
-                color: "white",
-                fontSize: "0.875rem",
-                fontWeight: 600,
-                padding: "0.5rem 1.25rem",
-                borderRadius: 8,
-                textDecoration: "none",
-              }}
+              className="ml-2 bg-[#1e3a5f] text-white text-sm font-semibold px-5 py-2 rounded-lg no-underline"
             >
               My Account
             </Link>
@@ -88,29 +45,13 @@ export function Header() {
             <>
               <Link
                 to="/auth?mode=login"
-                style={{
-                  color: "#475569",
-                  fontSize: "0.875rem",
-                  fontWeight: 500,
-                  padding: "0.375rem 0.875rem",
-                  borderRadius: 6,
-                  textDecoration: "none",
-                }}
+                className="text-[#475569] text-sm font-medium px-[0.875rem] py-[0.375rem] rounded-[6px] no-underline"
               >
                 Sign in
               </Link>
               <Link
                 to="/auth?mode=signup"
-                style={{
-                  marginLeft: "0.25rem",
-                  background: "#1e3a5f",
-                  color: "white",
-                  fontSize: "0.875rem",
-                  fontWeight: 600,
-                  padding: "0.5rem 1.25rem",
-                  borderRadius: 8,
-                  textDecoration: "none",
-                }}
+                className="ml-1 bg-[#1e3a5f] text-white text-sm font-semibold px-5 py-2 rounded-lg no-underline"
               >
                 Start Free
               </Link>

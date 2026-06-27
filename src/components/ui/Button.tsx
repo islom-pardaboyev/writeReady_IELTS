@@ -50,7 +50,7 @@ Button.displayName = 'Button';
 function Spinner() {
   return (
     <svg
-      style={{ animation: 'spin 0.8s linear infinite', width: 14, height: 14 }}
+      className="animate-spin w-3.5 h-3.5"
       viewBox="0 0 24 24"
       fill="none"
       stroke="currentColor"
