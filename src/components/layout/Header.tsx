@@ -64,7 +64,7 @@ export function Header() {
   };
 
   return (
-    <header className="sticky top-0 py-2 z-[100] bg-[var(--bg-card)]/95 backdrop-blur-[8px] border-b border-[var(--border-color)]">
+    <header className="sticky top-0 py-2 z-10 bg-[var(--bg-card)]/95 backdrop-blur-[8px] border-b border-[var(--border-color)]">
       <div className="max-w-[1160px] mx-auto px-6 h-[60px] flex items-center justify-between">
         <Link to="/" className="flex items-center gap-2 no-underline">
           <img src={Logo} width={70} alt="" />

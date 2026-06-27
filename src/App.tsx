@@ -13,8 +13,6 @@ import Relax from './pages/writing/Relax';
 import Admin from './pages/writing/AdminPage';
 
 export default function App() {
-  const API_KEY = import.meta.env.VITE_GOOGLE_GEMINI_FLASH_API_KEY
-  console.log(API_KEY)
   return (
     <AuthProvider>
       <BrowserRouter>
