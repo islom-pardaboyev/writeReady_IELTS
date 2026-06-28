@@ -124,6 +124,7 @@ export function DashboardPage() {
   };
 
   const isPro = profile?.plan === 'pro' || profile?.plan === 'forever';
+  const centerName = (profile as unknown as Record<string, unknown>)?.centerName as string | undefined;
   const bonusAnalyses = profile?.bonusAnalyses ?? 0;
   const usedCount = usage?.count ?? 0;
   const usageLimit = usage?.limit ?? 12;
@@ -150,9 +151,16 @@ export function DashboardPage() {
 
           {/* Welcome header */}
           <div className="gs-db-welcome mb-8">
-            <h1 className="font-fraunces text-4xl font-extrabold text-[var(--text-primary)] mb-1.5">
-              Welcome back{user?.email ? `, ${user.email.split('@')[0]}` : ''}
-            </h1>
+            <div className="flex items-center gap-3 flex-wrap mb-1.5">
+              <h1 className="font-fraunces text-4xl font-extrabold text-[var(--text-primary)]">
+                Welcome back{user?.email ? `, ${user.email.split('@')[0]}` : ''}
+              </h1>
+              {centerName && (
+                <span className="text-sm font-semibold px-3 py-1 rounded-full bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800">
+                  🏫 Student of {centerName}
+                </span>
+              )}
+            </div>
             <p className="text-[var(--text-secondary)]">
               {isPro
                 ? `${remaining} AI analyses remaining this month${bonusAnalyses > 0 ? ` · +${bonusAnalyses} bonus` : ''}`
