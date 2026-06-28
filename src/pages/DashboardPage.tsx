@@ -224,7 +224,7 @@ export function DashboardPage() {
           </div>
 
           {/* Progress Section */}
-          {isPro && user?.uid && <ProgressSection uid={user.uid} />}
+          {user?.uid && <ProgressSection uid={user.uid} />}
 
           {/* Recent Analyses */}
           {isPro && (
