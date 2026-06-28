@@ -392,9 +392,14 @@ export default function Admin() {
         const userRef = doc(db, "users", uid);
         const snap = await getDocs(query(collection(db, "users"), where("__name__", "==", uid)));
         const current = snap.docs[0]?.data()?.bonusAnalyses ?? 0;
-        await updateDoc(userRef, {
-          bonusAnalyses: current + n,
-          notification: `Tabriklaymiz! Sizga ${n} ta bepul AI tahlil berildi. Inshoingizni yuboring va natijani ko'ring!`,
+        const msg = `🎁 Tabriklaymiz! Sizga ${n} ta bepul AI tahlil berildi. Inshoingizni yuboring va natijani ko'ring!`;
+        await updateDoc(userRef, { bonusAnalyses: current + n, notification: msg });
+        await addDoc(collection(db, "notifications", uid, "items"), {
+          type: "bonus",
+          fromUserName: "WriteReady",
+          preview: msg,
+          read: false,
+          createdAt: new Date(),
         });
       }));
       setGrantMsg(`✓ ${selectedUids.size} ta foydalanuvchiga ${n} ta bepul tahlil berildi.`);

@@ -93,31 +93,38 @@ export function NotificationBell() {
             <p className="text-sm text-[var(--text-secondary)] text-center py-8">No notifications yet</p>
           ) : (
             <div>
-              {notifications.map((n) => (
-                <Link
-                  key={n.id}
-                  to={`/blog/${n.postSlug}`}
-                  onClick={() => setOpen(false)}
-                  className="no-underline flex gap-3 px-4 py-3 hover:bg-[var(--bg-subtle)] transition-colors border-b border-[var(--border-color)] last:border-0"
-                >
-                  <div className="w-8 h-8 rounded-full bg-blue-100 dark:bg-blue-900/40 flex items-center justify-center text-xs font-bold text-blue-700 dark:text-blue-300 shrink-0">
-                    {n.fromUserName[0]?.toUpperCase() ?? '?'}
+              {notifications.map((n) => {
+                const isBonus = (n.type as string) === 'bonus';
+                const inner = (
+                  <>
+                    <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm shrink-0 ${isBonus ? 'bg-amber-100 dark:bg-amber-900/30' : 'bg-blue-100 dark:bg-blue-900/40'}`}>
+                      {isBonus ? '🎁' : (n.fromUserName[0]?.toUpperCase() ?? '?')}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm text-[var(--text-primary)] leading-5">
+                        {isBonus
+                          ? <span className="font-semibold text-amber-700 dark:text-amber-300">WriteReady</span>
+                          : <><span className="font-semibold">{n.fromUserName}</span>{' '}{n.type === 'like' ? 'liked your comment' : 'commented'}</>}
+                      </p>
+                      {n.preview && (
+                        <p className="text-xs text-[var(--text-secondary)] truncate mt-0.5">{n.preview.slice(0, 80)}</p>
+                      )}
+                      <p className="text-xs text-[var(--text-secondary)] mt-0.5">{relativeTime(n.createdAt)}</p>
+                    </div>
+                    {!n.read && <span className="w-2 h-2 rounded-full bg-blue-500 shrink-0 mt-1.5" />}
+                  </>
+                );
+                return isBonus ? (
+                  <div key={n.id} className="flex gap-3 px-4 py-3 hover:bg-[var(--bg-subtle)] transition-colors border-b border-[var(--border-color)] last:border-0">
+                    {inner}
                   </div>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm text-[var(--text-primary)] leading-5">
-                      <span className="font-semibold">{n.fromUserName}</span>{' '}
-                      {n.type === 'like' ? 'liked your comment' : 'commented'}
-                    </p>
-                    {n.preview && (
-                      <p className="text-xs text-[var(--text-secondary)] truncate mt-0.5">{n.preview.slice(0, 60)}</p>
-                    )}
-                    <p className="text-xs text-[var(--text-secondary)] mt-0.5">{relativeTime(n.createdAt)}</p>
-                  </div>
-                  {!n.read && (
-                    <span className="w-2 h-2 rounded-full bg-blue-500 shrink-0 mt-1.5" />
-                  )}
-                </Link>
-              ))}
+                ) : (
+                  <Link key={n.id} to={`/blog/${n.postSlug}`} onClick={() => setOpen(false)}
+                    className="no-underline flex gap-3 px-4 py-3 hover:bg-[var(--bg-subtle)] transition-colors border-b border-[var(--border-color)] last:border-0">
+                    {inner}
+                  </Link>
+                );
+              })}
             </div>
           )}
         </div>
