@@ -4,6 +4,7 @@ import { ScrollTrigger } from 'gsap/ScrollTrigger';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
 import { Header } from '@/components/layout/Header';
+import { ChatBot } from '../components/ui/ChatBot';
 
 gsap.registerPlugin(ScrollTrigger);
 
@@ -255,6 +256,7 @@ export function LandingPage() {
           © {new Date().getFullYear()} WriteReady IELTS · AI-powered writing coach
         </p>
       </footer>
+      <ChatBot />
     </div>
   );
 }
