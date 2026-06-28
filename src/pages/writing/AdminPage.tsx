@@ -15,6 +15,10 @@ import useUpload from "@/hooks/useUploadImage";
 import Logo from "/logo.png";
 import { getBlogPosts, saveBlogPost, updateBlogPost, deleteBlogPost } from "../../firebase/blog";
 import type { BlogPost } from "../../types/blog";
+import { Badge } from "@/components/ui/badge";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 
 interface Task1 { id: string; image: string; report: string; }
 interface Task2 { id: string; report: string; }
@@ -87,8 +91,8 @@ function LoginScreen({ onLogin }: { onLogin: (user: string) => void }) {
         <div className="bg-white rounded-b-2xl border border-t-0 border-slate-200 shadow-sm p-7 flex flex-col gap-4">
           <div>
             <label className="text-xs font-semibold text-slate-600 mb-1.5 block uppercase tracking-wide">Login</label>
-            <input
-              className="w-full px-3.5 py-2.5 border border-slate-200 rounded-lg text-sm text-slate-900 outline-none focus:border-blue-500 transition-colors"
+            <Input
+              className="border-slate-200 bg-white text-slate-900"
               placeholder="Login kiriting"
               value={login}
               onChange={(e) => setLogin(e.target.value)}
@@ -97,8 +101,8 @@ function LoginScreen({ onLogin }: { onLogin: (user: string) => void }) {
           </div>
           <div>
             <label className="text-xs font-semibold text-slate-600 mb-1.5 block uppercase tracking-wide">Parol</label>
-            <input
-              className="w-full px-3.5 py-2.5 border border-slate-200 rounded-lg text-sm text-slate-900 outline-none focus:border-blue-500 transition-colors"
+            <Input
+              className="border-slate-200 bg-white text-slate-900"
               type="password"
               placeholder="Parol kiriting"
               value={password}
@@ -538,9 +542,9 @@ export default function Admin() {
         {/* Bottom: user + signout */}
         <div className="px-3 py-4 border-t border-white/10">
           <div className="flex items-center gap-2.5 px-2 mb-3">
-            <div className="w-8 h-8 rounded-full bg-[#1C3A5E] border border-white/20 flex items-center justify-center text-white font-bold text-[0.7rem] shrink-0">
-              {adminUser.slice(0, 2).toUpperCase()}
-            </div>
+            <Avatar className="w-8 h-8 shrink-0 border border-white/20">
+              <AvatarFallback className="bg-[#1C3A5E] text-white text-[0.7rem]">{adminUser.slice(0, 2).toUpperCase()}</AvatarFallback>
+            </Avatar>
             <div className="min-w-0">
               <p className="text-xs font-semibold text-white truncate">{adminUser}</p>
               <p className="text-[0.65rem] text-white/35">Administrator</p>
@@ -615,7 +619,7 @@ export default function Admin() {
                       return (
                         <div key={u.id} className="flex items-center justify-between gap-2">
                           <span className="text-sm text-slate-700 truncate">{u.email}</span>
-                          <span className={`text-[0.65rem] font-bold px-2 py-0.5 rounded-full ${b.cls}`}>{b.label}</span>
+                          <Badge variant={b.label === 'Lifetime' ? 'warning' : b.label === 'Pro' ? 'info' : 'outline'} className="text-[0.65rem]">{b.label}</Badge>
                         </div>
                       );
                     })}
@@ -661,8 +665,8 @@ export default function Admin() {
               )}
               <div>
                 <label className="text-xs font-semibold text-slate-600 mb-1.5 block uppercase tracking-wide">Savol matni</label>
-                <textarea
-                  className="w-full px-3.5 py-2.5 border border-slate-200 rounded-lg text-sm text-slate-900 bg-white outline-none resize-y min-h-[100px] focus:border-blue-500 transition-colors"
+                <Textarea
+                  className="border-slate-200 bg-white text-slate-900 min-h-[100px]"
                   placeholder="Task 1 savol matnini kiriting..."
                   value={t1Report}
                   onChange={(e) => setT1Report(e.target.value)}
@@ -684,8 +688,8 @@ export default function Admin() {
               <div className="bg-white rounded-xl border border-slate-200 p-6 flex flex-col gap-4">
                 <div className="flex items-center justify-between">
                   <p className="text-sm font-bold text-slate-700">Mavjud Task 1 promptlar ({task1List.length})</p>
-                  <input
-                    className="px-3 py-1.5 border border-slate-200 rounded-lg text-sm text-slate-900 outline-none focus:border-blue-500 transition-colors w-48"
+                  <Input
+                    className="border-slate-200 bg-white text-slate-900 w-48 h-8 text-sm"
                     placeholder="Qidirish..."
                     value={task1Search}
                     onChange={(e) => setTask1Search(e.target.value)}
@@ -752,8 +756,8 @@ export default function Admin() {
               <p className="text-sm font-bold text-slate-700">Yangi Task 2 qo'shish</p>
               <div>
                 <label className="text-xs font-semibold text-slate-600 mb-1.5 block uppercase tracking-wide">Savol matni</label>
-                <textarea
-                  className="w-full px-3.5 py-2.5 border border-slate-200 rounded-lg text-sm text-slate-900 bg-white outline-none resize-y min-h-[120px] focus:border-green-500 transition-colors"
+                <Textarea
+                  className="border-slate-200 bg-white text-slate-900 min-h-[120px]"
                   placeholder="Task 2 savol matnini kiriting..."
                   value={t2Report}
                   onChange={(e) => setT2Report(e.target.value)}
@@ -774,8 +778,8 @@ export default function Admin() {
               <div className="bg-white rounded-xl border border-slate-200 p-6 flex flex-col gap-4">
                 <div className="flex items-center justify-between">
                   <p className="text-sm font-bold text-slate-700">Mavjud Task 2 promptlar ({task2List.length})</p>
-                  <input
-                    className="px-3 py-1.5 border border-slate-200 rounded-lg text-sm text-slate-900 outline-none focus:border-green-500 transition-colors w-48"
+                  <Input
+                    className="border-slate-200 bg-white text-slate-900 w-48 h-8 text-sm"
                     placeholder="Qidirish..."
                     value={task2Search}
                     onChange={(e) => setTask2Search(e.target.value)}
@@ -840,8 +844,8 @@ export default function Admin() {
             {userError && <div className="bg-red-50 border border-red-200 rounded-lg px-4 py-3 text-sm text-red-600">{userError}</div>}
 
             {/* Search */}
-            <input
-              className="w-full max-w-xs px-3.5 py-2.5 border border-slate-200 rounded-lg text-sm text-slate-900 outline-none focus:border-purple-500 transition-colors"
+            <Input
+              className="border-slate-200 bg-white text-slate-900 max-w-xs"
               placeholder="Email bo'yicha qidirish..."
               value={userSearch}
               onChange={(e) => setUserSearch(e.target.value)}
@@ -879,7 +883,7 @@ export default function Admin() {
                           >
                             <td className="px-4 py-3 font-medium text-slate-800">{u.email}</td>
                             <td className="px-4 py-3">
-                              <span className={`text-[0.65rem] font-bold px-2 py-0.5 rounded-full ${b.cls}`}>{b.label}</span>
+                              <Badge variant={b.label === 'Lifetime' ? 'warning' : b.label === 'Pro' ? 'info' : 'outline'} className="text-[0.65rem]">{b.label}</Badge>
                             </td>
                             <td className={`px-4 py-3 text-sm ${isExpired ? "text-red-500" : "text-slate-600"}`}>{expiry}</td>
                             <td className="px-4 py-3 text-right">
@@ -898,9 +902,9 @@ export default function Admin() {
             {selectedUser && (
               <div className="bg-white rounded-xl border-2 border-purple-200 p-5 flex flex-col gap-4">
                 <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-full bg-purple-600 text-white flex items-center justify-center font-bold text-sm shrink-0">
-                    {selectedUser.email.slice(0, 2).toUpperCase()}
-                  </div>
+                  <Avatar className="w-10 h-10 shrink-0">
+                    <AvatarFallback className="bg-purple-600 text-white text-sm font-bold">{selectedUser.email.slice(0, 2).toUpperCase()}</AvatarFallback>
+                  </Avatar>
                   <div>
                     <p className="font-bold text-slate-900 text-sm">{selectedUser.email}</p>
                     <p className="text-xs text-slate-500">
@@ -966,11 +970,11 @@ export default function Admin() {
               <div className="flex items-center gap-3 flex-wrap">
                 <div className="flex items-center gap-2">
                   <label className="text-xs font-semibold text-amber-700">Bepul tahlil soni:</label>
-                  <input
+                  <Input
                     type="number" min="1" max="50"
                     value={bonusInput}
                     onChange={(e) => setBonusInput(e.target.value)}
-                    className="w-20 px-3 py-1.5 border border-amber-300 rounded-lg text-sm font-mono text-slate-900 outline-none focus:border-amber-500 bg-white"
+                    className="w-20 h-8 border-amber-300 bg-white text-slate-900 font-mono text-sm"
                   />
                 </div>
                 <button
@@ -1091,8 +1095,8 @@ export default function Admin() {
             </div>
             <div className="bg-white rounded-xl border border-slate-200 p-5 flex flex-col gap-3">
               <p className="text-sm font-semibold text-slate-700">Yangi elon qo'shish</p>
-              <textarea
-                className="w-full border border-slate-200 rounded-lg p-3 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-blue-400"
+              <Textarea
+                className="border-slate-200 bg-white text-slate-900"
                 rows={3}
                 placeholder="Elon matni (foydalanuvchilarga ko'rinadi)..."
                 value={annText}
@@ -1188,8 +1192,8 @@ export default function Admin() {
                 <div className="grid grid-cols-2 gap-4">
                   <div>
                     <label className="text-xs font-semibold text-slate-600 mb-1 block uppercase tracking-wide">Title</label>
-                    <input
-                      className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm outline-none focus:border-blue-500"
+                    <Input
+                      className="border-slate-200 bg-white text-slate-900"
                       value={blogEditor.title ?? ''}
                       onChange={(e) => {
                         const title = e.target.value;
@@ -1200,8 +1204,8 @@ export default function Admin() {
                   </div>
                   <div>
                     <label className="text-xs font-semibold text-slate-600 mb-1 block uppercase tracking-wide">Slug</label>
-                    <input
-                      className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm outline-none focus:border-blue-500"
+                    <Input
+                      className="border-slate-200 bg-white text-slate-900"
                       value={blogEditor.slug ?? ''}
                       onChange={(e) => setBlogEditor((p) => ({ ...p, slug: e.target.value }))}
                     />
@@ -1210,9 +1214,9 @@ export default function Admin() {
 
                 <div>
                   <label className="text-xs font-semibold text-slate-600 mb-1 block uppercase tracking-wide">Excerpt</label>
-                  <textarea
+                  <Textarea
                     rows={3}
-                    className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm outline-none focus:border-blue-500 resize-none"
+                    className="border-slate-200 bg-white text-slate-900"
                     value={blogEditor.excerpt ?? ''}
                     onChange={(e) => setBlogEditor((p) => ({ ...p, excerpt: e.target.value }))}
                   />
@@ -1220,9 +1224,9 @@ export default function Admin() {
 
                 <div>
                   <label className="text-xs font-semibold text-slate-600 mb-1 block uppercase tracking-wide">Content (Markdown)</label>
-                  <textarea
+                  <Textarea
                     rows={12}
-                    className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm outline-none focus:border-blue-500 resize-none font-mono"
+                    className="border-slate-200 bg-white text-slate-900 font-mono"
                     value={blogEditor.content ?? ''}
                     onChange={(e) => setBlogEditor((p) => ({ ...p, content: e.target.value }))}
                   />
@@ -1232,8 +1236,8 @@ export default function Admin() {
                 <div className="bg-slate-50 border border-slate-200 rounded-lg p-4 flex flex-col gap-2">
                   <p className="text-xs font-semibold text-slate-700 uppercase tracking-wide">Generate with AI</p>
                   <div className="flex gap-2">
-                    <input
-                      className="flex-1 px-3 py-2 border border-slate-200 rounded-lg text-sm outline-none focus:border-blue-500"
+                    <Input
+                      className="border-slate-200 bg-white text-slate-900"
                       placeholder="Enter topic…"
                       value={aiTopic}
                       onChange={(e) => setAiTopic(e.target.value)}
@@ -1269,16 +1273,16 @@ export default function Admin() {
                 <div className="grid grid-cols-2 gap-4">
                   <div>
                     <label className="text-xs font-semibold text-slate-600 mb-1 block uppercase tracking-wide">Featured Image URL</label>
-                    <input
-                      className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm outline-none focus:border-blue-500"
+                    <Input
+                      className="border-slate-200 bg-white text-slate-900"
                       value={blogEditor.featuredImage ?? ''}
                       onChange={(e) => setBlogEditor((p) => ({ ...p, featuredImage: e.target.value }))}
                     />
                   </div>
                   <div>
                     <label className="text-xs font-semibold text-slate-600 mb-1 block uppercase tracking-wide">Author</label>
-                    <input
-                      className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm outline-none focus:border-blue-500"
+                    <Input
+                      className="border-slate-200 bg-white text-slate-900"
                       value={blogEditor.author ?? 'WriteReady Team'}
                       onChange={(e) => setBlogEditor((p) => ({ ...p, author: e.target.value }))}
                     />
@@ -1315,24 +1319,24 @@ export default function Admin() {
                 <div className="grid grid-cols-3 gap-4">
                   <div>
                     <label className="text-xs font-semibold text-slate-600 mb-1 block uppercase tracking-wide">SEO Title</label>
-                    <input
-                      className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm outline-none focus:border-blue-500"
+                    <Input
+                      className="border-slate-200 bg-white text-slate-900"
                       value={blogEditor.seo?.metaTitle ?? ''}
                       onChange={(e) => setBlogEditor((p) => ({ ...p, seo: { ...p?.seo, metaTitle: e.target.value, metaDescription: p?.seo?.metaDescription ?? '', focusKeyword: p?.seo?.focusKeyword ?? '' } }))}
                     />
                   </div>
                   <div>
                     <label className="text-xs font-semibold text-slate-600 mb-1 block uppercase tracking-wide">Meta Description</label>
-                    <input
-                      className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm outline-none focus:border-blue-500"
+                    <Input
+                      className="border-slate-200 bg-white text-slate-900"
                       value={blogEditor.seo?.metaDescription ?? ''}
                       onChange={(e) => setBlogEditor((p) => ({ ...p, seo: { ...p?.seo, metaTitle: p?.seo?.metaTitle ?? '', metaDescription: e.target.value, focusKeyword: p?.seo?.focusKeyword ?? '' } }))}
                     />
                   </div>
                   <div>
                     <label className="text-xs font-semibold text-slate-600 mb-1 block uppercase tracking-wide">Focus Keyword</label>
-                    <input
-                      className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm outline-none focus:border-blue-500"
+                    <Input
+                      className="border-slate-200 bg-white text-slate-900"
                       value={blogEditor.seo?.focusKeyword ?? ''}
                       onChange={(e) => setBlogEditor((p) => ({ ...p, seo: { ...p?.seo, metaTitle: p?.seo?.metaTitle ?? '', metaDescription: p?.seo?.metaDescription ?? '', focusKeyword: e.target.value } }))}
                     />
@@ -1342,16 +1346,16 @@ export default function Admin() {
                 <div className="grid grid-cols-2 gap-4">
                   <div>
                     <label className="text-xs font-semibold text-slate-600 mb-1 block uppercase tracking-wide">CTA Text</label>
-                    <input
-                      className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm outline-none focus:border-blue-500"
+                    <Input
+                      className="border-slate-200 bg-white text-slate-900"
                       value={blogEditor.ctaText ?? ''}
                       onChange={(e) => setBlogEditor((p) => ({ ...p, ctaText: e.target.value }))}
                     />
                   </div>
                   <div>
                     <label className="text-xs font-semibold text-slate-600 mb-1 block uppercase tracking-wide">CTA Link</label>
-                    <input
-                      className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm outline-none focus:border-blue-500"
+                    <Input
+                      className="border-slate-200 bg-white text-slate-900"
                       value={blogEditor.ctaLink ?? ''}
                       onChange={(e) => setBlogEditor((p) => ({ ...p, ctaLink: e.target.value }))}
                     />
@@ -1455,11 +1459,7 @@ export default function Admin() {
                       <tr key={p.id} className="border-b border-slate-100 last:border-0 hover:bg-slate-50">
                         <td className="px-4 py-3 font-medium text-slate-900 max-w-[220px] truncate">{p.title}</td>
                         <td className="px-4 py-3">
-                          <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${
-                            p.status === 'published' ? 'bg-green-50 text-green-700' :
-                            p.status === 'draft' ? 'bg-slate-100 text-slate-600' :
-                            'bg-yellow-50 text-yellow-700'
-                          }`}>{p.status}</span>
+                          <Badge variant={p.status === 'published' ? 'success' : p.status === 'draft' ? 'outline' : 'warning'} className="text-xs capitalize">{p.status}</Badge>
                         </td>
                         <td className="px-4 py-3 text-slate-600">{p.category}</td>
                         <td className="px-4 py-3 text-center text-slate-600">{p.viewCount}</td>
@@ -1540,8 +1540,8 @@ export default function Admin() {
           </div>
           <div>
             <label className="text-xs font-semibold text-slate-600 mb-1.5 block uppercase tracking-wide">Savol matni</label>
-            <textarea
-              className="w-full px-3.5 py-2.5 border border-slate-200 rounded-lg text-sm text-slate-900 bg-white outline-none resize-y min-h-[100px] focus:border-blue-500 transition-colors"
+            <Textarea
+              className="border-slate-200 bg-white text-slate-900 min-h-[100px]"
               value={editReport}
               onChange={(e) => setEditReport(e.target.value)}
               rows={4}
@@ -1560,8 +1560,8 @@ export default function Admin() {
           <h2 className="text-lg font-bold text-slate-900 m-0">Edit Task 2</h2>
           <div>
             <label className="text-xs font-semibold text-slate-600 mb-1.5 block uppercase tracking-wide">Savol matni</label>
-            <textarea
-              className="w-full px-3.5 py-2.5 border border-slate-200 rounded-lg text-sm text-slate-900 bg-white outline-none resize-y min-h-[120px] focus:border-green-500 transition-colors"
+            <Textarea
+              className="border-slate-200 bg-white text-slate-900 min-h-[120px]"
               value={editT2Report}
               onChange={(e) => setEditT2Report(e.target.value)}
               rows={6}

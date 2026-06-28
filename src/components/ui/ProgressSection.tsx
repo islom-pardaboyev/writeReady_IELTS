@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { getAllFeedbackReports, type FeedbackReport } from '../../firebase/firestore';
+import { Card } from './Card';
 
 const CATEGORY_LABELS: Record<string, string> = {
   taskAchievement: 'Task Achievement',
@@ -68,7 +69,6 @@ function TrendChart({ reports }: TrendChartProps) {
         )}
       </div>
       <svg viewBox={`0 0 ${W} ${H}`} className="w-full" style={{ height: 140 }}>
-        {/* Grid lines */}
         {[5, 6, 7, 8].map((band) => {
           if (band < min || band > max) return null;
           const y = toY(band);
@@ -79,8 +79,6 @@ function TrendChart({ reports }: TrendChartProps) {
             </g>
           );
         })}
-
-        {/* Area fill */}
         {areaD && (
           <defs>
             <linearGradient id="areaGrad" x1="0" y1="0" x2="0" y2="1">
@@ -90,18 +88,12 @@ function TrendChart({ reports }: TrendChartProps) {
           </defs>
         )}
         {areaD && <path d={areaD} fill="url(#areaGrad)" />}
-
-        {/* Line */}
         {points.length > 1 && (
           <path d={pathD} fill="none" stroke="#3b82f6" strokeWidth="2" strokeLinejoin="round" strokeLinecap="round" />
         )}
-
-        {/* Dots */}
         {points.map((v, i) => (
           <circle key={i} cx={toX(i)} cy={toY(v)} r="3.5" fill={bandColor(v)} stroke="var(--bg-card)" strokeWidth="1.5" />
         ))}
-
-        {/* X-axis labels */}
         {reports.map((r, i) => {
           if (points.length > 6 && i % 2 !== 0) return null;
           return (
@@ -183,12 +175,12 @@ export function ProgressSection({ uid }: { uid: string }) {
     <div className="mb-10">
       <h2 className="text-xl font-bold text-[var(--text-primary)] mb-4">Your Progress</h2>
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-        <div className="bg-[var(--bg-card)] border border-[var(--border-color)] rounded-2xl p-5 shadow-[var(--shadow-sm)]">
+        <Card className="p-5">
           <TrendChart reports={reports} />
-        </div>
-        <div className="bg-[var(--bg-card)] border border-[var(--border-color)] rounded-2xl p-5 shadow-[var(--shadow-sm)]">
+        </Card>
+        <Card className="p-5">
           <CategoryBars reports={reports} />
-        </div>
+        </Card>
       </div>
     </div>
   );

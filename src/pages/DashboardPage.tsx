@@ -6,6 +6,8 @@ import { useAuth } from '../hooks/useAuth';
 import { useUsage } from '../hooks/useUsage';
 import { Layout } from '../components/layout/Layout';
 import { Button } from '../components/ui/Button';
+import { Card } from '../components/ui/Card';
+import { Badge } from '../components/ui/badge';
 import { getRecentFeedbackReports, type FeedbackReport } from '../firebase/firestore';
 import { ProgressSection } from '../components/ui/ProgressSection';
 import { doc, updateDoc } from 'firebase/firestore';
@@ -162,14 +164,12 @@ export function DashboardPage() {
 
           {/* Quota bar */}
           {(isPro || bonusAnalyses > 0) && (
-            <div className="gs-db-quota bg-[var(--bg-card)] rounded-2xl px-6 py-5 border border-[var(--border-color)] shadow-[var(--shadow-sm)] mb-8">
+            <Card className="gs-db-quota px-6 py-5 mb-8">
               <div className="flex items-center justify-between mb-3 flex-wrap gap-2">
                 <span className="font-semibold text-[0.9375rem] text-[var(--text-primary)]">Monthly AI Feedback Quota</span>
                 <div className="flex items-center gap-2">
                   {bonusAnalyses > 0 && (
-                    <span className="text-[0.75rem] font-bold px-2.5 py-1 rounded-full bg-amber-100 text-amber-700 border border-amber-200 dark:bg-amber-900/30 dark:text-amber-300">
-                      🎁 +{bonusAnalyses} bonus
-                    </span>
+                    <Badge variant="warning">🎁 +{bonusAnalyses} bonus</Badge>
                   )}
                   {isPro && (
                     <span className={`font-mono text-[0.9375rem] font-medium ${usagePct >= 85 ? 'text-red-500' : 'text-blue-600 dark:text-blue-400'}`}>
@@ -186,7 +186,7 @@ export function DashboardPage() {
                   />
                 </div>
               )}
-            </div>
+            </Card>
           )}
 
           {/* Mode picker */}
@@ -241,31 +241,27 @@ export function DashboardPage() {
                   ))}
                 </div>
               ) : reports.length === 0 ? (
-                <div className="bg-[var(--bg-card)] border border-[var(--border-color)] rounded-2xl px-8 py-10 text-center">
+                <Card className="px-8 py-10 text-center">
                   <div className="text-3xl mb-3">📝</div>
                   <p className="font-semibold text-[var(--text-primary)] mb-1">No analyses yet</p>
                   <p className="text-sm text-[var(--text-secondary)]">Submit an essay and get AI feedback to see your progress here.</p>
-                </div>
+                </Card>
               ) : (
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
                   {reports.map((r) => {
                     const band = overallBand(r.scores);
                     const scoreEntries = Object.entries(r.scores);
                     return (
-                      <div
+                      <Card
                         key={r.id}
-                        className="group bg-[var(--bg-card)] border border-[var(--border-color)] rounded-2xl p-5 shadow-[var(--shadow-sm)] hover:shadow-[var(--shadow-md)] hover:-translate-y-0.5 transition-all duration-200 flex flex-col gap-4"
+                        className="group p-5 hover:shadow-[var(--shadow-md)] hover:-translate-y-0.5 transition-all duration-200 flex flex-col gap-4"
                       >
                         {/* Header */}
                         <div className="flex items-start justify-between gap-2">
                           <div className="flex-1 min-w-0">
-                            <span className={`inline-flex items-center text-[0.65rem] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full mb-2 ${
-                              r.taskType === 'task1'
-                                ? 'bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-300'
-                                : 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300'
-                            }`}>
+                            <Badge variant={r.taskType === 'task1' ? 'purple' : 'info'} className="mb-2 text-[0.65rem] uppercase tracking-wider">
                               {r.taskType === 'task1' ? 'Task 1' : 'Task 2'}
-                            </span>
+                            </Badge>
                             <p className="text-sm font-semibold text-[var(--text-primary)] truncate leading-tight">
                               {r.topic}
                             </p>
@@ -297,7 +293,7 @@ export function DashboardPage() {
                             {timeAgo(r.createdAt)}
                           </span>
                         </div>
-                      </div>
+                      </Card>
                     );
                   })}
                 </div>

@@ -2,6 +2,9 @@ import { useState, useEffect } from 'react';
 import { useAuth } from '../../hooks/useAuth';
 import { getComments, addComment, toggleCommentLike, createLikeNotification } from '../../firebase/blog';
 import type { BlogComment } from '../../types/blog';
+import { Button } from '../ui/Button';
+import { Textarea } from '../ui/textarea';
+import { Avatar, AvatarImage, AvatarFallback } from '../ui/avatar';
 
 function relativeTime(d: Date | null): string {
   if (!d) return '';
@@ -74,7 +77,6 @@ export function CommentSection({ postId }: Props) {
     setComments((prev) =>
       prev.map((c) => (c.id === comment.id ? { ...c, likeCount: newCount } : c)),
     );
-    // fire notification
     await createLikeNotification(
       postId,
       '',
@@ -94,26 +96,27 @@ export function CommentSection({ postId }: Props) {
 
       {/* Input */}
       <div className="mb-6">
-        <textarea
-          className="w-full border border-[var(--border-color)] rounded-lg px-3.5 py-2.5 text-sm text-[var(--text-primary)] bg-[var(--bg-card)] outline-none focus:border-blue-500 transition-colors resize-none"
+        <Textarea
           rows={3}
           placeholder={user ? 'Write a comment…' : 'Sign in to comment'}
           value={text}
           onChange={(e) => setText(e.target.value)}
           disabled={!user}
+          className="mb-2"
         />
         {!user ? (
           <p className="text-xs text-[var(--text-secondary)] mt-1">
             <a href="/auth?mode=login" className="text-blue-600 hover:underline">Sign in</a> to leave a comment.
           </p>
         ) : (
-          <button
+          <Button
             onClick={handlePost}
             disabled={!text.trim() || posting}
-            className="mt-2 px-4 py-2 bg-blue-600 text-white rounded-lg text-sm font-semibold hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            loading={posting}
+            size="sm"
           >
             {posting ? 'Posting…' : 'Post comment'}
-          </button>
+          </Button>
         )}
       </div>
 
@@ -129,13 +132,10 @@ export function CommentSection({ postId }: Props) {
           {comments.map((c) => (
             <div key={c.id} className="flex gap-3">
               <div className="shrink-0">
-                {c.photoURL ? (
-                  <img src={c.photoURL} alt={c.displayName} className="w-9 h-9 rounded-full object-cover" />
-                ) : (
-                  <div className="w-9 h-9 rounded-full bg-blue-100 dark:bg-blue-900/40 flex items-center justify-center text-xs font-bold text-blue-700 dark:text-blue-300">
-                    {initials(c.displayName)}
-                  </div>
-                )}
+                <Avatar className="w-9 h-9">
+                  {c.photoURL ? <AvatarImage src={c.photoURL} alt={c.displayName} /> : null}
+                  <AvatarFallback className="text-xs">{initials(c.displayName)}</AvatarFallback>
+                </Avatar>
               </div>
               <div className="flex-1">
                 <div className="flex items-center gap-2 mb-1">
