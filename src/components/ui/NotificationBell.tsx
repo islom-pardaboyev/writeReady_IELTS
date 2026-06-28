@@ -95,15 +95,18 @@ export function NotificationBell() {
             <div>
               {notifications.map((n) => {
                 const isBonus = (n.type as string) === 'bonus';
+                const isNewPost = (n.type as string) === 'new_post';
                 const inner = (
                   <>
-                    <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm shrink-0 ${isBonus ? 'bg-amber-100 dark:bg-amber-900/30' : 'bg-blue-100 dark:bg-blue-900/40'}`}>
-                      {isBonus ? '🎁' : (n.fromUserName[0]?.toUpperCase() ?? '?')}
+                    <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm shrink-0 ${isBonus ? 'bg-amber-100 dark:bg-amber-900/30' : isNewPost ? 'bg-emerald-100 dark:bg-emerald-900/30' : 'bg-blue-100 dark:bg-blue-900/40'}`}>
+                      {isBonus ? '🎁' : isNewPost ? '📝' : (n.fromUserName[0]?.toUpperCase() ?? '?')}
                     </div>
                     <div className="flex-1 min-w-0">
                       <p className="text-sm text-[var(--text-primary)] leading-5">
                         {isBonus
                           ? <span className="font-semibold text-amber-700 dark:text-amber-300">WriteReady</span>
+                          : isNewPost
+                          ? <span className="font-semibold text-emerald-700 dark:text-emerald-300">Yangi maqola!</span>
                           : <><span className="font-semibold">{n.fromUserName}</span>{' '}{n.type === 'like' ? 'liked your comment' : 'commented'}</>}
                       </p>
                       {n.preview && (
@@ -119,7 +122,7 @@ export function NotificationBell() {
                     {inner}
                   </div>
                 ) : (
-                  <Link key={n.id} to={`/blog/${n.postSlug}`} onClick={() => setOpen(false)}
+                  <Link key={n.id} to={n.postSlug ? `/blog/${n.postSlug}` : '/blog'} onClick={() => setOpen(false)}
                     className="no-underline flex gap-3 px-4 py-3 hover:bg-[var(--bg-subtle)] transition-colors border-b border-[var(--border-color)] last:border-0">
                     {inner}
                   </Link>

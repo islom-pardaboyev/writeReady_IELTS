@@ -1384,10 +1384,27 @@ export default function Admin() {
                           likeCount: blogEditor.likeCount ?? 0,
                           commentCount: blogEditor.commentCount ?? 0,
                         };
+                        const wasPublished = postData.status === 'published';
+                        const wasAlreadyPublished = blogEditor.id && blogEditor.status === 'published';
                         if (blogEditor.id) {
                           await updateBlogPost(blogEditor.id, postData);
                         } else {
                           await saveBlogPost(postData);
+                        }
+                        // Notify all users when a new post is first published
+                        if (wasPublished && !wasAlreadyPublished) {
+                          const usersSnap = await getDocs(collection(db, "users"));
+                          const preview = `📝 Yangi maqola: "${postData.title}"`;
+                          await Promise.all(usersSnap.docs.map((u) =>
+                            addDoc(collection(db, "notifications", u.id, "items"), {
+                              type: "new_post",
+                              fromUserName: "WriteReady",
+                              postSlug: postData.slug,
+                              preview,
+                              read: false,
+                              createdAt: new Date(),
+                            })
+                          ));
                         }
                         setBlogEditor(null);
                         await loadBlogPosts();
