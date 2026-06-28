@@ -14,7 +14,6 @@ Your expertise:
 Pricing information (answer if asked):
 - Free plan: access to all 3 practice modes, limited features
 - Pro plan: 25,000 UZS/month — unlocks AI feedback, band score analysis, vocabulary practice, spaced repetition
-- Lifetime plan: one-time payment — same as Pro but forever
 - To upgrade: visit the Pricing page and click "Upgrade to Pro"
 
 Rules:
@@ -56,7 +55,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       headers: { 'Content-Type': 'application/json', 'X-goog-api-key': apiKey },
       body: JSON.stringify({
         contents,
-        generationConfig: { temperature: 0.7, maxOutputTokens: 512 },
+        generationConfig: { temperature: 0.7, maxOutputTokens: 800 },
       }),
     });
 

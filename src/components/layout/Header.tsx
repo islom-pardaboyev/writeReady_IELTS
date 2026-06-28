@@ -9,6 +9,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { ThemeToggle } from "@/components/ui/ThemeToggle";
+import { Button } from "../ui/Button";
 
 function SubscriptionBadge({
   plan,
@@ -92,7 +93,7 @@ export function Header() {
           {user ? (
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <button className="ml-2 flex items-center gap-2 bg-[var(--ink-blue)] text-white text-sm font-semibold pl-1.5 pr-3 py-1.5 rounded-lg border-none cursor-pointer outline-none select-none hover:opacity-90 transition-opacity dark:bg-blue-600">
+                <Button variant="secondary">
                   {user.photoURL ? (
                     <img
                       src={user.photoURL}
@@ -121,7 +122,7 @@ export function Header() {
                       strokeLinejoin="round"
                     />
                   </svg>
-                </button>
+                </Button>
               </DropdownMenuTrigger>
 
               <DropdownMenuContent align="end" sideOffset={8} className="w-56 py-1 bg-[var(--bg-card)] border-[var(--border-color)]">
