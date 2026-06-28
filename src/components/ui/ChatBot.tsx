@@ -228,11 +228,15 @@ export function ChatBot() {
                 ref={inputRef}
                 rows={1}
                 value={input}
-                onChange={(e) => setInput(e.target.value)}
+                onChange={(e) => {
+                  setInput(e.target.value);
+                  e.target.style.height = 'auto';
+                  e.target.style.height = Math.min(e.target.scrollHeight, 96) + 'px';
+                }}
                 onKeyDown={handleKeyDown}
                 placeholder="Ask about IELTS Writing…"
-                className="flex-1 bg-transparent text-sm text-[var(--text-primary)] placeholder:text-[var(--text-secondary)] outline-none resize-none max-h-24 leading-relaxed"
-                style={{ minHeight: '24px' }}
+                className="flex-1 bg-transparent text-sm text-[var(--text-primary)] placeholder:text-[var(--text-secondary)] outline-none resize-none leading-relaxed overflow-hidden"
+                style={{ minHeight: '24px', maxHeight: '96px' }}
               />
               <button
                 type="button"
