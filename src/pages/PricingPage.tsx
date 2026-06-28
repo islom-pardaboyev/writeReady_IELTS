@@ -25,14 +25,6 @@ const PRO_FEATURES = [
   "PDF export",
 ];
 
-// NOTE: placeholder feature set + price for the lifetime tier — adjust freely.
-const FOREVER_FEATURES = [
-  "Everything in Pro",
-  "Unlimited AI analyses",
-  "Pay once, use forever",
-  "Priority support",
-  "Early access to new features",
-];
 
 const CARD_NUMBER = "9860 1606 4046 4600";
 const CARDHOLDER = "PI";
@@ -41,7 +33,7 @@ const TELEGRAM_USERNAME = "writeready_admin";
 const FONT_SERIF = "[font-family:'Fraunces',serif]";
 const FONT_MONO = "[font-family:'IBM_Plex_Mono',monospace]";
 
-type PlanId = "pro" | "forever";
+type PlanId = "pro";
 
 interface SelectedPlan {
   id: PlanId;
@@ -59,14 +51,6 @@ const PRO_PLAN: SelectedPlan = {
   billingNote: "Billed monthly · cancel anytime",
 };
 
-// NOTE: placeholder one-time price — swap in the real number whenever ready.
-const FOREVER_PLAN: SelectedPlan = {
-  id: "forever",
-  name: "Forever",
-  price: "299,000",
-  period: "UZS one-time",
-  billingNote: "One-time payment · lifetime access",
-};
 
 
 function CloseIcon() {
@@ -131,7 +115,6 @@ export function PricingPage() {
 
   const isFree = !profile || profile.plan === "free";
   const isPro = profile?.plan === "pro";
-  const isForever = profile?.plan === "forever";
 
   const openPaymentModal = (plan: SelectedPlan) => {
     setSelectedPlan(plan);
@@ -241,40 +224,6 @@ export function PricingPage() {
               </Button>
             </div>
 
-            {/* Forever plan */}
-            <div className="gs-plan-card hover:-translate-y-2 hover:shadow-2xl transition-all duration-200 bg-white rounded-[20px] p-8 border-2 border-amber-300 shadow-[0_1px_4px_rgba(0,0,0,0.06)] flex flex-col relative">
-              <div className="absolute -top-[13px] left-1/2 -translate-x-1/2 bg-amber-400 text-white text-[0.6875rem] font-bold tracking-[0.08em] uppercase px-4 py-[0.3rem] rounded-[20px] whitespace-nowrap">
-                Best value
-              </div>
-
-              <div className="mb-6">
-                <div className={`${FONT_SERIF} text-[1.375rem] font-bold text-slate-900 mb-1`}>Forever</div>
-                <div className="text-sm text-slate-500">Pay once, keep Pro for life</div>
-              </div>
-
-              <div className="mb-8">
-                <span className={`${FONT_MONO} text-4xl font-semibold text-slate-900`}>299,000</span>
-                <span className="text-sm text-slate-400 ml-1.5">UZS one-time</span>
-              </div>
-
-              <ul className="flex flex-col gap-3 mb-8 flex-1">
-                {FOREVER_FEATURES.map((f) => (
-                  <li key={f} className="flex items-start gap-2.5 text-[0.9rem] text-slate-700">
-                    <span className="text-amber-500 font-bold shrink-0 mt-px">✓</span>
-                    {f}
-                  </li>
-                ))}
-              </ul>
-
-              <Button
-                onClick={() => openPaymentModal(FOREVER_PLAN)}
-                variant="secondary"
-                className={`w-full border-amber-300 text-amber-700 hover:bg-amber-50 ${isForever ? "opacity-[0.55]" : "opacity-100"}`}
-                disabled={isForever}
-              >
-                {isForever ? "Current plan" : "Get Forever →"}
-              </Button>
-            </div>
           </div>
         </div>
       </div>
