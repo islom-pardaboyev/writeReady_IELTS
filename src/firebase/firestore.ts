@@ -203,6 +203,34 @@ export async function getFeedbackReportHistory(uid: string, n = 5): Promise<stri
   return snap.docs.map((d) => (d.data().issues as string[]) ?? []);
 }
 
+export interface FeedbackReport {
+  id: string;
+  taskType: string;
+  topic: string;
+  scores: Record<string, number>;
+  createdAt: Date | null;
+}
+
+export async function getRecentFeedbackReports(uid: string, n = 5): Promise<FeedbackReport[]> {
+  const q = query(
+    collection(db, 'feedback_reports'),
+    where('uid', '==', uid),
+    orderBy('createdAt', 'desc'),
+    limit(n)
+  );
+  const snap = await getDocs(q);
+  return snap.docs.map((d) => {
+    const data = d.data();
+    return {
+      id: d.id,
+      taskType: data.taskType ?? 'task2',
+      topic: data.topic ?? 'General',
+      scores: data.scores ?? {},
+      createdAt: toDate(data.createdAt),
+    };
+  });
+}
+
 // ── Questions ──────────────────────────────────────────────────────────────
 
 export async function seedQuestions(): Promise<void> {

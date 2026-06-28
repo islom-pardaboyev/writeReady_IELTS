@@ -1,4 +1,4 @@
-import { useLayoutEffect, useRef } from 'react';
+import { useLayoutEffect, useRef, useEffect, useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import gsap from 'gsap';
 import { ScrollTrigger } from 'gsap/ScrollTrigger';
@@ -6,6 +6,7 @@ import { useAuth } from '../hooks/useAuth';
 import { useUsage } from '../hooks/useUsage';
 import { Layout } from '../components/layout/Layout';
 import { Button } from '../components/ui/Button';
+import { getRecentFeedbackReports, type FeedbackReport } from '../firebase/firestore';
 
 gsap.registerPlugin(ScrollTrigger);
 
@@ -15,11 +16,62 @@ const modes = [
   { id: 'relax', emoji: '☕', title: 'Relax', desc: 'Your prompt · Write freely' },
 ];
 
+function overallBand(scores: Record<string, number>): string {
+  const vals = Object.values(scores).filter((v) => typeof v === 'number');
+  if (!vals.length) return '—';
+  const avg = vals.reduce((a, b) => a + b, 0) / vals.length;
+  return (Math.round(avg * 2) / 2).toFixed(1);
+}
+
+function timeAgo(date: Date | null): string {
+  if (!date) return '';
+  const diff = Date.now() - date.getTime();
+  const mins = Math.floor(diff / 60000);
+  if (mins < 60) return `${mins}m ago`;
+  const hrs = Math.floor(mins / 60);
+  if (hrs < 24) return `${hrs}h ago`;
+  const days = Math.floor(hrs / 24);
+  if (days < 7) return `${days}d ago`;
+  return date.toLocaleDateString('en-GB', { day: 'numeric', month: 'short' });
+}
+
+function bandColor(band: string): string {
+  const n = parseFloat(band);
+  if (isNaN(n)) return 'text-[var(--text-secondary)]';
+  if (n >= 7) return 'text-emerald-600 dark:text-emerald-400';
+  if (n >= 6) return 'text-blue-600 dark:text-blue-400';
+  if (n >= 5) return 'text-amber-600 dark:text-amber-400';
+  return 'text-red-500 dark:text-red-400';
+}
+
+function ScoreBar({ label, value }: { label: string; value: number }) {
+  const pct = Math.min(100, (value / 9) * 100);
+  const color = value >= 7 ? 'bg-emerald-500' : value >= 6 ? 'bg-blue-500' : value >= 5 ? 'bg-amber-500' : 'bg-red-400';
+  return (
+    <div className="flex items-center gap-2">
+      <span className="text-[0.7rem] text-[var(--text-secondary)] w-8 shrink-0 font-mono">{value.toFixed(1)}</span>
+      <div className="flex-1 h-1 bg-[var(--bg-subtle)] rounded-full overflow-hidden">
+        <div className={`h-full rounded-full ${color}`} style={{ width: `${pct}%` }} />
+      </div>
+      <span className="text-[0.65rem] text-[var(--text-secondary)] w-8 shrink-0 text-right truncate">{label}</span>
+    </div>
+  );
+}
+
+const SCORE_LABELS: Record<string, string> = {
+  taskAchievement: 'TA',
+  coherenceCohesion: 'CC',
+  lexicalResource: 'LR',
+  grammaticalRangeAccuracy: 'GRA',
+};
+
 export function DashboardPage() {
   const { user, profile } = useAuth();
   const { usage } = useUsage(user?.uid ?? null);
   const navigate = useNavigate();
   const rootRef = useRef<HTMLDivElement>(null);
+  const [reports, setReports] = useState<FeedbackReport[]>([]);
+  const [reportsLoading, setReportsLoading] = useState(true);
 
   useLayoutEffect(() => {
     const ctx = gsap.context(() => {
@@ -36,10 +88,22 @@ export function DashboardPage() {
         scrollTrigger: { trigger: '.gs-db-upsell', start: 'top 88%' },
         y: 36, opacity: 0, duration: 0.65, ease: 'power3.out',
       });
+
+      gsap.from('.gs-db-history', {
+        scrollTrigger: { trigger: '.gs-db-history', start: 'top 88%' },
+        y: 36, opacity: 0, duration: 0.65, ease: 'power3.out',
+      });
     }, rootRef);
 
     return () => ctx.revert();
   }, []);
+
+  useEffect(() => {
+    if (!user?.uid) return;
+    getRecentFeedbackReports(user.uid, 5)
+      .then(setReports)
+      .finally(() => setReportsLoading(false));
+  }, [user?.uid]);
 
   const isPro = profile?.plan === 'pro' || profile?.plan === 'forever';
   const usedCount = usage?.count ?? 0;
@@ -116,8 +180,87 @@ export function DashboardPage() {
             ))}
           </div>
 
+          {/* Recent Analyses */}
+          {isPro && (
+            <div className="gs-db-history mb-10">
+              <div className="flex items-center justify-between mb-4">
+                <h2 className="text-xl font-bold text-[var(--text-primary)]">Recent Analyses</h2>
+                <span className="text-xs text-[var(--text-secondary)] font-medium">Last 5 sessions</span>
+              </div>
+
+              {reportsLoading ? (
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                  {[1, 2, 3].map((i) => (
+                    <div key={i} className="h-[160px] rounded-2xl bg-[var(--bg-card)] border border-[var(--border-color)] animate-pulse" />
+                  ))}
+                </div>
+              ) : reports.length === 0 ? (
+                <div className="bg-[var(--bg-card)] border border-[var(--border-color)] rounded-2xl px-8 py-10 text-center">
+                  <div className="text-3xl mb-3">📝</div>
+                  <p className="font-semibold text-[var(--text-primary)] mb-1">No analyses yet</p>
+                  <p className="text-sm text-[var(--text-secondary)]">Submit an essay and get AI feedback to see your progress here.</p>
+                </div>
+              ) : (
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                  {reports.map((r) => {
+                    const band = overallBand(r.scores);
+                    const scoreEntries = Object.entries(r.scores);
+                    return (
+                      <div
+                        key={r.id}
+                        className="group bg-[var(--bg-card)] border border-[var(--border-color)] rounded-2xl p-5 shadow-[var(--shadow-sm)] hover:shadow-[var(--shadow-md)] hover:-translate-y-0.5 transition-all duration-200 flex flex-col gap-4"
+                      >
+                        {/* Header */}
+                        <div className="flex items-start justify-between gap-2">
+                          <div className="flex-1 min-w-0">
+                            <span className={`inline-flex items-center text-[0.65rem] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full mb-2 ${
+                              r.taskType === 'task1'
+                                ? 'bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-300'
+                                : 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300'
+                            }`}>
+                              {r.taskType === 'task1' ? 'Task 1' : 'Task 2'}
+                            </span>
+                            <p className="text-sm font-semibold text-[var(--text-primary)] truncate leading-tight">
+                              {r.topic}
+                            </p>
+                          </div>
+                          <div className="text-right shrink-0">
+                            <div className={`font-fraunces text-2xl font-extrabold leading-none ${bandColor(band)}`}>
+                              {band}
+                            </div>
+                            <div className="text-[0.6rem] text-[var(--text-secondary)] mt-0.5">Overall</div>
+                          </div>
+                        </div>
+
+                        {/* Score bars */}
+                        {scoreEntries.length > 0 && (
+                          <div className="flex flex-col gap-1.5">
+                            {scoreEntries.map(([key, val]) => (
+                              <ScoreBar
+                                key={key}
+                                label={SCORE_LABELS[key] ?? key.slice(0, 3)}
+                                value={typeof val === 'number' ? val : 0}
+                              />
+                            ))}
+                          </div>
+                        )}
+
+                        {/* Footer */}
+                        <div className="flex items-center justify-between pt-1 border-t border-[var(--border-color)] mt-auto">
+                          <span className="text-[0.7rem] text-[var(--text-secondary)]">
+                            {timeAgo(r.createdAt)}
+                          </span>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+          )}
+
           {!isPro && (
-            <div className="gs-db-upsell mt-12 bg-gradient-to-br from-slate-900 to-[#1e3a5f] rounded-2xl p-8 flex items-center justify-between gap-4 flex-wrap">
+            <div className="gs-db-upsell mt-4 bg-gradient-to-br from-slate-900 to-[#1e3a5f] rounded-2xl p-8 flex items-center justify-between gap-4 flex-wrap">
               <div>
                 <h3 className="font-fraunces text-white mb-1.5 text-xl">
                   Unlock AI Feedback
