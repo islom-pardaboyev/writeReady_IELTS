@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { useParams, useSearchParams, useNavigate, Link } from 'react-router-dom';
-import { useAuth } from '../contexts/AuthContext';
+import { useAuth } from '../hooks/useAuth';
 import { getQuestion, saveSubmission } from '../firebase/firestore';
 import { Layout } from '../components/layout/Layout';
 import { Button } from '../components/ui/Button';

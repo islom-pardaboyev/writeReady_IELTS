@@ -4,7 +4,7 @@ import { ScrollTrigger } from "gsap/ScrollTrigger";
 import { Link } from "react-router-dom";
 import { Layout } from "../components/layout/Layout";
 import { Button } from "../components/ui/Button";
-import { useAuth } from "../contexts/AuthContext";
+import { useAuth } from "../hooks/useAuth";
 import PaymeLogo from "/payme.png";
 import ClickLogo from "/click.png";
 import PaynetLogo from "/paynet.png";

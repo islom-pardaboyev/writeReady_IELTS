@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import jsPDF from 'jspdf';
-import { useAuth } from '../contexts/AuthContext';
+import { useAuth } from '../hooks/useAuth';
 import { Layout } from '../components/layout/Layout';
 import { Button } from '../components/ui/Button';
 import { decodeReport } from '../lib/reportEncoding';
