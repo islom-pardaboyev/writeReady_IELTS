@@ -10,6 +10,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { ThemeToggle } from "@/components/ui/ThemeToggle";
 import { Button } from "../ui/Button";
+import { NotificationBell } from "../ui/NotificationBell";
 
 function SubscriptionBadge({
   plan,
@@ -89,6 +90,7 @@ export function Header() {
           </Link>
 
           <ThemeToggle />
+          <NotificationBell />
 
           {user ? (
             <DropdownMenu>
