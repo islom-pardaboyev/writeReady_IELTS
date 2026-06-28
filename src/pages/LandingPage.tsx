@@ -223,7 +223,7 @@ export function LandingPage() {
                   onMouseEnter={(e) => { (e.currentTarget as HTMLDivElement).style.transform = 'translateY(-2px)'; (e.currentTarget as HTMLDivElement).style.boxShadow = '0 8px 24px rgba(0,0,0,0.1)'; }}
                   onMouseLeave={(e) => { (e.currentTarget as HTMLDivElement).style.transform = ''; (e.currentTarget as HTMLDivElement).style.boxShadow = ''; }}
                 >
-                  <div className="text-[1.75rem] mb-4">{m.emoji}</div>
+                  <div className="text-[1.75rem] mb-4 text-white">{m.emoji}</div>
                   <div className={`text-[0.7rem] font-bold uppercase tracking-[0.08em] mb-[0.375rem] ${m.dark ? 'text-white/50' : 'text-[var(--text-secondary)]'}`}>{m.tag}</div>
                   <h3 className={`text-[1.125rem] font-extrabold mb-2 tracking-[-0.01em] ${m.dark ? 'text-white' : 'text-[var(--text-primary)]'}`}>{m.title}</h3>
                   <p className={`text-[0.875rem] leading-[1.7] ${m.dark ? 'text-white/70' : 'text-[var(--text-secondary)]'}`}>{m.desc}</p>
