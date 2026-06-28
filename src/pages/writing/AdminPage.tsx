@@ -19,6 +19,26 @@ import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import {
+  SidebarProvider,
+  Sidebar,
+  SidebarHeader,
+  SidebarContent,
+  SidebarFooter,
+  SidebarGroup,
+  SidebarMenu,
+  SidebarMenuItem,
+  SidebarMenuButton,
+  SidebarTrigger,
+  SidebarInset,
+  useSidebar,
+} from "@/components/ui/sidebar";
 
 interface Task1 { id: string; image: string; report: string; }
 interface Task2 { id: string; report: string; }
@@ -134,6 +154,92 @@ const NAV: { id: NavSection; label: string; icon: string }[] = [
   { id: "centers",        label: "Learning Centers", icon: "🏫" },
   { id: "blog",           label: "Blog",             icon: "📝" },
 ];
+
+// ── Admin sidebar inner (needs useSidebar) ───────────────────────
+function AdminSidebar({
+  section,
+  setSection,
+  adminUser,
+  allUsers,
+  signOut,
+}: {
+  section: NavSection;
+  setSection: (s: NavSection) => void;
+  adminUser: string;
+  allUsers: UserRow[];
+  signOut: () => void;
+}) {
+  const { open } = useSidebar();
+
+  return (
+    <Sidebar>
+      <SidebarHeader>
+        <div className={open ? "px-2" : "flex justify-center"}>
+          {open ? (
+            <>
+              <img src={Logo} alt="WriteReady" className="h-8 object-contain" />
+              <p className="text-[0.6rem] font-bold tracking-widest text-white/30 uppercase mt-2">Admin Panel</p>
+            </>
+          ) : (
+            <img src={Logo} alt="WriteReady" className="h-7 w-7 object-contain" />
+          )}
+        </div>
+      </SidebarHeader>
+
+      <SidebarContent>
+        <SidebarGroup>
+          <SidebarMenu>
+            {NAV.map((item) => (
+              <SidebarMenuItem key={item.id}>
+                <SidebarMenuButton
+                  isActive={section === item.id}
+                  onClick={() => setSection(item.id)}
+                  tooltip={item.label}
+                >
+                  <span className="text-base leading-none shrink-0">{item.icon}</span>
+                  {open && (
+                    <>
+                      <span>{item.label}</span>
+                      {item.id === "users" && allUsers.length > 0 && (
+                        <span className="ml-auto text-[0.65rem] font-bold bg-white/10 text-white/60 rounded-full px-1.5 py-0.5">
+                          {allUsers.length}
+                        </span>
+                      )}
+                    </>
+                  )}
+                </SidebarMenuButton>
+              </SidebarMenuItem>
+            ))}
+          </SidebarMenu>
+        </SidebarGroup>
+      </SidebarContent>
+
+      <SidebarFooter>
+        {open && (
+          <div className="flex items-center gap-2.5 px-2 mb-3">
+            <Avatar className="w-8 h-8 shrink-0 border border-white/20">
+              <AvatarFallback className="bg-[#1C3A5E] text-white text-[0.7rem]">
+                {adminUser.slice(0, 2).toUpperCase()}
+              </AvatarFallback>
+            </Avatar>
+            <div className="min-w-0">
+              <p className="text-xs font-semibold text-white truncate">{adminUser}</p>
+              <p className="text-[0.65rem] text-white/35">Administrator</p>
+            </div>
+          </div>
+        )}
+        <button
+          onClick={signOut}
+          title={!open ? "Sign out" : undefined}
+          className={`w-full text-left flex items-center gap-2.5 px-3.5 py-2 rounded-lg text-sm font-medium text-red-400 hover:bg-red-500/10 hover:text-red-300 transition-colors border-none cursor-pointer bg-transparent ${!open ? "justify-center" : ""}`}
+        >
+          <span>↩</span>
+          {open && "Sign out"}
+        </button>
+      </SidebarFooter>
+    </Sidebar>
+  );
+}
 
 // ── Main ─────────────────────────────────────────────────────────
 export default function Admin() {
@@ -281,7 +387,6 @@ export default function Admin() {
 
       const repSnap = await getDocs(collection(db, "feedback_reports"));
 
-      // uid → { curr: {total,count}, prev: {total,count} }
       const map: Record<string, { curr: { total: number; count: number }; prev: { total: number; count: number } }> = {};
 
       repSnap.docs.forEach((d) => {
@@ -293,7 +398,6 @@ export default function Admin() {
         if (!vals.length) return;
         const avg = vals.reduce((a, b) => a + b, 0) / vals.length;
 
-        // Determine which month this report belongs to
         const ts = data.createdAt?.toDate?.() as Date | undefined;
         if (!ts) return;
         const reportMonth = `${ts.getFullYear()}-${String(ts.getMonth() + 1).padStart(2, "0")}`;
@@ -308,7 +412,6 @@ export default function Admin() {
         }
       });
 
-      // Fetch users for emails & bonusAnalyses
       const usersSnap = await getDocs(collection(db, "users"));
       const emailMap: Record<string, string> = {};
       const bonusMap: Record<string, number> = {};
@@ -319,7 +422,7 @@ export default function Admin() {
       });
 
       const entries: LeaderEntry[] = Object.entries(map)
-        .filter(([, { curr }]) => curr.count > 0) // must have activity this month
+        .filter(([, { curr }]) => curr.count > 0)
         .map(([uid, { curr, prev }]) => {
           const currBand = curr.count > 0 ? Math.round((curr.total / curr.count) * 10) / 10 : null;
           const prevBand = prev.count > 0 ? Math.round((prev.total / prev.count) * 10) / 10 : null;
@@ -335,7 +438,6 @@ export default function Admin() {
           };
         });
 
-      // Sort by improvement desc, top 10
       entries.sort((a, b) => b.improvement - a.improvement);
       setLeaderboard(entries.slice(0, 10));
     } catch (e) { console.error(e); }
@@ -505,1077 +607,1060 @@ export default function Admin() {
   const todayStr = new Date().toISOString().slice(0, 10);
   const todayCount = allUsers.filter((u) => u.createdAt?.slice(0, 10) === todayStr).length;
 
+  const currentNav = NAV.find((n) => n.id === section);
+
   return (
-    <div className="flex min-h-screen bg-slate-50 font-sans">
+    <SidebarProvider>
+      <div className="flex min-h-screen bg-slate-50 font-sans">
+        <AdminSidebar
+          section={section}
+          setSection={setSection}
+          adminUser={adminUser}
+          allUsers={allUsers}
+          signOut={signOut}
+        />
 
-      {/* ── Sidebar ── */}
-      <aside className="w-[220px] shrink-0 bg-[#0f172a] flex flex-col min-h-screen sticky top-0 h-screen">
-        {/* Logo */}
-        <div className="px-5 py-5 border-b border-white/10">
-          <img src={Logo} alt="WriteReady" className="h-8 object-contain" />
-          <p className="text-[0.6rem] font-bold tracking-widest text-white/30 uppercase mt-2">Admin Panel</p>
-        </div>
-
-        {/* Nav */}
-        <nav className="flex-1 px-3 py-4 flex flex-col gap-0.5">
-          {NAV.map((item) => (
-            <button
-              key={item.id}
-              onClick={() => setSection(item.id)}
-              className={`w-full text-left flex items-center gap-3 px-3.5 py-2.5 rounded-lg text-sm font-medium transition-colors border-none cursor-pointer ${
-                section === item.id
-                  ? "bg-white/10 text-white"
-                  : "text-white/55 hover:text-white hover:bg-white/5"
-              }`}
-            >
-              <span className="text-base leading-none">{item.icon}</span>
-              {item.label}
-              {item.id === "users" && allUsers.length > 0 && (
-                <span className="ml-auto text-[0.65rem] font-bold bg-white/10 text-white/60 rounded-full px-1.5 py-0.5">
-                  {allUsers.length}
-                </span>
-              )}
-            </button>
-          ))}
-        </nav>
-
-        {/* Bottom: user + signout */}
-        <div className="px-3 py-4 border-t border-white/10">
-          <div className="flex items-center gap-2.5 px-2 mb-3">
-            <Avatar className="w-8 h-8 shrink-0 border border-white/20">
-              <AvatarFallback className="bg-[#1C3A5E] text-white text-[0.7rem]">{adminUser.slice(0, 2).toUpperCase()}</AvatarFallback>
-            </Avatar>
-            <div className="min-w-0">
-              <p className="text-xs font-semibold text-white truncate">{adminUser}</p>
-              <p className="text-[0.65rem] text-white/35">Administrator</p>
-            </div>
-          </div>
-          <button
-            onClick={signOut}
-            className="w-full text-left flex items-center gap-2.5 px-3.5 py-2 rounded-lg text-sm font-medium text-red-400 hover:bg-red-500/10 hover:text-red-300 transition-colors border-none cursor-pointer bg-transparent"
-          >
-            <span>↩</span> Sign out
-          </button>
-        </div>
-      </aside>
-
-      {/* ── Content ── */}
-      <main className="flex-1 min-w-0 p-7 overflow-y-auto">
-
-        {/* ── DASHBOARD ── */}
-        {section === "dashboard" && (
-          <div className="flex flex-col gap-6">
+        <SidebarInset>
+          {/* Header */}
+          <header className="sticky top-0 z-10 flex items-center gap-3 px-6 py-3 bg-white border-b border-slate-200 shrink-0">
+            <SidebarTrigger />
+            <div className="h-5 w-px bg-slate-200" />
             <div>
-              <p className="text-[0.7rem] font-bold tracking-widest uppercase text-[#1C3A5E] mb-1">Overview</p>
-              <h1 className="text-2xl font-bold text-slate-900 m-0">Dashboard</h1>
+              <p className="text-xs font-bold tracking-widest uppercase text-slate-400">Admin Panel</p>
+              <p className="text-sm font-semibold text-slate-800 leading-tight">{currentNav?.label ?? "Dashboard"}</p>
             </div>
+          </header>
 
-            <div className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4">
-              {[
-                { label: "Task 1 prompts",      value: task1List.length,    color: "text-blue-700",    bg: "bg-blue-50",   border: "border-blue-100",   icon: "🖼️" },
-                { label: "Task 2 prompts",      value: task2List.length,    color: "text-green-700",   bg: "bg-green-50",  border: "border-green-100",  icon: "✍️" },
-                { label: "Jami foydalanuvchi",  value: allUsers.length || "—", color: "text-slate-700", bg: "bg-slate-50", border: "border-slate-200",  icon: "👥" },
-                { label: "Bugun qo'shildi",     value: todayCount || "—",   color: "text-purple-700",  bg: "bg-purple-50", border: "border-purple-100", icon: "🆕" },
-                { label: "Pro obunachi",         value: proCount || "—",     color: "text-[#1C3A5E]",   bg: "bg-sky-50",   border: "border-sky-100",    icon: "⭐" },
-                { label: "Lifetime a'zo",        value: lifetimeCount || "—",color: "text-amber-700",   bg: "bg-amber-50",  border: "border-amber-100",  icon: "♾️" },
-              ].map((s) => (
-                <div key={s.label} className={`${s.bg} border ${s.border} rounded-xl p-5`}>
-                  <div className="flex items-center gap-2 mb-2">
-                    <span className="text-lg">{s.icon}</span>
-                    <p className={`text-xs font-semibold ${s.color}`}>{s.label}</p>
-                  </div>
-                  <p className={`font-mono text-3xl font-bold ${s.color}`}>{s.value}</p>
+          {/* Main content */}
+          <main className="flex-1 p-7 overflow-y-auto">
+
+            {/* ── DASHBOARD ── */}
+            {section === "dashboard" && (
+              <div className="flex flex-col gap-6">
+                <div>
+                  <p className="text-[0.7rem] font-bold tracking-widest uppercase text-[#1C3A5E] mb-1">Overview</p>
+                  <h1 className="text-2xl font-bold text-slate-900 m-0">Dashboard</h1>
                 </div>
-              ))}
-            </div>
 
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-              <div className="bg-white rounded-xl border border-slate-200 p-5">
-                <p className="text-xs font-bold uppercase tracking-widest text-slate-400 mb-3">Quick Actions</p>
-                <div className="flex flex-col gap-2">
+                <div className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4">
                   {[
-                    { label: "Add Task 1 prompt", section: "task1" as NavSection, color: "text-blue-700 border-blue-200 hover:bg-blue-50" },
-                    { label: "Add Task 2 prompt", section: "task2" as NavSection, color: "text-green-700 border-green-200 hover:bg-green-50" },
-                    { label: "Manage Users", section: "users" as NavSection, color: "text-purple-700 border-purple-200 hover:bg-purple-50" },
-                  ].map((a) => (
-                    <button
-                      key={a.label}
-                      onClick={() => setSection(a.section)}
-                      className={`text-left px-4 py-2.5 rounded-lg border text-sm font-semibold transition-colors bg-white cursor-pointer ${a.color}`}
-                    >
-                      {a.label} →
-                    </button>
+                    { label: "Task 1 prompts",      value: task1List.length,    color: "text-blue-700",    bg: "bg-blue-50",   border: "border-blue-100",   icon: "🖼️" },
+                    { label: "Task 2 prompts",      value: task2List.length,    color: "text-green-700",   bg: "bg-green-50",  border: "border-green-100",  icon: "✍️" },
+                    { label: "Jami foydalanuvchi",  value: allUsers.length || "—", color: "text-slate-700", bg: "bg-slate-50", border: "border-slate-200",  icon: "👥" },
+                    { label: "Bugun qo'shildi",     value: todayCount || "—",   color: "text-purple-700",  bg: "bg-purple-50", border: "border-purple-100", icon: "🆕" },
+                    { label: "Pro obunachi",         value: proCount || "—",     color: "text-[#1C3A5E]",   bg: "bg-sky-50",   border: "border-sky-100",    icon: "⭐" },
+                    { label: "Lifetime a'zo",        value: lifetimeCount || "—",color: "text-amber-700",   bg: "bg-amber-50",  border: "border-amber-100",  icon: "♾️" },
+                  ].map((s) => (
+                    <div key={s.label} className={`${s.bg} border ${s.border} rounded-xl p-5`}>
+                      <div className="flex items-center gap-2 mb-2">
+                        <span className="text-lg">{s.icon}</span>
+                        <p className={`text-xs font-semibold ${s.color}`}>{s.label}</p>
+                      </div>
+                      <p className={`font-mono text-3xl font-bold ${s.color}`}>{s.value}</p>
+                    </div>
                   ))}
                 </div>
-              </div>
-              <div className="bg-white rounded-xl border border-slate-200 p-5">
-                <p className="text-xs font-bold uppercase tracking-widest text-slate-400 mb-3">Recent Users</p>
-                {allUsers.length === 0 ? (
-                  <button onClick={loadUsers} className="text-sm text-purple-600 underline cursor-pointer bg-transparent border-none">Load users</button>
-                ) : (
-                  <div className="flex flex-col gap-2">
-                    {allUsers.slice(0, 5).map((u) => {
-                      const b = planBadge(u.plan, u.subscription);
-                      return (
-                        <div key={u.id} className="flex items-center justify-between gap-2">
-                          <span className="text-sm text-slate-700 truncate">{u.email}</span>
-                          <Badge variant={b.label === 'Lifetime' ? 'warning' : b.label === 'Pro' ? 'info' : 'outline'} className="text-[0.65rem]">{b.label}</Badge>
-                        </div>
-                      );
-                    })}
-                  </div>
-                )}
-              </div>
-            </div>
-          </div>
-        )}
 
-        {/* ── TASK 1 ── */}
-        {section === "task1" && (
-          <div className="flex flex-col gap-6">
-            <div>
-              <p className="text-[0.7rem] font-bold tracking-widest uppercase text-blue-700 mb-1">Task 1</p>
-              <h1 className="text-2xl font-bold text-slate-900 m-0">Rasm + savol qo'shish</h1>
-            </div>
-
-            {/* Add form */}
-            <div className="bg-white rounded-xl border border-slate-200 p-6 flex flex-col gap-4">
-              <p className="text-sm font-bold text-slate-700">Yangi Task 1 qo'shish</p>
-              <div>
-                <label className="text-xs font-semibold text-slate-600 mb-1.5 block uppercase tracking-wide">Rasm yuklash</label>
-                <input
-                  type="file"
-                  accept="image/*,application/pdf"
-                  onChange={async (e) => {
-                    const f = e.target.files?.[0];
-                    if (f) { const url = await uploadImage(f); if (url) setT1Image(url); }
-                  }}
-                  className="block w-full text-sm text-gray-700"
-                />
-              </div>
-              {uploading && (
-                <div className="bg-blue-50 border border-blue-200 rounded-lg px-3.5 py-2.5 text-sm text-blue-700 flex items-center gap-2">
-                  <Spinner color="#1d4ed8" /> Yuklanmoqda...
-                </div>
-              )}
-              {t1Image && (
-                <div className="rounded-xl overflow-hidden border border-slate-200 max-h-48">
-                  <img src={t1Image} alt="preview" className="w-full h-48 object-cover" />
-                </div>
-              )}
-              <div>
-                <label className="text-xs font-semibold text-slate-600 mb-1.5 block uppercase tracking-wide">Savol matni</label>
-                <Textarea
-                  className="border-slate-200 bg-white text-slate-900 min-h-[100px]"
-                  placeholder="Task 1 savol matnini kiriting..."
-                  value={t1Report}
-                  onChange={(e) => setT1Report(e.target.value)}
-                  rows={4}
-                />
-              </div>
-              {t1Error && <div className="bg-red-50 border border-red-200 rounded-lg px-3.5 py-2.5 text-sm text-red-600">{t1Error}</div>}
-              <button
-                className={`${t1Loading || uploading ? "bg-slate-400" : "bg-blue-700 hover:bg-blue-800"} text-white border-none rounded-lg py-2.5 font-semibold text-sm cursor-pointer flex items-center justify-center gap-2 transition-colors`}
-                onClick={addTask1}
-                disabled={t1Loading || uploading}
-              >
-                {t1Loading ? <><Spinner color="white" /> Saqlanmoqda...</> : "+ Qo'shish"}
-              </button>
-            </div>
-
-            {/* List */}
-            {task1List.length > 0 && (
-              <div className="bg-white rounded-xl border border-slate-200 p-6 flex flex-col gap-4">
-                <div className="flex items-center justify-between">
-                  <p className="text-sm font-bold text-slate-700">Mavjud Task 1 promptlar ({task1List.length})</p>
-                  <Input
-                    className="border-slate-200 bg-white text-slate-900 w-48 h-8 text-sm"
-                    placeholder="Qidirish..."
-                    value={task1Search}
-                    onChange={(e) => setTask1Search(e.target.value)}
-                  />
-                </div>
-                <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-3">
-                  {filteredT1.length === 0 ? (
-                    <p className="text-sm text-slate-400 col-span-full py-6 text-center">Natija yo'q.</p>
-                  ) : filteredT1.map((t) => (
-                    <div key={t.id} className="bg-slate-50 rounded-xl border border-slate-200 p-3 flex flex-col gap-2">
-                      <div className="relative group">
-                        <img src={t.image} alt="" className="w-full h-28 object-cover rounded-lg" />
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                  <div className="bg-white rounded-xl border border-slate-200 p-5">
+                    <p className="text-xs font-bold uppercase tracking-widest text-slate-400 mb-3">Quick Actions</p>
+                    <div className="flex flex-col gap-2">
+                      {[
+                        { label: "Add Task 1 prompt", section: "task1" as NavSection, color: "text-blue-700 border-blue-200 hover:bg-blue-50" },
+                        { label: "Add Task 2 prompt", section: "task2" as NavSection, color: "text-green-700 border-green-200 hover:bg-green-50" },
+                        { label: "Manage Users", section: "users" as NavSection, color: "text-purple-700 border-purple-200 hover:bg-purple-50" },
+                      ].map((a) => (
                         <button
-                          onClick={() => setPreviewImage(t.image)}
-                          className="absolute inset-0 flex items-center justify-center bg-black/0 group-hover:bg-black/40 rounded-lg transition-all duration-150 border-none cursor-pointer"
-                          title="To'liq ko'rish"
+                          key={a.label}
+                          onClick={() => setSection(a.section)}
+                          className={`text-left px-4 py-2.5 rounded-lg border text-sm font-semibold transition-colors bg-white cursor-pointer ${a.color}`}
                         >
-                          <span className="opacity-0 group-hover:opacity-100 transition-opacity bg-white/90 text-slate-800 text-xs font-bold px-3 py-1.5 rounded-lg flex items-center gap-1.5">
-                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                              <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
-                              <line x1="11" y1="8" x2="11" y2="14"/><line x1="8" y1="11" x2="14" y2="11"/>
-                            </svg>
-                            Kattalashtirish
-                          </span>
+                          {a.label} →
                         </button>
-                      </div>
-                      <p className="text-xs text-slate-700 leading-relaxed m-0 line-clamp-3">{t.report}</p>
-                      <div className="flex gap-2 mt-auto">
-                        <button
-                          className="w-8 h-7 bg-white text-slate-500 border border-slate-200 rounded-lg text-xs flex items-center justify-center cursor-pointer hover:bg-slate-100 transition-colors shrink-0"
-                          onClick={() => setPreviewImage(t.image)}
-                          title="Preview"
-                        >
-                          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                            <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/>
-                          </svg>
-                        </button>
-                        <button
-                          className="flex-1 bg-white text-blue-700 border border-blue-200 rounded-lg py-1.5 text-xs font-semibold cursor-pointer hover:bg-blue-50 transition-colors"
-                          onClick={() => { setEditT1(t); setEditImage(t.image); setEditReport(t.report); }}
-                        >Edit</button>
-                        <button
-                          className="flex-1 bg-white text-red-500 border border-red-200 rounded-lg py-1.5 text-xs font-semibold cursor-pointer hover:bg-red-50 transition-colors"
-                          onClick={() => deleteTask1(t.id)}
-                        >Delete</button>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-          </div>
-        )}
-
-        {/* ── TASK 2 ── */}
-        {section === "task2" && (
-          <div className="flex flex-col gap-6">
-            <div>
-              <p className="text-[0.7rem] font-bold tracking-widest uppercase text-green-700 mb-1">Task 2</p>
-              <h1 className="text-2xl font-bold text-slate-900 m-0">Savol qo'shish</h1>
-            </div>
-
-            <div className="bg-white rounded-xl border border-slate-200 p-6 flex flex-col gap-4">
-              <p className="text-sm font-bold text-slate-700">Yangi Task 2 qo'shish</p>
-              <div>
-                <label className="text-xs font-semibold text-slate-600 mb-1.5 block uppercase tracking-wide">Savol matni</label>
-                <Textarea
-                  className="border-slate-200 bg-white text-slate-900 min-h-[120px]"
-                  placeholder="Task 2 savol matnini kiriting..."
-                  value={t2Report}
-                  onChange={(e) => setT2Report(e.target.value)}
-                  rows={5}
-                />
-              </div>
-              {t2Error && <div className="bg-red-50 border border-red-200 rounded-lg px-3.5 py-2.5 text-sm text-red-600">{t2Error}</div>}
-              <button
-                className={`${t2Loading ? "bg-slate-400" : "bg-green-700 hover:bg-green-800"} text-white border-none rounded-lg py-2.5 font-semibold text-sm cursor-pointer flex items-center justify-center gap-2 transition-colors`}
-                onClick={addTask2}
-                disabled={t2Loading}
-              >
-                {t2Loading ? <><Spinner color="white" /> Saqlanmoqda...</> : "+ Qo'shish"}
-              </button>
-            </div>
-
-            {task2List.length > 0 && (
-              <div className="bg-white rounded-xl border border-slate-200 p-6 flex flex-col gap-4">
-                <div className="flex items-center justify-between">
-                  <p className="text-sm font-bold text-slate-700">Mavjud Task 2 promptlar ({task2List.length})</p>
-                  <Input
-                    className="border-slate-200 bg-white text-slate-900 w-48 h-8 text-sm"
-                    placeholder="Qidirish..."
-                    value={task2Search}
-                    onChange={(e) => setTask2Search(e.target.value)}
-                  />
-                </div>
-                <div className="flex flex-col gap-2">
-                  {filteredT2.length === 0 ? (
-                    <p className="text-sm text-slate-400 py-6 text-center">Natija yo'q.</p>
-                  ) : filteredT2.map((t) => (
-                    <div key={t.id} className="bg-slate-50 rounded-xl border border-slate-200 p-4 flex items-start justify-between gap-4">
-                      <p className="text-sm text-slate-700 leading-relaxed m-0 flex-1">{t.report}</p>
-                      <div className="flex gap-2 shrink-0">
-                        <button
-                          className="bg-white text-green-700 border border-green-200 rounded-lg py-1.5 px-3 text-xs font-semibold cursor-pointer hover:bg-green-50 transition-colors"
-                          onClick={() => { setEditT2(t); setEditT2Report(t.report); }}
-                        >Edit</button>
-                        <button
-                          className="bg-white text-red-500 border border-red-200 rounded-lg py-1.5 px-3 text-xs font-semibold cursor-pointer hover:bg-red-50 transition-colors"
-                          onClick={() => deleteTask2(t.id)}
-                        >Delete</button>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-          </div>
-        )}
-
-        {/* ── USERS ── */}
-        {section === "users" && (
-          <div className="flex flex-col gap-6">
-            <div className="flex items-center justify-between flex-wrap gap-4">
-              <div>
-                <p className="text-[0.7rem] font-bold tracking-widest uppercase text-purple-700 mb-1">Users</p>
-                <h1 className="text-2xl font-bold text-slate-900 m-0">User Management</h1>
-              </div>
-              <button
-                onClick={loadUsers}
-                disabled={usersLoading}
-                className="px-4 py-2 bg-white border border-slate-200 rounded-lg text-sm font-semibold text-slate-700 hover:bg-slate-50 cursor-pointer transition-colors"
-              >
-                {usersLoading ? "Yuklanmoqda..." : "↻ Refresh"}
-              </button>
-            </div>
-
-            {/* Stats row */}
-            <div className="grid grid-cols-3 gap-4">
-              {[
-                { label: "Total users", value: allUsers.length, color: "text-slate-700", bg: "bg-white" },
-                { label: "Pro / Lifetime", value: proCount, color: "text-blue-700", bg: "bg-blue-50" },
-                { label: "Lifetime only", value: lifetimeCount, color: "text-amber-700", bg: "bg-amber-50" },
-              ].map((s) => (
-                <div key={s.label} className={`${s.bg} border border-slate-200 rounded-xl p-4`}>
-                  <p className={`text-xs font-semibold ${s.color} mb-1`}>{s.label}</p>
-                  <p className={`font-mono text-2xl font-bold ${s.color}`}>{s.value}</p>
-                </div>
-              ))}
-            </div>
-
-            {userSuccess && <div className="bg-green-50 border border-green-200 rounded-lg px-4 py-3 text-sm text-green-700">{userSuccess}</div>}
-            {userError && <div className="bg-red-50 border border-red-200 rounded-lg px-4 py-3 text-sm text-red-600">{userError}</div>}
-
-            {/* Search */}
-            <Input
-              className="border-slate-200 bg-white text-slate-900 max-w-xs"
-              placeholder="Email bo'yicha qidirish..."
-              value={userSearch}
-              onChange={(e) => setUserSearch(e.target.value)}
-            />
-
-            {/* Table */}
-            <div className="bg-white rounded-xl border border-slate-200 overflow-hidden">
-              {usersLoading ? (
-                <div className="flex items-center justify-center py-16 text-slate-400 text-sm gap-2">
-                  <Spinner color="#94a3b8" /> Yuklanmoqda...
-                </div>
-              ) : allUsers.length === 0 ? (
-                <div className="py-16 text-center text-slate-400 text-sm">Hech qanday foydalanuvchi topilmadi.</div>
-              ) : (
-                <div className="overflow-x-auto">
-                  <table className="w-full text-sm">
-                    <thead>
-                      <tr className="border-b border-slate-100 bg-slate-50">
-                        <th className="text-left px-4 py-3 text-xs font-bold text-slate-500 uppercase tracking-wider">Email</th>
-                        <th className="text-left px-4 py-3 text-xs font-bold text-slate-500 uppercase tracking-wider">Plan</th>
-                        <th className="text-left px-4 py-3 text-xs font-bold text-slate-500 uppercase tracking-wider">Subscription tugaydi</th>
-                        <th className="text-right px-4 py-3 text-xs font-bold text-slate-500 uppercase tracking-wider">Amallar</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-slate-100">
-                      {filteredUsers.map((u) => {
-                        const b = planBadge(u.plan, u.subscription);
-                        const expiry = u.subscription === "forever" ? "Lifetime ♾️" : formatDate(u.subscription) ? `${formatDate(u.subscription)}` : "—";
-                        const isExpired = u.subscription && u.subscription !== "forever" && new Date(u.subscription) < new Date();
-                        return (
-                          <tr
-                            key={u.id}
-                            className={`hover:bg-slate-50 cursor-pointer transition-colors ${selectedUser?.id === u.id ? "bg-purple-50" : ""}`}
-                            onClick={() => { setSelectedUser(selectedUser?.id === u.id ? null : u); setUserSuccess(""); setUserError(""); }}
-                          >
-                            <td className="px-4 py-3 font-medium text-slate-800">{u.email}</td>
-                            <td className="px-4 py-3">
-                              <Badge variant={b.label === 'Lifetime' ? 'warning' : b.label === 'Pro' ? 'info' : 'outline'} className="text-[0.65rem]">{b.label}</Badge>
-                            </td>
-                            <td className={`px-4 py-3 text-sm ${isExpired ? "text-red-500" : "text-slate-600"}`}>{expiry}</td>
-                            <td className="px-4 py-3 text-right">
-                              <span className="text-[0.7rem] text-slate-400">{selectedUser?.id === u.id ? "▲ yopish" : "▼ boshqarish"}</span>
-                            </td>
-                          </tr>
-                        );
-                      })}
-                    </tbody>
-                  </table>
-                </div>
-              )}
-            </div>
-
-            {/* Inline actions for selected user */}
-            {selectedUser && (
-              <div className="bg-white rounded-xl border-2 border-purple-200 p-5 flex flex-col gap-4">
-                <div className="flex items-center gap-3">
-                  <Avatar className="w-10 h-10 shrink-0">
-                    <AvatarFallback className="bg-purple-600 text-white text-sm font-bold">{selectedUser.email.slice(0, 2).toUpperCase()}</AvatarFallback>
-                  </Avatar>
-                  <div>
-                    <p className="font-bold text-slate-900 text-sm">{selectedUser.email}</p>
-                    <p className="text-xs text-slate-500">
-                      {selectedUser.subscription === "forever"
-                        ? "Lifetime — never expires"
-                        : formatDate(selectedUser.subscription)
-                        ? `Expires: ${formatDate(selectedUser.subscription)}`
-                        : "No active subscription"}
-                    </p>
-                  </div>
-                  <span className={`ml-auto text-xs font-bold px-2.5 py-1 rounded-full ${planBadge(selectedUser.plan, selectedUser.subscription).cls}`}>
-                    {planBadge(selectedUser.plan, selectedUser.subscription).label}
-                  </span>
-                </div>
-                <div>
-                  <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">Subscription o'zgartirish</p>
-                  <div className="flex gap-2 flex-wrap">
-                    <button
-                      onClick={() => setSubscription(selectedUser, "month")}
-                      disabled={userActionLoading}
-                      className="bg-blue-700 text-white border-none rounded-lg px-4 py-2 text-xs font-semibold cursor-pointer hover:bg-blue-800 transition-colors disabled:opacity-50"
-                    >
-                      + 1 Month Pro
-                    </button>
-                    <button
-                      onClick={() => setSubscription(selectedUser, "forever")}
-                      disabled={userActionLoading}
-                      className="bg-amber-600 text-white border-none rounded-lg px-4 py-2 text-xs font-semibold cursor-pointer hover:bg-amber-700 transition-colors disabled:opacity-50"
-                    >
-                      Lifetime Forever
-                    </button>
-                    <button
-                      onClick={() => setSubscription(selectedUser, "free")}
-                      disabled={userActionLoading}
-                      className="bg-white text-red-500 border border-red-300 rounded-lg px-4 py-2 text-xs font-semibold cursor-pointer hover:bg-red-50 transition-colors disabled:opacity-50"
-                    >
-                      Revoke to Free
-                    </button>
-                  </div>
-                </div>
-              </div>
-            )}
-          </div>
-        )}
-
-        {/* ── LEADERBOARD ── */}
-        {section === "leaderboard" && (
-          <div className="flex flex-col gap-6">
-            <div className="flex items-center justify-between flex-wrap gap-4">
-              <div>
-                <p className="text-[0.7rem] font-bold tracking-widest uppercase text-amber-600 mb-1">Gamification</p>
-                <h1 className="text-2xl font-bold text-slate-900 m-0">Leaderboard — Top o'quvchilar</h1>
-              </div>
-              <button onClick={loadLeaderboard} disabled={leaderLoading}
-                className="px-4 py-2 bg-white border border-slate-200 rounded-lg text-sm font-semibold text-slate-700 hover:bg-slate-50 cursor-pointer transition-colors">
-                {leaderLoading ? "Yuklanmoqda..." : "↻ Yangilash"}
-              </button>
-            </div>
-
-            {/* Grant panel */}
-            <div className="bg-amber-50 border border-amber-200 rounded-xl p-5 flex flex-col gap-4">
-              <p className="text-sm font-bold text-amber-800">Tanlangan o'quvchilarga bepul tahlil berish</p>
-              <div className="flex items-center gap-3 flex-wrap">
-                <div className="flex items-center gap-2">
-                  <label className="text-xs font-semibold text-amber-700">Bepul tahlil soni:</label>
-                  <Input
-                    type="number" min="1" max="50"
-                    value={bonusInput}
-                    onChange={(e) => setBonusInput(e.target.value)}
-                    className="w-20 h-8 border-amber-300 bg-white text-slate-900 font-mono text-sm"
-                  />
-                </div>
-                <button
-                  onClick={grantBonus}
-                  disabled={grantLoading || selectedUids.size === 0 || !bonusInput}
-                  className="bg-amber-600 text-white border-none rounded-lg px-5 py-2 text-sm font-bold cursor-pointer hover:bg-amber-700 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
-                >
-                  {grantLoading ? "Berilmoqda..." : `🎁 ${selectedUids.size} ta o'quvchiga ber`}
-                </button>
-                {selectedUids.size > 0 && (
-                  <button onClick={() => setSelectedUids(new Set())}
-                    className="text-xs text-slate-500 underline bg-transparent border-none cursor-pointer">
-                    Tanlovni bekor qilish
-                  </button>
-                )}
-              </div>
-              {grantMsg && (
-                <div className={`rounded-lg px-4 py-2.5 text-sm font-medium ${grantMsg.startsWith("✓") ? "bg-green-50 border border-green-200 text-green-700" : "bg-red-50 border border-red-200 text-red-600"}`}>
-                  {grantMsg}
-                </div>
-              )}
-            </div>
-
-            {/* Table */}
-            <div className="bg-white rounded-xl border border-slate-200 overflow-hidden">
-              {leaderLoading ? (
-                <div className="flex items-center justify-center py-16 text-slate-400 text-sm gap-2">
-                  <Spinner color="#94a3b8" /> Yuklanmoqda...
-                </div>
-              ) : leaderboard.length === 0 ? (
-                <div className="py-16 text-center text-slate-400 text-sm">
-                  Hali hech qanday AI tahlil yo'q.
-                </div>
-              ) : (
-                <div className="overflow-x-auto">
-                  <table className="w-full text-sm">
-                    <thead>
-                      <tr className="border-b border-slate-100 bg-slate-50">
-                        <th className="px-4 py-3 text-left text-xs font-bold text-slate-400 uppercase tracking-wider w-12">O'rin</th>
-                        <th className="px-4 py-3 text-left text-xs font-bold text-slate-400 uppercase tracking-wider">Foydalanuvchi</th>
-                        <th className="px-4 py-3 text-center text-xs font-bold text-slate-400 uppercase tracking-wider">O'tgan oy</th>
-                        <th className="px-4 py-3 text-center text-xs font-bold text-slate-400 uppercase tracking-wider">Bu oy</th>
-                        <th className="px-4 py-3 text-center text-xs font-bold text-slate-400 uppercase tracking-wider">O'sish</th>
-                        <th className="px-4 py-3 text-center text-xs font-bold text-slate-400 uppercase tracking-wider">Bonus</th>
-                        <th className="px-4 py-3 text-center text-xs font-bold text-slate-400 uppercase tracking-wider">Tanlash</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-slate-100">
-                      {leaderboard.map((entry, i) => {
-                        const isTop3 = i < 3;
-                        const rankIcon = i === 0 ? "🥇" : i === 1 ? "🥈" : i === 2 ? "🥉" : null;
-                        const checked = selectedUids.has(entry.uid);
-                        const impColor = entry.improvement > 0 ? "text-emerald-600 bg-emerald-50 border-emerald-200" : entry.improvement < 0 ? "text-red-500 bg-red-50 border-red-200" : "text-slate-500 bg-slate-50 border-slate-200";
-                        const impSign = entry.improvement > 0 ? "+" : "";
-                        return (
-                          <tr key={entry.uid} className={`transition-colors hover:bg-slate-50 ${isTop3 ? "bg-amber-50/40" : ""} ${checked ? "bg-amber-100/60" : ""}`}>
-                            <td className="px-4 py-3 text-center">
-                              {rankIcon
-                                ? <span className="text-xl leading-none">{rankIcon}</span>
-                                : <span className="font-mono text-xs text-slate-400">#{i + 1}</span>
-                              }
-                            </td>
-                            <td className="px-4 py-3">
-                              <span className="font-medium text-slate-800">{entry.email}</span>
-                            </td>
-                            <td className="px-4 py-3 text-center font-mono text-sm text-slate-500">
-                              {entry.prevBand !== null ? entry.prevBand.toFixed(1) : <span className="text-slate-300">—</span>}
-                            </td>
-                            <td className="px-4 py-3 text-center font-mono text-sm font-bold text-slate-800">
-                              {entry.currBand !== null ? entry.currBand.toFixed(1) : "—"}
-                            </td>
-                            <td className="px-4 py-3 text-center">
-                              <span className={`inline-block font-mono font-bold text-sm px-2.5 py-0.5 rounded-lg border ${impColor}`}>
-                                {impSign}{entry.improvement.toFixed(1)}
-                              </span>
-                            </td>
-                            <td className="px-4 py-3 text-center">
-                              {entry.bonusAnalyses > 0 ? (
-                                <span className="inline-block bg-green-50 text-green-700 border border-green-200 text-xs font-bold px-2 py-0.5 rounded-full">
-                                  +{entry.bonusAnalyses}
-                                </span>
-                              ) : (
-                                <span className="text-slate-300">—</span>
-                              )}
-                            </td>
-                            <td className="px-4 py-3 text-center">
-                              <input
-                                type="checkbox"
-                                checked={checked}
-                                onChange={() => {
-                                  setSelectedUids((prev) => {
-                                    const next = new Set(prev);
-                                    if (next.has(entry.uid)) next.delete(entry.uid);
-                                    else next.add(entry.uid);
-                                    return next;
-                                  });
-                                }}
-                                className="w-4 h-4 accent-amber-600 cursor-pointer"
-                              />
-                            </td>
-                          </tr>
-                        );
-                      })}
-                    </tbody>
-                  </table>
-                </div>
-              )}
-            </div>
-          </div>
-        )}
-
-        {/* ── ANNOUNCEMENTS ── */}
-        {section === "announcements" && (
-          <div className="flex flex-col gap-6">
-            <div>
-              <p className="text-[0.7rem] font-bold tracking-widest uppercase text-blue-700 mb-1">Announcements</p>
-              <h1 className="text-2xl font-bold text-slate-900 m-0">Elonlar boshqaruvi</h1>
-            </div>
-            <div className="bg-white rounded-xl border border-slate-200 p-5 flex flex-col gap-3">
-              <p className="text-sm font-semibold text-slate-700">Yangi elon qo'shish</p>
-              <Textarea
-                className="border-slate-200 bg-white text-slate-900"
-                rows={3}
-                placeholder="Elon matni (foydalanuvchilarga ko'rinadi)..."
-                value={annText}
-                onChange={(e) => setAnnText(e.target.value)}
-              />
-              <button
-                disabled={annSaving || !annText.trim()}
-                onClick={addAnnouncement}
-                className="self-start px-4 py-2 text-sm font-semibold bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 transition-colors"
-              >
-                {annSaving ? "Saqlanmoqda..." : "Elon qo'shish"}
-              </button>
-            </div>
-
-            {annLoading ? (
-              <div className="animate-pulse h-24 bg-slate-100 rounded-xl" />
-            ) : announcements.length === 0 ? (
-              <div className="bg-white rounded-xl border border-dashed border-slate-300 p-10 text-center">
-                <p className="text-3xl mb-2">📢</p>
-                <p className="text-sm text-slate-500">Hali hech qanday elon yo'q.</p>
-              </div>
-            ) : (
-              <div className="flex flex-col gap-3">
-                {announcements.map((a) => (
-                  <div key={a.id} className={`bg-white rounded-xl border p-4 flex items-start gap-4 ${a.active ? 'border-blue-200' : 'border-slate-200 opacity-60'}`}>
-                    <div className="flex-1">
-                      <p className="text-sm text-slate-800 leading-snug">{a.text}</p>
-                      {a.createdAt && (
-                        <p className="text-xs text-slate-400 mt-1">{new Date(a.createdAt).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })}</p>
-                      )}
-                    </div>
-                    <div className="flex items-center gap-2 shrink-0">
-                      <button
-                        onClick={() => toggleAnnouncement(a.id, a.active)}
-                        className={`text-xs px-3 py-1.5 rounded-lg font-medium transition-colors ${a.active ? 'bg-emerald-100 text-emerald-700 hover:bg-emerald-200' : 'bg-slate-100 text-slate-500 hover:bg-slate-200'}`}
-                      >
-                        {a.active ? 'Faol' : 'Nofaol'}
-                      </button>
-                      <button
-                        onClick={() => deleteAnnouncement(a.id)}
-                        className="text-xs px-3 py-1.5 rounded-lg font-medium bg-red-50 text-red-600 hover:bg-red-100 transition-colors"
-                      >
-                        O'chirish
-                      </button>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
-        )}
-
-        {/* ── LEARNING CENTERS ── */}
-        {section === "centers" && (
-          <div className="flex flex-col gap-6">
-            <div>
-              <p className="text-[0.7rem] font-bold tracking-widest uppercase text-teal-700 mb-1">Learning Centers</p>
-              <h1 className="text-2xl font-bold text-slate-900 m-0">O'quv markazlari</h1>
-            </div>
-            <div className="bg-white rounded-xl border border-dashed border-slate-300 p-12 text-center">
-              <p className="text-3xl mb-3">🏫</p>
-              <p className="text-slate-600 font-semibold mb-1">Tez kunda</p>
-              <p className="text-sm text-slate-400">Bu bo'lim hali ishlab chiqilmoqda.</p>
-            </div>
-          </div>
-        )}
-
-        {section === "blog" && (
-          <div className="flex flex-col gap-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-[0.7rem] font-bold tracking-widest uppercase text-blue-700 mb-1">Blog</p>
-                <h1 className="text-2xl font-bold text-slate-900 m-0">Blog Posts</h1>
-              </div>
-              <button
-                className="bg-blue-600 text-white px-4 py-2 rounded-lg text-sm font-semibold hover:bg-blue-700 transition-colors"
-                onClick={() => setBlogEditor({
-                  title: '', slug: '', excerpt: '', content: '', featuredImage: '',
-                  category: 'Writing tips', tags: [], status: 'draft', author: 'WriteReady Team',
-                  seo: { metaTitle: '', metaDescription: '', focusKeyword: '' },
-                  viewCount: 0, likeCount: 0, commentCount: 0, publishedAt: null,
-                })}
-              >
-                + New post
-              </button>
-            </div>
-
-            {/* Editor panel */}
-            {blogEditor !== null && (
-              <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-6 flex flex-col gap-4">
-                <h2 className="text-lg font-bold text-slate-900">{blogEditor.id ? 'Edit Post' : 'New Post'}</h2>
-
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <label className="text-xs font-semibold text-slate-600 mb-1 block uppercase tracking-wide">Title</label>
-                    <Input
-                      className="border-slate-200 bg-white text-slate-900"
-                      value={blogEditor.title ?? ''}
-                      onChange={(e) => {
-                        const title = e.target.value;
-                        const slug = title.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
-                        setBlogEditor((p) => ({ ...p, title, slug }));
-                      }}
-                    />
-                  </div>
-                  <div>
-                    <label className="text-xs font-semibold text-slate-600 mb-1 block uppercase tracking-wide">Slug</label>
-                    <Input
-                      className="border-slate-200 bg-white text-slate-900"
-                      value={blogEditor.slug ?? ''}
-                      onChange={(e) => setBlogEditor((p) => ({ ...p, slug: e.target.value }))}
-                    />
-                  </div>
-                </div>
-
-                <div>
-                  <label className="text-xs font-semibold text-slate-600 mb-1 block uppercase tracking-wide">Excerpt</label>
-                  <Textarea
-                    rows={3}
-                    className="border-slate-200 bg-white text-slate-900"
-                    value={blogEditor.excerpt ?? ''}
-                    onChange={(e) => setBlogEditor((p) => ({ ...p, excerpt: e.target.value }))}
-                  />
-                </div>
-
-                <div>
-                  <label className="text-xs font-semibold text-slate-600 mb-1 block uppercase tracking-wide">Content (Markdown)</label>
-                  <Textarea
-                    rows={12}
-                    className="border-slate-200 bg-white text-slate-900 font-mono"
-                    value={blogEditor.content ?? ''}
-                    onChange={(e) => setBlogEditor((p) => ({ ...p, content: e.target.value }))}
-                  />
-                </div>
-
-                {/* AI Draft */}
-                <div className="bg-slate-50 border border-slate-200 rounded-lg p-4 flex flex-col gap-2">
-                  <p className="text-xs font-semibold text-slate-700 uppercase tracking-wide">Generate with AI</p>
-                  <div className="flex gap-2">
-                    <Input
-                      className="border-slate-200 bg-white text-slate-900"
-                      placeholder="Enter topic…"
-                      value={aiTopic}
-                      onChange={(e) => setAiTopic(e.target.value)}
-                    />
-                    <button
-                      className="px-4 py-2 bg-purple-600 text-white rounded-lg text-sm font-semibold hover:bg-purple-700 transition-colors disabled:opacity-50"
-                      disabled={aiDraftLoading || !aiTopic.trim()}
-                      onClick={async () => {
-                        setAiDraftLoading(true);
-                        try {
-                          const res = await fetch('/api/chat', {
-                            method: 'POST',
-                            headers: { 'Content-Type': 'application/json' },
-                            body: JSON.stringify({
-                              messages: [{
-                                role: 'user',
-                                content: `Write a 600-800 word blog post body for IELTS learners about: ${aiTopic}. Focus keyword: ${blogEditor.seo?.focusKeyword || aiTopic}. Write in markdown with clear headings (##), short paragraphs. Topic: ${blogEditor.title || aiTopic}`,
-                              }],
-                            }),
-                          });
-                          const json = await res.json() as { reply?: string };
-                          const text = json.reply ?? '';
-                          setBlogEditor((p) => ({ ...p, content: text }));
-                        } catch (e) { console.error(e); }
-                        setAiDraftLoading(false);
-                      }}
-                    >
-                      {aiDraftLoading ? 'Generating…' : 'Generate'}
-                    </button>
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <label className="text-xs font-semibold text-slate-600 mb-1 block uppercase tracking-wide">Featured Image URL</label>
-                    <Input
-                      className="border-slate-200 bg-white text-slate-900"
-                      value={blogEditor.featuredImage ?? ''}
-                      onChange={(e) => setBlogEditor((p) => ({ ...p, featuredImage: e.target.value }))}
-                    />
-                  </div>
-                  <div>
-                    <label className="text-xs font-semibold text-slate-600 mb-1 block uppercase tracking-wide">Author</label>
-                    <Input
-                      className="border-slate-200 bg-white text-slate-900"
-                      value={blogEditor.author ?? 'WriteReady Team'}
-                      onChange={(e) => setBlogEditor((p) => ({ ...p, author: e.target.value }))}
-                    />
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <label className="text-xs font-semibold text-slate-600 mb-1 block uppercase tracking-wide">Category</label>
-                    <select
-                      className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm outline-none focus:border-blue-500 bg-white"
-                      value={blogEditor.category ?? 'Writing tips'}
-                      onChange={(e) => setBlogEditor((p) => ({ ...p, category: e.target.value as BlogPost['category'] }))}
-                    >
-                      {['Writing tips', 'Vocabulary', 'Band score', 'Grammar', 'News'].map((c) => (
-                        <option key={c} value={c}>{c}</option>
                       ))}
-                    </select>
+                    </div>
                   </div>
-                  <div>
-                    <label className="text-xs font-semibold text-slate-600 mb-1 block uppercase tracking-wide">Status</label>
-                    <select
-                      className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm outline-none focus:border-blue-500 bg-white"
-                      value={blogEditor.status ?? 'draft'}
-                      onChange={(e) => setBlogEditor((p) => ({ ...p, status: e.target.value as BlogPost['status'] }))}
-                    >
-                      <option value="draft">Draft</option>
-                      <option value="published">Published</option>
-                      <option value="scheduled">Scheduled</option>
-                    </select>
+                  <div className="bg-white rounded-xl border border-slate-200 p-5">
+                    <p className="text-xs font-bold uppercase tracking-widest text-slate-400 mb-3">Recent Users</p>
+                    {allUsers.length === 0 ? (
+                      <button onClick={loadUsers} className="text-sm text-purple-600 underline cursor-pointer bg-transparent border-none">Load users</button>
+                    ) : (
+                      <div className="flex flex-col gap-2">
+                        {allUsers.slice(0, 5).map((u) => {
+                          const b = planBadge(u.plan, u.subscription);
+                          return (
+                            <div key={u.id} className="flex items-center justify-between gap-2">
+                              <span className="text-sm text-slate-700 truncate">{u.email}</span>
+                              <Badge variant={b.label === 'Lifetime' ? 'warning' : b.label === 'Pro' ? 'info' : 'outline'} className="text-[0.65rem]">{b.label}</Badge>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    )}
                   </div>
-                </div>
-
-                <div className="grid grid-cols-3 gap-4">
-                  <div>
-                    <label className="text-xs font-semibold text-slate-600 mb-1 block uppercase tracking-wide">SEO Title</label>
-                    <Input
-                      className="border-slate-200 bg-white text-slate-900"
-                      value={blogEditor.seo?.metaTitle ?? ''}
-                      onChange={(e) => setBlogEditor((p) => ({ ...p, seo: { ...p?.seo, metaTitle: e.target.value, metaDescription: p?.seo?.metaDescription ?? '', focusKeyword: p?.seo?.focusKeyword ?? '' } }))}
-                    />
-                  </div>
-                  <div>
-                    <label className="text-xs font-semibold text-slate-600 mb-1 block uppercase tracking-wide">Meta Description</label>
-                    <Input
-                      className="border-slate-200 bg-white text-slate-900"
-                      value={blogEditor.seo?.metaDescription ?? ''}
-                      onChange={(e) => setBlogEditor((p) => ({ ...p, seo: { ...p?.seo, metaTitle: p?.seo?.metaTitle ?? '', metaDescription: e.target.value, focusKeyword: p?.seo?.focusKeyword ?? '' } }))}
-                    />
-                  </div>
-                  <div>
-                    <label className="text-xs font-semibold text-slate-600 mb-1 block uppercase tracking-wide">Focus Keyword</label>
-                    <Input
-                      className="border-slate-200 bg-white text-slate-900"
-                      value={blogEditor.seo?.focusKeyword ?? ''}
-                      onChange={(e) => setBlogEditor((p) => ({ ...p, seo: { ...p?.seo, metaTitle: p?.seo?.metaTitle ?? '', metaDescription: p?.seo?.metaDescription ?? '', focusKeyword: e.target.value } }))}
-                    />
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <label className="text-xs font-semibold text-slate-600 mb-1 block uppercase tracking-wide">CTA Text</label>
-                    <Input
-                      className="border-slate-200 bg-white text-slate-900"
-                      value={blogEditor.ctaText ?? ''}
-                      onChange={(e) => setBlogEditor((p) => ({ ...p, ctaText: e.target.value }))}
-                    />
-                  </div>
-                  <div>
-                    <label className="text-xs font-semibold text-slate-600 mb-1 block uppercase tracking-wide">CTA Link</label>
-                    <Input
-                      className="border-slate-200 bg-white text-slate-900"
-                      value={blogEditor.ctaLink ?? ''}
-                      onChange={(e) => setBlogEditor((p) => ({ ...p, ctaLink: e.target.value }))}
-                    />
-                  </div>
-                </div>
-
-                <div className="flex gap-3">
-                  <button
-                    className="px-5 py-2 bg-blue-600 text-white rounded-lg text-sm font-semibold hover:bg-blue-700 transition-colors disabled:opacity-50"
-                    disabled={blogSaving}
-                    onClick={async () => {
-                      if (!blogEditor) return;
-                      setBlogSaving(true);
-                      try {
-                        const postData: Omit<BlogPost, 'id'> = {
-                          title: blogEditor.title ?? '',
-                          slug: blogEditor.slug ?? '',
-                          excerpt: blogEditor.excerpt ?? '',
-                          content: blogEditor.content ?? '',
-                          featuredImage: blogEditor.featuredImage ?? '',
-                          category: blogEditor.category ?? 'Writing tips',
-                          tags: blogEditor.tags ?? [],
-                          seo: blogEditor.seo ?? { metaTitle: '', metaDescription: '', focusKeyword: '' },
-                          status: blogEditor.status ?? 'draft',
-                          publishedAt: blogEditor.status === 'published' ? new Date() : null,
-                          author: blogEditor.author ?? 'WriteReady Team',
-                          ctaText: blogEditor.ctaText ?? '',
-                          ctaLink: blogEditor.ctaLink ?? '',
-                          viewCount: blogEditor.viewCount ?? 0,
-                          likeCount: blogEditor.likeCount ?? 0,
-                          commentCount: blogEditor.commentCount ?? 0,
-                        };
-                        const wasPublished = postData.status === 'published';
-                        const wasAlreadyPublished = blogEditor.id && blogEditor.status === 'published';
-                        if (blogEditor.id) {
-                          await updateBlogPost(blogEditor.id, postData);
-                        } else {
-                          await saveBlogPost(postData);
-                        }
-                        // Notify all users when a new post is first published
-                        if (wasPublished && !wasAlreadyPublished) {
-                          const usersSnap = await getDocs(collection(db, "users"));
-                          const preview = `📝 Yangi maqola: "${postData.title}"`;
-                          await Promise.all(usersSnap.docs.map((u) =>
-                            addDoc(collection(db, "notifications", u.id, "items"), {
-                              type: "new_post",
-                              fromUserName: "WriteReady",
-                              postSlug: postData.slug,
-                              preview,
-                              read: false,
-                              createdAt: new Date(),
-                            })
-                          ));
-                        }
-                        setBlogEditor(null);
-                        await loadBlogPosts();
-                      } catch (e) { console.error(e); }
-                      setBlogSaving(false);
-                    }}
-                  >
-                    {blogSaving ? 'Saving…' : 'Save'}
-                  </button>
-                  <button
-                    className="px-5 py-2 border border-slate-200 text-slate-600 rounded-lg text-sm font-semibold hover:bg-slate-50 transition-colors"
-                    onClick={() => setBlogEditor(null)}
-                  >
-                    Cancel
-                  </button>
                 </div>
               </div>
             )}
 
-            {/* Table */}
-            {blogLoading ? (
-              <div className="flex justify-center py-12">
-                <div className="animate-spin w-6 h-6 border-2 border-blue-600 border-t-transparent rounded-full" />
-              </div>
-            ) : blogPosts.length === 0 ? (
-              <div className="bg-white rounded-xl border border-dashed border-slate-300 p-12 text-center">
-                <p className="text-3xl mb-3">📝</p>
-                <p className="text-slate-600 font-semibold mb-1">No posts yet</p>
-                <p className="text-sm text-slate-400">Click "New post" to create your first blog post.</p>
-              </div>
-            ) : (
-              <div className="bg-white rounded-xl border border-slate-200 overflow-hidden">
-                <table className="w-full text-sm">
-                  <thead>
-                    <tr className="border-b border-slate-200 bg-slate-50">
-                      <th className="px-4 py-3 text-left text-xs font-semibold text-slate-600 uppercase tracking-wide">Title</th>
-                      <th className="px-4 py-3 text-left text-xs font-semibold text-slate-600 uppercase tracking-wide">Status</th>
-                      <th className="px-4 py-3 text-left text-xs font-semibold text-slate-600 uppercase tracking-wide">Category</th>
-                      <th className="px-4 py-3 text-center text-xs font-semibold text-slate-600 uppercase tracking-wide">Views</th>
-                      <th className="px-4 py-3 text-center text-xs font-semibold text-slate-600 uppercase tracking-wide">Likes</th>
-                      <th className="px-4 py-3 text-center text-xs font-semibold text-slate-600 uppercase tracking-wide">Comments</th>
-                      <th className="px-4 py-3 text-left text-xs font-semibold text-slate-600 uppercase tracking-wide">Date</th>
-                      <th className="px-4 py-3 text-right text-xs font-semibold text-slate-600 uppercase tracking-wide">Actions</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {blogPosts.map((p) => (
-                      <tr key={p.id} className="border-b border-slate-100 last:border-0 hover:bg-slate-50">
-                        <td className="px-4 py-3 font-medium text-slate-900 max-w-[220px] truncate">{p.title}</td>
-                        <td className="px-4 py-3">
-                          <Badge variant={p.status === 'published' ? 'success' : p.status === 'draft' ? 'outline' : 'warning'} className="text-xs capitalize">{p.status}</Badge>
-                        </td>
-                        <td className="px-4 py-3 text-slate-600">{p.category}</td>
-                        <td className="px-4 py-3 text-center text-slate-600">{p.viewCount}</td>
-                        <td className="px-4 py-3 text-center text-slate-600">{p.likeCount}</td>
-                        <td className="px-4 py-3 text-center text-slate-600">{p.commentCount}</td>
-                        <td className="px-4 py-3 text-slate-500 text-xs">{p.publishedAt}</td>
-                        <td className="px-4 py-3 text-right">
-                          <div className="flex items-center justify-end gap-2">
+            {/* ── TASK 1 ── */}
+            {section === "task1" && (
+              <div className="flex flex-col gap-6">
+                <div>
+                  <p className="text-[0.7rem] font-bold tracking-widest uppercase text-blue-700 mb-1">Task 1</p>
+                  <h1 className="text-2xl font-bold text-slate-900 m-0">Rasm + savol qo'shish</h1>
+                </div>
+
+                {/* Add form */}
+                <div className="bg-white rounded-xl border border-slate-200 p-6 flex flex-col gap-4">
+                  <p className="text-sm font-bold text-slate-700">Yangi Task 1 qo'shish</p>
+                  <div>
+                    <label className="text-xs font-semibold text-slate-600 mb-1.5 block uppercase tracking-wide">Rasm yuklash</label>
+                    <input
+                      type="file"
+                      accept="image/*,application/pdf"
+                      onChange={async (e) => {
+                        const f = e.target.files?.[0];
+                        if (f) { const url = await uploadImage(f); if (url) setT1Image(url); }
+                      }}
+                      className="block w-full text-sm text-gray-700"
+                    />
+                  </div>
+                  {uploading && (
+                    <div className="bg-blue-50 border border-blue-200 rounded-lg px-3.5 py-2.5 text-sm text-blue-700 flex items-center gap-2">
+                      <Spinner color="#1d4ed8" /> Yuklanmoqda...
+                    </div>
+                  )}
+                  {t1Image && (
+                    <div className="rounded-xl overflow-hidden border border-slate-200 max-h-48">
+                      <img src={t1Image} alt="preview" className="w-full h-48 object-cover" />
+                    </div>
+                  )}
+                  <div>
+                    <label className="text-xs font-semibold text-slate-600 mb-1.5 block uppercase tracking-wide">Savol matni</label>
+                    <Textarea
+                      className="border-slate-200 bg-white text-slate-900 min-h-[100px]"
+                      placeholder="Task 1 savol matnini kiriting..."
+                      value={t1Report}
+                      onChange={(e) => setT1Report(e.target.value)}
+                      rows={4}
+                    />
+                  </div>
+                  {t1Error && <div className="bg-red-50 border border-red-200 rounded-lg px-3.5 py-2.5 text-sm text-red-600">{t1Error}</div>}
+                  <button
+                    className={`${t1Loading || uploading ? "bg-slate-400" : "bg-blue-700 hover:bg-blue-800"} text-white border-none rounded-lg py-2.5 font-semibold text-sm cursor-pointer flex items-center justify-center gap-2 transition-colors`}
+                    onClick={addTask1}
+                    disabled={t1Loading || uploading}
+                  >
+                    {t1Loading ? <><Spinner color="white" /> Saqlanmoqda...</> : "+ Qo'shish"}
+                  </button>
+                </div>
+
+                {/* List */}
+                {task1List.length > 0 && (
+                  <div className="bg-white rounded-xl border border-slate-200 p-6 flex flex-col gap-4">
+                    <div className="flex items-center justify-between">
+                      <p className="text-sm font-bold text-slate-700">Mavjud Task 1 promptlar ({task1List.length})</p>
+                      <Input
+                        className="border-slate-200 bg-white text-slate-900 w-48 h-8 text-sm"
+                        placeholder="Qidirish..."
+                        value={task1Search}
+                        onChange={(e) => setTask1Search(e.target.value)}
+                      />
+                    </div>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-3">
+                      {filteredT1.length === 0 ? (
+                        <p className="text-sm text-slate-400 col-span-full py-6 text-center">Natija yo'q.</p>
+                      ) : filteredT1.map((t) => (
+                        <div key={t.id} className="bg-slate-50 rounded-xl border border-slate-200 p-3 flex flex-col gap-2">
+                          <div className="relative group">
+                            <img src={t.image} alt="" className="w-full h-28 object-cover rounded-lg" />
                             <button
-                              className="text-xs px-3 py-1 border border-slate-200 rounded-lg hover:bg-slate-100 text-slate-700 transition-colors"
-                              onClick={async () => {
-                                // load full post for editing
-                                const { getBlogPostById } = await import('../../firebase/blog');
-                                const full = await getBlogPostById(p.id);
-                                if (full) setBlogEditor(full);
-                              }}
+                              onClick={() => setPreviewImage(t.image)}
+                              className="absolute inset-0 flex items-center justify-center bg-black/0 group-hover:bg-black/40 rounded-lg transition-all duration-150 border-none cursor-pointer"
+                              title="To'liq ko'rish"
                             >
-                              Edit
-                            </button>
-                            <button
-                              className="text-xs px-3 py-1 border border-red-200 rounded-lg hover:bg-red-50 text-red-600 transition-colors"
-                              onClick={async () => {
-                                if (!confirm('Delete this post?')) return;
-                                await deleteBlogPost(p.id);
-                                await loadBlogPosts();
-                              }}
-                            >
-                              Delete
+                              <span className="opacity-0 group-hover:opacity-100 transition-opacity bg-white/90 text-slate-800 text-xs font-bold px-3 py-1.5 rounded-lg flex items-center gap-1.5">
+                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                                  <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
+                                  <line x1="11" y1="8" x2="11" y2="14"/><line x1="8" y1="11" x2="14" y2="11"/>
+                                </svg>
+                                Kattalashtirish
+                              </span>
                             </button>
                           </div>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
+                          <p className="text-xs text-slate-700 leading-relaxed m-0 line-clamp-3">{t.report}</p>
+                          <div className="flex gap-2 mt-auto">
+                            <button
+                              className="w-8 h-7 bg-white text-slate-500 border border-slate-200 rounded-lg text-xs flex items-center justify-center cursor-pointer hover:bg-slate-100 transition-colors shrink-0"
+                              onClick={() => setPreviewImage(t.image)}
+                              title="Preview"
+                            >
+                              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/>
+                              </svg>
+                            </button>
+                            <button
+                              className="flex-1 bg-white text-blue-700 border border-blue-200 rounded-lg py-1.5 text-xs font-semibold cursor-pointer hover:bg-blue-50 transition-colors"
+                              onClick={() => { setEditT1(t); setEditImage(t.image); setEditReport(t.report); }}
+                            >Edit</button>
+                            <button
+                              className="flex-1 bg-white text-red-500 border border-red-200 rounded-lg py-1.5 text-xs font-semibold cursor-pointer hover:bg-red-50 transition-colors"
+                              onClick={() => deleteTask1(t.id)}
+                            >Delete</button>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
               </div>
             )}
+
+            {/* ── TASK 2 ── */}
+            {section === "task2" && (
+              <div className="flex flex-col gap-6">
+                <div>
+                  <p className="text-[0.7rem] font-bold tracking-widest uppercase text-green-700 mb-1">Task 2</p>
+                  <h1 className="text-2xl font-bold text-slate-900 m-0">Savol qo'shish</h1>
+                </div>
+
+                <div className="bg-white rounded-xl border border-slate-200 p-6 flex flex-col gap-4">
+                  <p className="text-sm font-bold text-slate-700">Yangi Task 2 qo'shish</p>
+                  <div>
+                    <label className="text-xs font-semibold text-slate-600 mb-1.5 block uppercase tracking-wide">Savol matni</label>
+                    <Textarea
+                      className="border-slate-200 bg-white text-slate-900 min-h-[120px]"
+                      placeholder="Task 2 savol matnini kiriting..."
+                      value={t2Report}
+                      onChange={(e) => setT2Report(e.target.value)}
+                      rows={5}
+                    />
+                  </div>
+                  {t2Error && <div className="bg-red-50 border border-red-200 rounded-lg px-3.5 py-2.5 text-sm text-red-600">{t2Error}</div>}
+                  <button
+                    className={`${t2Loading ? "bg-slate-400" : "bg-green-700 hover:bg-green-800"} text-white border-none rounded-lg py-2.5 font-semibold text-sm cursor-pointer flex items-center justify-center gap-2 transition-colors`}
+                    onClick={addTask2}
+                    disabled={t2Loading}
+                  >
+                    {t2Loading ? <><Spinner color="white" /> Saqlanmoqda...</> : "+ Qo'shish"}
+                  </button>
+                </div>
+
+                {task2List.length > 0 && (
+                  <div className="bg-white rounded-xl border border-slate-200 p-6 flex flex-col gap-4">
+                    <div className="flex items-center justify-between">
+                      <p className="text-sm font-bold text-slate-700">Mavjud Task 2 promptlar ({task2List.length})</p>
+                      <Input
+                        className="border-slate-200 bg-white text-slate-900 w-48 h-8 text-sm"
+                        placeholder="Qidirish..."
+                        value={task2Search}
+                        onChange={(e) => setTask2Search(e.target.value)}
+                      />
+                    </div>
+                    <div className="flex flex-col gap-2">
+                      {filteredT2.length === 0 ? (
+                        <p className="text-sm text-slate-400 py-6 text-center">Natija yo'q.</p>
+                      ) : filteredT2.map((t) => (
+                        <div key={t.id} className="bg-slate-50 rounded-xl border border-slate-200 p-4 flex items-start justify-between gap-4">
+                          <p className="text-sm text-slate-700 leading-relaxed m-0 flex-1">{t.report}</p>
+                          <div className="flex gap-2 shrink-0">
+                            <button
+                              className="bg-white text-green-700 border border-green-200 rounded-lg py-1.5 px-3 text-xs font-semibold cursor-pointer hover:bg-green-50 transition-colors"
+                              onClick={() => { setEditT2(t); setEditT2Report(t.report); }}
+                            >Edit</button>
+                            <button
+                              className="bg-white text-red-500 border border-red-200 rounded-lg py-1.5 px-3 text-xs font-semibold cursor-pointer hover:bg-red-50 transition-colors"
+                              onClick={() => deleteTask2(t.id)}
+                            >Delete</button>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* ── USERS ── */}
+            {section === "users" && (
+              <div className="flex flex-col gap-6">
+                <div className="flex items-center justify-between flex-wrap gap-4">
+                  <div>
+                    <p className="text-[0.7rem] font-bold tracking-widest uppercase text-purple-700 mb-1">Users</p>
+                    <h1 className="text-2xl font-bold text-slate-900 m-0">User Management</h1>
+                  </div>
+                  <button
+                    onClick={loadUsers}
+                    disabled={usersLoading}
+                    className="px-4 py-2 bg-white border border-slate-200 rounded-lg text-sm font-semibold text-slate-700 hover:bg-slate-50 cursor-pointer transition-colors"
+                  >
+                    {usersLoading ? "Yuklanmoqda..." : "↻ Refresh"}
+                  </button>
+                </div>
+
+                {/* Stats row */}
+                <div className="grid grid-cols-3 gap-4">
+                  {[
+                    { label: "Total users", value: allUsers.length, color: "text-slate-700", bg: "bg-white" },
+                    { label: "Pro / Lifetime", value: proCount, color: "text-blue-700", bg: "bg-blue-50" },
+                    { label: "Lifetime only", value: lifetimeCount, color: "text-amber-700", bg: "bg-amber-50" },
+                  ].map((s) => (
+                    <div key={s.label} className={`${s.bg} border border-slate-200 rounded-xl p-4`}>
+                      <p className={`text-xs font-semibold ${s.color} mb-1`}>{s.label}</p>
+                      <p className={`font-mono text-2xl font-bold ${s.color}`}>{s.value}</p>
+                    </div>
+                  ))}
+                </div>
+
+                {userSuccess && <div className="bg-green-50 border border-green-200 rounded-lg px-4 py-3 text-sm text-green-700">{userSuccess}</div>}
+                {userError && <div className="bg-red-50 border border-red-200 rounded-lg px-4 py-3 text-sm text-red-600">{userError}</div>}
+
+                {/* Search */}
+                <Input
+                  className="border-slate-200 bg-white text-slate-900 max-w-xs"
+                  placeholder="Email bo'yicha qidirish..."
+                  value={userSearch}
+                  onChange={(e) => setUserSearch(e.target.value)}
+                />
+
+                {/* Table */}
+                <div className="bg-white rounded-xl border border-slate-200 overflow-hidden">
+                  {usersLoading ? (
+                    <div className="flex items-center justify-center py-16 text-slate-400 text-sm gap-2">
+                      <Spinner color="#94a3b8" /> Yuklanmoqda...
+                    </div>
+                  ) : allUsers.length === 0 ? (
+                    <div className="py-16 text-center text-slate-400 text-sm">Hech qanday foydalanuvchi topilmadi.</div>
+                  ) : (
+                    <div className="overflow-x-auto">
+                      <table className="w-full text-sm">
+                        <thead>
+                          <tr className="border-b border-slate-100 bg-slate-50">
+                            <th className="text-left px-4 py-3 text-xs font-bold text-slate-500 uppercase tracking-wider">Email</th>
+                            <th className="text-left px-4 py-3 text-xs font-bold text-slate-500 uppercase tracking-wider">Plan</th>
+                            <th className="text-left px-4 py-3 text-xs font-bold text-slate-500 uppercase tracking-wider">Subscription tugaydi</th>
+                            <th className="text-right px-4 py-3 text-xs font-bold text-slate-500 uppercase tracking-wider">Amallar</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-slate-100">
+                          {filteredUsers.map((u) => {
+                            const b = planBadge(u.plan, u.subscription);
+                            const expiry = u.subscription === "forever" ? "Lifetime ♾️" : formatDate(u.subscription) ? `${formatDate(u.subscription)}` : "—";
+                            const isExpired = u.subscription && u.subscription !== "forever" && new Date(u.subscription) < new Date();
+                            return (
+                              <tr
+                                key={u.id}
+                                className={`hover:bg-slate-50 cursor-pointer transition-colors ${selectedUser?.id === u.id ? "bg-purple-50" : ""}`}
+                                onClick={() => { setSelectedUser(selectedUser?.id === u.id ? null : u); setUserSuccess(""); setUserError(""); }}
+                              >
+                                <td className="px-4 py-3 font-medium text-slate-800">{u.email}</td>
+                                <td className="px-4 py-3">
+                                  <Badge variant={b.label === 'Lifetime' ? 'warning' : b.label === 'Pro' ? 'info' : 'outline'} className="text-[0.65rem]">{b.label}</Badge>
+                                </td>
+                                <td className={`px-4 py-3 text-sm ${isExpired ? "text-red-500" : "text-slate-600"}`}>{expiry}</td>
+                                <td className="px-4 py-3 text-right">
+                                  <span className="text-[0.7rem] text-slate-400">{selectedUser?.id === u.id ? "▲ yopish" : "▼ boshqarish"}</span>
+                                </td>
+                              </tr>
+                            );
+                          })}
+                        </tbody>
+                      </table>
+                    </div>
+                  )}
+                </div>
+
+                {/* Inline actions for selected user */}
+                {selectedUser && (
+                  <div className="bg-white rounded-xl border-2 border-purple-200 p-5 flex flex-col gap-4">
+                    <div className="flex items-center gap-3">
+                      <Avatar className="w-10 h-10 shrink-0">
+                        <AvatarFallback className="bg-purple-600 text-white text-sm font-bold">{selectedUser.email.slice(0, 2).toUpperCase()}</AvatarFallback>
+                      </Avatar>
+                      <div>
+                        <p className="font-bold text-slate-900 text-sm">{selectedUser.email}</p>
+                        <p className="text-xs text-slate-500">
+                          {selectedUser.subscription === "forever"
+                            ? "Lifetime — never expires"
+                            : formatDate(selectedUser.subscription)
+                            ? `Expires: ${formatDate(selectedUser.subscription)}`
+                            : "No active subscription"}
+                        </p>
+                      </div>
+                      <span className={`ml-auto text-xs font-bold px-2.5 py-1 rounded-full ${planBadge(selectedUser.plan, selectedUser.subscription).cls}`}>
+                        {planBadge(selectedUser.plan, selectedUser.subscription).label}
+                      </span>
+                    </div>
+                    <div>
+                      <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">Subscription o'zgartirish</p>
+                      <div className="flex gap-2 flex-wrap">
+                        <button
+                          onClick={() => setSubscription(selectedUser, "month")}
+                          disabled={userActionLoading}
+                          className="bg-blue-700 text-white border-none rounded-lg px-4 py-2 text-xs font-semibold cursor-pointer hover:bg-blue-800 transition-colors disabled:opacity-50"
+                        >
+                          + 1 Month Pro
+                        </button>
+                        <button
+                          onClick={() => setSubscription(selectedUser, "forever")}
+                          disabled={userActionLoading}
+                          className="bg-amber-600 text-white border-none rounded-lg px-4 py-2 text-xs font-semibold cursor-pointer hover:bg-amber-700 transition-colors disabled:opacity-50"
+                        >
+                          Lifetime Forever
+                        </button>
+                        <button
+                          onClick={() => setSubscription(selectedUser, "free")}
+                          disabled={userActionLoading}
+                          className="bg-white text-red-500 border border-red-300 rounded-lg px-4 py-2 text-xs font-semibold cursor-pointer hover:bg-red-50 transition-colors disabled:opacity-50"
+                        >
+                          Revoke to Free
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* ── LEADERBOARD ── */}
+            {section === "leaderboard" && (
+              <div className="flex flex-col gap-6">
+                <div className="flex items-center justify-between flex-wrap gap-4">
+                  <div>
+                    <p className="text-[0.7rem] font-bold tracking-widest uppercase text-amber-600 mb-1">Gamification</p>
+                    <h1 className="text-2xl font-bold text-slate-900 m-0">Leaderboard — Top o'quvchilar</h1>
+                  </div>
+                  <button onClick={loadLeaderboard} disabled={leaderLoading}
+                    className="px-4 py-2 bg-white border border-slate-200 rounded-lg text-sm font-semibold text-slate-700 hover:bg-slate-50 cursor-pointer transition-colors">
+                    {leaderLoading ? "Yuklanmoqda..." : "↻ Yangilash"}
+                  </button>
+                </div>
+
+                {/* Grant panel */}
+                <div className="bg-amber-50 border border-amber-200 rounded-xl p-5 flex flex-col gap-4">
+                  <p className="text-sm font-bold text-amber-800">Tanlangan o'quvchilarga bepul tahlil berish</p>
+                  <div className="flex items-center gap-3 flex-wrap">
+                    <div className="flex items-center gap-2">
+                      <label className="text-xs font-semibold text-amber-700">Bepul tahlil soni:</label>
+                      <Input
+                        type="number" min="1" max="50"
+                        value={bonusInput}
+                        onChange={(e) => setBonusInput(e.target.value)}
+                        className="w-20 h-8 border-amber-300 bg-white text-slate-900 font-mono text-sm"
+                      />
+                    </div>
+                    <button
+                      onClick={grantBonus}
+                      disabled={grantLoading || selectedUids.size === 0 || !bonusInput}
+                      className="bg-amber-600 text-white border-none rounded-lg px-5 py-2 text-sm font-bold cursor-pointer hover:bg-amber-700 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+                    >
+                      {grantLoading ? "Berilmoqda..." : `🎁 ${selectedUids.size} ta o'quvchiga ber`}
+                    </button>
+                    {selectedUids.size > 0 && (
+                      <button onClick={() => setSelectedUids(new Set())}
+                        className="text-xs text-slate-500 underline bg-transparent border-none cursor-pointer">
+                        Tanlovni bekor qilish
+                      </button>
+                    )}
+                  </div>
+                  {grantMsg && (
+                    <div className={`rounded-lg px-4 py-2.5 text-sm font-medium ${grantMsg.startsWith("✓") ? "bg-green-50 border border-green-200 text-green-700" : "bg-red-50 border border-red-200 text-red-600"}`}>
+                      {grantMsg}
+                    </div>
+                  )}
+                </div>
+
+                {/* Table */}
+                <div className="bg-white rounded-xl border border-slate-200 overflow-hidden">
+                  {leaderLoading ? (
+                    <div className="flex items-center justify-center py-16 text-slate-400 text-sm gap-2">
+                      <Spinner color="#94a3b8" /> Yuklanmoqda...
+                    </div>
+                  ) : leaderboard.length === 0 ? (
+                    <div className="py-16 text-center text-slate-400 text-sm">
+                      Hali hech qanday AI tahlil yo'q.
+                    </div>
+                  ) : (
+                    <div className="overflow-x-auto">
+                      <table className="w-full text-sm">
+                        <thead>
+                          <tr className="border-b border-slate-100 bg-slate-50">
+                            <th className="px-4 py-3 text-left text-xs font-bold text-slate-400 uppercase tracking-wider w-12">O'rin</th>
+                            <th className="px-4 py-3 text-left text-xs font-bold text-slate-400 uppercase tracking-wider">Foydalanuvchi</th>
+                            <th className="px-4 py-3 text-center text-xs font-bold text-slate-400 uppercase tracking-wider">O'tgan oy</th>
+                            <th className="px-4 py-3 text-center text-xs font-bold text-slate-400 uppercase tracking-wider">Bu oy</th>
+                            <th className="px-4 py-3 text-center text-xs font-bold text-slate-400 uppercase tracking-wider">O'sish</th>
+                            <th className="px-4 py-3 text-center text-xs font-bold text-slate-400 uppercase tracking-wider">Bonus</th>
+                            <th className="px-4 py-3 text-center text-xs font-bold text-slate-400 uppercase tracking-wider">Tanlash</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-slate-100">
+                          {leaderboard.map((entry, i) => {
+                            const isTop3 = i < 3;
+                            const rankIcon = i === 0 ? "🥇" : i === 1 ? "🥈" : i === 2 ? "🥉" : null;
+                            const checked = selectedUids.has(entry.uid);
+                            const impColor = entry.improvement > 0 ? "text-emerald-600 bg-emerald-50 border-emerald-200" : entry.improvement < 0 ? "text-red-500 bg-red-50 border-red-200" : "text-slate-500 bg-slate-50 border-slate-200";
+                            const impSign = entry.improvement > 0 ? "+" : "";
+                            return (
+                              <tr key={entry.uid} className={`transition-colors hover:bg-slate-50 ${isTop3 ? "bg-amber-50/40" : ""} ${checked ? "bg-amber-100/60" : ""}`}>
+                                <td className="px-4 py-3 text-center">
+                                  {rankIcon
+                                    ? <span className="text-xl leading-none">{rankIcon}</span>
+                                    : <span className="font-mono text-xs text-slate-400">#{i + 1}</span>
+                                  }
+                                </td>
+                                <td className="px-4 py-3">
+                                  <span className="font-medium text-slate-800">{entry.email}</span>
+                                </td>
+                                <td className="px-4 py-3 text-center font-mono text-sm text-slate-500">
+                                  {entry.prevBand !== null ? entry.prevBand.toFixed(1) : <span className="text-slate-300">—</span>}
+                                </td>
+                                <td className="px-4 py-3 text-center font-mono text-sm font-bold text-slate-800">
+                                  {entry.currBand !== null ? entry.currBand.toFixed(1) : "—"}
+                                </td>
+                                <td className="px-4 py-3 text-center">
+                                  <span className={`inline-block font-mono font-bold text-sm px-2.5 py-0.5 rounded-lg border ${impColor}`}>
+                                    {impSign}{entry.improvement.toFixed(1)}
+                                  </span>
+                                </td>
+                                <td className="px-4 py-3 text-center">
+                                  {entry.bonusAnalyses > 0 ? (
+                                    <span className="inline-block bg-green-50 text-green-700 border border-green-200 text-xs font-bold px-2 py-0.5 rounded-full">
+                                      +{entry.bonusAnalyses}
+                                    </span>
+                                  ) : (
+                                    <span className="text-slate-300">—</span>
+                                  )}
+                                </td>
+                                <td className="px-4 py-3 text-center">
+                                  <input
+                                    type="checkbox"
+                                    checked={checked}
+                                    onChange={() => {
+                                      setSelectedUids((prev) => {
+                                        const next = new Set(prev);
+                                        if (next.has(entry.uid)) next.delete(entry.uid);
+                                        else next.add(entry.uid);
+                                        return next;
+                                      });
+                                    }}
+                                    className="w-4 h-4 accent-amber-600 cursor-pointer"
+                                  />
+                                </td>
+                              </tr>
+                            );
+                          })}
+                        </tbody>
+                      </table>
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+
+            {/* ── ANNOUNCEMENTS ── */}
+            {section === "announcements" && (
+              <div className="flex flex-col gap-6">
+                <div>
+                  <p className="text-[0.7rem] font-bold tracking-widest uppercase text-blue-700 mb-1">Announcements</p>
+                  <h1 className="text-2xl font-bold text-slate-900 m-0">Elonlar boshqaruvi</h1>
+                </div>
+                <div className="bg-white rounded-xl border border-slate-200 p-5 flex flex-col gap-3">
+                  <p className="text-sm font-semibold text-slate-700">Yangi elon qo'shish</p>
+                  <Textarea
+                    className="border-slate-200 bg-white text-slate-900"
+                    rows={3}
+                    placeholder="Elon matni (foydalanuvchilarga ko'rinadi)..."
+                    value={annText}
+                    onChange={(e) => setAnnText(e.target.value)}
+                  />
+                  <button
+                    disabled={annSaving || !annText.trim()}
+                    onClick={addAnnouncement}
+                    className="self-start px-4 py-2 text-sm font-semibold bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 transition-colors"
+                  >
+                    {annSaving ? "Saqlanmoqda..." : "Elon qo'shish"}
+                  </button>
+                </div>
+
+                {annLoading ? (
+                  <div className="animate-pulse h-24 bg-slate-100 rounded-xl" />
+                ) : announcements.length === 0 ? (
+                  <div className="bg-white rounded-xl border border-dashed border-slate-300 p-10 text-center">
+                    <p className="text-3xl mb-2">📢</p>
+                    <p className="text-sm text-slate-500">Hali hech qanday elon yo'q.</p>
+                  </div>
+                ) : (
+                  <div className="flex flex-col gap-3">
+                    {announcements.map((a) => (
+                      <div key={a.id} className={`bg-white rounded-xl border p-4 flex items-start gap-4 ${a.active ? 'border-blue-200' : 'border-slate-200 opacity-60'}`}>
+                        <div className="flex-1">
+                          <p className="text-sm text-slate-800 leading-snug">{a.text}</p>
+                          {a.createdAt && (
+                            <p className="text-xs text-slate-400 mt-1">{new Date(a.createdAt).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })}</p>
+                          )}
+                        </div>
+                        <div className="flex items-center gap-2 shrink-0">
+                          <button
+                            onClick={() => toggleAnnouncement(a.id, a.active)}
+                            className={`text-xs px-3 py-1.5 rounded-lg font-medium transition-colors ${a.active ? 'bg-emerald-100 text-emerald-700 hover:bg-emerald-200' : 'bg-slate-100 text-slate-500 hover:bg-slate-200'}`}
+                          >
+                            {a.active ? 'Faol' : 'Nofaol'}
+                          </button>
+                          <button
+                            onClick={() => deleteAnnouncement(a.id)}
+                            className="text-xs px-3 py-1.5 rounded-lg font-medium bg-red-50 text-red-600 hover:bg-red-100 transition-colors"
+                          >
+                            O'chirish
+                          </button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* ── LEARNING CENTERS ── */}
+            {section === "centers" && (
+              <div className="flex flex-col gap-6">
+                <div>
+                  <p className="text-[0.7rem] font-bold tracking-widest uppercase text-teal-700 mb-1">Learning Centers</p>
+                  <h1 className="text-2xl font-bold text-slate-900 m-0">O'quv markazlari</h1>
+                </div>
+                <div className="bg-white rounded-xl border border-dashed border-slate-300 p-12 text-center">
+                  <p className="text-3xl mb-3">🏫</p>
+                  <p className="text-slate-600 font-semibold mb-1">Tez kunda</p>
+                  <p className="text-sm text-slate-400">Bu bo'lim hali ishlab chiqilmoqda.</p>
+                </div>
+              </div>
+            )}
+
+            {/* ── BLOG ── */}
+            {section === "blog" && (
+              <div className="flex flex-col gap-6">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-[0.7rem] font-bold tracking-widest uppercase text-blue-700 mb-1">Blog</p>
+                    <h1 className="text-2xl font-bold text-slate-900 m-0">Blog Posts</h1>
+                  </div>
+                  <button
+                    className="bg-blue-600 text-white px-4 py-2 rounded-lg text-sm font-semibold hover:bg-blue-700 transition-colors"
+                    onClick={() => setBlogEditor({
+                      title: '', slug: '', excerpt: '', content: '', featuredImage: '',
+                      category: 'Writing tips', tags: [], status: 'draft', author: 'WriteReady Team',
+                      seo: { metaTitle: '', metaDescription: '', focusKeyword: '' },
+                      viewCount: 0, likeCount: 0, commentCount: 0, publishedAt: null,
+                    })}
+                  >
+                    + New post
+                  </button>
+                </div>
+
+                {/* Editor panel */}
+                {blogEditor !== null && (
+                  <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-6 flex flex-col gap-4">
+                    <h2 className="text-lg font-bold text-slate-900">{blogEditor.id ? 'Edit Post' : 'New Post'}</h2>
+
+                    <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <label className="text-xs font-semibold text-slate-600 mb-1 block uppercase tracking-wide">Title</label>
+                        <Input
+                          className="border-slate-200 bg-white text-slate-900"
+                          value={blogEditor.title ?? ''}
+                          onChange={(e) => {
+                            const title = e.target.value;
+                            const slug = title.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
+                            setBlogEditor((p) => ({ ...p, title, slug }));
+                          }}
+                        />
+                      </div>
+                      <div>
+                        <label className="text-xs font-semibold text-slate-600 mb-1 block uppercase tracking-wide">Slug</label>
+                        <Input
+                          className="border-slate-200 bg-white text-slate-900"
+                          value={blogEditor.slug ?? ''}
+                          onChange={(e) => setBlogEditor((p) => ({ ...p, slug: e.target.value }))}
+                        />
+                      </div>
+                    </div>
+
+                    <div>
+                      <label className="text-xs font-semibold text-slate-600 mb-1 block uppercase tracking-wide">Excerpt</label>
+                      <Textarea
+                        rows={3}
+                        className="border-slate-200 bg-white text-slate-900"
+                        value={blogEditor.excerpt ?? ''}
+                        onChange={(e) => setBlogEditor((p) => ({ ...p, excerpt: e.target.value }))}
+                      />
+                    </div>
+
+                    <div>
+                      <label className="text-xs font-semibold text-slate-600 mb-1 block uppercase tracking-wide">Content (Markdown)</label>
+                      <Textarea
+                        rows={12}
+                        className="border-slate-200 bg-white text-slate-900 font-mono"
+                        value={blogEditor.content ?? ''}
+                        onChange={(e) => setBlogEditor((p) => ({ ...p, content: e.target.value }))}
+                      />
+                    </div>
+
+                    {/* AI Draft */}
+                    <div className="bg-slate-50 border border-slate-200 rounded-lg p-4 flex flex-col gap-2">
+                      <p className="text-xs font-semibold text-slate-700 uppercase tracking-wide">Generate with AI</p>
+                      <div className="flex gap-2">
+                        <Input
+                          className="border-slate-200 bg-white text-slate-900"
+                          placeholder="Enter topic…"
+                          value={aiTopic}
+                          onChange={(e) => setAiTopic(e.target.value)}
+                        />
+                        <button
+                          className="px-4 py-2 bg-purple-600 text-white rounded-lg text-sm font-semibold hover:bg-purple-700 transition-colors disabled:opacity-50"
+                          disabled={aiDraftLoading || !aiTopic.trim()}
+                          onClick={async () => {
+                            setAiDraftLoading(true);
+                            try {
+                              const res = await fetch('/api/chat', {
+                                method: 'POST',
+                                headers: { 'Content-Type': 'application/json' },
+                                body: JSON.stringify({
+                                  messages: [{
+                                    role: 'user',
+                                    content: `Write a 600-800 word blog post body for IELTS learners about: ${aiTopic}. Focus keyword: ${blogEditor.seo?.focusKeyword || aiTopic}. Write in markdown with clear headings (##), short paragraphs. Topic: ${blogEditor.title || aiTopic}`,
+                                  }],
+                                }),
+                              });
+                              const json = await res.json() as { reply?: string };
+                              const text = json.reply ?? '';
+                              setBlogEditor((p) => ({ ...p, content: text }));
+                            } catch (e) { console.error(e); }
+                            setAiDraftLoading(false);
+                          }}
+                        >
+                          {aiDraftLoading ? 'Generating…' : 'Generate'}
+                        </button>
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <label className="text-xs font-semibold text-slate-600 mb-1 block uppercase tracking-wide">Featured Image URL</label>
+                        <Input
+                          className="border-slate-200 bg-white text-slate-900"
+                          value={blogEditor.featuredImage ?? ''}
+                          onChange={(e) => setBlogEditor((p) => ({ ...p, featuredImage: e.target.value }))}
+                        />
+                      </div>
+                      <div>
+                        <label className="text-xs font-semibold text-slate-600 mb-1 block uppercase tracking-wide">Author</label>
+                        <Input
+                          className="border-slate-200 bg-white text-slate-900"
+                          value={blogEditor.author ?? 'WriteReady Team'}
+                          onChange={(e) => setBlogEditor((p) => ({ ...p, author: e.target.value }))}
+                        />
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <label className="text-xs font-semibold text-slate-600 mb-1 block uppercase tracking-wide">Category</label>
+                        <select
+                          className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm outline-none focus:border-blue-500 bg-white"
+                          value={blogEditor.category ?? 'Writing tips'}
+                          onChange={(e) => setBlogEditor((p) => ({ ...p, category: e.target.value as BlogPost['category'] }))}
+                        >
+                          {['Writing tips', 'Vocabulary', 'Band score', 'Grammar', 'News'].map((c) => (
+                            <option key={c} value={c}>{c}</option>
+                          ))}
+                        </select>
+                      </div>
+                      <div>
+                        <label className="text-xs font-semibold text-slate-600 mb-1 block uppercase tracking-wide">Status</label>
+                        <select
+                          className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm outline-none focus:border-blue-500 bg-white"
+                          value={blogEditor.status ?? 'draft'}
+                          onChange={(e) => setBlogEditor((p) => ({ ...p, status: e.target.value as BlogPost['status'] }))}
+                        >
+                          <option value="draft">Draft</option>
+                          <option value="published">Published</option>
+                          <option value="scheduled">Scheduled</option>
+                        </select>
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-3 gap-4">
+                      <div>
+                        <label className="text-xs font-semibold text-slate-600 mb-1 block uppercase tracking-wide">SEO Title</label>
+                        <Input
+                          className="border-slate-200 bg-white text-slate-900"
+                          value={blogEditor.seo?.metaTitle ?? ''}
+                          onChange={(e) => setBlogEditor((p) => ({ ...p, seo: { ...p?.seo, metaTitle: e.target.value, metaDescription: p?.seo?.metaDescription ?? '', focusKeyword: p?.seo?.focusKeyword ?? '' } }))}
+                        />
+                      </div>
+                      <div>
+                        <label className="text-xs font-semibold text-slate-600 mb-1 block uppercase tracking-wide">Meta Description</label>
+                        <Input
+                          className="border-slate-200 bg-white text-slate-900"
+                          value={blogEditor.seo?.metaDescription ?? ''}
+                          onChange={(e) => setBlogEditor((p) => ({ ...p, seo: { ...p?.seo, metaTitle: p?.seo?.metaTitle ?? '', metaDescription: e.target.value, focusKeyword: p?.seo?.focusKeyword ?? '' } }))}
+                        />
+                      </div>
+                      <div>
+                        <label className="text-xs font-semibold text-slate-600 mb-1 block uppercase tracking-wide">Focus Keyword</label>
+                        <Input
+                          className="border-slate-200 bg-white text-slate-900"
+                          value={blogEditor.seo?.focusKeyword ?? ''}
+                          onChange={(e) => setBlogEditor((p) => ({ ...p, seo: { ...p?.seo, metaTitle: p?.seo?.metaTitle ?? '', metaDescription: p?.seo?.metaDescription ?? '', focusKeyword: e.target.value } }))}
+                        />
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <label className="text-xs font-semibold text-slate-600 mb-1 block uppercase tracking-wide">CTA Text</label>
+                        <Input
+                          className="border-slate-200 bg-white text-slate-900"
+                          value={blogEditor.ctaText ?? ''}
+                          onChange={(e) => setBlogEditor((p) => ({ ...p, ctaText: e.target.value }))}
+                        />
+                      </div>
+                      <div>
+                        <label className="text-xs font-semibold text-slate-600 mb-1 block uppercase tracking-wide">CTA Link</label>
+                        <Input
+                          className="border-slate-200 bg-white text-slate-900"
+                          value={blogEditor.ctaLink ?? ''}
+                          onChange={(e) => setBlogEditor((p) => ({ ...p, ctaLink: e.target.value }))}
+                        />
+                      </div>
+                    </div>
+
+                    <div className="flex gap-3">
+                      <button
+                        className="px-5 py-2 bg-blue-600 text-white rounded-lg text-sm font-semibold hover:bg-blue-700 transition-colors disabled:opacity-50"
+                        disabled={blogSaving}
+                        onClick={async () => {
+                          if (!blogEditor) return;
+                          setBlogSaving(true);
+                          try {
+                            const postData: Omit<BlogPost, 'id'> = {
+                              title: blogEditor.title ?? '',
+                              slug: blogEditor.slug ?? '',
+                              excerpt: blogEditor.excerpt ?? '',
+                              content: blogEditor.content ?? '',
+                              featuredImage: blogEditor.featuredImage ?? '',
+                              category: blogEditor.category ?? 'Writing tips',
+                              tags: blogEditor.tags ?? [],
+                              seo: blogEditor.seo ?? { metaTitle: '', metaDescription: '', focusKeyword: '' },
+                              status: blogEditor.status ?? 'draft',
+                              publishedAt: blogEditor.status === 'published' ? new Date() : null,
+                              author: blogEditor.author ?? 'WriteReady Team',
+                              ctaText: blogEditor.ctaText ?? '',
+                              ctaLink: blogEditor.ctaLink ?? '',
+                              viewCount: blogEditor.viewCount ?? 0,
+                              likeCount: blogEditor.likeCount ?? 0,
+                              commentCount: blogEditor.commentCount ?? 0,
+                            };
+                            const wasPublished = postData.status === 'published';
+                            const wasAlreadyPublished = blogEditor.id && blogEditor.status === 'published';
+                            if (blogEditor.id) {
+                              await updateBlogPost(blogEditor.id, postData);
+                            } else {
+                              await saveBlogPost(postData);
+                            }
+                            if (wasPublished && !wasAlreadyPublished) {
+                              const usersSnap = await getDocs(collection(db, "users"));
+                              const preview = `📝 Yangi maqola: "${postData.title}"`;
+                              await Promise.all(usersSnap.docs.map((u) =>
+                                addDoc(collection(db, "notifications", u.id, "items"), {
+                                  type: "new_post",
+                                  fromUserName: "WriteReady",
+                                  postSlug: postData.slug,
+                                  preview,
+                                  read: false,
+                                  createdAt: new Date(),
+                                })
+                              ));
+                            }
+                            setBlogEditor(null);
+                            await loadBlogPosts();
+                          } catch (e) { console.error(e); }
+                          setBlogSaving(false);
+                        }}
+                      >
+                        {blogSaving ? 'Saving…' : 'Save'}
+                      </button>
+                      <button
+                        className="px-5 py-2 border border-slate-200 text-slate-600 rounded-lg text-sm font-semibold hover:bg-slate-50 transition-colors"
+                        onClick={() => setBlogEditor(null)}
+                      >
+                        Cancel
+                      </button>
+                    </div>
+                  </div>
+                )}
+
+                {/* Table */}
+                {blogLoading ? (
+                  <div className="flex justify-center py-12">
+                    <div className="animate-spin w-6 h-6 border-2 border-blue-600 border-t-transparent rounded-full" />
+                  </div>
+                ) : blogPosts.length === 0 ? (
+                  <div className="bg-white rounded-xl border border-dashed border-slate-300 p-12 text-center">
+                    <p className="text-3xl mb-3">📝</p>
+                    <p className="text-slate-600 font-semibold mb-1">No posts yet</p>
+                    <p className="text-sm text-slate-400">Click "New post" to create your first blog post.</p>
+                  </div>
+                ) : (
+                  <div className="bg-white rounded-xl border border-slate-200 overflow-hidden">
+                    <table className="w-full text-sm">
+                      <thead>
+                        <tr className="border-b border-slate-200 bg-slate-50">
+                          <th className="px-4 py-3 text-left text-xs font-semibold text-slate-600 uppercase tracking-wide">Title</th>
+                          <th className="px-4 py-3 text-left text-xs font-semibold text-slate-600 uppercase tracking-wide">Status</th>
+                          <th className="px-4 py-3 text-left text-xs font-semibold text-slate-600 uppercase tracking-wide">Category</th>
+                          <th className="px-4 py-3 text-center text-xs font-semibold text-slate-600 uppercase tracking-wide">Views</th>
+                          <th className="px-4 py-3 text-center text-xs font-semibold text-slate-600 uppercase tracking-wide">Likes</th>
+                          <th className="px-4 py-3 text-center text-xs font-semibold text-slate-600 uppercase tracking-wide">Comments</th>
+                          <th className="px-4 py-3 text-left text-xs font-semibold text-slate-600 uppercase tracking-wide">Date</th>
+                          <th className="px-4 py-3 text-right text-xs font-semibold text-slate-600 uppercase tracking-wide">Actions</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {blogPosts.map((p) => (
+                          <tr key={p.id} className="border-b border-slate-100 last:border-0 hover:bg-slate-50">
+                            <td className="px-4 py-3 font-medium text-slate-900 max-w-[220px] truncate">{p.title}</td>
+                            <td className="px-4 py-3">
+                              <Badge variant={p.status === 'published' ? 'success' : p.status === 'draft' ? 'outline' : 'warning'} className="text-xs capitalize">{p.status}</Badge>
+                            </td>
+                            <td className="px-4 py-3 text-slate-600">{p.category}</td>
+                            <td className="px-4 py-3 text-center text-slate-600">{p.viewCount}</td>
+                            <td className="px-4 py-3 text-center text-slate-600">{p.likeCount}</td>
+                            <td className="px-4 py-3 text-center text-slate-600">{p.commentCount}</td>
+                            <td className="px-4 py-3 text-slate-500 text-xs">{p.publishedAt}</td>
+                            <td className="px-4 py-3 text-right">
+                              <div className="flex items-center justify-end gap-2">
+                                <button
+                                  className="text-xs px-3 py-1 border border-slate-200 rounded-lg hover:bg-slate-100 text-slate-700 transition-colors"
+                                  onClick={async () => {
+                                    const { getBlogPostById } = await import('../../firebase/blog');
+                                    const full = await getBlogPostById(p.id);
+                                    if (full) setBlogEditor(full);
+                                  }}
+                                >
+                                  Edit
+                                </button>
+                                <button
+                                  className="text-xs px-3 py-1 border border-red-200 rounded-lg hover:bg-red-50 text-red-600 transition-colors"
+                                  onClick={async () => {
+                                    if (!confirm('Delete this post?')) return;
+                                    await deleteBlogPost(p.id);
+                                    await loadBlogPosts();
+                                  }}
+                                >
+                                  Delete
+                                </button>
+                              </div>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+              </div>
+            )}
+          </main>
+        </SidebarInset>
+
+        {/* ── Image Preview Modal ── */}
+        {previewImage && (
+          <div
+            className="fixed inset-0 bg-black/80 z-50 flex items-center justify-center p-4"
+            onClick={() => setPreviewImage(null)}
+          >
+            <div className="relative max-w-5xl w-full" onClick={(e) => e.stopPropagation()}>
+              <button
+                onClick={() => setPreviewImage(null)}
+                className="absolute -top-10 right-0 text-white/70 hover:text-white text-3xl font-light bg-transparent border-none cursor-pointer leading-none"
+              >×</button>
+              <img
+                src={previewImage}
+                alt="Preview"
+                className="w-full max-h-[85vh] object-contain rounded-xl shadow-2xl"
+              />
+            </div>
           </div>
         )}
-      </main>
 
-      {/* ── Image Preview Modal ── */}
-      {previewImage && (
-        <div
-          className="fixed inset-0 bg-black/80 z-50 flex items-center justify-center p-4"
-          onClick={() => setPreviewImage(null)}
-        >
-          <div className="relative max-w-5xl w-full" onClick={(e) => e.stopPropagation()}>
-            <button
-              onClick={() => setPreviewImage(null)}
-              className="absolute -top-10 right-0 text-white/70 hover:text-white text-3xl font-light bg-transparent border-none cursor-pointer leading-none"
-            >×</button>
-            <img
-              src={previewImage}
-              alt="Preview"
-              className="w-full max-h-[85vh] object-contain rounded-xl shadow-2xl"
-            />
-          </div>
-        </div>
-      )}
+        {/* ── Edit Task 1 Dialog ── */}
+        <Dialog open={!!editT1} onOpenChange={(open) => { if (!open) setEditT1(null); }}>
+          <DialogContent className="bg-white max-w-[520px]">
+            <DialogHeader>
+              <DialogTitle className="text-slate-900">Edit Task 1</DialogTitle>
+            </DialogHeader>
+            {editT1 && (
+              <div className="flex flex-col gap-4">
+                <img src={editImage} alt="" className="w-full h-36 object-cover rounded-lg" />
+                <div>
+                  <label className="text-xs font-semibold text-slate-600 mb-1.5 block uppercase tracking-wide">Replace Image</label>
+                  <input
+                    type="file"
+                    accept="image/*,application/pdf"
+                    onChange={async (e) => {
+                      const f = e.target.files?.[0];
+                      if (f) { const url = await uploadImage(f); if (url) setEditImage(url); }
+                    }}
+                    className="text-sm text-slate-700"
+                  />
+                </div>
+                <div>
+                  <label className="text-xs font-semibold text-slate-600 mb-1.5 block uppercase tracking-wide">Savol matni</label>
+                  <Textarea
+                    className="border-slate-200 bg-white text-slate-900 min-h-[100px]"
+                    value={editReport}
+                    onChange={(e) => setEditReport(e.target.value)}
+                    rows={4}
+                  />
+                </div>
+                <div className="flex gap-3">
+                  <button className="flex-1 bg-blue-700 text-white border-none rounded-lg py-2.5 font-semibold text-sm cursor-pointer hover:bg-blue-800 transition-colors" onClick={saveEditT1}>Save</button>
+                  <button className="flex-1 bg-white text-slate-700 border border-slate-200 rounded-lg py-2.5 font-semibold text-sm cursor-pointer hover:bg-slate-50 transition-colors" onClick={() => setEditT1(null)}>Cancel</button>
+                </div>
+              </div>
+            )}
+          </DialogContent>
+        </Dialog>
 
-      {/* ── Edit Task 1 Modal ── */}
-      {editT1 && (
-        <Modal onClose={() => setEditT1(null)}>
-          <h2 className="text-lg font-bold text-slate-900 m-0">Edit Task 1</h2>
-          <img src={editImage} alt="" className="w-full h-36 object-cover rounded-lg" />
-          <div>
-            <label className="text-xs font-semibold text-slate-600 mb-1.5 block uppercase tracking-wide">Replace Image</label>
-            <input
-              type="file"
-              accept="image/*,application/pdf"
-              onChange={async (e) => {
-                const f = e.target.files?.[0];
-                if (f) { const url = await uploadImage(f); if (url) setEditImage(url); }
-              }}
-              className="text-sm text-slate-700"
-            />
-          </div>
-          <div>
-            <label className="text-xs font-semibold text-slate-600 mb-1.5 block uppercase tracking-wide">Savol matni</label>
-            <Textarea
-              className="border-slate-200 bg-white text-slate-900 min-h-[100px]"
-              value={editReport}
-              onChange={(e) => setEditReport(e.target.value)}
-              rows={4}
-            />
-          </div>
-          <div className="flex gap-3">
-            <button className="flex-1 bg-blue-700 text-white border-none rounded-lg py-2.5 font-semibold text-sm cursor-pointer hover:bg-blue-800 transition-colors" onClick={saveEditT1}>Save</button>
-            <button className="flex-1 bg-white text-slate-700 border border-slate-200 rounded-lg py-2.5 font-semibold text-sm cursor-pointer hover:bg-slate-50 transition-colors" onClick={() => setEditT1(null)}>Cancel</button>
-          </div>
-        </Modal>
-      )}
+        {/* ── Edit Task 2 Dialog ── */}
+        <Dialog open={!!editT2} onOpenChange={(open) => { if (!open) setEditT2(null); }}>
+          <DialogContent className="bg-white max-w-[520px]">
+            <DialogHeader>
+              <DialogTitle className="text-slate-900">Edit Task 2</DialogTitle>
+            </DialogHeader>
+            {editT2 && (
+              <div className="flex flex-col gap-4">
+                <div>
+                  <label className="text-xs font-semibold text-slate-600 mb-1.5 block uppercase tracking-wide">Savol matni</label>
+                  <Textarea
+                    className="border-slate-200 bg-white text-slate-900 min-h-[120px]"
+                    value={editT2Report}
+                    onChange={(e) => setEditT2Report(e.target.value)}
+                    rows={6}
+                  />
+                </div>
+                <div className="flex gap-3">
+                  <button className="flex-1 bg-green-700 text-white border-none rounded-lg py-2.5 font-semibold text-sm cursor-pointer hover:bg-green-800 transition-colors" onClick={saveEditT2}>Save</button>
+                  <button className="flex-1 bg-white text-slate-700 border border-slate-200 rounded-lg py-2.5 font-semibold text-sm cursor-pointer hover:bg-slate-50 transition-colors" onClick={() => setEditT2(null)}>Cancel</button>
+                </div>
+              </div>
+            )}
+          </DialogContent>
+        </Dialog>
 
-      {/* ── Edit Task 2 Modal ── */}
-      {editT2 && (
-        <Modal onClose={() => setEditT2(null)}>
-          <h2 className="text-lg font-bold text-slate-900 m-0">Edit Task 2</h2>
-          <div>
-            <label className="text-xs font-semibold text-slate-600 mb-1.5 block uppercase tracking-wide">Savol matni</label>
-            <Textarea
-              className="border-slate-200 bg-white text-slate-900 min-h-[120px]"
-              value={editT2Report}
-              onChange={(e) => setEditT2Report(e.target.value)}
-              rows={6}
-            />
-          </div>
-          <div className="flex gap-3">
-            <button className="flex-1 bg-green-700 text-white border-none rounded-lg py-2.5 font-semibold text-sm cursor-pointer hover:bg-green-800 transition-colors" onClick={saveEditT2}>Save</button>
-            <button className="flex-1 bg-white text-slate-700 border border-slate-200 rounded-lg py-2.5 font-semibold text-sm cursor-pointer hover:bg-slate-50 transition-colors" onClick={() => setEditT2(null)}>Cancel</button>
-          </div>
-        </Modal>
-      )}
-
-      <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
-    </div>
+        <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
+      </div>
+    </SidebarProvider>
   );
 }
 
@@ -1586,18 +1671,5 @@ function Spinner({ color }: { color: string }) {
       border: `2px solid ${color}`, borderTopColor: "transparent",
       borderRadius: "50%", animation: "spin 0.7s linear infinite", flexShrink: 0,
     }} />
-  );
-}
-
-function Modal({ children, onClose }: { children: React.ReactNode; onClose: () => void }) {
-  return (
-    <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4" onClick={onClose}>
-      <div
-        className="bg-white rounded-2xl border border-slate-200 shadow-2xl w-full max-w-[520px] p-7 flex flex-col gap-4"
-        onClick={(e) => e.stopPropagation()}
-      >
-        {children}
-      </div>
-    </div>
   );
 }
