@@ -33,7 +33,7 @@ interface LeaderEntry {
   bonusAnalyses: number;
 }
 
-type NavSection = "dashboard" | "task1" | "task2" | "users" | "leaderboard" | "centers";
+type NavSection = "dashboard" | "task1" | "task2" | "users" | "leaderboard" | "announcements" | "centers";
 
 const CREDENTIALS = { login: "2026SPRING", password: "paidOFF" };
 
@@ -123,8 +123,9 @@ const NAV: { id: NavSection; label: string; icon: string }[] = [
   { id: "task1",       label: "Task 1",           icon: "🖼️" },
   { id: "task2",       label: "Task 2",           icon: "✍️" },
   { id: "users",       label: "Users",            icon: "👥" },
-  { id: "leaderboard", label: "Leaderboard",      icon: "🏆" },
-  { id: "centers",     label: "Learning Centers", icon: "🏫" },
+  { id: "leaderboard",    label: "Leaderboard",      icon: "🏆" },
+  { id: "announcements",  label: "Elonlar",          icon: "📢" },
+  { id: "centers",        label: "Learning Centers", icon: "🏫" },
 ];
 
 // ── Main ─────────────────────────────────────────────────────────
@@ -172,6 +173,13 @@ export default function Admin() {
   const [bonusInput, setBonusInput] = useState("3");
   const [grantLoading, setGrantLoading] = useState(false);
   const [grantMsg, setGrantMsg] = useState("");
+
+  // Announcements
+  interface AnnouncementRow { id: string; text: string; active: boolean; createdAt?: string; }
+  const [announcements, setAnnouncements] = useState<AnnouncementRow[]>([]);
+  const [annLoading, setAnnLoading] = useState(false);
+  const [annText, setAnnText] = useState("");
+  const [annSaving, setAnnSaving] = useState(false);
 
   const { uploadImage, uploading } = useUpload();
 
@@ -298,6 +306,47 @@ export default function Admin() {
   useEffect(() => {
     if (isLoggedIn && section === "leaderboard") loadLeaderboard();
   }, [isLoggedIn, section]);
+
+  const loadAnnouncements = async () => {
+    setAnnLoading(true);
+    try {
+      const snap = await getDocs(query(collection(db, "announcements"), orderBy("createdAt", "desc")));
+      setAnnouncements(snap.docs.map((d) => {
+        const data = d.data();
+        return { id: d.id, text: data.text ?? "", active: data.active ?? false, createdAt: data.createdAt?.toDate?.()?.toISOString?.() };
+      }));
+    } catch (e) { console.error(e); }
+    setAnnLoading(false);
+  };
+
+  useEffect(() => {
+    if (isLoggedIn && section === "announcements") loadAnnouncements();
+  }, [isLoggedIn, section]);
+
+  const addAnnouncement = async () => {
+    if (!annText.trim()) return;
+    setAnnSaving(true);
+    try {
+      await addDoc(collection(db, "announcements"), {
+        text: annText.trim(),
+        active: true,
+        createdAt: new Date(),
+      });
+      setAnnText("");
+      await loadAnnouncements();
+    } catch (e) { console.error(e); }
+    setAnnSaving(false);
+  };
+
+  const toggleAnnouncement = async (id: string, active: boolean) => {
+    await updateDoc(doc(db, "announcements", id), { active: !active });
+    setAnnouncements((prev) => prev.map((a) => a.id === id ? { ...a, active: !a.active } : a));
+  };
+
+  const deleteAnnouncement = async (id: string) => {
+    await deleteDoc(doc(db, "announcements", id));
+    setAnnouncements((prev) => prev.filter((a) => a.id !== id));
+  };
 
   const grantBonus = async () => {
     const n = parseInt(bonusInput);
@@ -990,6 +1039,69 @@ export default function Admin() {
                 </div>
               )}
             </div>
+          </div>
+        )}
+
+        {/* ── ANNOUNCEMENTS ── */}
+        {section === "announcements" && (
+          <div className="flex flex-col gap-6">
+            <div>
+              <p className="text-[0.7rem] font-bold tracking-widest uppercase text-blue-700 mb-1">Announcements</p>
+              <h1 className="text-2xl font-bold text-slate-900 m-0">Elonlar boshqaruvi</h1>
+            </div>
+            <div className="bg-white rounded-xl border border-slate-200 p-5 flex flex-col gap-3">
+              <p className="text-sm font-semibold text-slate-700">Yangi elon qo'shish</p>
+              <textarea
+                className="w-full border border-slate-200 rounded-lg p-3 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-blue-400"
+                rows={3}
+                placeholder="Elon matni (foydalanuvchilarga ko'rinadi)..."
+                value={annText}
+                onChange={(e) => setAnnText(e.target.value)}
+              />
+              <button
+                disabled={annSaving || !annText.trim()}
+                onClick={addAnnouncement}
+                className="self-start px-4 py-2 text-sm font-semibold bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 transition-colors"
+              >
+                {annSaving ? "Saqlanmoqda..." : "Elon qo'shish"}
+              </button>
+            </div>
+
+            {annLoading ? (
+              <div className="animate-pulse h-24 bg-slate-100 rounded-xl" />
+            ) : announcements.length === 0 ? (
+              <div className="bg-white rounded-xl border border-dashed border-slate-300 p-10 text-center">
+                <p className="text-3xl mb-2">📢</p>
+                <p className="text-sm text-slate-500">Hali hech qanday elon yo'q.</p>
+              </div>
+            ) : (
+              <div className="flex flex-col gap-3">
+                {announcements.map((a) => (
+                  <div key={a.id} className={`bg-white rounded-xl border p-4 flex items-start gap-4 ${a.active ? 'border-blue-200' : 'border-slate-200 opacity-60'}`}>
+                    <div className="flex-1">
+                      <p className="text-sm text-slate-800 leading-snug">{a.text}</p>
+                      {a.createdAt && (
+                        <p className="text-xs text-slate-400 mt-1">{new Date(a.createdAt).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })}</p>
+                      )}
+                    </div>
+                    <div className="flex items-center gap-2 shrink-0">
+                      <button
+                        onClick={() => toggleAnnouncement(a.id, a.active)}
+                        className={`text-xs px-3 py-1.5 rounded-lg font-medium transition-colors ${a.active ? 'bg-emerald-100 text-emerald-700 hover:bg-emerald-200' : 'bg-slate-100 text-slate-500 hover:bg-slate-200'}`}
+                      >
+                        {a.active ? 'Faol' : 'Nofaol'}
+                      </button>
+                      <button
+                        onClick={() => deleteAnnouncement(a.id)}
+                        className="text-xs px-3 py-1.5 rounded-lg font-medium bg-red-50 text-red-600 hover:bg-red-100 transition-colors"
+                      >
+                        O'chirish
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
         )}
 

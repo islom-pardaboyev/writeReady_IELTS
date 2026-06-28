@@ -233,6 +233,46 @@ export async function getRecentFeedbackReports(uid: string, n = 5): Promise<Feed
   });
 }
 
+export async function getAllFeedbackReports(uid: string): Promise<FeedbackReport[]> {
+  const q = query(
+    collection(db, 'feedback_reports'),
+    where('uid', '==', uid),
+    orderBy('createdAt', 'asc')
+  );
+  const snap = await getDocs(q);
+  return snap.docs.map((d) => {
+    const data = d.data();
+    return {
+      id: d.id,
+      taskType: data.taskType ?? 'task2',
+      topic: data.topic ?? 'General',
+      scores: data.scores ?? {},
+      createdAt: toDate(data.createdAt),
+    };
+  });
+}
+
+export interface Announcement {
+  id: string;
+  text: string;
+  createdAt: Date | null;
+  active: boolean;
+}
+
+export async function getActiveAnnouncement(): Promise<Announcement | null> {
+  const q = query(
+    collection(db, 'announcements'),
+    where('active', '==', true),
+    orderBy('createdAt', 'desc'),
+    limit(1)
+  );
+  const snap = await getDocs(q);
+  if (snap.empty) return null;
+  const d = snap.docs[0];
+  const data = d.data();
+  return { id: d.id, text: data.text ?? '', createdAt: toDate(data.createdAt), active: true };
+}
+
 // ── Questions ──────────────────────────────────────────────────────────────
 
 export async function seedQuestions(): Promise<void> {

@@ -7,6 +7,7 @@ import { useUsage } from '../hooks/useUsage';
 import { Layout } from '../components/layout/Layout';
 import { Button } from '../components/ui/Button';
 import { getRecentFeedbackReports, type FeedbackReport } from '../firebase/firestore';
+import { ProgressSection } from '../components/ui/ProgressSection';
 import { doc, updateDoc } from 'firebase/firestore';
 import { db } from '../firebase/config';
 
@@ -221,6 +222,9 @@ export function DashboardPage() {
               </button>
             ))}
           </div>
+
+          {/* Progress Section */}
+          {isPro && user?.uid && <ProgressSection uid={user.uid} />}
 
           {/* Recent Analyses */}
           {isPro && (
