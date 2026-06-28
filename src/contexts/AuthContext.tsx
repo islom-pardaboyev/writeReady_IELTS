@@ -11,7 +11,7 @@ import {
 import { auth } from '../firebase/config';
 import { createUserProfile, getUserProfile } from '../firebase/firestore';
 import type { UserProfile } from '../types';
-import { AuthContext } from './authContext';
+import { AuthContext } from './authContextDef';
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
