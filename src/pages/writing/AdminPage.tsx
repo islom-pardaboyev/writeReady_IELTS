@@ -26,7 +26,9 @@ interface UserRow {
 interface LeaderEntry {
   uid: string;
   email: string;
-  avgBand: number;
+  prevBand: number | null;
+  currBand: number | null;
+  improvement: number;
   reportCount: number;
   bonusAnalyses: number;
 }
@@ -222,10 +224,16 @@ export default function Admin() {
     setLeaderLoading(true);
     setGrantMsg("");
     try {
-      // Fetch all feedback_reports
+      const now = new Date();
+      const currMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
+      const prevDate = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+      const prevMonth = `${prevDate.getFullYear()}-${String(prevDate.getMonth() + 1).padStart(2, "0")}`;
+
       const repSnap = await getDocs(collection(db, "feedback_reports"));
-      // Group by uid, accumulate band scores
-      const map: Record<string, { total: number; count: number }> = {};
+
+      // uid → { curr: {total,count}, prev: {total,count} }
+      const map: Record<string, { curr: { total: number; count: number }; prev: { total: number; count: number } }> = {};
+
       repSnap.docs.forEach((d) => {
         const data = d.data();
         const uid = data.uid as string;
@@ -234,11 +242,23 @@ export default function Admin() {
         const vals = Object.values(scores).filter((v) => typeof v === "number") as number[];
         if (!vals.length) return;
         const avg = vals.reduce((a, b) => a + b, 0) / vals.length;
-        if (!map[uid]) map[uid] = { total: 0, count: 0 };
-        map[uid].total += avg;
-        map[uid].count += 1;
+
+        // Determine which month this report belongs to
+        const ts = data.createdAt?.toDate?.() as Date | undefined;
+        if (!ts) return;
+        const reportMonth = `${ts.getFullYear()}-${String(ts.getMonth() + 1).padStart(2, "0")}`;
+
+        if (!map[uid]) map[uid] = { curr: { total: 0, count: 0 }, prev: { total: 0, count: 0 } };
+        if (reportMonth === currMonth) {
+          map[uid].curr.total += avg;
+          map[uid].curr.count += 1;
+        } else if (reportMonth === prevMonth) {
+          map[uid].prev.total += avg;
+          map[uid].prev.count += 1;
+        }
       });
-      // Fetch users to get emails & bonusAnalyses
+
+      // Fetch users for emails & bonusAnalyses
       const usersSnap = await getDocs(collection(db, "users"));
       const emailMap: Record<string, string> = {};
       const bonusMap: Record<string, number> = {};
@@ -247,15 +267,27 @@ export default function Admin() {
         emailMap[d.id] = data.email ?? d.id;
         bonusMap[d.id] = typeof data.bonusAnalyses === "number" ? data.bonusAnalyses : 0;
       });
-      const entries: LeaderEntry[] = Object.entries(map).map(([uid, { total, count }]) => ({
-        uid,
-        email: emailMap[uid] ?? uid,
-        avgBand: Math.round((total / count) * 10) / 10,
-        reportCount: count,
-        bonusAnalyses: bonusMap[uid] ?? 0,
-      }));
-      entries.sort((a, b) => b.avgBand - a.avgBand);
-      setLeaderboard(entries);
+
+      const entries: LeaderEntry[] = Object.entries(map)
+        .filter(([, { curr }]) => curr.count > 0) // must have activity this month
+        .map(([uid, { curr, prev }]) => {
+          const currBand = curr.count > 0 ? Math.round((curr.total / curr.count) * 10) / 10 : null;
+          const prevBand = prev.count > 0 ? Math.round((prev.total / prev.count) * 10) / 10 : null;
+          const improvement = currBand !== null && prevBand !== null ? currBand - prevBand : currBand ?? 0;
+          return {
+            uid,
+            email: emailMap[uid] ?? uid,
+            currBand,
+            prevBand,
+            improvement: Math.round(improvement * 10) / 10,
+            reportCount: curr.count + prev.count,
+            bonusAnalyses: bonusMap[uid] ?? 0,
+          };
+        });
+
+      // Sort by improvement desc, top 10
+      entries.sort((a, b) => b.improvement - a.improvement);
+      setLeaderboard(entries.slice(0, 10));
     } catch (e) { console.error(e); }
     setLeaderLoading(false);
   };
@@ -861,34 +893,44 @@ export default function Admin() {
                   <table className="w-full text-sm">
                     <thead>
                       <tr className="border-b border-slate-100 bg-slate-50">
-                        <th className="px-4 py-3 text-left text-xs font-bold text-slate-400 uppercase tracking-wider w-10">#</th>
+                        <th className="px-4 py-3 text-left text-xs font-bold text-slate-400 uppercase tracking-wider w-12">O'rin</th>
                         <th className="px-4 py-3 text-left text-xs font-bold text-slate-400 uppercase tracking-wider">Foydalanuvchi</th>
-                        <th className="px-4 py-3 text-center text-xs font-bold text-slate-400 uppercase tracking-wider">O'rt. Band</th>
-                        <th className="px-4 py-3 text-center text-xs font-bold text-slate-400 uppercase tracking-wider">Tahlillar</th>
-                        <th className="px-4 py-3 text-center text-xs font-bold text-slate-400 uppercase tracking-wider">Bonus qoldi</th>
+                        <th className="px-4 py-3 text-center text-xs font-bold text-slate-400 uppercase tracking-wider">O'tgan oy</th>
+                        <th className="px-4 py-3 text-center text-xs font-bold text-slate-400 uppercase tracking-wider">Bu oy</th>
+                        <th className="px-4 py-3 text-center text-xs font-bold text-slate-400 uppercase tracking-wider">O'sish</th>
+                        <th className="px-4 py-3 text-center text-xs font-bold text-slate-400 uppercase tracking-wider">Bonus</th>
                         <th className="px-4 py-3 text-center text-xs font-bold text-slate-400 uppercase tracking-wider">Tanlash</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-slate-100">
                       {leaderboard.map((entry, i) => {
                         const isTop3 = i < 3;
-                        const medal = i === 0 ? "🥇" : i === 1 ? "🥈" : i === 2 ? "🥉" : null;
+                        const rankIcon = i === 0 ? "🥇" : i === 1 ? "🥈" : i === 2 ? "🥉" : null;
                         const checked = selectedUids.has(entry.uid);
-                        const bandColor = entry.avgBand >= 7 ? "text-emerald-600 bg-emerald-50" : entry.avgBand >= 6 ? "text-blue-600 bg-blue-50" : entry.avgBand >= 5 ? "text-amber-600 bg-amber-50" : "text-red-500 bg-red-50";
+                        const impColor = entry.improvement > 0 ? "text-emerald-600 bg-emerald-50 border-emerald-200" : entry.improvement < 0 ? "text-red-500 bg-red-50 border-red-200" : "text-slate-500 bg-slate-50 border-slate-200";
+                        const impSign = entry.improvement > 0 ? "+" : "";
                         return (
-                          <tr key={entry.uid} className={`transition-colors hover:bg-slate-50 ${isTop3 ? "bg-amber-50/30" : ""} ${checked ? "bg-amber-100/50" : ""}`}>
-                            <td className="px-4 py-3 text-slate-400 font-mono text-xs">
-                              {medal ?? `#${i + 1}`}
+                          <tr key={entry.uid} className={`transition-colors hover:bg-slate-50 ${isTop3 ? "bg-amber-50/40" : ""} ${checked ? "bg-amber-100/60" : ""}`}>
+                            <td className="px-4 py-3 text-center">
+                              {rankIcon
+                                ? <span className="text-xl leading-none">{rankIcon}</span>
+                                : <span className="font-mono text-xs text-slate-400">#{i + 1}</span>
+                              }
                             </td>
                             <td className="px-4 py-3">
                               <span className="font-medium text-slate-800">{entry.email}</span>
                             </td>
+                            <td className="px-4 py-3 text-center font-mono text-sm text-slate-500">
+                              {entry.prevBand !== null ? entry.prevBand.toFixed(1) : <span className="text-slate-300">—</span>}
+                            </td>
+                            <td className="px-4 py-3 text-center font-mono text-sm font-bold text-slate-800">
+                              {entry.currBand !== null ? entry.currBand.toFixed(1) : "—"}
+                            </td>
                             <td className="px-4 py-3 text-center">
-                              <span className={`inline-block font-mono font-bold text-base px-2.5 py-0.5 rounded-lg ${bandColor}`}>
-                                {entry.avgBand.toFixed(1)}
+                              <span className={`inline-block font-mono font-bold text-sm px-2.5 py-0.5 rounded-lg border ${impColor}`}>
+                                {impSign}{entry.improvement.toFixed(1)}
                               </span>
                             </td>
-                            <td className="px-4 py-3 text-center text-slate-500 font-mono">{entry.reportCount}</td>
                             <td className="px-4 py-3 text-center">
                               {entry.bonusAnalyses > 0 ? (
                                 <span className="inline-block bg-green-50 text-green-700 border border-green-200 text-xs font-bold px-2 py-0.5 rounded-full">
