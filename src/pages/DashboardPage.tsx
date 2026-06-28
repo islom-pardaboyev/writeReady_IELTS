@@ -68,7 +68,7 @@ const SCORE_LABELS: Record<string, string> = {
 };
 
 export function DashboardPage() {
-  const { user, profile } = useAuth();
+  const { user, profile, refreshProfile } = useAuth();
   const { usage } = useUsage(user?.uid ?? null);
   const navigate = useNavigate();
   const rootRef = useRef<HTMLDivElement>(null);
@@ -103,6 +103,7 @@ export function DashboardPage() {
 
   useEffect(() => {
     if (!user?.uid) return;
+    refreshProfile();
     getRecentFeedbackReports(user.uid, 5)
       .then(setReports)
       .finally(() => setReportsLoading(false));
