@@ -13,6 +13,8 @@ import {
 import { db } from "@/firebase/firebase";
 import useUpload from "@/hooks/useUploadImage";
 import Logo from "/logo.png";
+import { getBlogPosts, saveBlogPost, updateBlogPost, deleteBlogPost } from "../../firebase/blog";
+import type { BlogPost } from "../../types/blog";
 
 interface Task1 { id: string; image: string; report: string; }
 interface Task2 { id: string; report: string; }
@@ -33,7 +35,7 @@ interface LeaderEntry {
   bonusAnalyses: number;
 }
 
-type NavSection = "dashboard" | "task1" | "task2" | "users" | "leaderboard" | "announcements" | "centers";
+type NavSection = "dashboard" | "task1" | "task2" | "users" | "leaderboard" | "announcements" | "centers" | "blog";
 
 const CREDENTIALS = { login: "2026SPRING", password: "paidOFF" };
 
@@ -126,6 +128,7 @@ const NAV: { id: NavSection; label: string; icon: string }[] = [
   { id: "leaderboard",    label: "Leaderboard",      icon: "🏆" },
   { id: "announcements",  label: "Elonlar",          icon: "📢" },
   { id: "centers",        label: "Learning Centers", icon: "🏫" },
+  { id: "blog",           label: "Blog",             icon: "📝" },
 ];
 
 // ── Main ─────────────────────────────────────────────────────────
@@ -181,6 +184,15 @@ export default function Admin() {
   const [annText, setAnnText] = useState("");
   const [annSaving, setAnnSaving] = useState(false);
 
+  // Blog
+  interface BlogPostRow { id: string; title: string; slug: string; status: string; category: string; viewCount: number; likeCount: number; commentCount: number; publishedAt?: string; }
+  const [blogPosts, setBlogPosts] = useState<BlogPostRow[]>([]);
+  const [blogLoading, setBlogLoading] = useState(false);
+  const [blogEditor, setBlogEditor] = useState<Partial<BlogPost> | null>(null);
+  const [blogSaving, setBlogSaving] = useState(false);
+  const [aiDraftLoading, setAiDraftLoading] = useState(false);
+  const [aiTopic, setAiTopic] = useState("");
+
   const { uploadImage, uploading } = useUpload();
 
   useEffect(() => {
@@ -229,6 +241,29 @@ export default function Admin() {
 
   useEffect(() => {
     if (isLoggedIn && allUsers.length === 0) loadUsers();
+  }, [isLoggedIn, section]);
+
+  const loadBlogPosts = async () => {
+    setBlogLoading(true);
+    try {
+      const posts = await getBlogPosts();
+      setBlogPosts(posts.map((p) => ({
+        id: p.id,
+        title: p.title,
+        slug: p.slug,
+        status: p.status,
+        category: p.category,
+        viewCount: p.viewCount,
+        likeCount: p.likeCount,
+        commentCount: p.commentCount,
+        publishedAt: p.publishedAt?.toLocaleDateString('en-GB') ?? '',
+      })));
+    } catch (e) { console.error(e); }
+    setBlogLoading(false);
+  };
+
+  useEffect(() => {
+    if (isLoggedIn && section === 'blog') loadBlogPosts();
   }, [isLoggedIn, section]);
 
   const loadLeaderboard = async () => {
@@ -1117,6 +1152,329 @@ export default function Admin() {
               <p className="text-slate-600 font-semibold mb-1">Tez kunda</p>
               <p className="text-sm text-slate-400">Bu bo'lim hali ishlab chiqilmoqda.</p>
             </div>
+          </div>
+        )}
+
+        {section === "blog" && (
+          <div className="flex flex-col gap-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-[0.7rem] font-bold tracking-widest uppercase text-blue-700 mb-1">Blog</p>
+                <h1 className="text-2xl font-bold text-slate-900 m-0">Blog Posts</h1>
+              </div>
+              <button
+                className="bg-blue-600 text-white px-4 py-2 rounded-lg text-sm font-semibold hover:bg-blue-700 transition-colors"
+                onClick={() => setBlogEditor({
+                  title: '', slug: '', excerpt: '', content: '', featuredImage: '',
+                  category: 'Writing tips', tags: [], status: 'draft', author: 'WriteReady Team',
+                  seo: { metaTitle: '', metaDescription: '', focusKeyword: '' },
+                  viewCount: 0, likeCount: 0, commentCount: 0, publishedAt: null,
+                })}
+              >
+                + New post
+              </button>
+            </div>
+
+            {/* Editor panel */}
+            {blogEditor !== null && (
+              <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-6 flex flex-col gap-4">
+                <h2 className="text-lg font-bold text-slate-900">{blogEditor.id ? 'Edit Post' : 'New Post'}</h2>
+
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="text-xs font-semibold text-slate-600 mb-1 block uppercase tracking-wide">Title</label>
+                    <input
+                      className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm outline-none focus:border-blue-500"
+                      value={blogEditor.title ?? ''}
+                      onChange={(e) => {
+                        const title = e.target.value;
+                        const slug = title.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
+                        setBlogEditor((p) => ({ ...p, title, slug }));
+                      }}
+                    />
+                  </div>
+                  <div>
+                    <label className="text-xs font-semibold text-slate-600 mb-1 block uppercase tracking-wide">Slug</label>
+                    <input
+                      className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm outline-none focus:border-blue-500"
+                      value={blogEditor.slug ?? ''}
+                      onChange={(e) => setBlogEditor((p) => ({ ...p, slug: e.target.value }))}
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <label className="text-xs font-semibold text-slate-600 mb-1 block uppercase tracking-wide">Excerpt</label>
+                  <textarea
+                    rows={3}
+                    className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm outline-none focus:border-blue-500 resize-none"
+                    value={blogEditor.excerpt ?? ''}
+                    onChange={(e) => setBlogEditor((p) => ({ ...p, excerpt: e.target.value }))}
+                  />
+                </div>
+
+                <div>
+                  <label className="text-xs font-semibold text-slate-600 mb-1 block uppercase tracking-wide">Content (Markdown)</label>
+                  <textarea
+                    rows={12}
+                    className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm outline-none focus:border-blue-500 resize-none font-mono"
+                    value={blogEditor.content ?? ''}
+                    onChange={(e) => setBlogEditor((p) => ({ ...p, content: e.target.value }))}
+                  />
+                </div>
+
+                {/* AI Draft */}
+                <div className="bg-slate-50 border border-slate-200 rounded-lg p-4 flex flex-col gap-2">
+                  <p className="text-xs font-semibold text-slate-700 uppercase tracking-wide">Generate with AI</p>
+                  <div className="flex gap-2">
+                    <input
+                      className="flex-1 px-3 py-2 border border-slate-200 rounded-lg text-sm outline-none focus:border-blue-500"
+                      placeholder="Enter topic…"
+                      value={aiTopic}
+                      onChange={(e) => setAiTopic(e.target.value)}
+                    />
+                    <button
+                      className="px-4 py-2 bg-purple-600 text-white rounded-lg text-sm font-semibold hover:bg-purple-700 transition-colors disabled:opacity-50"
+                      disabled={aiDraftLoading || !aiTopic.trim()}
+                      onClick={async () => {
+                        setAiDraftLoading(true);
+                        try {
+                          const res = await fetch('/api/chat', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({
+                              messages: [{
+                                role: 'user',
+                                content: `Write a 600-800 word blog post body for IELTS learners about: ${aiTopic}. Focus keyword: ${blogEditor.seo?.focusKeyword || aiTopic}. Write in markdown with clear headings (##), short paragraphs. Topic: ${blogEditor.title || aiTopic}`,
+                              }],
+                            }),
+                          });
+                          const json = await res.json() as { content?: string; choices?: { message: { content: string } }[] };
+                          const text = json.content ?? json.choices?.[0]?.message?.content ?? '';
+                          setBlogEditor((p) => ({ ...p, content: text }));
+                        } catch (e) { console.error(e); }
+                        setAiDraftLoading(false);
+                      }}
+                    >
+                      {aiDraftLoading ? 'Generating…' : 'Generate'}
+                    </button>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="text-xs font-semibold text-slate-600 mb-1 block uppercase tracking-wide">Featured Image URL</label>
+                    <input
+                      className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm outline-none focus:border-blue-500"
+                      value={blogEditor.featuredImage ?? ''}
+                      onChange={(e) => setBlogEditor((p) => ({ ...p, featuredImage: e.target.value }))}
+                    />
+                  </div>
+                  <div>
+                    <label className="text-xs font-semibold text-slate-600 mb-1 block uppercase tracking-wide">Author</label>
+                    <input
+                      className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm outline-none focus:border-blue-500"
+                      value={blogEditor.author ?? 'WriteReady Team'}
+                      onChange={(e) => setBlogEditor((p) => ({ ...p, author: e.target.value }))}
+                    />
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="text-xs font-semibold text-slate-600 mb-1 block uppercase tracking-wide">Category</label>
+                    <select
+                      className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm outline-none focus:border-blue-500 bg-white"
+                      value={blogEditor.category ?? 'Writing tips'}
+                      onChange={(e) => setBlogEditor((p) => ({ ...p, category: e.target.value as BlogPost['category'] }))}
+                    >
+                      {['Writing tips', 'Vocabulary', 'Band score', 'Grammar', 'News'].map((c) => (
+                        <option key={c} value={c}>{c}</option>
+                      ))}
+                    </select>
+                  </div>
+                  <div>
+                    <label className="text-xs font-semibold text-slate-600 mb-1 block uppercase tracking-wide">Status</label>
+                    <select
+                      className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm outline-none focus:border-blue-500 bg-white"
+                      value={blogEditor.status ?? 'draft'}
+                      onChange={(e) => setBlogEditor((p) => ({ ...p, status: e.target.value as BlogPost['status'] }))}
+                    >
+                      <option value="draft">Draft</option>
+                      <option value="published">Published</option>
+                      <option value="scheduled">Scheduled</option>
+                    </select>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-3 gap-4">
+                  <div>
+                    <label className="text-xs font-semibold text-slate-600 mb-1 block uppercase tracking-wide">SEO Title</label>
+                    <input
+                      className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm outline-none focus:border-blue-500"
+                      value={blogEditor.seo?.metaTitle ?? ''}
+                      onChange={(e) => setBlogEditor((p) => ({ ...p, seo: { ...p?.seo, metaTitle: e.target.value, metaDescription: p?.seo?.metaDescription ?? '', focusKeyword: p?.seo?.focusKeyword ?? '' } }))}
+                    />
+                  </div>
+                  <div>
+                    <label className="text-xs font-semibold text-slate-600 mb-1 block uppercase tracking-wide">Meta Description</label>
+                    <input
+                      className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm outline-none focus:border-blue-500"
+                      value={blogEditor.seo?.metaDescription ?? ''}
+                      onChange={(e) => setBlogEditor((p) => ({ ...p, seo: { ...p?.seo, metaTitle: p?.seo?.metaTitle ?? '', metaDescription: e.target.value, focusKeyword: p?.seo?.focusKeyword ?? '' } }))}
+                    />
+                  </div>
+                  <div>
+                    <label className="text-xs font-semibold text-slate-600 mb-1 block uppercase tracking-wide">Focus Keyword</label>
+                    <input
+                      className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm outline-none focus:border-blue-500"
+                      value={blogEditor.seo?.focusKeyword ?? ''}
+                      onChange={(e) => setBlogEditor((p) => ({ ...p, seo: { ...p?.seo, metaTitle: p?.seo?.metaTitle ?? '', metaDescription: p?.seo?.metaDescription ?? '', focusKeyword: e.target.value } }))}
+                    />
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="text-xs font-semibold text-slate-600 mb-1 block uppercase tracking-wide">CTA Text</label>
+                    <input
+                      className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm outline-none focus:border-blue-500"
+                      value={blogEditor.ctaText ?? ''}
+                      onChange={(e) => setBlogEditor((p) => ({ ...p, ctaText: e.target.value }))}
+                    />
+                  </div>
+                  <div>
+                    <label className="text-xs font-semibold text-slate-600 mb-1 block uppercase tracking-wide">CTA Link</label>
+                    <input
+                      className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm outline-none focus:border-blue-500"
+                      value={blogEditor.ctaLink ?? ''}
+                      onChange={(e) => setBlogEditor((p) => ({ ...p, ctaLink: e.target.value }))}
+                    />
+                  </div>
+                </div>
+
+                <div className="flex gap-3">
+                  <button
+                    className="px-5 py-2 bg-blue-600 text-white rounded-lg text-sm font-semibold hover:bg-blue-700 transition-colors disabled:opacity-50"
+                    disabled={blogSaving}
+                    onClick={async () => {
+                      if (!blogEditor) return;
+                      setBlogSaving(true);
+                      try {
+                        const postData: Omit<BlogPost, 'id'> = {
+                          title: blogEditor.title ?? '',
+                          slug: blogEditor.slug ?? '',
+                          excerpt: blogEditor.excerpt ?? '',
+                          content: blogEditor.content ?? '',
+                          featuredImage: blogEditor.featuredImage ?? '',
+                          category: blogEditor.category ?? 'Writing tips',
+                          tags: blogEditor.tags ?? [],
+                          seo: blogEditor.seo ?? { metaTitle: '', metaDescription: '', focusKeyword: '' },
+                          status: blogEditor.status ?? 'draft',
+                          publishedAt: blogEditor.status === 'published' ? new Date() : null,
+                          author: blogEditor.author ?? 'WriteReady Team',
+                          ctaText: blogEditor.ctaText ?? '',
+                          ctaLink: blogEditor.ctaLink ?? '',
+                          viewCount: blogEditor.viewCount ?? 0,
+                          likeCount: blogEditor.likeCount ?? 0,
+                          commentCount: blogEditor.commentCount ?? 0,
+                        };
+                        if (blogEditor.id) {
+                          await updateBlogPost(blogEditor.id, postData);
+                        } else {
+                          await saveBlogPost(postData);
+                        }
+                        setBlogEditor(null);
+                        await loadBlogPosts();
+                      } catch (e) { console.error(e); }
+                      setBlogSaving(false);
+                    }}
+                  >
+                    {blogSaving ? 'Saving…' : 'Save'}
+                  </button>
+                  <button
+                    className="px-5 py-2 border border-slate-200 text-slate-600 rounded-lg text-sm font-semibold hover:bg-slate-50 transition-colors"
+                    onClick={() => setBlogEditor(null)}
+                  >
+                    Cancel
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {/* Table */}
+            {blogLoading ? (
+              <div className="flex justify-center py-12">
+                <div className="animate-spin w-6 h-6 border-2 border-blue-600 border-t-transparent rounded-full" />
+              </div>
+            ) : blogPosts.length === 0 ? (
+              <div className="bg-white rounded-xl border border-dashed border-slate-300 p-12 text-center">
+                <p className="text-3xl mb-3">📝</p>
+                <p className="text-slate-600 font-semibold mb-1">No posts yet</p>
+                <p className="text-sm text-slate-400">Click "New post" to create your first blog post.</p>
+              </div>
+            ) : (
+              <div className="bg-white rounded-xl border border-slate-200 overflow-hidden">
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="border-b border-slate-200 bg-slate-50">
+                      <th className="px-4 py-3 text-left text-xs font-semibold text-slate-600 uppercase tracking-wide">Title</th>
+                      <th className="px-4 py-3 text-left text-xs font-semibold text-slate-600 uppercase tracking-wide">Status</th>
+                      <th className="px-4 py-3 text-left text-xs font-semibold text-slate-600 uppercase tracking-wide">Category</th>
+                      <th className="px-4 py-3 text-center text-xs font-semibold text-slate-600 uppercase tracking-wide">Views</th>
+                      <th className="px-4 py-3 text-center text-xs font-semibold text-slate-600 uppercase tracking-wide">Likes</th>
+                      <th className="px-4 py-3 text-center text-xs font-semibold text-slate-600 uppercase tracking-wide">Comments</th>
+                      <th className="px-4 py-3 text-left text-xs font-semibold text-slate-600 uppercase tracking-wide">Date</th>
+                      <th className="px-4 py-3 text-right text-xs font-semibold text-slate-600 uppercase tracking-wide">Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {blogPosts.map((p) => (
+                      <tr key={p.id} className="border-b border-slate-100 last:border-0 hover:bg-slate-50">
+                        <td className="px-4 py-3 font-medium text-slate-900 max-w-[220px] truncate">{p.title}</td>
+                        <td className="px-4 py-3">
+                          <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${
+                            p.status === 'published' ? 'bg-green-50 text-green-700' :
+                            p.status === 'draft' ? 'bg-slate-100 text-slate-600' :
+                            'bg-yellow-50 text-yellow-700'
+                          }`}>{p.status}</span>
+                        </td>
+                        <td className="px-4 py-3 text-slate-600">{p.category}</td>
+                        <td className="px-4 py-3 text-center text-slate-600">{p.viewCount}</td>
+                        <td className="px-4 py-3 text-center text-slate-600">{p.likeCount}</td>
+                        <td className="px-4 py-3 text-center text-slate-600">{p.commentCount}</td>
+                        <td className="px-4 py-3 text-slate-500 text-xs">{p.publishedAt}</td>
+                        <td className="px-4 py-3 text-right">
+                          <div className="flex items-center justify-end gap-2">
+                            <button
+                              className="text-xs px-3 py-1 border border-slate-200 rounded-lg hover:bg-slate-100 text-slate-700 transition-colors"
+                              onClick={async () => {
+                                // load full post for editing
+                                const { getBlogPostById } = await import('../../firebase/blog');
+                                const full = await getBlogPostById(p.id);
+                                if (full) setBlogEditor(full);
+                              }}
+                            >
+                              Edit
+                            </button>
+                            <button
+                              className="text-xs px-3 py-1 border border-red-200 rounded-lg hover:bg-red-50 text-red-600 transition-colors"
+                              onClick={async () => {
+                                if (!confirm('Delete this post?')) return;
+                                await deleteBlogPost(p.id);
+                                await loadBlogPosts();
+                              }}
+                            >
+                              Delete
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
           </div>
         )}
       </main>

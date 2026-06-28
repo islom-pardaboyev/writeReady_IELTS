@@ -1,3 +1,4 @@
+import { lazy, Suspense } from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider } from './contexts/AuthContext';
 import { LandingPage } from './pages/LandingPage';
@@ -11,6 +12,15 @@ import Mock from './pages/writing/Mock';
 import Practice from './pages/writing/Practice';
 import Relax from './pages/writing/Relax';
 import Admin from './pages/writing/AdminPage';
+
+const BlogIndexPage = lazy(() => import('./pages/blog/BlogIndexPage').then(m => ({ default: m.BlogIndexPage })));
+const BlogPostPage = lazy(() => import('./pages/blog/BlogPostPage').then(m => ({ default: m.BlogPostPage })));
+
+const BlogSpinner = (
+  <div className="min-h-screen flex items-center justify-center">
+    <div className="animate-spin w-8 h-8 border-2 border-blue-600 border-t-transparent rounded-full" />
+  </div>
+);
 
 export default function App() {
   return (
@@ -28,6 +38,8 @@ export default function App() {
           <Route path="/writing/mock" element={<Mock />} />
           <Route path="/writing/practice" element={<Practice />} />
           <Route path="/writing/relax" element={<Relax />} />
+          <Route path="/blog" element={<Suspense fallback={BlogSpinner}><BlogIndexPage /></Suspense>} />
+          <Route path="/blog/:slug" element={<Suspense fallback={BlogSpinner}><BlogPostPage /></Suspense>} />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </BrowserRouter>
