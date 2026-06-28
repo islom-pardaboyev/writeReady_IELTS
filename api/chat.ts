@@ -1,6 +1,6 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 
-const GEMINI_URL = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent';
+const GEMINI_URL = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-latest:generateContent';
 
 const SYSTEM_PROMPT = `You are an IELTS Writing assistant built into WriteReady IELTS. You help students improve their IELTS Writing scores.
 
@@ -45,9 +45,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   ];
 
   try {
-    const geminiRes = await fetch(`${GEMINI_URL}?key=${apiKey}`, {
+    const geminiRes = await fetch(GEMINI_URL, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 'Content-Type': 'application/json', 'X-goog-api-key': apiKey },
       body: JSON.stringify({
         contents,
         generationConfig: { temperature: 0.7, maxOutputTokens: 512 },
