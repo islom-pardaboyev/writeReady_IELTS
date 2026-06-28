@@ -3,7 +3,7 @@ import { initializeApp, getApps, cert } from 'firebase-admin/app';
 import { getAuth } from 'firebase-admin/auth';
 import { getFirestore } from 'firebase-admin/firestore';
 
-const GEMINI_URL = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent';
+const GEMINI_URL = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-latest:generateContent';
 
 function initFirebase() {
   if (getApps().length) return;
@@ -69,13 +69,13 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     return res.status(403).json({ error: 'Pro subscription required to generate retention quizzes.' });
   }
 
-  const apiKey = process.env.GOOGLE_GEMINI_FLASH_API_KEY;
+  const apiKey = process.env.GEMINI_API_KEY ?? process.env.GOOGLE_GEMINI_FLASH_API_KEY;
   if (!apiKey) return res.status(500).json({ error: 'Quiz service is not configured.' });
 
   try {
-    const geminiRes = await fetch(`${GEMINI_URL}?key=${apiKey}`, {
+    const geminiRes = await fetch(GEMINI_URL, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 'Content-Type': 'application/json', 'X-goog-api-key': apiKey },
       body: JSON.stringify({
         contents: [{ parts: [{ text: buildQuizPrompt(vocabulary, grammar, topic ?? 'General') }] }],
         generationConfig: { temperature: 0.7, maxOutputTokens: 2048 },

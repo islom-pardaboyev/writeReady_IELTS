@@ -108,7 +108,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     return res.status(500).json({ error: 'Usage tracking error. Please try again.' });
   }
 
-  const apiKey = process.env.VITE_ANTHROPIC_API_KEY;
+  const apiKey = process.env.ANTHROPIC_API_KEY;
   if (!apiKey) return res.status(500).json({ error: 'Claude API key is not configured.' });
 
   const resolvedTask = (taskType as string) ?? 'Task 2';
