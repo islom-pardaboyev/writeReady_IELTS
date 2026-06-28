@@ -5,9 +5,6 @@ import { Link } from "react-router-dom";
 import { Layout } from "../components/layout/Layout";
 import { Button } from "../components/ui/Button";
 import { useAuth } from "../hooks/useAuth";
-import PaymeLogo from "/payme.png";
-import ClickLogo from "/click.png";
-import PaynetLogo from "/paynet.png";
 
 gsap.registerPlugin(ScrollTrigger);
 
@@ -71,26 +68,6 @@ const FOREVER_PLAN: SelectedPlan = {
   billingNote: "One-time payment · lifetime access",
 };
 
-type PaymentMethodId = "payme" | "click" | "paynet";
-
-interface PaymentMethodConfig {
-  id: PaymentMethodId;
-  label: string;
-  enabled: boolean;
-}
-
-const PAYMENT_METHODS: PaymentMethodConfig[] = [
-  { id: "payme", label: "Payme", enabled: true },
-  { id: "click", label: "Click", enabled: false },
-  { id: "paynet", label: "Paynet", enabled: false },
-];
-
-// Logo image sources (served from /public — Vite resolves these to URL strings).
-const PAYMENT_METHOD_LOGOS: Record<PaymentMethodId, string> = {
-  payme: PaymeLogo,
-  click: ClickLogo,
-  paynet: PaynetLogo,
-};
 
 function CloseIcon() {
   return (
@@ -144,67 +121,12 @@ function PlanGlyphIcon() {
   );
 }
 
-function PaymentMethodCard({
-  method,
-  selected,
-  onSelect,
-}: {
-  method: PaymentMethodConfig;
-  selected: boolean;
-  onSelect: () => void;
-}) {
-  const logoSrc = PAYMENT_METHOD_LOGOS[method.id];
-
-  return (
-    <div className="relative group">
-      <button
-        type="button"
-        onClick={() => method.enabled && onSelect()}
-        disabled={!method.enabled}
-        aria-pressed={selected}
-        className={[
-          "relative w-full flex flex-col items-center gap-2.5 rounded-2xl border-2 px-3 py-5 transition-all duration-150",
-          method.enabled
-            ? selected
-              ? "border-blue-600 bg-blue-50/70 shadow-[0_0_0_3px_rgba(37,99,235,0.12)]"
-              : "border-slate-200 bg-white hover:border-slate-300 hover:bg-slate-50 cursor-pointer"
-            : "border-slate-200 bg-slate-50 opacity-50 cursor-not-allowed",
-        ].join(" ")}
-      >
-        {selected && method.enabled && (
-          <span className="absolute -top-2.5 -right-2.5 w-6 h-6 rounded-full bg-blue-600 text-white flex items-center justify-center shadow-sm">
-            <CheckIcon />
-          </span>
-        )}
-        <span className="h-9 w-full flex items-center justify-center">
-          <img
-            src={logoSrc}
-            alt={`${method.label} logo`}
-            
-            className={`object-contain ${method.enabled ? "" : "grayscale"}`}
-          />
-        </span>
-        <span className={`text-sm font-semibold ${selected && method.enabled ? "text-blue-700" : "text-slate-700"}`}>
-          {method.label}
-        </span>
-      </button>
-
-      {!method.enabled && (
-        <div className="pointer-events-none absolute -top-9 left-1/2 -translate-x-1/2 whitespace-nowrap bg-slate-900 text-white text-xs font-medium px-2.5 py-1.5 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity duration-150 z-10">
-          Coming soon
-          <span className="absolute left-1/2 -translate-x-1/2 top-full w-0 h-0 border-x-4 border-x-transparent border-t-4 border-t-slate-900" />
-        </div>
-      )}
-    </div>
-  );
-}
 
 export function PricingPage() {
   const { user, profile } = useAuth();
   const rootRef = useRef<HTMLDivElement>(null);
   const [showPaymentModal, setShowPaymentModal] = useState(false);
   const [selectedPlan, setSelectedPlan] = useState<SelectedPlan>(PRO_PLAN);
-  const [selectedMethod, setSelectedMethod] = useState<PaymentMethodId>("payme");
   const [copied, setCopied] = useState(false);
 
   const isFree = !profile || profile.plan === "free";
@@ -213,7 +135,6 @@ export function PricingPage() {
 
   const openPaymentModal = (plan: SelectedPlan) => {
     setSelectedPlan(plan);
-    setSelectedMethod("payme");
     setShowPaymentModal(true);
   };
 
@@ -241,8 +162,6 @@ export function PricingPage() {
 
     return () => ctx.revert();
   }, []);
-
-  const selectedMethodLabel = PAYMENT_METHODS.find((m) => m.id === selectedMethod)?.label ?? "Payme";
 
   return (
     <Layout>
@@ -414,19 +333,6 @@ export function PricingPage() {
               </div>
             </div>
 
-            {/* Payment method selection */}
-            <h3 className="text-[0.95rem] font-bold text-[var(--text-primary)] mb-3">Select payment method</h3>
-            <div className="grid grid-cols-3 gap-3 mb-7">
-              {PAYMENT_METHODS.map((method) => (
-                <PaymentMethodCard
-                  key={method.id}
-                  method={method}
-                  selected={selectedMethod === method.id}
-                  onSelect={() => setSelectedMethod(method.id)}
-                />
-              ))}
-            </div>
-
             {/* Step 1 */}
             <div className="flex items-center gap-3 mb-4">
               <span className="w-7 h-7 rounded-full bg-blue-600 text-white flex items-center justify-center font-bold text-sm shrink-0">1</span>
@@ -471,10 +377,8 @@ export function PricingPage() {
               className="flex items-center justify-center gap-2 bg-blue-600 text-white rounded-[14px] p-3.5 font-bold text-base no-underline mb-5 hover:bg-blue-700 transition-colors"
             >
               <SendIcon />
-              Pay with {selectedMethodLabel}
+              Open Telegram
             </a>
-
-            <p className="text-center text-[0.8125rem] text-[var(--text-secondary)]">More payment options will be added soon.</p>
           </div>
         </div>
       )}
