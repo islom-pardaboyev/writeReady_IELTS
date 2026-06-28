@@ -1249,8 +1249,8 @@ export default function Admin() {
                               }],
                             }),
                           });
-                          const json = await res.json() as { content?: string; choices?: { message: { content: string } }[] };
-                          const text = json.content ?? json.choices?.[0]?.message?.content ?? '';
+                          const json = await res.json() as { reply?: string };
+                          const text = json.reply ?? '';
                           setBlogEditor((p) => ({ ...p, content: text }));
                         } catch (e) { console.error(e); }
                         setAiDraftLoading(false);
