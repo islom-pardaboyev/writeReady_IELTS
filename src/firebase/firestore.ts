@@ -42,6 +42,8 @@ export async function getUserProfile(uid: string): Promise<UserProfile | null> {
     subscription,
     subscriptionExpiresAt: d.subscriptionExpiresAt ? toDate(d.subscriptionExpiresAt) : null,
     createdAt: toDate(d.createdAt),
+    bonusAnalyses: typeof d.bonusAnalyses === 'number' ? d.bonusAnalyses : 0,
+    notification: typeof d.notification === 'string' ? d.notification : '',
   };
 }
 

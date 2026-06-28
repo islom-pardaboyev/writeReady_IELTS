@@ -121,6 +121,7 @@ export function DashboardPage() {
   };
 
   const isPro = profile?.plan === 'pro' || profile?.plan === 'forever';
+  const bonusAnalyses = profile?.bonusAnalyses ?? 0;
   const usedCount = usage?.count ?? 0;
   const usageLimit = usage?.limit ?? 12;
   const usagePct = Math.min(100, (usedCount / usageLimit) * 100);
@@ -151,26 +152,39 @@ export function DashboardPage() {
             </h1>
             <p className="text-[var(--text-secondary)]">
               {isPro
-                ? `${remaining} AI analyses remaining this month`
+                ? `${remaining} AI analyses remaining this month${bonusAnalyses > 0 ? ` · +${bonusAnalyses} bonus` : ''}`
+                : bonusAnalyses > 0
+                ? `+${bonusAnalyses} bepul tahlil mavjud 🎁`
                 : 'Free plan — upgrade to unlock AI feedback'}
             </p>
           </div>
 
           {/* Quota bar */}
-          {isPro && usage && (
+          {(isPro || bonusAnalyses > 0) && (
             <div className="gs-db-quota bg-[var(--bg-card)] rounded-2xl px-6 py-5 border border-[var(--border-color)] shadow-[var(--shadow-sm)] mb-8">
-              <div className="flex items-center justify-between mb-3">
+              <div className="flex items-center justify-between mb-3 flex-wrap gap-2">
                 <span className="font-semibold text-[0.9375rem] text-[var(--text-primary)]">Monthly AI Feedback Quota</span>
-                <span className={`font-mono text-[0.9375rem] font-medium ${usagePct >= 85 ? 'text-red-500' : 'text-blue-600 dark:text-blue-400'}`}>
-                  {usedCount}/{usageLimit}
-                </span>
+                <div className="flex items-center gap-2">
+                  {bonusAnalyses > 0 && (
+                    <span className="text-[0.75rem] font-bold px-2.5 py-1 rounded-full bg-amber-100 text-amber-700 border border-amber-200 dark:bg-amber-900/30 dark:text-amber-300">
+                      🎁 +{bonusAnalyses} bonus
+                    </span>
+                  )}
+                  {isPro && (
+                    <span className={`font-mono text-[0.9375rem] font-medium ${usagePct >= 85 ? 'text-red-500' : 'text-blue-600 dark:text-blue-400'}`}>
+                      {usedCount}/{usageLimit}
+                    </span>
+                  )}
+                </div>
               </div>
-              <div className="h-1.5 bg-[var(--bg-subtle)] rounded-full overflow-hidden">
-                <div
-                  className={`h-full rounded-full transition-[width] duration-300 ${usagePct >= 85 ? 'bg-red-500' : 'bg-blue-600'}`}
-                  style={{ width: `${usagePct}%` }}
-                />
-              </div>
+              {isPro && (
+                <div className="h-1.5 bg-[var(--bg-subtle)] rounded-full overflow-hidden">
+                  <div
+                    className={`h-full rounded-full transition-[width] duration-300 ${usagePct >= 85 ? 'bg-red-500' : 'bg-blue-600'}`}
+                    style={{ width: `${usagePct}%` }}
+                  />
+                </div>
+              )}
             </div>
           )}
 
