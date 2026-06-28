@@ -66,6 +66,32 @@ async function consumeCredit(uid: string, monthKey: string): Promise<DocumentRef
       return;
     }
 
+    // Check if user is in an active learning center
+    const userEmail: string = data.email ?? '';
+    if (userEmail) {
+      const centersSnap = await db.collection('learningCenters')
+        .where('status', '==', 'active')
+        .get();
+
+      for (const centerDoc of centersSnap.docs) {
+        const centerData = centerDoc.data();
+        if (centerData.expiresAt && new Date(centerData.expiresAt) < new Date()) continue;
+
+        const studentSnap = await centerDoc.ref.collection('students')
+          .where('email', '==', userEmail)
+          .limit(1)
+          .get();
+
+        if (!studentSnap.empty) {
+          const usage = data.usage ?? {};
+          const used = usage.monthKey === monthKey ? (usage.count ?? 0) : 0;
+          if (used >= MONTHLY_LIMIT) throw new CreditError('LIMIT_REACHED');
+          tx.set(userRef, { usage: { monthKey, count: used + 1 } }, { merge: true });
+          return;
+        }
+      }
+    }
+
     if (!isProUser(data.subscription)) throw new CreditError('NOT_PRO');
 
     const usage = data.usage ?? {};
