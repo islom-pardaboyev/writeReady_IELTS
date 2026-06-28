@@ -9,6 +9,8 @@ export interface UserProfile {
   subscription?: string;
   subscriptionExpiresAt: Date | null;
   createdAt: Date;
+  bonusAnalyses?: number;
+  notification?: string;
 }
 
 export interface UsageRecord {

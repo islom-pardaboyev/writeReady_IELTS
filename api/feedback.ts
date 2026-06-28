@@ -58,6 +58,14 @@ async function consumeCredit(uid: string, monthKey: string): Promise<DocumentRef
     if (!snap.exists) throw new CreditError('USER_NOT_FOUND');
 
     const data = snap.data()!;
+
+    // Bonus analyses granted by admin — bypass subscription check
+    const bonus = typeof data.bonusAnalyses === 'number' ? data.bonusAnalyses : 0;
+    if (bonus > 0) {
+      tx.set(userRef, { bonusAnalyses: bonus - 1 }, { merge: true });
+      return;
+    }
+
     if (!isProUser(data.subscription)) throw new CreditError('NOT_PRO');
 
     const usage = data.usage ?? {};

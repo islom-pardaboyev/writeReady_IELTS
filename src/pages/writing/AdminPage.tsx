@@ -23,8 +23,15 @@ interface UserRow {
   subscription?: string;
   createdAt?: string;
 }
+interface LeaderEntry {
+  uid: string;
+  email: string;
+  avgBand: number;
+  reportCount: number;
+  bonusAnalyses: number;
+}
 
-type NavSection = "dashboard" | "task1" | "task2" | "users" | "centers";
+type NavSection = "dashboard" | "task1" | "task2" | "users" | "leaderboard" | "centers";
 
 const CREDENTIALS = { login: "2026SPRING", password: "paidOFF" };
 
@@ -110,11 +117,12 @@ function LoginScreen({ onLogin }: { onLogin: (user: string) => void }) {
 
 // ── Sidebar nav items ────────────────────────────────────────────
 const NAV: { id: NavSection; label: string; icon: string }[] = [
-  { id: "dashboard", label: "Dashboard", icon: "📊" },
-  { id: "task1",     label: "Task 1",    icon: "🖼️" },
-  { id: "task2",     label: "Task 2",    icon: "✍️" },
-  { id: "users",     label: "Users",     icon: "👥" },
-  { id: "centers",   label: "Learning Centers", icon: "🏫" },
+  { id: "dashboard",   label: "Dashboard",        icon: "📊" },
+  { id: "task1",       label: "Task 1",           icon: "🖼️" },
+  { id: "task2",       label: "Task 2",           icon: "✍️" },
+  { id: "users",       label: "Users",            icon: "👥" },
+  { id: "leaderboard", label: "Leaderboard",      icon: "🏆" },
+  { id: "centers",     label: "Learning Centers", icon: "🏫" },
 ];
 
 // ── Main ─────────────────────────────────────────────────────────
@@ -151,6 +159,14 @@ export default function Admin() {
   const [userActionLoading, setUserActionLoading] = useState(false);
   const [userSuccess, setUserSuccess] = useState("");
   const [userError, setUserError] = useState("");
+
+  // Leaderboard
+  const [leaderboard, setLeaderboard] = useState<LeaderEntry[]>([]);
+  const [leaderLoading, setLeaderLoading] = useState(false);
+  const [selectedUids, setSelectedUids] = useState<Set<string>>(new Set());
+  const [bonusInput, setBonusInput] = useState("3");
+  const [grantLoading, setGrantLoading] = useState(false);
+  const [grantMsg, setGrantMsg] = useState("");
 
   const { uploadImage, uploading } = useUpload();
 
@@ -201,6 +217,73 @@ export default function Admin() {
   useEffect(() => {
     if (isLoggedIn && section === "users" && allUsers.length === 0) loadUsers();
   }, [isLoggedIn, section]);
+
+  const loadLeaderboard = async () => {
+    setLeaderLoading(true);
+    setGrantMsg("");
+    try {
+      // Fetch all feedback_reports
+      const repSnap = await getDocs(collection(db, "feedback_reports"));
+      // Group by uid, accumulate band scores
+      const map: Record<string, { total: number; count: number }> = {};
+      repSnap.docs.forEach((d) => {
+        const data = d.data();
+        const uid = data.uid as string;
+        if (!uid) return;
+        const scores: Record<string, number> = data.scores ?? {};
+        const vals = Object.values(scores).filter((v) => typeof v === "number") as number[];
+        if (!vals.length) return;
+        const avg = vals.reduce((a, b) => a + b, 0) / vals.length;
+        if (!map[uid]) map[uid] = { total: 0, count: 0 };
+        map[uid].total += avg;
+        map[uid].count += 1;
+      });
+      // Fetch users to get emails & bonusAnalyses
+      const usersSnap = await getDocs(collection(db, "users"));
+      const emailMap: Record<string, string> = {};
+      const bonusMap: Record<string, number> = {};
+      usersSnap.docs.forEach((d) => {
+        const data = d.data();
+        emailMap[d.id] = data.email ?? d.id;
+        bonusMap[d.id] = typeof data.bonusAnalyses === "number" ? data.bonusAnalyses : 0;
+      });
+      const entries: LeaderEntry[] = Object.entries(map).map(([uid, { total, count }]) => ({
+        uid,
+        email: emailMap[uid] ?? uid,
+        avgBand: Math.round((total / count) * 10) / 10,
+        reportCount: count,
+        bonusAnalyses: bonusMap[uid] ?? 0,
+      }));
+      entries.sort((a, b) => b.avgBand - a.avgBand);
+      setLeaderboard(entries);
+    } catch (e) { console.error(e); }
+    setLeaderLoading(false);
+  };
+
+  useEffect(() => {
+    if (isLoggedIn && section === "leaderboard") loadLeaderboard();
+  }, [isLoggedIn, section]);
+
+  const grantBonus = async () => {
+    const n = parseInt(bonusInput);
+    if (!n || n < 1 || selectedUids.size === 0) return;
+    setGrantLoading(true); setGrantMsg("");
+    try {
+      await Promise.all([...selectedUids].map(async (uid) => {
+        const userRef = doc(db, "users", uid);
+        const snap = await getDocs(query(collection(db, "users"), where("__name__", "==", uid)));
+        const current = snap.docs[0]?.data()?.bonusAnalyses ?? 0;
+        await updateDoc(userRef, {
+          bonusAnalyses: current + n,
+          notification: `Tabriklaymiz! Sizga ${n} ta bepul AI tahlil berildi. Inshoingizni yuboring va natijani ko'ring!`,
+        });
+      }));
+      setGrantMsg(`✓ ${selectedUids.size} ta foydalanuvchiga ${n} ta bepul tahlil berildi.`);
+      setSelectedUids(new Set());
+      await loadLeaderboard();
+    } catch (e) { setGrantMsg("Xatolik: " + (e as Error).message); }
+    setGrantLoading(false);
+  };
 
   // ── Task 1 CRUD ──
   const addTask1 = async () => {
@@ -291,6 +374,8 @@ export default function Admin() {
   );
   const proCount = allUsers.filter((u) => u.plan === "pro" || u.plan === "forever" || (u.subscription && u.subscription !== "" && new Date(u.subscription) > new Date())).length;
   const lifetimeCount = allUsers.filter((u) => u.subscription === "forever" || u.plan === "forever").length;
+  const todayStr = new Date().toISOString().slice(0, 10);
+  const todayCount = allUsers.filter((u) => u.createdAt?.slice(0, 10) === todayStr).length;
 
   return (
     <div className="flex min-h-screen bg-slate-50 font-sans">
@@ -357,12 +442,14 @@ export default function Admin() {
               <h1 className="text-2xl font-bold text-slate-900 m-0">Dashboard</h1>
             </div>
 
-            <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+            <div className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4">
               {[
-                { label: "Task 1 prompts", value: task1List.length, color: "text-blue-700", bg: "bg-blue-50", border: "border-blue-100", icon: "🖼️" },
-                { label: "Task 2 prompts", value: task2List.length, color: "text-green-700", bg: "bg-green-50", border: "border-green-100", icon: "✍️" },
-                { label: "Pro subscribers", value: proCount || "—", color: "text-[#1C3A5E]", bg: "bg-sky-50", border: "border-sky-100", icon: "⭐" },
-                { label: "Lifetime members", value: lifetimeCount || "—", color: "text-amber-700", bg: "bg-amber-50", border: "border-amber-100", icon: "♾️" },
+                { label: "Task 1 prompts",      value: task1List.length,    color: "text-blue-700",    bg: "bg-blue-50",   border: "border-blue-100",   icon: "🖼️" },
+                { label: "Task 2 prompts",      value: task2List.length,    color: "text-green-700",   bg: "bg-green-50",  border: "border-green-100",  icon: "✍️" },
+                { label: "Jami foydalanuvchi",  value: allUsers.length || "—", color: "text-slate-700", bg: "bg-slate-50", border: "border-slate-200",  icon: "👥" },
+                { label: "Bugun qo'shildi",     value: todayCount || "—",   color: "text-purple-700",  bg: "bg-purple-50", border: "border-purple-100", icon: "🆕" },
+                { label: "Pro obunachi",         value: proCount || "—",     color: "text-[#1C3A5E]",   bg: "bg-sky-50",   border: "border-sky-100",    icon: "⭐" },
+                { label: "Lifetime a'zo",        value: lifetimeCount || "—",color: "text-amber-700",   bg: "bg-amber-50",  border: "border-amber-100",  icon: "♾️" },
               ].map((s) => (
                 <div key={s.label} className={`${s.bg} border ${s.border} rounded-xl p-5`}>
                   <div className="flex items-center gap-2 mb-2">
@@ -708,6 +795,132 @@ export default function Admin() {
                 </div>
               </div>
             )}
+          </div>
+        )}
+
+        {/* ── LEADERBOARD ── */}
+        {section === "leaderboard" && (
+          <div className="flex flex-col gap-6">
+            <div className="flex items-center justify-between flex-wrap gap-4">
+              <div>
+                <p className="text-[0.7rem] font-bold tracking-widest uppercase text-amber-600 mb-1">Gamification</p>
+                <h1 className="text-2xl font-bold text-slate-900 m-0">Leaderboard — Top o'quvchilar</h1>
+              </div>
+              <button onClick={loadLeaderboard} disabled={leaderLoading}
+                className="px-4 py-2 bg-white border border-slate-200 rounded-lg text-sm font-semibold text-slate-700 hover:bg-slate-50 cursor-pointer transition-colors">
+                {leaderLoading ? "Yuklanmoqda..." : "↻ Yangilash"}
+              </button>
+            </div>
+
+            {/* Grant panel */}
+            <div className="bg-amber-50 border border-amber-200 rounded-xl p-5 flex flex-col gap-4">
+              <p className="text-sm font-bold text-amber-800">Tanlangan o'quvchilarga bepul tahlil berish</p>
+              <div className="flex items-center gap-3 flex-wrap">
+                <div className="flex items-center gap-2">
+                  <label className="text-xs font-semibold text-amber-700">Bepul tahlil soni:</label>
+                  <input
+                    type="number" min="1" max="50"
+                    value={bonusInput}
+                    onChange={(e) => setBonusInput(e.target.value)}
+                    className="w-20 px-3 py-1.5 border border-amber-300 rounded-lg text-sm font-mono text-slate-900 outline-none focus:border-amber-500 bg-white"
+                  />
+                </div>
+                <button
+                  onClick={grantBonus}
+                  disabled={grantLoading || selectedUids.size === 0 || !bonusInput}
+                  className="bg-amber-600 text-white border-none rounded-lg px-5 py-2 text-sm font-bold cursor-pointer hover:bg-amber-700 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+                >
+                  {grantLoading ? "Berilmoqda..." : `🎁 ${selectedUids.size} ta o'quvchiga ber`}
+                </button>
+                {selectedUids.size > 0 && (
+                  <button onClick={() => setSelectedUids(new Set())}
+                    className="text-xs text-slate-500 underline bg-transparent border-none cursor-pointer">
+                    Tanlovni bekor qilish
+                  </button>
+                )}
+              </div>
+              {grantMsg && (
+                <div className={`rounded-lg px-4 py-2.5 text-sm font-medium ${grantMsg.startsWith("✓") ? "bg-green-50 border border-green-200 text-green-700" : "bg-red-50 border border-red-200 text-red-600"}`}>
+                  {grantMsg}
+                </div>
+              )}
+            </div>
+
+            {/* Table */}
+            <div className="bg-white rounded-xl border border-slate-200 overflow-hidden">
+              {leaderLoading ? (
+                <div className="flex items-center justify-center py-16 text-slate-400 text-sm gap-2">
+                  <Spinner color="#94a3b8" /> Yuklanmoqda...
+                </div>
+              ) : leaderboard.length === 0 ? (
+                <div className="py-16 text-center text-slate-400 text-sm">
+                  Hali hech qanday AI tahlil yo'q.
+                </div>
+              ) : (
+                <div className="overflow-x-auto">
+                  <table className="w-full text-sm">
+                    <thead>
+                      <tr className="border-b border-slate-100 bg-slate-50">
+                        <th className="px-4 py-3 text-left text-xs font-bold text-slate-400 uppercase tracking-wider w-10">#</th>
+                        <th className="px-4 py-3 text-left text-xs font-bold text-slate-400 uppercase tracking-wider">Foydalanuvchi</th>
+                        <th className="px-4 py-3 text-center text-xs font-bold text-slate-400 uppercase tracking-wider">O'rt. Band</th>
+                        <th className="px-4 py-3 text-center text-xs font-bold text-slate-400 uppercase tracking-wider">Tahlillar</th>
+                        <th className="px-4 py-3 text-center text-xs font-bold text-slate-400 uppercase tracking-wider">Bonus qoldi</th>
+                        <th className="px-4 py-3 text-center text-xs font-bold text-slate-400 uppercase tracking-wider">Tanlash</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-100">
+                      {leaderboard.map((entry, i) => {
+                        const isTop3 = i < 3;
+                        const medal = i === 0 ? "🥇" : i === 1 ? "🥈" : i === 2 ? "🥉" : null;
+                        const checked = selectedUids.has(entry.uid);
+                        const bandColor = entry.avgBand >= 7 ? "text-emerald-600 bg-emerald-50" : entry.avgBand >= 6 ? "text-blue-600 bg-blue-50" : entry.avgBand >= 5 ? "text-amber-600 bg-amber-50" : "text-red-500 bg-red-50";
+                        return (
+                          <tr key={entry.uid} className={`transition-colors hover:bg-slate-50 ${isTop3 ? "bg-amber-50/30" : ""} ${checked ? "bg-amber-100/50" : ""}`}>
+                            <td className="px-4 py-3 text-slate-400 font-mono text-xs">
+                              {medal ?? `#${i + 1}`}
+                            </td>
+                            <td className="px-4 py-3">
+                              <span className="font-medium text-slate-800">{entry.email}</span>
+                            </td>
+                            <td className="px-4 py-3 text-center">
+                              <span className={`inline-block font-mono font-bold text-base px-2.5 py-0.5 rounded-lg ${bandColor}`}>
+                                {entry.avgBand.toFixed(1)}
+                              </span>
+                            </td>
+                            <td className="px-4 py-3 text-center text-slate-500 font-mono">{entry.reportCount}</td>
+                            <td className="px-4 py-3 text-center">
+                              {entry.bonusAnalyses > 0 ? (
+                                <span className="inline-block bg-green-50 text-green-700 border border-green-200 text-xs font-bold px-2 py-0.5 rounded-full">
+                                  +{entry.bonusAnalyses}
+                                </span>
+                              ) : (
+                                <span className="text-slate-300">—</span>
+                              )}
+                            </td>
+                            <td className="px-4 py-3 text-center">
+                              <input
+                                type="checkbox"
+                                checked={checked}
+                                onChange={() => {
+                                  setSelectedUids((prev) => {
+                                    const next = new Set(prev);
+                                    if (next.has(entry.uid)) next.delete(entry.uid);
+                                    else next.add(entry.uid);
+                                    return next;
+                                  });
+                                }}
+                                className="w-4 h-4 accent-amber-600 cursor-pointer"
+                              />
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </div>
           </div>
         )}
 

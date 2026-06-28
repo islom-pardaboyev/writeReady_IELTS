@@ -7,6 +7,8 @@ import { useUsage } from '../hooks/useUsage';
 import { Layout } from '../components/layout/Layout';
 import { Button } from '../components/ui/Button';
 import { getRecentFeedbackReports, type FeedbackReport } from '../firebase/firestore';
+import { doc, updateDoc } from 'firebase/firestore';
+import { db } from '../firebase/config';
 
 gsap.registerPlugin(ScrollTrigger);
 
@@ -72,6 +74,7 @@ export function DashboardPage() {
   const rootRef = useRef<HTMLDivElement>(null);
   const [reports, setReports] = useState<FeedbackReport[]>([]);
   const [reportsLoading, setReportsLoading] = useState(true);
+  const [notification, setNotification] = useState<string | null>(null);
 
   useLayoutEffect(() => {
     const ctx = gsap.context(() => {
@@ -105,6 +108,17 @@ export function DashboardPage() {
       .finally(() => setReportsLoading(false));
   }, [user?.uid]);
 
+  useEffect(() => {
+    if (profile?.notification) setNotification(profile.notification as string);
+  }, [profile?.notification]);
+
+  const dismissNotification = async () => {
+    setNotification(null);
+    if (user?.uid) {
+      await updateDoc(doc(db, 'users', user.uid), { notification: '' }).catch(() => {});
+    }
+  };
+
   const isPro = profile?.plan === 'pro' || profile?.plan === 'forever';
   const usedCount = usage?.count ?? 0;
   const usageLimit = usage?.limit ?? 12;
@@ -115,6 +129,19 @@ export function DashboardPage() {
     <Layout>
       <div className="py-10">
         <div className="max-w-[1160px] mx-auto px-6" ref={rootRef}>
+
+          {/* Bonus notification banner */}
+          {notification && (
+            <div className="mb-6 flex items-start gap-3 bg-gradient-to-r from-amber-50 to-yellow-50 border border-amber-200 rounded-2xl px-5 py-4">
+              <span className="text-2xl shrink-0">🎁</span>
+              <p className="text-sm text-amber-800 font-medium flex-1 leading-relaxed">{notification}</p>
+              <button
+                onClick={dismissNotification}
+                className="text-amber-500 hover:text-amber-700 bg-transparent border-none cursor-pointer text-lg leading-none shrink-0"
+                aria-label="Yopish"
+              >×</button>
+            </div>
+          )}
 
           {/* Welcome header */}
           <div className="gs-db-welcome mb-8">
