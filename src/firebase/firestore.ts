@@ -262,17 +262,17 @@ export interface Announcement {
 }
 
 export async function getActiveAnnouncement(): Promise<Announcement | null> {
+  // No composite index needed — filter active client-side, just order by createdAt
   const q = query(
     collection(db, 'announcements'),
-    where('active', '==', true),
     orderBy('createdAt', 'desc'),
-    limit(1)
+    limit(10)
   );
   const snap = await getDocs(q);
-  if (snap.empty) return null;
-  const d = snap.docs[0];
-  const data = d.data();
-  return { id: d.id, text: data.text ?? '', createdAt: toDate(data.createdAt), active: true };
+  const active = snap.docs.find((d) => d.data().active === true);
+  if (!active) return null;
+  const data = active.data();
+  return { id: active.id, text: data.text ?? '', createdAt: toDate(data.createdAt), active: true };
 }
 
 // ── Questions ──────────────────────────────────────────────────────────────

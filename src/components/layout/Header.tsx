@@ -83,6 +83,12 @@ export function Header() {
             Writing
           </Link>
           <Link
+            to="/blog"
+            className="text-[var(--text-secondary)] text-sm font-medium px-[0.875rem] py-[0.375rem] rounded-[6px] no-underline hover:bg-[var(--bg-subtle)] transition-colors"
+          >
+            Blog
+          </Link>
+          <Link
             to="/pricing"
             className="text-[var(--text-secondary)] text-sm font-medium px-[0.875rem] py-[0.375rem] rounded-[6px] no-underline hover:bg-[var(--bg-subtle)] transition-colors"
           >
