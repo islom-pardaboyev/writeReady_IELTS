@@ -1,5 +1,6 @@
 import type { ReactNode } from 'react';
 import { Header } from './Header';
+import { ChatBot } from '../ui/ChatBot';
 
 interface LayoutProps {
   children: ReactNode;
@@ -14,6 +15,7 @@ export function Layout({ children, noHeader }: LayoutProps) {
       <footer className="border-t border-[var(--border-color)] text-[0.8125rem] text-center p-5 text-[var(--text-secondary)] bg-[var(--bg-card)]">
         © {new Date().getFullYear()} WriteReady IELTS · Built for IELTS learners
       </footer>
+      <ChatBot />
     </div>
   );
 }
