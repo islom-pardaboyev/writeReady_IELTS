@@ -1,4 +1,43 @@
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, type ReactNode } from 'react';
+
+function renderMarkdown(text: string): ReactNode[] {
+  const lines = text.split('\n');
+  return lines.map((line, li) => {
+    // numbered list
+    const numMatch = line.match(/^(\d+)\.\s+(.*)/);
+    // bullet list
+    const bulletMatch = line.match(/^[-*]\s+(.*)/);
+
+    const parseLine = (raw: string): ReactNode[] => {
+      // bold+italic ***text***, italic+bold
+      // bold **text**, italic *text*, inline code `text`
+      const parts: ReactNode[] = [];
+      const re = /(\*\*\*(.+?)\*\*\*|\*\*(.+?)\*\*|__(.+?)__|_(.+?)_|\*(.+?)\*|`(.+?)`)/g;
+      let last = 0, m: RegExpExecArray | null;
+      while ((m = re.exec(raw)) !== null) {
+        if (m.index > last) parts.push(raw.slice(last, m.index));
+        if (m[2]) parts.push(<strong key={m.index}><em>{m[2]}</em></strong>);
+        else if (m[3]) parts.push(<strong key={m.index}>{m[3]}</strong>);
+        else if (m[4]) parts.push(<strong key={m.index}>{m[4]}</strong>);
+        else if (m[5]) parts.push(<em key={m.index}>{m[5]}</em>);
+        else if (m[6]) parts.push(<em key={m.index}>{m[6]}</em>);
+        else if (m[7]) parts.push(<code key={m.index} className="bg-black/10 dark:bg-white/10 rounded px-1 font-mono text-[0.8em]">{m[7]}</code>);
+        last = m.index + m[0].length;
+      }
+      if (last < raw.length) parts.push(raw.slice(last));
+      return parts;
+    };
+
+    if (numMatch) {
+      return <div key={li} className="flex gap-1.5 my-0.5"><span className="shrink-0 font-semibold">{numMatch[1]}.</span><span>{parseLine(numMatch[2])}</span></div>;
+    }
+    if (bulletMatch) {
+      return <div key={li} className="flex gap-1.5 my-0.5"><span className="shrink-0">•</span><span>{parseLine(bulletMatch[1])}</span></div>;
+    }
+    if (line === '') return <div key={li} className="h-2" />;
+    return <div key={li}>{parseLine(line)}</div>;
+  });
+}
 
 interface Message {
   role: 'user' | 'assistant';
@@ -156,12 +195,12 @@ export function ChatBot() {
                       <BotIcon />
                     </div>
                   )}
-                  <div className={`px-4 py-2.5 rounded-2xl text-sm max-w-[85%] whitespace-pre-wrap leading-relaxed ${
+                  <div className={`px-4 py-2.5 rounded-2xl text-sm max-w-[85%] leading-relaxed ${
                     m.role === 'user'
                       ? 'bg-blue-700 text-white rounded-tr-sm'
                       : 'bg-[var(--bg-subtle)] text-[var(--text-primary)] rounded-tl-sm'
                   }`}>
-                    {m.content}
+                    {m.role === 'assistant' ? renderMarkdown(m.content) : m.content}
                   </div>
                 </div>
               ))
