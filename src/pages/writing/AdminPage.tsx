@@ -220,7 +220,7 @@ export default function Admin() {
   };
 
   useEffect(() => {
-    if (isLoggedIn && section === "users" && allUsers.length === 0) loadUsers();
+    if (isLoggedIn && allUsers.length === 0) loadUsers();
   }, [isLoggedIn, section]);
 
   const loadLeaderboard = async () => {
