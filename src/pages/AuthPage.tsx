@@ -4,6 +4,8 @@ import gsap from 'gsap';
 import { useAuth } from '../hooks/useAuth';
 import { Button } from '../components/ui/Button';
 import { Card } from '../components/ui/Card';
+import { Input } from '../components/ui/input';
+import { Label } from '../components/ui/label';
 
 export function AuthPage() {
   const [params] = useSearchParams();
@@ -81,7 +83,7 @@ export function AuthPage() {
         </Link>
 
         <div className="gs-auth-card">
-          <Card padding="lg">
+          <Card className="p-8">
             <h2 className="font-[Fraunces,serif] text-2xl mb-1 text-center text-[var(--text-primary)]">
               {mode === 'login' ? 'Welcome back' : 'Create account'}
             </h2>
@@ -96,31 +98,27 @@ export function AuthPage() {
             )}
 
             <form onSubmit={handleSubmit} className="flex flex-col gap-4">
-              <div>
-                <label className="text-sm font-semibold text-[var(--text-primary)] block mb-[0.375rem]">
-                  Email
-                </label>
-                <input
+              <div className="flex flex-col gap-1.5">
+                <Label htmlFor="auth-email" className="font-semibold">Email</Label>
+                <Input
+                  id="auth-email"
                   type="email"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   required
                   placeholder="you@example.com"
-                  className="w-full px-[0.875rem] py-[0.625rem] border-[1.5px] border-[var(--border-color)] rounded-[10px] text-[0.9375rem] text-[var(--text-primary)] bg-[var(--bg-input)] outline-none transition-[border-color] duration-150 box-border placeholder:text-[var(--text-secondary)] focus:border-blue-500"
                 />
               </div>
-              <div>
-                <label className="text-sm font-semibold text-[var(--text-primary)] block mb-[0.375rem]">
-                  Password
-                </label>
-                <input
+              <div className="flex flex-col gap-1.5">
+                <Label htmlFor="auth-password" className="font-semibold">Password</Label>
+                <Input
+                  id="auth-password"
                   type="password"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   required
                   placeholder={mode === 'signup' ? 'At least 6 characters' : '••••••••'}
                   minLength={6}
-                  className="w-full px-[0.875rem] py-[0.625rem] border-[1.5px] border-[var(--border-color)] rounded-[10px] text-[0.9375rem] text-[var(--text-primary)] bg-[var(--bg-input)] outline-none transition-[border-color] duration-150 box-border placeholder:text-[var(--text-secondary)] focus:border-blue-500"
                 />
               </div>
               <Button type="submit" loading={loading} size="lg" className="w-full mt-1 bg-blue-700">

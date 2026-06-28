@@ -4,6 +4,7 @@ import { ScrollTrigger } from "gsap/ScrollTrigger";
 import { Link } from "react-router-dom";
 import { Layout } from "../components/layout/Layout";
 import { Button } from "../components/ui/Button";
+import { Card } from "../components/ui/Card";
 import { useAuth } from "../hooks/useAuth";
 
 gsap.registerPlugin(ScrollTrigger);
@@ -166,7 +167,7 @@ export function PricingPage() {
           {/* Plans */}
           <div className="gs-plans grid grid-cols-[repeat(auto-fit,minmax(280px,1fr))] gap-6 max-w-[1080px] mx-auto">
             {/* Free plan */}
-            <div className="gs-plan-card hover:-translate-y-2 hover:shadow-2xl transition-all duration-200 bg-[var(--bg-card)] rounded-[20px] p-8 border border-[var(--border-color)] shadow-[var(--shadow-sm)] flex flex-col">
+            <Card className="gs-plan-card hover:-translate-y-2 hover:shadow-2xl transition-all duration-200 p-8 flex flex-col">
               <div className="mb-6">
                 <div className={`${FONT_SERIF} text-[1.375rem] font-bold text-[var(--text-primary)] mb-1`}>Free</div>
                 <div className="text-sm text-[var(--text-secondary)]">Get started with unlimited writing practice</div>
@@ -192,10 +193,10 @@ export function PricingPage() {
                   {isFree ? "Current plan" : "Downgrade to Free"}
                 </Button>
               </Link>
-            </div>
+            </Card>
 
             {/* Pro plan */}
-            <div className="gs-plan-card hover:-translate-y-2 hover:shadow-2xl transition-all duration-200 bg-[linear-gradient(135deg,#0f172a,#1e3a5f)] rounded-[20px] p-8 border-2 border-[#c9900a] shadow-[0_8px_32px_rgba(15,23,42,0.18)] flex flex-col relative">
+            <Card className="gs-plan-card hover:-translate-y-2 hover:shadow-2xl transition-all duration-200 bg-[linear-gradient(135deg,#0f172a,#1e3a5f)] p-8 border-2 border-[#c9900a] shadow-[0_8px_32px_rgba(15,23,42,0.18)] flex flex-col relative">
               <div className="absolute -top-[13px] left-1/2 -translate-x-1/2 bg-[#c9900a] text-white text-[0.6875rem] font-bold tracking-[0.08em] uppercase px-4 py-[0.3rem] rounded-[20px] whitespace-nowrap">
                 Most popular
               </div>
@@ -222,7 +223,7 @@ export function PricingPage() {
               >
                 {isPro ? "Current plan" : "Get Pro →"}
               </Button>
-            </div>
+            </Card>
 
           </div>
         </div>

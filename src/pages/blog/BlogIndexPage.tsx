@@ -3,6 +3,8 @@ import { Link } from 'react-router-dom';
 import { Layout } from '../../components/layout/Layout';
 import { getBlogPosts } from '../../firebase/blog';
 import type { BlogPost } from '../../types/blog';
+import { Card, CardContent } from '../../components/ui/Card';
+import { Badge } from '../../components/ui/badge';
 
 const CATEGORIES = ['All', 'Writing tips', 'Vocabulary', 'Band score', 'Grammar', 'News'] as const;
 
@@ -47,7 +49,7 @@ export function BlogIndexPage() {
               className={`px-4 py-1.5 rounded-full text-sm font-medium border transition-colors ${
                 activeCategory === cat
                   ? 'bg-blue-600 text-white border-blue-600'
-                  : 'bg-white text-[var(--text-secondary)] border-[var(--border-color)] hover:border-blue-400 dark:bg-slate-800'
+                  : 'bg-[var(--bg-card)] text-[var(--text-secondary)] border-[var(--border-color)] hover:border-blue-400'
               }`}
             >
               {cat}
@@ -71,36 +73,38 @@ export function BlogIndexPage() {
               <Link
                 key={post.id}
                 to={`/blog/${post.slug}`}
-                className="no-underline group bg-[var(--bg-card)] border border-[var(--border-color)] rounded-xl overflow-hidden hover:shadow-md transition-shadow"
+                className="no-underline group"
               >
-                {post.featuredImage ? (
-                  <img
-                    src={post.featuredImage}
-                    alt={post.title}
-                    className="w-full h-48 object-cover"
-                  />
-                ) : (
-                  <div className="w-full h-48 bg-slate-100 dark:bg-slate-800 flex items-center justify-center">
-                    <span className="text-4xl">📝</span>
-                  </div>
-                )}
-                <div className="p-4">
-                  <span className="inline-block text-xs font-semibold text-blue-600 bg-blue-50 dark:bg-blue-900/30 dark:text-blue-300 rounded-full px-2.5 py-0.5 mb-2">
-                    {post.category}
-                  </span>
-                  <h2 className="text-base font-bold text-[var(--text-primary)] group-hover:text-blue-600 transition-colors mb-1 line-clamp-2">
-                    {post.title}
-                  </h2>
-                  <p className="text-sm text-[var(--text-secondary)] line-clamp-2 mb-3">{post.excerpt}</p>
-                  <div className="flex items-center justify-between text-xs text-[var(--text-secondary)]">
-                    <span>{post.author}</span>
-                    <span className="flex items-center gap-2">
-                      <span>{formatDate(post.publishedAt)}</span>
-                      <span>·</span>
-                      <span>{readTime(post.content)} min read</span>
-                    </span>
-                  </div>
-                </div>
+                <Card className="overflow-hidden hover:shadow-md transition-shadow h-full">
+                  {post.featuredImage ? (
+                    <img
+                      src={post.featuredImage}
+                      alt={post.title}
+                      className="w-full h-48 object-cover"
+                    />
+                  ) : (
+                    <div className="w-full h-48 bg-slate-100 dark:bg-slate-800 flex items-center justify-center">
+                      <span className="text-4xl">📝</span>
+                    </div>
+                  )}
+                  <CardContent className="p-4">
+                    <Badge variant="info" className="mb-2 text-[0.7rem] uppercase tracking-wide">
+                      {post.category}
+                    </Badge>
+                    <h2 className="text-base font-bold text-[var(--text-primary)] group-hover:text-blue-600 transition-colors mb-1 line-clamp-2">
+                      {post.title}
+                    </h2>
+                    <p className="text-sm text-[var(--text-secondary)] line-clamp-2 mb-3">{post.excerpt}</p>
+                    <div className="flex items-center justify-between text-xs text-[var(--text-secondary)]">
+                      <span>{post.author}</span>
+                      <span className="flex items-center gap-2">
+                        <span>{formatDate(post.publishedAt)}</span>
+                        <span>·</span>
+                        <span>{readTime(post.content)} min read</span>
+                      </span>
+                    </div>
+                  </CardContent>
+                </Card>
               </Link>
             ))}
           </div>

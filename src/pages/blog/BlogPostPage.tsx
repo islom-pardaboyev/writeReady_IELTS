@@ -5,6 +5,9 @@ import { getBlogPost, getBlogPosts, togglePostLike, isPostLiked } from '../../fi
 import { CommentSection } from '../../components/blog/CommentSection';
 import { useAuth } from '../../hooks/useAuth';
 import type { BlogPost } from '../../types/blog';
+import { Button } from '../../components/ui/Button';
+import { Badge } from '../../components/ui/badge';
+import { Card, CardContent } from '../../components/ui/Card';
 
 function renderMarkdown(content: string) {
   const blocks = content.split(/\n\n+/);
@@ -64,13 +67,11 @@ export function BlogPostPage() {
         }
         metaEl.content = p.seo.metaDescription || p.excerpt;
         setLikeCount(p.likeCount);
-        // load related
         const all = await getBlogPosts('published');
         setRelated(all.filter((r) => r.category === p.category && r.id !== p.id).slice(0, 3));
-        // check like
         if (user) {
-          const liked = await isPostLiked(p.id, user.uid);
-          setLiked(liked);
+          const isLiked = await isPostLiked(p.id, user.uid);
+          setLiked(isLiked);
         }
       }
     });
@@ -122,9 +123,7 @@ export function BlogPostPage() {
         </div>
 
         {/* Header */}
-        <span className="inline-block text-xs font-semibold text-blue-600 bg-blue-50 dark:bg-blue-900/30 dark:text-blue-300 rounded-full px-2.5 py-0.5 mb-3">
-          {post.category}
-        </span>
+        <Badge variant="info" className="mb-3 text-[0.7rem] uppercase tracking-wide">{post.category}</Badge>
         <h1 className="text-3xl font-bold text-[var(--text-primary)] mb-3 leading-tight">{post.title}</h1>
         <p className="text-[var(--text-secondary)] text-sm mb-6">
           By {post.author} · {formatDate(post.publishedAt)}
@@ -144,17 +143,19 @@ export function BlogPostPage() {
         </div>
 
         {/* CTA block */}
-        <div className="my-8 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-xl p-6 text-center">
-          <p className="font-semibold text-[var(--text-primary)] mb-3">
-            {post.ctaText || 'Want feedback like this on your own essay? Try WriteReady free.'}
-          </p>
-          <Link
-            to={post.ctaLink || '/auth?mode=signup'}
-            className="inline-block bg-blue-600 text-white font-semibold px-6 py-2.5 rounded-lg no-underline hover:bg-blue-700 transition-colors"
-          >
-            Get Started Free
-          </Link>
-        </div>
+        <Card className="my-8 p-6 text-center bg-blue-50 dark:bg-blue-900/20 border-blue-200 dark:border-blue-800">
+          <CardContent className="p-0">
+            <p className="font-semibold text-[var(--text-primary)] mb-3">
+              {post.ctaText || 'Want feedback like this on your own essay? Try WriteReady free.'}
+            </p>
+            <Link
+              to={post.ctaLink || '/auth?mode=signup'}
+              className="inline-block bg-blue-600 text-white font-semibold px-6 py-2.5 rounded-lg no-underline hover:bg-blue-700 transition-colors"
+            >
+              Get Started Free
+            </Link>
+          </CardContent>
+        </Card>
 
         {/* Content after CTA */}
         <div className="prose max-w-none">
@@ -163,21 +164,18 @@ export function BlogPostPage() {
 
         {/* Like button */}
         <div className="flex items-center gap-3 mt-10 pt-6 border-t border-[var(--border-color)]">
-          <button
+          <Button
+            variant="outline"
             onClick={handleLike}
             disabled={!user || likeLoading}
-            className={`flex items-center gap-2 px-4 py-2 rounded-full border transition-colors text-sm font-medium ${
-              liked
-                ? 'bg-red-50 border-red-300 text-red-600 dark:bg-red-900/20 dark:border-red-700'
-                : 'border-[var(--border-color)] text-[var(--text-secondary)] hover:border-red-300 hover:text-red-500'
-            } ${!user ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}`}
+            className={liked ? 'bg-red-50 border-red-300 text-red-600 dark:bg-red-900/20 dark:border-red-700 hover:bg-red-50' : ''}
           >
             <svg width="18" height="18" viewBox="0 0 24 24" fill={liked ? 'currentColor' : 'none'} stroke="currentColor" strokeWidth="2">
               <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/>
             </svg>
             {likeCount > 0 && <span>{likeCount}</span>}
             <span>{liked ? 'Liked' : 'Like'}</span>
-          </button>
+          </Button>
           {!user && <span className="text-xs text-[var(--text-secondary)]">Sign in to like this post</span>}
         </div>
 

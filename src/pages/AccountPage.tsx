@@ -5,6 +5,9 @@ import { useAuth } from '../hooks/useAuth';
 import { useUsage } from '../hooks/useUsage';
 import { Layout } from '../components/layout/Layout';
 import { Button } from '../components/ui/Button';
+import { Card } from '../components/ui/Card';
+import { Badge } from '../components/ui/badge';
+import { Avatar, AvatarImage, AvatarFallback } from '../components/ui/avatar';
 
 const PRO_FEATURES = [
   'Real exam-style prompts',
@@ -69,14 +72,13 @@ export function AccountPage() {
         <div className="container mx-auto max-w-[560px] px-6">
 
           {/* Profile card */}
-          <div className="gs-profile-card bg-[var(--bg-card)] rounded-2xl p-6 border border-[var(--border-color)] shadow-[var(--shadow-sm)] flex items-center gap-[1.125rem] mb-4">
-            {user.photoURL ? (
-              <img src={user.photoURL} alt={displayName} className="w-14 h-14 rounded-full object-cover shrink-0" />
-            ) : (
-              <div className="w-14 h-14 rounded-full bg-blue-700 text-white flex items-center justify-center font-fraunces text-xl font-bold shrink-0">
+          <Card className="gs-profile-card p-6 flex items-center gap-[1.125rem] mb-4">
+            <Avatar className="w-14 h-14 shrink-0">
+              {user.photoURL && <AvatarImage src={user.photoURL} alt={displayName} />}
+              <AvatarFallback className="bg-blue-700 text-white font-fraunces text-xl font-bold">
                 {initials}
-              </div>
-            )}
+              </AvatarFallback>
+            </Avatar>
             <div className="flex-1 min-w-0">
               <div className="font-bold text-base text-[var(--text-primary)] mb-0.5">
                 {user.displayName || displayName}
@@ -86,15 +88,15 @@ export function AccountPage() {
               </div>
             </div>
             {isPro && (
-              <span className="text-[0.7rem] font-bold text-[#c9900a] border border-[#c9900a] px-2.5 py-1 rounded-full uppercase tracking-[0.05em] shrink-0 dark:text-amber-400 dark:border-amber-500">
+              <Badge variant={isForever ? 'warning' : 'info'} className="shrink-0 uppercase tracking-[0.05em]">
                 {isForever ? 'Lifetime' : 'Pro'}
-              </span>
+              </Badge>
             )}
-          </div>
+          </Card>
 
           {/* Plan card */}
           {isPro ? (
-            <div className="gs-plan-card bg-gradient-to-br from-slate-900 to-[#1e3a5f] rounded-2xl p-8 mb-4 text-white">
+            <Card className="gs-plan-card bg-gradient-to-br from-slate-900 to-[#1e3a5f] p-8 mb-4 text-white border-0">
               <div className="inline-flex items-center gap-1.5 bg-[rgba(201,144,10,0.2)] border border-[rgba(201,144,10,0.5)] text-yellow-400 text-[0.7rem] font-bold tracking-[0.1em] uppercase px-3 py-1.5 rounded-full mb-4">
                 <span>⚡</span> {isForever ? 'LIFETIME' : 'PRO'}
               </div>
@@ -130,9 +132,9 @@ export function AccountPage() {
                   </div>
                 ))}
               </div>
-            </div>
+            </Card>
           ) : (
-            <div className="gs-plan-card bg-[var(--bg-card)] rounded-2xl p-8 border border-[var(--border-color)] mb-4">
+            <Card className="gs-plan-card p-8 mb-4">
               <div className="font-fraunces text-xl text-[var(--text-primary)] mb-1.5">Free Plan</div>
               <p className="text-sm text-[var(--text-secondary)] mb-6 leading-relaxed">
                 You're on the free plan. Upgrade to Pro to unlock AI feedback, band score estimates, and vocabulary upgrades.
@@ -140,21 +142,23 @@ export function AccountPage() {
               <Link to="/pricing">
                 <Button className="bg-blue-700">Upgrade to Pro</Button>
               </Link>
-            </div>
+            </Card>
           )}
 
           {/* Actions */}
-          <div className="gs-account-actions bg-[var(--bg-card)] rounded-2xl px-6 py-4 border border-[var(--border-color)] flex items-center justify-between">
+          <Card className="gs-account-actions px-6 py-4 flex items-center justify-between">
             <Link to="/writing" className="text-sm text-blue-600 dark:text-blue-400 font-medium">
               Go to Writing →
             </Link>
-            <button
+            <Button
+              variant="ghost"
+              size="sm"
               onClick={handleLogout}
-              className="bg-transparent text-[var(--text-secondary)] text-sm py-1 border-none cursor-pointer hover:text-red-500 transition-colors"
+              className="text-[var(--text-secondary)] hover:text-red-500"
             >
               Sign out
-            </button>
-          </div>
+            </Button>
+          </Card>
 
         </div>
       </div>
