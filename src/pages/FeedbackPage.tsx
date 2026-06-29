@@ -152,7 +152,7 @@ function ScoreBadge({ score }: { score: number }) {
 export function FeedbackPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
-  const { user, profile } = useAuth();
+  const { user, profile, refreshProfile } = useAuth();
 
   const [reportData, setReportData] = useState<ReportData | null>(null);
   const [selectedTask, setSelectedTask] = useState<'task1' | 'task2'>('task2');
@@ -283,6 +283,8 @@ export function FeedbackPage() {
       const feedbackWithLimit = { ...data.feedback!, limited: data.limited ?? data.feedback!.limited ?? false };
       setFeedbacks((p) => ({ ...p, [taskKey]: feedbackWithLimit }));
       sessionStorage.setItem(cacheKey, JSON.stringify(feedbackWithLimit));
+      // Refresh profile so bonusAnalyses updates in UI
+      refreshProfile().catch(() => {});
 
       getFeedbackReportHistory(user.uid, 5)
         .then((history) => {
