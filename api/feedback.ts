@@ -54,9 +54,11 @@ async function consumeCredit(uid: string, monthKey: string): Promise<{ userRef: 
 
     const data = snap.data()!;
 
-    // Bonus analyses (free preview) — limited report
+    // Bonus analyses (free preview) — limited report only for free plan users
+    const plan: string = data.plan ?? 'free';
+    const isPaidPlan = ['basic', 'standard', 'premium', 'forever'].includes(plan);
     const bonus = typeof data.bonusAnalyses === 'number' ? data.bonusAnalyses : 0;
-    if (bonus > 0) {
+    if (bonus > 0 && !isPaidPlan) {
       tx.set(userRef, { bonusAnalyses: bonus - 1 }, { merge: true });
       isBonus = true;
       return;
