@@ -818,7 +818,7 @@ export function FeedbackPage() {
               )}
 
               {/* ── PRIORITY FIXES ── */}
-              {activeTab === 'priority' && (feedback.limited ? <UpgradePrompt /> :
+              {activeTab === 'priority' && (feedback.limited ? <UpgradePrompt /> : (
                 <div className="flex flex-col gap-4">
                   {feedback.priorityFixes.map((fix, i) => {
                     const accent = i === 0 ? '#b91c1c' : i === 1 ? '#c9900a' : '#166534';
@@ -943,7 +943,8 @@ export function FeedbackPage() {
                       </div>
                     ))}
                   </div>
-                ))}
+                </div>
+              ))}
 
               {/* ── GRAMMAR ── */}
               {activeTab === 'grammar' && (feedback.limited ? <UpgradePrompt /> :(
@@ -966,7 +967,8 @@ export function FeedbackPage() {
                       </div>
                     </div>
                   ))}
-                ))}
+                </div>
+              ))}
 
               {/* ── ESSAY ANALYSIS ── */}
               {activeTab === 'essay' && (feedback.limited ? <UpgradePrompt /> : (() => {
