@@ -63,6 +63,9 @@ export function Header() {
   const { user, profile, logOut } = useAuth();
   const navigate = useNavigate();
 
+  // Admin accounts should not appear as regular users in the header
+  const isAdminAccount = user?.email?.endsWith('@writeready.internal') ?? false;
+
   const firstName = user?.displayName
     ? user.displayName.split(" ")[0]
     : (user?.email?.split("@")[0] ?? "");
@@ -105,7 +108,7 @@ export function Header() {
           <ThemeToggle />
           <NotificationBell />
 
-          {user ? (
+          {user && !isAdminAccount ? (
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button variant="secondary">
