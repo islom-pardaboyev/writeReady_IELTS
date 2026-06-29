@@ -22,7 +22,7 @@ export function AuthPage() {
   const [studentPassword, setStudentPassword] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
-  const { signIn, signUp, signInWithGoogle, user } = useAuth();
+  const { signIn, signUp, signInWithGoogle, user, refreshProfile } = useAuth();
   const navigate = useNavigate();
   const rootRef = useRef<HTMLDivElement>(null);
 
@@ -122,7 +122,7 @@ export function AuthPage() {
         await setDoc(doc(db, 'learningCenters', foundCenter.id, 'students', foundStudentDocId), { uid }, { merge: true });
       }
 
-      // Step 3: Update user doc
+      // Step 3: Update user doc — must happen before refreshProfile
       await setDoc(doc(db, 'users', uid), {
         email: fakeEmail,
         studentLogin: loginKey,
@@ -134,6 +134,8 @@ export function AuthPage() {
         bonusAnalyses: 0,
       }, { merge: true });
 
+      // Reload profile so dashboard sees plan: 'pro' immediately
+      await refreshProfile();
       navigate('/dashboard');
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : 'Xatolik yuz berdi';

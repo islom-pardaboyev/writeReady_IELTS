@@ -31,7 +31,11 @@ export async function getUserProfile(uid: string): Promise<UserProfile | null> {
   let plan: Plan = 'free';
   if (subscription === 'forever' || d.plan === 'forever') {
     plan = 'forever';
-  } else if ((subscription && new Date(subscription) > new Date()) || d.plan === 'pro') {
+  } else if (
+    (subscription && new Date(subscription) > new Date()) ||
+    d.plan === 'pro' ||
+    (d.subscriptionExpiresAt && new Date(d.subscriptionExpiresAt) > new Date())
+  ) {
     plan = 'pro';
   }
 
