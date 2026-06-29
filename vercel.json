@@ -5,7 +5,7 @@
   ],
   "functions": {
     "api/feedback.ts": {
-      "maxDuration": 60
+      "maxDuration": 300
     },
     "api/retention-check.ts": {
       "maxDuration": 30
