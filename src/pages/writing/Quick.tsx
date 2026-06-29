@@ -417,6 +417,7 @@ function Quick() {
               <span className="text-xs text-slate-500">— minimum {minWords} words</span>
             </div>
             <nav className="hidden md:flex items-center gap-1 text-xs text-slate-500">
+              <NavLink to="/" className="px-2 py-1 hover:text-slate-900 hover:bg-slate-100 rounded transition-colors">Home</NavLink>
               <NavLink to="/writing/mock" className="px-2 py-1 hover:text-slate-900 hover:bg-slate-100 rounded transition-colors">Mock</NavLink>
               <NavLink to="/writing/practice" className="px-2 py-1 hover:text-slate-900 hover:bg-slate-100 rounded transition-colors">Practice</NavLink>
               <NavLink to="/writing/relax" className="px-2 py-1 hover:text-slate-900 hover:bg-slate-100 rounded transition-colors">Relax</NavLink>
