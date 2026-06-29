@@ -22,6 +22,29 @@ function isPdf(src: string) {
   return src.startsWith('data:application/pdf') || /\.pdf(\?|$)/i.test(src);
 }
 
+async function loadImgBase64(src: string): Promise<{ b64: string; w: number; h: number } | null> {
+  if (isPdf(src)) return null;
+  try {
+    let dataUrl = src;
+    if (!src.startsWith('data:')) {
+      const res = await fetch(src);
+      const blob = await res.blob();
+      dataUrl = await new Promise<string>((resolve) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(reader.result as string);
+        reader.readAsDataURL(blob);
+      });
+    }
+    const { w, h } = await new Promise<{ w: number; h: number }>((resolve) => {
+      const img = new Image();
+      img.onload = () => resolve({ w: img.naturalWidth, h: img.naturalHeight });
+      img.onerror = () => resolve({ w: 4, h: 3 });
+      img.src = dataUrl;
+    });
+    return { b64: dataUrl, w, h };
+  } catch { return null; }
+}
+
 function hasAccess(data: Record<string, unknown>): boolean {
   const plan = data.plan as string | undefined;
   if (plan === 'forever' || plan === 'premium' || plan === 'standard' || plan === 'basic') return true;
@@ -87,7 +110,7 @@ function Relax() {
     if (e.currentTarget.hasPointerCapture(e.pointerId)) e.currentTarget.releasePointerCapture(e.pointerId);
   };
 
-  const handleDownloadPDF = () => {
+  const handleDownloadPDF = async () => {
     const pdfdoc = new jsPDF();
     const pageW = pdfdoc.internal.pageSize.getWidth();
     const pageH = pdfdoc.internal.pageSize.getHeight();
@@ -109,6 +132,16 @@ function Relax() {
       pdfdoc.text("Question prompt", margin, y); y += 8;
       const pLines = pdfdoc.splitTextToSize(question, contentW);
       pdfdoc.setFont("helvetica", "normal"); pdfdoc.text(pLines, margin, y + 5); y += pLines.length * 5.5 + 12;
+    }
+
+    if (activeTask === 1 && imageUrl) {
+      const imgData = await loadImgBase64(imageUrl);
+      if (imgData) {
+        const imgH = Math.min(contentW * (imgData.h / imgData.w), 100);
+        if (y + imgH > pageH - margin) { pdfdoc.addPage(); y = 20; }
+        pdfdoc.addImage(imgData.b64, 'JPEG', margin, y, contentW, imgH);
+        y += imgH + 8;
+      }
     }
 
     pdfdoc.setFont("helvetica", "bold"); pdfdoc.text("Answer", margin, y); y += 8;
