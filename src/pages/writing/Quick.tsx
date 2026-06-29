@@ -28,6 +28,29 @@ function isPdf(src: string) {
   return src.startsWith('data:application/pdf') || /\.pdf(\?|$)/i.test(src);
 }
 
+async function loadImgBase64(src: string): Promise<{ b64: string; w: number; h: number } | null> {
+  if (isPdf(src)) return null;
+  try {
+    let dataUrl = src;
+    if (!src.startsWith('data:')) {
+      const res = await fetch(src);
+      const blob = await res.blob();
+      dataUrl = await new Promise<string>((resolve) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(reader.result as string);
+        reader.readAsDataURL(blob);
+      });
+    }
+    const { w, h } = await new Promise<{ w: number; h: number }>((resolve) => {
+      const img = new Image();
+      img.onload = () => resolve({ w: img.naturalWidth, h: img.naturalHeight });
+      img.onerror = () => resolve({ w: 4, h: 3 });
+      img.src = dataUrl;
+    });
+    return { b64: dataUrl, w, h };
+  } catch { return null; }
+}
+
 interface Task1 {
   image: string;
   report: string;
@@ -123,7 +146,7 @@ function Quick() {
     }
   };
 
-  const handleFinish = () => {
+  const handleFinish = async () => {
     const pdf = new jsPDF();
     const pageW = pdf.internal.pageSize.getWidth();
     const pageH = pdf.internal.pageSize.getHeight();
@@ -175,6 +198,20 @@ function Quick() {
       pdf.setTextColor(15, 23, 42);
       pdf.text(qLines, margin + 5, y + 7);
       y += qH + 12;
+    }
+
+    // Task 1 chart image
+    if (selectedTaskType === 1) {
+      const imgSrc = customImage ?? task1?.image;
+      if (imgSrc) {
+        const imgData = await loadImgBase64(imgSrc);
+        if (imgData) {
+          const imgH = Math.min(contentW * (imgData.h / imgData.w), 100);
+          if (y + imgH > pageH - margin) { pdf.addPage(); y = 20; }
+          pdf.addImage(imgData.b64, 'JPEG', margin, y, contentW, imgH);
+          y += imgH + 8;
+        }
+      }
     }
 
     // Answer label

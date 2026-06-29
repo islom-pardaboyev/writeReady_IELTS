@@ -28,6 +28,29 @@ function isPdf(src: string) {
   return src.startsWith('data:application/pdf') || /\.pdf(\?|$)/i.test(src);
 }
 
+async function loadImgBase64(src: string): Promise<{ b64: string; w: number; h: number } | null> {
+  if (isPdf(src)) return null;
+  try {
+    let dataUrl = src;
+    if (!src.startsWith('data:')) {
+      const res = await fetch(src);
+      const blob = await res.blob();
+      dataUrl = await new Promise<string>((resolve) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(reader.result as string);
+        reader.readAsDataURL(blob);
+      });
+    }
+    const { w, h } = await new Promise<{ w: number; h: number }>((resolve) => {
+      const img = new Image();
+      img.onload = () => resolve({ w: img.naturalWidth, h: img.naturalHeight });
+      img.onerror = () => resolve({ w: 4, h: 3 });
+      img.src = dataUrl;
+    });
+    return { b64: dataUrl, w, h };
+  } catch { return null; }
+}
+
 interface Task1 {
   image: string;
   report: string;
@@ -152,7 +175,7 @@ function Practice() {
       e.currentTarget.releasePointerCapture(e.pointerId);
   };
 
-  const handleDownloadPDF = () => {
+  const handleDownloadPDF = async () => {
     const pdfdoc = new jsPDF();
     const pageW = pdfdoc.internal.pageSize.getWidth();
     const pageH = pdfdoc.internal.pageSize.getHeight();
@@ -181,20 +204,13 @@ function Practice() {
     );
 
     let y = 52;
-    [
-      {
-        taskNum: 1 as const,
-        question: task1?.report,
-        answer: userText1,
-        minW: 150,
-      },
-      {
-        taskNum: 2 as const,
-        question: task2?.report,
-        answer: userText2,
-        minW: 250,
-      },
-    ].forEach(({ taskNum, question, answer, minW }, i) => {
+    const tasks = [
+      { taskNum: 1 as const, question: task1?.report, answer: userText1, minW: 150, imgSrc: customImage ?? task1?.image },
+      { taskNum: 2 as const, question: task2?.report, answer: userText2, minW: 250, imgSrc: undefined as string | undefined },
+    ];
+
+    for (let i = 0; i < tasks.length; i++) {
+      const { taskNum, question, answer, minW, imgSrc } = tasks[i];
       if (i > 0) {
         pdfdoc.addPage();
         y = 20;
@@ -216,6 +232,15 @@ function Practice() {
         pdfdoc.text(qLines, margin + 5, y + 7);
         y += qH + 12;
       }
+      if (imgSrc) {
+        const imgData = await loadImgBase64(imgSrc);
+        if (imgData) {
+          const imgH = Math.min(contentW * (imgData.h / imgData.w), 100);
+          if (y + imgH > pageH - margin) { pdfdoc.addPage(); y = 20; }
+          pdfdoc.addImage(imgData.b64, 'JPEG', margin, y, contentW, imgH);
+          y += imgH + 8;
+        }
+      }
       pdfdoc.setFillColor(233, 245, 255);
       pdfdoc.roundedRect(margin, y - 5, contentW, 8, 2, 2, "F");
       pdfdoc.setFont("helvetica", "bold");
@@ -235,7 +260,7 @@ function Practice() {
       pdfdoc.setFont("helvetica", "normal");
       pdfdoc.text(aLines, margin + 5, y + 7);
       y += aH + 12;
-    });
+    }
 
     const pages = (pdfdoc.internal as any).getNumberOfPages();
     for (let i = 1; i <= pages; i++) {
