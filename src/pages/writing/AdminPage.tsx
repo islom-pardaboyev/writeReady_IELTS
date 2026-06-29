@@ -11,8 +11,8 @@ import {
   where,
   orderBy,
 } from "firebase/firestore";
-import { db } from "@/firebase/firebase";
-import { getAuth, signInAnonymously, signInWithEmailAndPassword, createUserWithEmailAndPassword } from "firebase/auth";
+import { adminDb as db, adminAuth } from "@/firebase/adminConfig";
+import { signInAnonymously, signInWithEmailAndPassword, createUserWithEmailAndPassword } from "firebase/auth";
 import useUpload from "@/hooks/useUploadImage";
 import Logo from "/logo.png";
 import { getBlogPosts, saveBlogPost, updateBlogPost, deleteBlogPost } from "../../firebase/blog";
@@ -97,7 +97,7 @@ function LoginScreen({ onLogin }: { onLogin: (user: string) => void }) {
     if (!login.trim() || !password.trim()) return;
     setLoading(true); setError("");
 
-    const auth = getAuth();
+    const auth = adminAuth;
     const ADMIN_FB_EMAIL = "admin@writeready.internal";
     const CENTER_FB_PREFIX = "center_";
 
@@ -389,7 +389,13 @@ export default function Admin() {
   useEffect(() => {
     const saved = localStorage.getItem("adminLoggedIn");
     const u = localStorage.getItem("adminUser");
-    if (saved === "true") { setIsLoggedIn(true); if (u) setAdminUser(u); }
+    if (saved === "true") {
+      setIsLoggedIn(true);
+      if (u) setAdminUser(u);
+      // Re-authenticate adminAuth so Firestore queries work after page reload
+      const ADMIN_FB_EMAIL = "admin@writeready.internal";
+      signInWithEmailAndPassword(adminAuth, ADMIN_FB_EMAIL, `ADMIN_${import.meta.env.VITE_PASSWORD}_internal`).catch(() => {});
+    }
   }, []);
 
   useEffect(() => {

@@ -10,8 +10,8 @@ import {
   query,
   where,
 } from "firebase/firestore";
-import { db } from "@/firebase/firebase";
-import { getAuth, signInAnonymously, signInWithEmailAndPassword, createUserWithEmailAndPassword } from "firebase/auth";
+import { adminDb as db, adminAuth } from "@/firebase/adminConfig";
+import { signInAnonymously, signInWithEmailAndPassword, createUserWithEmailAndPassword } from "firebase/auth";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
@@ -91,7 +91,7 @@ function CenterLoginScreen({ onLogin }: { onLogin: (id: string, name: string) =>
   const handle = async () => {
     if (!username.trim() || !password.trim()) { setError("Please enter username and password."); return; }
     setLoading(true); setError("");
-    const auth = getAuth();
+    const auth = adminAuth;
     // Need auth to read Firestore
     try { await signInAnonymously(auth); } catch { /* already signed in */ }
     try {
@@ -213,6 +213,10 @@ export default function CenterAdminPage() {
       setIsLoggedIn(true);
       setCenterId(id);
       setCenterName(name ?? "Center");
+      // Re-authenticate adminAuth so Firestore queries work after page reload
+      const centerEmail = `center_${id}@writeready.internal`;
+      const centerFbPass = `CENTER_${id}_internal`;
+      signInWithEmailAndPassword(adminAuth, centerEmail, centerFbPass).catch(() => {});
     }
   }, []);
 
