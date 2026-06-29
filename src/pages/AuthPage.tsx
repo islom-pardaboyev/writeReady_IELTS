@@ -69,6 +69,28 @@ export function AuthPage() {
       // Try signing in first (returning student)
       try {
         await signInWithEmailAndPassword(firebaseAuth, fakeEmail, studentPassword);
+        // Ensure Firestore doc has correct plan (repair if needed)
+        const centersSnap2 = await getDocs(collection(db, 'learningCenters'));
+        for (const centerDoc of centersSnap2.docs) {
+          const cData = centerDoc.data();
+          const studSnap = await getDocs(
+            query(collection(db, 'learningCenters', centerDoc.id, 'students'), where('login', '==', studentLogin.trim()))
+          );
+          if (!studSnap.empty && studSnap.docs[0].data().password === studentPassword) {
+            const uid = firebaseAuth.currentUser?.uid;
+            if (uid) {
+              const userRef = doc(db, 'users', uid);
+              await setDoc(userRef, {
+                plan: cData.status === 'active' ? 'pro' : 'free',
+                subscriptionExpiresAt: cData.expiresAt ?? null,
+                centerId: centerDoc.id,
+                centerName: cData.name,
+                studentLogin: studentLogin.trim(),
+              }, { merge: true });
+            }
+            break;
+          }
+        }
         navigate('/dashboard');
         return;
       } catch {

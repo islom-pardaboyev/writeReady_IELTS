@@ -48,6 +48,9 @@ export async function getUserProfile(uid: string): Promise<UserProfile | null> {
 }
 
 export async function createUserProfile(uid: string, email: string): Promise<void> {
+  // Don't overwrite existing profiles (e.g. learning center students already set up their doc)
+  const existing = await getDoc(doc(db, 'users', uid));
+  if (existing.exists()) return;
   await setDoc(doc(db, 'users', uid), {
     email,
     plan: 'free',
