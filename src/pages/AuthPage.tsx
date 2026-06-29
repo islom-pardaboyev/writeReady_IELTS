@@ -5,6 +5,7 @@ import { useAuth } from '../hooks/useAuth';
 import { Button } from '../components/ui/Button';
 import { Card } from '../components/ui/Card';
 import { Input } from '../components/ui/input';
+import { PasswordInput } from '../components/ui/PasswordInput';
 import { Label } from '../components/ui/label';
 import { db } from '../firebase/config';
 import { getAuth, signInWithEmailAndPassword } from 'firebase/auth';
@@ -190,9 +191,8 @@ export function AuthPage() {
                 </div>
                 <div className="flex flex-col gap-1.5">
                   <Label htmlFor="s-pass" className="font-semibold">Parol</Label>
-                  <Input
+                  <PasswordInput
                     id="s-pass"
-                    type="password"
                     value={studentPassword}
                     onChange={(e) => setStudentPassword(e.target.value)}
                     required
@@ -222,9 +222,8 @@ export function AuthPage() {
                   </div>
                   <div className="flex flex-col gap-1.5">
                     <Label htmlFor="auth-password" className="font-semibold">Password</Label>
-                    <Input
+                    <PasswordInput
                       id="auth-password"
-                      type="password"
                       value={password}
                       onChange={(e) => setPassword(e.target.value)}
                       required

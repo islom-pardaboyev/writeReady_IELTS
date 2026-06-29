@@ -20,6 +20,7 @@ import type { BlogPost } from "../../types/blog";
 import { Badge } from "@/components/ui/badge";
 import { RichEditor } from "@/components/ui/RichEditor";
 import { Input } from "@/components/ui/input";
+import { PasswordInput } from "@/components/ui/PasswordInput";
 import { Textarea } from "@/components/ui/textarea";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import {
@@ -171,9 +172,8 @@ function LoginScreen({ onLogin }: { onLogin: (user: string) => void }) {
           </div>
           <div>
             <label className="text-xs font-semibold text-slate-600 mb-1.5 block uppercase tracking-wide">Parol</label>
-            <Input
+            <PasswordInput
               className="border-slate-200 bg-white text-slate-900"
-              type="password"
               placeholder="Parol kiriting"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
