@@ -5,7 +5,7 @@ import { Link } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
 import { Header } from '@/components/layout/Header';
 import { ChatBot } from '../components/ui/ChatBot';
-import { AnnouncementBanner } from '../components/ui/AnnouncementBanner';
+import { AnnouncementPopup } from '../components/ui/AnnouncementPopup';
 
 gsap.registerPlugin(ScrollTrigger);
 
@@ -69,7 +69,7 @@ export function LandingPage() {
 
       {/* ── Nav ── */}
       <Header />
-      <AnnouncementBanner />
+      <AnnouncementPopup />
 
       {/* ── Hero ── */}
       <section className="max-w-[1160px] mx-auto px-6 pt-20 pb-16 grid grid-cols-2 gap-16 items-center max-[768px]:grid-cols-1">
