@@ -1,5 +1,5 @@
-import { useState, useLayoutEffect, useEffect, useRef, type FormEvent } from 'react';
-import { useNavigate, useSearchParams, Link } from 'react-router-dom';
+import { useState, useLayoutEffect, useRef, type FormEvent } from 'react';
+import { useNavigate, useSearchParams, Link, Navigate } from 'react-router-dom';
 import gsap from 'gsap';
 import { useAuth } from '../hooks/useAuth';
 import { Button } from '../components/ui/Button';
@@ -21,14 +21,14 @@ export function AuthPage() {
   const [studentPassword, setStudentPassword] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
-  const { signIn, signUp, signInWithGoogle, user, refreshProfile } = useAuth();
+  const { signIn, signUp, signInWithGoogle, user, loading: authLoading, refreshProfile } = useAuth();
   const navigate = useNavigate();
   const rootRef = useRef<HTMLDivElement>(null);
 
-  // redirect if already logged in
-  useEffect(() => {
-    if (user) navigate('/dashboard');
-  }, [user]);
+  // While auth state is loading, show nothing (avoids GSAP flash then redirect)
+  if (authLoading) return null;
+  // Already logged in — redirect immediately without rendering the form
+  if (user) return <Navigate to="/dashboard" replace />;
 
   useLayoutEffect(() => {
     const ctx = gsap.context(() => {
