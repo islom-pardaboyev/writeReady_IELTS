@@ -182,7 +182,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 }
 
 function buildPrompt(essay: string, question: string, taskType: string, wordCount: number): string {
-  return `You are a professional IELTS examiner with 10+ years of experience. Analyze this student essay using official IELTS band descriptors. Return ONLY valid JSON — no markdown, no backticks, no extra text.
+  return `You are a professional IELTS examiner with 10+ years of experience. Analyze this student essay using official IELTS band descriptors. Return ONLY valid JSON — no markdown, no backticks, no extra text. Be generous and honest while assessing the reports.
 
 TASK TYPE: ${taskType}
 QUESTION: ${question}
@@ -225,7 +225,7 @@ Return this EXACT JSON structure:
     "<third most impactful fix>"
   ],
   "bandGapAnalysis": "<Specific measurable steps to the next band level>",
-  "sampleResponse": "<A high-band (band 7-8) model response for THIS exact question — 2-3 paragraphs showing correct structure, vocabulary, and grammar. For Task 1 describe the data clearly; for Task 2 argue both sides or one side with evidence>",
+  "sampleResponse": "<A high-band (band 7-8) model response for THIS exact question — 2-3 paragraphs showing correct structure, vocabulary, and grammar. For Task 1 describe the data clearly; for Task 2 argue both sides or one side with evidence. Without any fancy words etc that make the writing longer without any meaning. You may effective collocations that are related to the topic.>",
   "sentenceAnalysis": [
     {
       "sentence": "<copy the EXACT sentence from the student essay>",
