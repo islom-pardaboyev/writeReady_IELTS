@@ -3,7 +3,7 @@ import { initializeApp, getApps, cert } from 'firebase-admin/app';
 import { getAuth } from 'firebase-admin/auth';
 import { getFirestore } from 'firebase-admin/firestore';
 
-const GEMINI_URL = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-latest:generateContent';
+const GEMINI_URL = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent';
 
 function initFirebase() {
   if (getApps().length) return;
@@ -85,9 +85,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     };
     const raw = data?.candidates?.[0]?.content?.parts?.[0]?.text ?? '';
 
-    // Extract JSON — handle markdown code fences and leading/trailing text
     const jsonMatch = raw.match(/\{[\s\S]*\}/);
-    if (!jsonMatch) throw new Error(`No JSON found in Gemini response: ${raw.slice(0, 200)}`);
+    if (!jsonMatch) throw new Error(`No JSON found in response: ${raw.slice(0, 200)}`);
 
     const parsed = JSON.parse(jsonMatch[0]) as {
       score: number | string;
