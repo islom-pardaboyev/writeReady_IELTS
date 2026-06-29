@@ -4,6 +4,7 @@ import {
   getDocs,
   addDoc,
   deleteDoc,
+  updateDoc,
   doc,
   query,
   where,
@@ -170,6 +171,13 @@ export default function CenterAdminPage() {
   const [newPass, setNewPass] = useState("");
   const [addingStudent, setAddingStudent] = useState(false);
 
+  // Edit student
+  const [editStudent, setEditStudent] = useState<Student | null>(null);
+  const [editName, setEditName] = useState("");
+  const [editLogin, setEditLogin] = useState("");
+  const [editPass, setEditPass] = useState("");
+  const [savingEdit, setSavingEdit] = useState(false);
+
   // Analytics
   const [analytics, setAnalytics] = useState<StudentAnalytics[]>([]);
   const [analyticsLoading, setAnalyticsLoading] = useState(false);
@@ -198,7 +206,7 @@ export default function CenterAdminPage() {
           name: d.name ?? "",
           studentLimit: d.studentLimit ?? 30,
           expiresAt: d.expiresAt ?? "",
-          status: d.status ?? "active",
+          status: d.expiresAt ? (new Date(d.expiresAt) > new Date() ? "active" : "expired") : "pending",
           paymentAmount: d.paymentAmount ?? 0,
         });
       }
@@ -350,6 +358,27 @@ export default function CenterAdminPage() {
     setStudents((prev) => prev.filter((s) => s.id !== studentId));
   };
 
+  const openEditStudent = (s: Student) => {
+    setEditStudent(s); setEditName(s.fullName); setEditLogin(s.login); setEditPass("");
+  };
+
+  const saveEditStudent = async () => {
+    if (!editStudent || !editName.trim() || !editLogin.trim()) return;
+    setSavingEdit(true);
+    try {
+      if (editLogin.trim() !== editStudent.login) {
+        const existing = await getDocs(query(collection(db, "learningCenters", centerId, "students"), where("login", "==", editLogin.trim())));
+        if (!existing.empty) { alert("Bu login allaqachon mavjud."); setSavingEdit(false); return; }
+      }
+      const updates: Record<string, string> = { fullName: editName.trim(), login: editLogin.trim() };
+      if (editPass.trim()) updates.password = editPass.trim();
+      await updateDoc(doc(db, "learningCenters", centerId, "students", editStudent.id), updates);
+      setStudents((prev) => prev.map((s) => s.id === editStudent.id ? { ...s, fullName: editName.trim(), login: editLogin.trim() } : s));
+      setEditStudent(null);
+    } catch (e) { console.error(e); }
+    setSavingEdit(false);
+  };
+
   const signOut = () => {
     setIsLoggedIn(false);
     localStorage.removeItem("centerAdminLoggedIn");
@@ -491,14 +520,21 @@ export default function CenterAdminPage() {
                               <span className="font-medium text-slate-800">{s.fullName}</span>
                             </div>
                           </td>
-                          <td className="px-4 py-3 text-slate-600 text-xs font-mono">{(s as unknown as Record<string,unknown>).login as string ?? '—'}</td>
+                          <td className="px-4 py-3 text-slate-600 text-xs font-mono">{s.login || '—'}</td>
                           <td className="px-4 py-3 text-slate-400 text-xs">{formatDate(s.addedAt)}</td>
                           <td className="px-4 py-3 text-right">
-                            <button
-                              onClick={() => removeStudent(s.id)}
-                              className="text-xs px-2.5 py-1 bg-red-50 text-red-600 border border-red-200 rounded-lg hover:bg-red-100 transition-colors cursor-pointer border-none">
-                              Remove
-                            </button>
+                            <div className="flex items-center justify-end gap-1.5">
+                              <button
+                                onClick={() => openEditStudent(s)}
+                                className="text-xs px-2.5 py-1 bg-blue-50 text-blue-600 border border-blue-200 rounded-lg hover:bg-blue-100 transition-colors cursor-pointer">
+                                Tahrir
+                              </button>
+                              <button
+                                onClick={() => removeStudent(s.id)}
+                                className="text-xs px-2.5 py-1 bg-red-50 text-red-600 border border-red-200 rounded-lg hover:bg-red-100 transition-colors cursor-pointer">
+                                O'chir
+                              </button>
+                            </div>
                           </td>
                         </tr>
                       ))}
@@ -506,6 +542,39 @@ export default function CenterAdminPage() {
                   </table>
                 </div>
               )}
+
+              {/* Edit student dialog */}
+              <Dialog open={!!editStudent} onOpenChange={(open) => { if (!open) setEditStudent(null); }}>
+                <DialogContent className="bg-white max-w-[440px]">
+                  <DialogHeader>
+                    <DialogTitle className="text-slate-900">O'quvchini tahrirlash</DialogTitle>
+                  </DialogHeader>
+                  <div className="flex flex-col gap-4 mt-2">
+                    <div>
+                      <label className="text-xs font-semibold text-slate-600 mb-1 block uppercase tracking-wide">Ism Familiya</label>
+                      <Input className="border-slate-200 bg-white text-slate-900" value={editName} onChange={(e) => setEditName(e.target.value)} />
+                    </div>
+                    <div>
+                      <label className="text-xs font-semibold text-slate-600 mb-1 block uppercase tracking-wide">Login</label>
+                      <Input className="border-slate-200 bg-white text-slate-900" value={editLogin} onChange={(e) => setEditLogin(e.target.value)} />
+                    </div>
+                    <div>
+                      <label className="text-xs font-semibold text-slate-600 mb-1 block uppercase tracking-wide">Yangi Parol (ixtiyoriy)</label>
+                      <Input type="password" placeholder="Bo'sh qoldirsa o'zgarmaydi" className="border-slate-200 bg-white text-slate-900" value={editPass} onChange={(e) => setEditPass(e.target.value)} />
+                    </div>
+                    <div className="flex gap-3">
+                      <button disabled={savingEdit || !editName.trim() || !editLogin.trim()} onClick={saveEditStudent}
+                        className="flex-1 bg-blue-600 text-white rounded-lg py-2.5 font-semibold text-sm cursor-pointer hover:bg-blue-700 transition-colors disabled:opacity-50 border-none">
+                        {savingEdit ? "Saqlanmoqda..." : "Saqlash"}
+                      </button>
+                      <button onClick={() => setEditStudent(null)}
+                        className="flex-1 bg-white text-slate-700 border border-slate-200 rounded-lg py-2.5 font-semibold text-sm cursor-pointer hover:bg-slate-50 transition-colors">
+                        Bekor
+                      </button>
+                    </div>
+                  </div>
+                </DialogContent>
+              </Dialog>
 
               {/* Add student dialog */}
               <Dialog open={addDialog} onOpenChange={(open) => { if (!open) { setAddDialog(false); setNewName(""); setNewLogin(""); setNewPass(""); } }}>

@@ -333,7 +333,7 @@ export default function Admin() {
     login: string; password: string; expiresAt: string; status: string;
     studentCount?: number;
   }
-  interface CenterStudent { id: string; fullName: string; email: string; addedAt?: string; }
+  interface CenterStudent { id: string; fullName: string; login: string; addedAt?: string; }
   const [centers, setCenters] = useState<CenterRow[]>([]);
   const [centersLoading, setCentersLoading] = useState(false);
   const [centerEditor, setCenterEditor] = useState<Partial<CenterRow> | null>(null);
@@ -344,6 +344,11 @@ export default function Admin() {
   const [newStudentLogin, setNewStudentLogin] = useState('');
   const [newStudentPassword, setNewStudentPassword] = useState('');
   const [studentAdding, setStudentAdding] = useState(false);
+  const [editCenterStudent, setEditCenterStudent] = useState<CenterStudent | null>(null);
+  const [editCSName, setEditCSName] = useState('');
+  const [editCSLogin, setEditCSLogin] = useState('');
+  const [editCSPass, setEditCSPass] = useState('');
+  const [savingCS, setSavingCS] = useState(false);
 
   // Blog
   interface BlogPostRow { id: string; title: string; slug: string; status: string; category: string; viewCount: number; likeCount: number; commentCount: number; publishedAt?: string; }
@@ -533,7 +538,7 @@ export default function Admin() {
           login: data.login ?? '',
           password: data.password ?? '',
           expiresAt: data.expiresAt ?? '',
-          status: data.status ?? 'pending',
+          status: data.expiresAt ? (new Date(data.expiresAt) > new Date() ? 'active' : 'expired') : 'pending',
           studentCount: studSnap.size,
         };
       }));
@@ -550,11 +555,32 @@ export default function Admin() {
         return {
           id: d.id,
           fullName: data.fullName ?? '',
-          email: data.email ?? '',
+          login: data.login ?? '',
           addedAt: data.addedAt?.toDate?.()?.toISOString?.() ?? '',
         };
       }));
     } catch (e) { console.error(e); }
+  };
+
+  const openEditCenterStudent = (s: CenterStudent) => {
+    setEditCenterStudent(s); setEditCSName(s.fullName); setEditCSLogin(s.login); setEditCSPass('');
+  };
+
+  const saveEditCenterStudent = async () => {
+    if (!editCenterStudent || !viewCenter || !editCSName.trim() || !editCSLogin.trim()) return;
+    setSavingCS(true);
+    try {
+      if (editCSLogin.trim() !== editCenterStudent.login) {
+        const ex = await getDocs(query(collection(db, 'learningCenters', viewCenter.id, 'students'), where('login', '==', editCSLogin.trim())));
+        if (!ex.empty) { alert('Bu login allaqachon mavjud.'); setSavingCS(false); return; }
+      }
+      const updates: Record<string, string> = { fullName: editCSName.trim(), login: editCSLogin.trim() };
+      if (editCSPass.trim()) updates.password = editCSPass.trim();
+      await updateDoc(doc(db, 'learningCenters', viewCenter.id, 'students', editCenterStudent.id), updates);
+      setCenterStudents((p) => p.map((s) => s.id === editCenterStudent.id ? { ...s, fullName: editCSName.trim(), login: editCSLogin.trim() } : s));
+      setEditCenterStudent(null);
+    } catch (e) { console.error(e); }
+    setSavingCS(false);
   };
 
   const saveCenter = async () => {
@@ -575,7 +601,7 @@ export default function Admin() {
         login: centerEditor.login ?? '',
         password: centerEditor.password ?? '',
         expiresAt: centerEditor.expiresAt ?? '',
-        status: centerEditor.status ?? 'pending',
+        // status is auto-calculated from expiresAt, not stored
       };
       if (centerEditor.id) {
         await updateDoc(doc(db, 'learningCenters', centerEditor.id), payload);
@@ -1652,13 +1678,19 @@ export default function Admin() {
                                 {centerStudents.map((s) => (
                                   <tr key={s.id} className="hover:bg-slate-50">
                                     <td className="px-4 py-3 font-medium text-slate-800">{s.fullName}</td>
-                                    <td className="px-4 py-3 text-slate-600 text-xs font-mono">{(s as unknown as Record<string,unknown>).login as string ?? s.email}</td>
+                                    <td className="px-4 py-3 text-slate-600 text-xs font-mono">{s.login || '—'}</td>
                                     <td className="px-4 py-3 text-slate-400 text-xs">{s.addedAt ? new Date(s.addedAt).toLocaleDateString('en-GB') : '—'}</td>
                                     <td className="px-4 py-3 text-right">
-                                      <button onClick={() => removeStudentFromCenter(viewCenter.id, s.id)}
-                                        className="text-xs px-2.5 py-1 bg-red-50 text-red-600 border border-red-200 rounded-lg hover:bg-red-100 transition-colors cursor-pointer">
-                                        O'chirish
-                                      </button>
+                                      <div className="flex items-center justify-end gap-1.5">
+                                        <button onClick={() => openEditCenterStudent(s)}
+                                          className="text-xs px-2.5 py-1 bg-blue-50 text-blue-600 border border-blue-200 rounded-lg hover:bg-blue-100 transition-colors cursor-pointer">
+                                          Tahrir
+                                        </button>
+                                        <button onClick={() => removeStudentFromCenter(viewCenter.id, s.id)}
+                                          className="text-xs px-2.5 py-1 bg-red-50 text-red-600 border border-red-200 rounded-lg hover:bg-red-100 transition-colors cursor-pointer">
+                                          O'chirish
+                                        </button>
+                                      </div>
                                     </td>
                                   </tr>
                                 ))}
@@ -1670,7 +1702,39 @@ export default function Admin() {
                     )}
                   </DialogContent>
                 </Dialog>
-              </div>
+              {/* Edit student dialog */}
+              <Dialog open={!!editCenterStudent} onOpenChange={(open) => { if (!open) setEditCenterStudent(null); }}>
+                <DialogContent className="bg-white max-w-[440px]">
+                  <DialogHeader>
+                    <DialogTitle className="text-slate-900">O'quvchini tahrirlash</DialogTitle>
+                  </DialogHeader>
+                  <div className="flex flex-col gap-4 mt-2">
+                    <div>
+                      <label className="text-xs font-semibold text-slate-600 mb-1 block uppercase tracking-wide">Ism Familiya</label>
+                      <Input className="border-slate-200 bg-white text-slate-900" value={editCSName} onChange={(e) => setEditCSName(e.target.value)} />
+                    </div>
+                    <div>
+                      <label className="text-xs font-semibold text-slate-600 mb-1 block uppercase tracking-wide">Login</label>
+                      <Input className="border-slate-200 bg-white text-slate-900" value={editCSLogin} onChange={(e) => setEditCSLogin(e.target.value)} />
+                    </div>
+                    <div>
+                      <label className="text-xs font-semibold text-slate-600 mb-1 block uppercase tracking-wide">Yangi Parol (ixtiyoriy)</label>
+                      <Input type="password" placeholder="Bo'sh qoldirsa o'zgarmaydi" className="border-slate-200 bg-white text-slate-900" value={editCSPass} onChange={(e) => setEditCSPass(e.target.value)} />
+                    </div>
+                    <div className="flex gap-3">
+                      <button disabled={savingCS || !editCSName.trim() || !editCSLogin.trim()} onClick={saveEditCenterStudent}
+                        className="flex-1 bg-blue-600 text-white rounded-lg py-2.5 font-semibold text-sm cursor-pointer hover:bg-blue-700 transition-colors disabled:opacity-50 border-none">
+                        {savingCS ? "Saqlanmoqda..." : "Saqlash"}
+                      </button>
+                      <button onClick={() => setEditCenterStudent(null)}
+                        className="flex-1 bg-white text-slate-700 border border-slate-200 rounded-lg py-2.5 font-semibold text-sm cursor-pointer hover:bg-slate-50 transition-colors">
+                        Bekor
+                      </button>
+                    </div>
+                  </div>
+                </DialogContent>
+              </Dialog>
+            </div>
             )}
 
             {/* ── BLOG ── */}
