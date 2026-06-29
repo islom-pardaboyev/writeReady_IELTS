@@ -124,7 +124,11 @@ export function DashboardPage() {
   };
 
   const isPro = profile?.plan === 'pro' || profile?.plan === 'forever';
-  const centerName = (profile as unknown as Record<string, unknown>)?.centerName as string | undefined;
+  const profileAny = profile as unknown as Record<string, unknown> | null;
+  const centerName = profileAny?.centerName as string | undefined;
+  const centerId = profileAny?.centerId as string | undefined;
+  const subscriptionExpiresAt = profileAny?.subscriptionExpiresAt as string | null | undefined;
+  const isStudent = !!(centerId && centerName);
   const bonusAnalyses = profile?.bonusAnalyses ?? 0;
   const usedCount = usage?.count ?? 0;
   const usageLimit = usage?.limit ?? 12;
@@ -151,24 +155,52 @@ export function DashboardPage() {
 
           {/* Welcome header */}
           <div className="gs-db-welcome mb-8">
-            <div className="flex items-center gap-3 flex-wrap mb-1.5">
-              <h1 className="font-fraunces text-4xl font-extrabold text-[var(--text-primary)]">
-                Welcome back{user?.email ? `, ${user.email.split('@')[0]}` : ''}
-              </h1>
-              {centerName && (
-                <span className="text-sm font-semibold px-3 py-1 rounded-full bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800">
-                  🏫 Student of {centerName}
-                </span>
-              )}
-            </div>
+            <h1 className="font-fraunces text-4xl font-extrabold text-[var(--text-primary)] mb-1.5">
+              Welcome back{user?.email ? `, ${user.email.split('@')[0]}` : ''}
+            </h1>
             <p className="text-[var(--text-secondary)]">
-              {isPro
+              {isPro && !isStudent
                 ? `${remaining} AI analyses remaining this month${bonusAnalyses > 0 ? ` · +${bonusAnalyses} bonus` : ''}`
-                : bonusAnalyses > 0
+                : !isStudent && bonusAnalyses > 0
                 ? `+${bonusAnalyses} bepul tahlil mavjud 🎁`
-                : 'Free plan — upgrade to unlock AI feedback'}
+                : !isStudent
+                ? 'Free plan — upgrade to unlock AI feedback'
+                : `AI feedback — ${remaining} analyses remaining this month`}
             </p>
           </div>
+
+          {/* Learning Center student info card */}
+          {isStudent && (
+            <Card className="gs-db-quota px-6 py-5 mb-8 bg-gradient-to-r from-emerald-50 to-teal-50 dark:from-emerald-900/20 dark:to-teal-900/20 border-emerald-200 dark:border-emerald-800">
+              <div className="flex items-center gap-4 flex-wrap">
+                <div className="w-11 h-11 rounded-full bg-emerald-600 flex items-center justify-center text-2xl shrink-0">🏫</div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-xs font-bold tracking-widest uppercase text-emerald-600 dark:text-emerald-400 mb-0.5">Learning Center Student</p>
+                  <p className="font-fraunces text-lg font-bold text-[var(--text-primary)] leading-tight">{centerName}</p>
+                  <div className="flex items-center gap-3 mt-1 flex-wrap">
+                    <span className="text-sm text-[var(--text-secondary)]">
+                      <span className="font-medium text-[var(--text-primary)]">{remaining}</span> AI analyses remaining this month
+                    </span>
+                    {subscriptionExpiresAt && (
+                      <span className="text-xs text-[var(--text-secondary)] bg-white/60 dark:bg-white/10 px-2 py-0.5 rounded-full">
+                        Access until {new Date(subscriptionExpiresAt).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}
+                      </span>
+                    )}
+                  </div>
+                </div>
+                <div className="text-right shrink-0">
+                  <div className="font-mono text-2xl font-bold text-emerald-600 dark:text-emerald-400">{usedCount}/{usageLimit}</div>
+                  <div className="text-xs text-[var(--text-secondary)]">used</div>
+                </div>
+              </div>
+              <div className="mt-4 h-1.5 bg-emerald-100 dark:bg-emerald-900/40 rounded-full overflow-hidden">
+                <div
+                  className={`h-full rounded-full transition-[width] duration-300 ${usagePct >= 85 ? 'bg-red-500' : 'bg-emerald-500'}`}
+                  style={{ width: `${usagePct}%` }}
+                />
+              </div>
+            </Card>
+          )}
 
           {/* Quota bar */}
           {(isPro || bonusAnalyses > 0) && (

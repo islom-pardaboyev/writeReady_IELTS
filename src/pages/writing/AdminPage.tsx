@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 import {
   collection,
   addDoc,
@@ -89,15 +90,40 @@ function LoginScreen({ onLogin }: { onLogin: (user: string) => void }) {
   const [login, setLogin] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
+  const [loading, setLoading] = useState(false);
+  const navigate = useNavigate();
 
-  const handle = () => {
+  const handle = async () => {
+    if (!login.trim() || !password.trim()) return;
+    setLoading(true); setError("");
+    // Check admin credentials first
     if (login === CREDENTIALS.login && password === CREDENTIALS.password) {
       localStorage.setItem("adminLoggedIn", "true");
       localStorage.setItem("adminUser", login);
+      setLoading(false);
       onLogin(login);
-    } else {
-      setError("Login yoki parol noto'g'ri!");
+      return;
     }
+    // Check if it's a learning center login
+    try {
+      const snap = await getDocs(
+        query(collection(db, "learningCenters"), where("login", "==", login.trim()))
+      );
+      if (!snap.empty) {
+        const centerDoc = snap.docs[0];
+        const data = centerDoc.data();
+        if (data.password === password) {
+          localStorage.setItem("centerAdminLoggedIn", "true");
+          localStorage.setItem("centerAdminId", centerDoc.id);
+          localStorage.setItem("centerAdminName", data.name ?? "Center");
+          setLoading(false);
+          navigate("/center-admin");
+          return;
+        }
+      }
+    } catch (e) { console.error(e); }
+    setLoading(false);
+    setError("Login yoki parol noto'g'ri!");
   };
 
   return (
@@ -132,10 +158,11 @@ function LoginScreen({ onLogin }: { onLogin: (user: string) => void }) {
           </div>
           {error && <div className="bg-red-50 border border-red-200 rounded-lg px-3.5 py-2.5 text-sm text-red-600">{error}</div>}
           <button
-            className="w-full bg-[#1C3A5E] text-white rounded-lg py-2.5 font-semibold text-sm cursor-pointer hover:bg-[#2d5a8e] transition-colors"
+            disabled={loading}
+            className="w-full bg-[#1C3A5E] text-white rounded-lg py-2.5 font-semibold text-sm cursor-pointer hover:bg-[#2d5a8e] transition-colors disabled:opacity-60"
             onClick={handle}
           >
-            Kirish
+            {loading ? "Tekshirilmoqda..." : "Kirish"}
           </button>
         </div>
       </div>

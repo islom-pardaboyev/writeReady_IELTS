@@ -1,4 +1,4 @@
-import { useState, useEffect, useLayoutEffect, useRef, type FormEvent } from 'react';
+import { useState, useLayoutEffect, useRef, type FormEvent } from 'react';
 import { useNavigate, useSearchParams, Link } from 'react-router-dom';
 import gsap from 'gsap';
 import { useAuth } from '../hooks/useAuth';
@@ -6,10 +6,8 @@ import { Button } from '../components/ui/Button';
 import { Card } from '../components/ui/Card';
 import { Input } from '../components/ui/input';
 import { Label } from '../components/ui/label';
-import { collection, query, where, getDocs, setDoc, doc, serverTimestamp, Timestamp } from 'firebase/firestore';
-import { db } from '../firebase/config';
 
-type Mode = 'login' | 'signup' | 'student';
+type Mode = 'login' | 'signup';
 
 export function AuthPage() {
   const [params] = useSearchParams();
@@ -17,28 +15,23 @@ export function AuthPage() {
   const [mode, setMode] = useState<Mode>(initialMode);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [centerLogin, setCenterLogin] = useState('');
-  const [centerPassword, setCenterPassword] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const { signIn, signUp, signInWithGoogle, user } = useAuth();
   const navigate = useNavigate();
   const rootRef = useRef<HTMLDivElement>(null);
 
-  useEffect(() => {
-    if (user) navigate('/dashboard');
-  }, [user, navigate]);
+  // redirect if already logged in
+  if (user) { navigate('/dashboard'); return null; }
 
   useLayoutEffect(() => {
     const ctx = gsap.context(() => {
       gsap.set('.gs-auth-logo', { y: -20, opacity: 0 });
       gsap.set('.gs-auth-card', { y: 36, opacity: 0, scale: 0.97 });
-
       const tl = gsap.timeline({ defaults: { ease: 'power3.out' } });
       tl.to('.gs-auth-logo', { y: 0, opacity: 1, duration: 0.5 })
         .to('.gs-auth-card', { y: 0, opacity: 1, scale: 1, duration: 0.6 }, '-=0.25');
     }, rootRef);
-
     return () => ctx.revert();
   }, []);
 
@@ -55,83 +48,6 @@ export function AuthPage() {
       navigate('/dashboard');
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : 'Authentication failed';
-      setError(msg.replace('Firebase: ', '').replace(/\(auth\/.*\)\.?/, '').trim());
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleStudentSignup = async (e: FormEvent) => {
-    e.preventDefault();
-    setError('');
-    setLoading(true);
-    try {
-      // Find learning center by login + password
-      const centersRef = collection(db, 'learningCenters');
-      const q = query(centersRef, where('login', '==', centerLogin), where('password', '==', centerPassword));
-      const snap = await getDocs(q);
-
-      if (snap.empty) {
-        setError('Center login or password is incorrect.');
-        setLoading(false);
-        return;
-      }
-
-      const centerDoc = snap.docs[0];
-      const center = centerDoc.data();
-
-      // Check center is active and not expired
-      if (center.status !== 'active') {
-        setError('This learning center is not active.');
-        setLoading(false);
-        return;
-      }
-
-      if (center.expiresAt) {
-        const expiresAt = center.expiresAt instanceof Timestamp ? center.expiresAt.toDate() : new Date(center.expiresAt);
-        if (expiresAt < new Date()) {
-          setError('This learning center subscription has expired.');
-          setLoading(false);
-          return;
-        }
-      }
-
-      // Create Firebase Auth account
-      await signUp(email, password);
-
-      // After signUp the user is logged in — get the uid from auth
-      // useAuth hook's user will update asynchronously; we need to wait for it
-      // Instead, import getAuth directly
-      const { getAuth } = await import('firebase/auth');
-      const auth = getAuth();
-      const firebaseUser = auth.currentUser;
-      if (!firebaseUser) throw new Error('Account creation failed');
-
-      const uid = firebaseUser.uid;
-
-      // Override the user profile with center student data
-      await setDoc(doc(db, 'users', uid), {
-        email,
-        plan: 'pro',
-        subscriptionExpiresAt: center.expiresAt ?? null,
-        centerId: centerDoc.id,
-        centerName: center.name,
-        createdAt: serverTimestamp(),
-        bonusAnalyses: 0,
-        notification: `🏫 Siz "${center.name}" o'quv markazining talabasisiz! Oyiga 12 ta AI tahlildan foydalanishingiz mumkin.`,
-      }, { merge: true });
-
-      // Add student to center's students subcollection
-      await setDoc(doc(db, 'learningCenters', centerDoc.id, 'students', uid), {
-        uid,
-        email,
-        name: email.split('@')[0],
-        joinedAt: serverTimestamp(),
-      });
-
-      navigate('/dashboard');
-    } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : 'Registration failed';
       setError(msg.replace('Firebase: ', '').replace(/\(auth\/.*\)\.?/, '').trim());
     } finally {
       setLoading(false);
@@ -169,7 +85,7 @@ export function AuthPage() {
           <Card className="p-8">
             {/* Mode tabs */}
             <div className="flex rounded-[10px] bg-[var(--bg-subtle)] p-1 mb-6 gap-1">
-              {(['login', 'signup', 'student'] as Mode[]).map((m) => (
+              {(['login', 'signup'] as Mode[]).map((m) => (
                 <button
                   key={m}
                   onClick={() => { setMode(m); setError(''); }}
@@ -179,20 +95,16 @@ export function AuthPage() {
                       : 'bg-transparent text-[var(--text-secondary)]'
                   }`}
                 >
-                  {m === 'login' ? 'Sign In' : m === 'signup' ? 'Sign Up' : '🏫 Student'}
+                  {m === 'login' ? 'Sign In' : 'Sign Up'}
                 </button>
               ))}
             </div>
 
             <h2 className="font-[Fraunces,serif] text-2xl mb-1 text-center text-[var(--text-primary)]">
-              {mode === 'login' ? 'Welcome back' : mode === 'signup' ? 'Create account' : 'Student Sign Up'}
+              {mode === 'login' ? 'Welcome back' : 'Create account'}
             </h2>
             <p className="text-center text-[var(--text-secondary)] text-sm mb-6">
-              {mode === 'login'
-                ? 'Sign in to continue your IELTS prep'
-                : mode === 'signup'
-                ? 'Start practicing for free'
-                : 'Enter your email and center credentials'}
+              {mode === 'login' ? 'Sign in to continue your IELTS prep' : 'Start practicing for free'}
             </p>
 
             {error && (
@@ -201,107 +113,49 @@ export function AuthPage() {
               </div>
             )}
 
-            {mode === 'student' ? (
-              <form onSubmit={handleStudentSignup} className="flex flex-col gap-4">
-                <div className="flex flex-col gap-1.5">
-                  <Label htmlFor="student-email" className="font-semibold">Your Email</Label>
-                  <Input
-                    id="student-email"
-                    type="email"
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    required
-                    placeholder="you@gmail.com"
-                  />
-                </div>
-                <div className="flex flex-col gap-1.5">
-                  <Label htmlFor="student-pass" className="font-semibold">Your Password</Label>
-                  <Input
-                    id="student-pass"
-                    type="password"
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                    required
-                    placeholder="At least 6 characters"
-                    minLength={6}
-                  />
-                </div>
-                <div className="border-t border-[var(--border-color)] pt-4 flex flex-col gap-3">
-                  <p className="text-xs text-[var(--text-secondary)] font-medium">Learning Center Credentials</p>
-                  <div className="flex flex-col gap-1.5">
-                    <Label htmlFor="center-login" className="font-semibold">Center Login</Label>
-                    <Input
-                      id="center-login"
-                      type="text"
-                      value={centerLogin}
-                      onChange={(e) => setCenterLogin(e.target.value)}
-                      required
-                      placeholder="Provided by your center"
-                    />
-                  </div>
-                  <div className="flex flex-col gap-1.5">
-                    <Label htmlFor="center-password" className="font-semibold">Center Password</Label>
-                    <Input
-                      id="center-password"
-                      type="password"
-                      value={centerPassword}
-                      onChange={(e) => setCenterPassword(e.target.value)}
-                      required
-                      placeholder="Provided by your center"
-                    />
-                  </div>
-                </div>
-                <Button type="submit" loading={loading} size="lg" className="w-full mt-1 bg-emerald-600 hover:bg-emerald-700">
-                  Join as Student
-                </Button>
-              </form>
-            ) : (
-              <>
-                <form onSubmit={handleSubmit} className="flex flex-col gap-4">
-                  <div className="flex flex-col gap-1.5">
-                    <Label htmlFor="auth-email" className="font-semibold">Email</Label>
-                    <Input
-                      id="auth-email"
-                      type="email"
-                      value={email}
-                      onChange={(e) => setEmail(e.target.value)}
-                      required
-                      placeholder="you@example.com"
-                    />
-                  </div>
-                  <div className="flex flex-col gap-1.5">
-                    <Label htmlFor="auth-password" className="font-semibold">Password</Label>
-                    <Input
-                      id="auth-password"
-                      type="password"
-                      value={password}
-                      onChange={(e) => setPassword(e.target.value)}
-                      required
-                      placeholder={mode === 'signup' ? 'At least 6 characters' : '••••••••'}
-                      minLength={6}
-                    />
-                  </div>
-                  <Button type="submit" loading={loading} size="lg" className="w-full mt-1 bg-blue-700">
-                    {mode === 'login' ? 'Sign In' : 'Create Account'}
-                  </Button>
-                </form>
+            <form onSubmit={handleSubmit} className="flex flex-col gap-4">
+              <div className="flex flex-col gap-1.5">
+                <Label htmlFor="auth-email" className="font-semibold">Email</Label>
+                <Input
+                  id="auth-email"
+                  type="email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  required
+                  placeholder="you@example.com"
+                />
+              </div>
+              <div className="flex flex-col gap-1.5">
+                <Label htmlFor="auth-password" className="font-semibold">Password</Label>
+                <Input
+                  id="auth-password"
+                  type="password"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  required
+                  placeholder={mode === 'signup' ? 'At least 6 characters' : '••••••••'}
+                  minLength={6}
+                />
+              </div>
+              <Button type="submit" loading={loading} size="lg" className="w-full mt-1 bg-blue-700">
+                {mode === 'login' ? 'Sign In' : 'Create Account'}
+              </Button>
+            </form>
 
-                <div className="flex items-center gap-3 my-5">
-                  <div className="flex-1 h-px bg-[var(--border-color)]" />
-                  <span className="text-[0.75rem] text-[var(--text-secondary)]">or</span>
-                  <div className="flex-1 h-px bg-[var(--border-color)]" />
-                </div>
+            <div className="flex items-center gap-3 my-5">
+              <div className="flex-1 h-px bg-[var(--border-color)]" />
+              <span className="text-[0.75rem] text-[var(--text-secondary)]">or</span>
+              <div className="flex-1 h-px bg-[var(--border-color)]" />
+            </div>
 
-                <button
-                  onClick={handleGoogle}
-                  disabled={loading}
-                  className="w-full px-5 py-[0.625rem] border-[1.5px] border-[var(--border-color)] rounded-[10px] bg-[var(--bg-card)] text-sm font-medium text-[var(--text-primary)] flex items-center justify-center gap-2 cursor-pointer hover:bg-[var(--bg-subtle)] transition-colors"
-                >
-                  <GoogleIcon />
-                  Continue with Google
-                </button>
-              </>
-            )}
+            <button
+              onClick={handleGoogle}
+              disabled={loading}
+              className="w-full px-5 py-[0.625rem] border-[1.5px] border-[var(--border-color)] rounded-[10px] bg-[var(--bg-card)] text-sm font-medium text-[var(--text-primary)] flex items-center justify-center gap-2 cursor-pointer hover:bg-[var(--bg-subtle)] transition-colors"
+            >
+              <GoogleIcon />
+              Continue with Google
+            </button>
           </Card>
         </div>
       </div>
