@@ -23,12 +23,11 @@ const CATEGORY_META: Record<
 const SESSION_DISMISSED_KEY = 'ann_session_dismissed';
 
 export function AnnouncementPopup() {
-  const { user } = useAuth();
+  useAuth(); // keep auth context warm
   const [announcement, setAnnouncement] = useState<Announcement | null>(null);
   const [open, setOpen] = useState(false);
 
   useEffect(() => {
-    if (!user) return;
     // If already dismissed in this session, don't show again
     if (sessionStorage.getItem(SESSION_DISMISSED_KEY)) return;
     getActiveAnnouncement().then((ann) => {
@@ -36,14 +35,14 @@ export function AnnouncementPopup() {
       setAnnouncement(ann);
       setTimeout(() => setOpen(true), 600);
     }).catch(() => {});
-  }, [user]);
+  }, []);
 
   const dismiss = () => {
     setOpen(false);
     sessionStorage.setItem(SESSION_DISMISSED_KEY, '1');
   };
 
-  if (!user || !announcement) return null;
+  if (!announcement) return null;
 
   const meta = CATEGORY_META[announcement.category] ?? CATEGORY_META.announcement;
   const Icon = meta.icon;
