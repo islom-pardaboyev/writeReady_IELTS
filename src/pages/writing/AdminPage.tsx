@@ -471,7 +471,7 @@ export default function Admin() {
       const bonusMap: Record<string, number> = {};
       usersSnap.docs.forEach((d) => {
         const data = d.data();
-        emailMap[d.id] = data.email ?? d.id;
+        emailMap[d.id] = data.studentLogin ?? data.email ?? d.id;
         bonusMap[d.id] = typeof data.bonusAnalyses === "number" ? data.bonusAnalyses : 0;
       });
 
