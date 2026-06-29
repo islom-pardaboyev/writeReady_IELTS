@@ -69,19 +69,29 @@ export function AuthPage() {
       // Try signing in first (returning student)
       try {
         await signInWithEmailAndPassword(firebaseAuth, fakeEmail, studentPassword);
-        // Ensure Firestore doc has correct plan (repair if needed)
+        // Find the student's center and check if it's still active
         const centersSnap2 = await getDocs(collection(db, 'learningCenters'));
+        let centerActive = false;
         for (const centerDoc of centersSnap2.docs) {
           const cData = centerDoc.data();
           const studSnap = await getDocs(
             query(collection(db, 'learningCenters', centerDoc.id, 'students'), where('login', '==', studentLogin.trim()))
           );
           if (!studSnap.empty && studSnap.docs[0].data().password === studentPassword) {
+            // Check center expiry
+            const isActive = cData.expiresAt ? new Date(cData.expiresAt) > new Date() : false;
+            if (!isActive) {
+              await firebaseAuth.currentUser?.reload();
+              await firebaseAuth.signOut();
+              setError('O\'quv markazingizning muddati tugagan. Markaz administratoriga murojaat qiling.');
+              setLoading(false);
+              return;
+            }
+            centerActive = true;
             const uid = firebaseAuth.currentUser?.uid;
             if (uid) {
-              const userRef = doc(db, 'users', uid);
-              await setDoc(userRef, {
-                plan: cData.status === 'active' ? 'pro' : 'free',
+              await setDoc(doc(db, 'users', uid), {
+                plan: 'pro',
                 subscriptionExpiresAt: cData.expiresAt ?? null,
                 centerId: centerDoc.id,
                 centerName: cData.name,
@@ -90,6 +100,12 @@ export function AuthPage() {
             }
             break;
           }
+        }
+        if (!centerActive) {
+          await firebaseAuth.signOut();
+          setError('O\'quv markazingiz topilmadi yoki muddati tugagan.');
+          setLoading(false);
+          return;
         }
         navigate('/dashboard');
         return;
@@ -102,7 +118,8 @@ export function AuthPage() {
       let foundStudentDocId: string | null = null;
       for (const centerDoc of centersSnap.docs) {
         const cData = centerDoc.data();
-        if (cData.status !== 'active') continue;
+        const centerIsActive = cData.expiresAt ? new Date(cData.expiresAt) > new Date() : false;
+        if (!centerIsActive) continue;
         const studentsSnap = await getDocs(
           query(collection(db, 'learningCenters', centerDoc.id, 'students'), where('login', '==', studentLogin.trim()))
         );
