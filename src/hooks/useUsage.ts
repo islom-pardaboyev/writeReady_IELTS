@@ -12,15 +12,20 @@ export function useUsage(uid: string | null) {
     setLoading(true);
     const yearMonth = new Date().toISOString().slice(0, 7);
 
+    const planLimits: Record<string, number> = { forever: 9999, premium: 30, standard: 12, basic: 5 };
+
     const unsub = onSnapshot(doc(db, 'users', uid), (snap) => {
       setLoading(false);
       if (!snap.exists()) {
-        setUsage({ uid, yearMonth, count: 0, limit: 12, updatedAt: new Date() });
+        setUsage({ uid, yearMonth, count: 0, limit: 0, updatedAt: new Date() });
         return;
       }
-      const usage = snap.data()?.usage;
+      const data = snap.data();
+      const usage = data?.usage;
       const count = usage?.monthKey === yearMonth ? (usage?.count ?? 0) : 0;
-      setUsage({ uid, yearMonth, count, limit: 12, updatedAt: new Date() });
+      const plan: string = data?.plan ?? 'free';
+      const limit = planLimits[plan] ?? 0;
+      setUsage({ uid, yearMonth, count, limit, updatedAt: new Date() });
     }, () => {
       setLoading(false);
     });
