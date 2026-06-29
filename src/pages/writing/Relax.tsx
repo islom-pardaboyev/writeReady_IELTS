@@ -22,10 +22,11 @@ function isPdf(src: string) {
   return src.startsWith('data:application/pdf') || /\.pdf(\?|$)/i.test(src);
 }
 
-function isPro(subscription: string | null): boolean {
-  if (!subscription) return false;
-  if (subscription === "forever") return true;
-  return new Date(subscription) > new Date();
+function hasAccess(data: Record<string, unknown>): boolean {
+  const plan = data.plan as string | undefined;
+  if (plan === 'forever' || plan === 'premium' || plan === 'standard' || plan === 'basic') return true;
+  const bonus = typeof data.bonusAnalyses === 'number' ? data.bonusAnalyses : 0;
+  return bonus > 0;
 }
 
 function Relax() {
@@ -132,8 +133,9 @@ function Relax() {
       const user = auth.currentUser;
       if (!user) { navigate("/auth"); return; }
       const snap = await getDoc(doc(db, "users", user.uid));
-      const subscription = snap.exists() ? ((snap.data().subscription as string | null) ?? null) : null;
-      if (!isPro(subscription)) { navigate("/pricing"); return; }
+      if (!snap.exists() || !hasAccess(snap.data() as Record<string, unknown>)) {
+        navigate("/pricing"); return;
+      }
 
       const encoded = activeTask === 1
         ? encodeReport({ task1: { report: prompt, image: imageUrl ?? undefined }, task2: undefined, userText1: userText, userText2: "" })

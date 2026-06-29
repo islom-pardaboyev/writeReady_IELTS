@@ -23,10 +23,11 @@ interface Task2 {
   report: string;
 }
 
-function isPro(subscription: string | null): boolean {
-  if (!subscription) return false;
-  if (subscription === "forever") return true;
-  return new Date(subscription) > new Date();
+function hasAccess(data: Record<string, unknown>): boolean {
+  const plan = data.plan as string | undefined;
+  if (plan === 'forever' || plan === 'premium' || plan === 'standard' || plan === 'basic') return true;
+  const bonus = typeof data.bonusAnalyses === 'number' ? data.bonusAnalyses : 0;
+  return bonus > 0;
 }
 
 const TIMER_SECONDS = 3600;
@@ -254,11 +255,9 @@ function Mock() {
       if (!user) { navigate("/auth"); return; }
 
       const snap = await getDoc(doc(db, "users", user.uid));
-      const subscription = snap.exists()
-        ? ((snap.data().subscription as string | null) ?? null)
-        : null;
-
-      if (!isPro(subscription)) { navigate("/pricing"); return; }
+      if (!snap.exists() || !hasAccess(snap.data() as Record<string, unknown>)) {
+        navigate("/pricing"); return;
+      }
 
       const encoded = encodeReport({ task1, task2, userText1, userText2 });
       navigate(`/feedback/${encoded}`);
