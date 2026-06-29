@@ -254,15 +254,20 @@ export async function getAllFeedbackReports(uid: string): Promise<FeedbackReport
   });
 }
 
+export type AnnouncementCategory = 'announcement' | 'update' | 'maintenance' | 'tip' | 'offer';
+
 export interface Announcement {
   id: string;
+  title: string;
   text: string;
+  category: AnnouncementCategory;
+  link?: string;
+  linkLabel?: string;
   createdAt: Date | null;
   active: boolean;
 }
 
 export async function getActiveAnnouncement(): Promise<Announcement | null> {
-  // No composite index needed — filter active client-side, just order by createdAt
   const q = query(
     collection(db, 'announcements'),
     orderBy('createdAt', 'desc'),
@@ -272,7 +277,16 @@ export async function getActiveAnnouncement(): Promise<Announcement | null> {
   const active = snap.docs.find((d) => d.data().active === true);
   if (!active) return null;
   const data = active.data();
-  return { id: active.id, text: data.text ?? '', createdAt: toDate(data.createdAt), active: true };
+  return {
+    id: active.id,
+    title: data.title ?? '',
+    text: data.text ?? '',
+    category: data.category ?? 'announcement',
+    link: data.link ?? '',
+    linkLabel: data.linkLabel ?? '',
+    createdAt: toDate(data.createdAt),
+    active: true,
+  };
 }
 
 // ── Questions ──────────────────────────────────────────────────────────────

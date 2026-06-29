@@ -288,10 +288,15 @@ export default function Admin() {
   const [grantMsg, setGrantMsg] = useState("");
 
   // Announcements
-  interface AnnouncementRow { id: string; text: string; active: boolean; createdAt?: string; }
+  type AnnCategory = 'announcement' | 'update' | 'maintenance' | 'tip' | 'offer';
+  interface AnnouncementRow { id: string; title: string; text: string; category: AnnCategory; link: string; linkLabel: string; active: boolean; createdAt?: string; }
   const [announcements, setAnnouncements] = useState<AnnouncementRow[]>([]);
   const [annLoading, setAnnLoading] = useState(false);
+  const [annTitle, setAnnTitle] = useState("");
   const [annText, setAnnText] = useState("");
+  const [annCategory, setAnnCategory] = useState<AnnCategory>("announcement");
+  const [annLink, setAnnLink] = useState("");
+  const [annLinkLabel, setAnnLinkLabel] = useState("");
   const [annSaving, setAnnSaving] = useState(false);
 
   // Centers
@@ -472,7 +477,7 @@ export default function Admin() {
       const snap = await getDocs(query(collection(db, "announcements"), orderBy("createdAt", "desc")));
       setAnnouncements(snap.docs.map((d) => {
         const data = d.data();
-        return { id: d.id, text: data.text ?? "", active: data.active ?? false, createdAt: data.createdAt?.toDate?.()?.toISOString?.() };
+        return { id: d.id, title: data.title ?? "", text: data.text ?? "", category: data.category ?? "announcement", link: data.link ?? "", linkLabel: data.linkLabel ?? "", active: data.active ?? false, createdAt: data.createdAt?.toDate?.()?.toISOString?.() };
       }));
     } catch (e) { console.error(e); }
     setAnnLoading(false);
@@ -611,15 +616,19 @@ export default function Admin() {
   }, [isLoggedIn, section]);
 
   const addAnnouncement = async () => {
-    if (!annText.trim()) return;
+    if (!annTitle.trim() || !annText.trim()) return;
     setAnnSaving(true);
     try {
       await addDoc(collection(db, "announcements"), {
+        title: annTitle.trim(),
         text: annText.trim(),
+        category: annCategory,
+        link: annLink.trim(),
+        linkLabel: annLinkLabel.trim(),
         active: true,
         createdAt: new Date(),
       });
-      setAnnText("");
+      setAnnTitle(""); setAnnText(""); setAnnCategory("announcement"); setAnnLink(""); setAnnLinkLabel("");
       await loadAnnouncements();
     } catch (e) { console.error(e); }
     setAnnSaving(false);
@@ -1311,17 +1320,62 @@ export default function Admin() {
                   <p className="text-[0.7rem] font-bold tracking-widest uppercase text-blue-700 mb-1">Announcements</p>
                   <h1 className="text-2xl font-bold text-slate-900 m-0">Elonlar boshqaruvi</h1>
                 </div>
+
+                {/* New announcement form */}
                 <div className="bg-white rounded-xl border border-slate-200 p-5 flex flex-col gap-3">
                   <p className="text-sm font-semibold text-slate-700">Yangi elon qo'shish</p>
+
+                  {/* Category */}
+                  <div className="flex flex-wrap gap-2">
+                    {([
+                      { id: 'announcement', label: '📢 Announcement', color: 'bg-blue-100 text-blue-700 border-blue-300' },
+                      { id: 'update',       label: '🚀 Update',       color: 'bg-emerald-100 text-emerald-700 border-emerald-300' },
+                      { id: 'maintenance',  label: '🔧 Maintenance',  color: 'bg-amber-100 text-amber-700 border-amber-300' },
+                      { id: 'tip',          label: '💡 Tip',          color: 'bg-purple-100 text-purple-700 border-purple-300' },
+                      { id: 'offer',        label: '🎁 Offer',        color: 'bg-rose-100 text-rose-700 border-rose-300' },
+                    ] as { id: AnnCategory; label: string; color: string }[]).map((c) => (
+                      <button
+                        key={c.id}
+                        onClick={() => setAnnCategory(c.id)}
+                        className={`px-3 py-1.5 text-xs font-semibold rounded-lg border transition-all cursor-pointer ${annCategory === c.id ? c.color + ' ring-2 ring-offset-1 ring-current' : 'bg-white border-slate-200 text-slate-500 hover:bg-slate-50'}`}
+                      >
+                        {c.label}
+                      </button>
+                    ))}
+                  </div>
+
+                  <Input
+                    className="border-slate-200 bg-white text-slate-900"
+                    placeholder="Sarlavha (katta, asosiy)..."
+                    value={annTitle}
+                    onChange={(e) => setAnnTitle(e.target.value)}
+                  />
                   <Textarea
                     className="border-slate-200 bg-white text-slate-900"
                     rows={3}
-                    placeholder="Elon matni (foydalanuvchilarga ko'rinadi)..."
+                    placeholder="Elon matni (tafsilotlar)..."
                     value={annText}
                     onChange={(e) => setAnnText(e.target.value)}
                   />
+
+                  {/* Optional link */}
+                  <div className="flex gap-2">
+                    <Input
+                      className="border-slate-200 bg-white text-slate-900 flex-1"
+                      placeholder="Havola (ixtiyoriy): https://..."
+                      value={annLink}
+                      onChange={(e) => setAnnLink(e.target.value)}
+                    />
+                    <Input
+                      className="border-slate-200 bg-white text-slate-900 w-36"
+                      placeholder="Tugma matni"
+                      value={annLinkLabel}
+                      onChange={(e) => setAnnLinkLabel(e.target.value)}
+                    />
+                  </div>
+
                   <button
-                    disabled={annSaving || !annText.trim()}
+                    disabled={annSaving || !annTitle.trim() || !annText.trim()}
                     onClick={addAnnouncement}
                     className="self-start px-4 py-2 text-sm font-semibold bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 transition-colors"
                   >
@@ -1338,30 +1392,46 @@ export default function Admin() {
                   </div>
                 ) : (
                   <div className="flex flex-col gap-3">
-                    {announcements.map((a) => (
-                      <div key={a.id} className={`bg-white rounded-xl border p-4 flex items-start gap-4 ${a.active ? 'border-blue-200' : 'border-slate-200 opacity-60'}`}>
-                        <div className="flex-1">
-                          <p className="text-sm text-slate-800 leading-snug">{a.text}</p>
-                          {a.createdAt && (
-                            <p className="text-xs text-slate-400 mt-1">{new Date(a.createdAt).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })}</p>
-                          )}
+                    {announcements.map((a) => {
+                      const catColors: Record<string, string> = {
+                        announcement: 'bg-blue-600', update: 'bg-emerald-600',
+                        maintenance: 'bg-amber-500', tip: 'bg-purple-600', offer: 'bg-rose-600',
+                      };
+                      const catIcons: Record<string, string> = {
+                        announcement: '📢', update: '🚀', maintenance: '🔧', tip: '💡', offer: '🎁',
+                      };
+                      return (
+                        <div key={a.id} className={`bg-white rounded-xl border overflow-hidden ${a.active ? 'border-blue-200' : 'border-slate-200 opacity-60'}`}>
+                          <div className={`${catColors[a.category] ?? 'bg-blue-600'} px-4 py-1.5 flex items-center gap-2`}>
+                            <span className="text-white text-xs font-bold tracking-widest uppercase">{catIcons[a.category]} {a.category}</span>
+                          </div>
+                          <div className="p-4 flex items-start gap-4">
+                            <div className="flex-1">
+                              {a.title && <p className="font-bold text-slate-900 mb-0.5">{a.title}</p>}
+                              <p className="text-sm text-slate-600 leading-snug">{a.text}</p>
+                              {a.link && <p className="text-xs text-blue-600 mt-1 truncate">{a.link}</p>}
+                              {a.createdAt && (
+                                <p className="text-xs text-slate-400 mt-1">{new Date(a.createdAt).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })}</p>
+                              )}
+                            </div>
+                            <div className="flex items-center gap-2 shrink-0">
+                              <button
+                                onClick={() => toggleAnnouncement(a.id, a.active)}
+                                className={`text-xs px-3 py-1.5 rounded-lg font-medium transition-colors ${a.active ? 'bg-emerald-100 text-emerald-700 hover:bg-emerald-200' : 'bg-slate-100 text-slate-500 hover:bg-slate-200'}`}
+                              >
+                                {a.active ? 'Faol' : 'Nofaol'}
+                              </button>
+                              <button
+                                onClick={() => deleteAnnouncement(a.id)}
+                                className="text-xs px-3 py-1.5 rounded-lg font-medium bg-red-50 text-red-600 hover:bg-red-100 transition-colors"
+                              >
+                                O'chirish
+                              </button>
+                            </div>
+                          </div>
                         </div>
-                        <div className="flex items-center gap-2 shrink-0">
-                          <button
-                            onClick={() => toggleAnnouncement(a.id, a.active)}
-                            className={`text-xs px-3 py-1.5 rounded-lg font-medium transition-colors ${a.active ? 'bg-emerald-100 text-emerald-700 hover:bg-emerald-200' : 'bg-slate-100 text-slate-500 hover:bg-slate-200'}`}
-                          >
-                            {a.active ? 'Faol' : 'Nofaol'}
-                          </button>
-                          <button
-                            onClick={() => deleteAnnouncement(a.id)}
-                            className="text-xs px-3 py-1.5 rounded-lg font-medium bg-red-50 text-red-600 hover:bg-red-100 transition-colors"
-                          >
-                            O'chirish
-                          </button>
-                        </div>
-                      </div>
-                    ))}
+                      );
+                    })}
                   </div>
                 )}
               </div>
