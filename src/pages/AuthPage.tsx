@@ -1,4 +1,4 @@
-import { useState, useLayoutEffect, useRef, type FormEvent } from 'react';
+import { useState, useLayoutEffect, useEffect, useRef, type FormEvent } from 'react';
 import { useNavigate, useSearchParams, Link } from 'react-router-dom';
 import gsap from 'gsap';
 import { useAuth } from '../hooks/useAuth';
@@ -26,7 +26,9 @@ export function AuthPage() {
   const rootRef = useRef<HTMLDivElement>(null);
 
   // redirect if already logged in
-  if (user) { navigate('/dashboard'); return null; }
+  useEffect(() => {
+    if (user) navigate('/dashboard');
+  }, [user]);
 
   useLayoutEffect(() => {
     const ctx = gsap.context(() => {
