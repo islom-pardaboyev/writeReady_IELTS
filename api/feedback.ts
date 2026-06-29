@@ -192,7 +192,7 @@ Return this EXACT JSON structure:
     "<third most impactful fix>"
   ],
   "bandGapAnalysis": "<Specific measurable steps to the next band level>",
-  "sampleResponse": "<A high-band (band 7-8) model response for THIS exact question — 2-3 paragraphs showing correct structure, vocabulary, and grammar. For Task 1 describe the data clearly; for Task 2 argue both sides or one side with evidence. Without any fancy words etc that make the writing longer without any meaning. You may use effective collocations that are related to the topic.>",
+  "sampleResponse": "<A complete high-band (band 7-8) model response for THIS exact question. For Task 1: introduction + overview paragraph + 2 detailed body paragraphs covering all key data points, trends, and comparisons — minimum 180 words. For Task 2: introduction with clear thesis + 2 full body paragraphs each with a main point, explanation, and example + conclusion — minimum 280 words. Use accurate data from the question, natural collocations, varied sentence structures. No filler phrases. Write the full essay, not a summary.>",
   "sentenceAnalysis": [
     {
       "sentence": "<copy the EXACT sentence from the student essay>",
