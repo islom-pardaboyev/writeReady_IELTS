@@ -18,6 +18,7 @@ import Logo from "/logo.png";
 import { getBlogPosts, saveBlogPost, updateBlogPost, deleteBlogPost } from "../../firebase/blog";
 import type { BlogPost } from "../../types/blog";
 import { Badge } from "@/components/ui/badge";
+import { RichEditor } from "@/components/ui/RichEditor";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
@@ -1821,12 +1822,10 @@ export default function Admin() {
                     </div>
 
                     <div>
-                      <label className="text-xs font-semibold text-slate-600 mb-1 block uppercase tracking-wide">Content (Markdown)</label>
-                      <Textarea
-                        rows={12}
-                        className="border-slate-200 bg-white text-slate-900 font-mono"
+                      <label className="text-xs font-semibold text-slate-600 mb-1 block uppercase tracking-wide">Content</label>
+                      <RichEditor
                         value={blogEditor.content ?? ''}
-                        onChange={(e) => setBlogEditor((p) => ({ ...p, content: e.target.value }))}
+                        onChange={(html) => setBlogEditor((p) => ({ ...p, content: html }))}
                       />
                     </div>
 

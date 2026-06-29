@@ -107,10 +107,19 @@ export function BlogPostPage() {
     );
   }
 
-  const paragraphs = post.content.split(/\n\n+/).filter((b) => b.trim());
-  const ctaIndex = Math.floor(paragraphs.length * 0.4);
-  const beforeCTA = paragraphs.slice(0, ctaIndex).join('\n\n');
-  const afterCTA = paragraphs.slice(ctaIndex).join('\n\n');
+  // Support both HTML (new posts) and legacy markdown
+  const isHtml = post.content.trimStart().startsWith('<');
+  const renderContent = (html: string) => (
+    <div
+      className="prose prose-slate max-w-none dark:prose-invert [&_table]:border-collapse [&_table]:w-full [&_td]:border [&_td]:border-slate-300 [&_td]:px-3 [&_td]:py-2 [&_th]:border [&_th]:border-slate-300 [&_th]:px-3 [&_th]:py-2 [&_th]:bg-slate-100 [&_th]:font-semibold"
+      dangerouslySetInnerHTML={{ __html: html }}
+    />
+  );
+
+  const paragraphs = isHtml ? [] : post.content.split(/\n\n+/).filter((b) => b.trim());
+  const ctaIndex = Math.floor((isHtml ? 1 : paragraphs.length) * 0.4);
+  const beforeCTA = isHtml ? post.content : paragraphs.slice(0, ctaIndex).join('\n\n');
+  const afterCTA = isHtml ? '' : paragraphs.slice(ctaIndex).join('\n\n');
 
   return (
     <Layout>
@@ -138,9 +147,7 @@ export function BlogPostPage() {
         )}
 
         {/* Content before CTA */}
-        <div className="prose max-w-none">
-          {renderMarkdown(beforeCTA)}
-        </div>
+        {isHtml ? renderContent(beforeCTA) : <div className="prose max-w-none">{renderMarkdown(beforeCTA)}</div>}
 
         {/* CTA block */}
         <Card className="my-8 p-6 text-center bg-blue-50 dark:bg-blue-900/20 border-blue-200 dark:border-blue-800">
@@ -158,9 +165,7 @@ export function BlogPostPage() {
         </Card>
 
         {/* Content after CTA */}
-        <div className="prose max-w-none">
-          {renderMarkdown(afterCTA)}
-        </div>
+        {afterCTA && <div className="prose max-w-none">{renderMarkdown(afterCTA)}</div>}
 
         {/* Like button */}
         <div className="flex items-center gap-3 mt-10 pt-6 border-t border-[var(--border-color)]">
