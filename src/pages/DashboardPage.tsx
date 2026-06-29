@@ -142,7 +142,8 @@ export function DashboardPage() {
   const centerId = profileAny?.centerId as string | undefined;
   const subscriptionExpiresAt = profileAny?.subscriptionExpiresAt as string | null | undefined;
   const isStudent = !!(centerId && centerName);
-  const bonusAnalyses = profile?.bonusAnalyses ?? 0;
+  // Don't show bonus to paid users — they don't need it
+  const bonusAnalyses = isPaidPlan ? 0 : (profile?.bonusAnalyses ?? 0);
   const usedCount = usage?.count ?? 0;
   const usageLimit = usage?.limit ?? 0;
   const usagePct = usageLimit > 0 ? Math.min(100, (usedCount / usageLimit) * 100) : 0;
@@ -160,8 +161,8 @@ export function DashboardPage() {
       <div className="py-10">
         <div className="max-w-[1160px] mx-auto px-6" ref={rootRef}>
 
-          {/* Bonus notification banner */}
-          {notification && (
+          {/* Bonus notification banner — hide for paid users */}
+          {notification && !isPaidPlan && (
             <div className="mb-6 flex items-start gap-3 bg-gradient-to-r from-amber-50 to-yellow-50 border border-amber-200 rounded-2xl px-5 py-4">
               <span className="text-2xl shrink-0">🎁</span>
               <p className="text-sm text-amber-800 font-medium flex-1 leading-relaxed">{notification}</p>
