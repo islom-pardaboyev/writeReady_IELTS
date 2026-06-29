@@ -2,12 +2,12 @@ import { useState, useEffect } from 'react';
 import { useAuth } from '../../hooks/useAuth';
 import { getActiveAnnouncement, type Announcement, type AnnouncementCategory } from '../../firebase/firestore';
 
-const CATEGORY_META: Record<AnnouncementCategory, { label: string; color: string; bg: string; border: string; icon: string }> = {
-  announcement: { label: 'Announcement', color: 'text-blue-700 dark:text-blue-300', bg: 'bg-blue-600', border: 'border-blue-200 dark:border-blue-800', icon: '📢' },
-  update:        { label: 'Update',       color: 'text-emerald-700 dark:text-emerald-300', bg: 'bg-emerald-600', border: 'border-emerald-200 dark:border-emerald-800', icon: '🚀' },
-  maintenance:   { label: 'Maintenance',  color: 'text-amber-700 dark:text-amber-300', bg: 'bg-amber-500', border: 'border-amber-200 dark:border-amber-800', icon: '🔧' },
-  tip:           { label: 'Tip',          color: 'text-purple-700 dark:text-purple-300', bg: 'bg-purple-600', border: 'border-purple-200 dark:border-purple-800', icon: '💡' },
-  offer:         { label: 'Offer',        color: 'text-rose-700 dark:text-rose-300', bg: 'bg-rose-600', border: 'border-rose-200 dark:border-rose-800', icon: '🎁' },
+const CATEGORY_META: Record<AnnouncementCategory, { label: string; gradient: string; icon: string; accent: string }> = {
+  announcement: { label: 'Announcement', gradient: 'from-blue-600 to-indigo-600',   icon: '📢', accent: 'text-blue-600' },
+  update:        { label: 'Update',       gradient: 'from-emerald-500 to-teal-600',  icon: '🚀', accent: 'text-emerald-600' },
+  maintenance:   { label: 'Maintenance',  gradient: 'from-amber-500 to-orange-500',  icon: '🔧', accent: 'text-amber-600' },
+  tip:           { label: 'Tip',          gradient: 'from-purple-600 to-violet-600', icon: '💡', accent: 'text-purple-600' },
+  offer:         { label: 'Offer',        gradient: 'from-rose-500 to-pink-600',     icon: '🎁', accent: 'text-rose-600' },
 };
 
 const DISMISS_KEY = 'ann_dismissed';
@@ -17,7 +17,6 @@ export function AnnouncementPopup() {
   const [announcement, setAnnouncement] = useState<Announcement | null>(null);
   const [visible, setVisible] = useState(false);
   const [dismissed, setDismissed] = useState(false);
-  const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
     if (!user) return;
@@ -26,8 +25,7 @@ export function AnnouncementPopup() {
       const key = `${DISMISS_KEY}_${ann.id}`;
       if (sessionStorage.getItem(key)) return;
       setAnnouncement(ann);
-      // slight delay so popup slides in after page load
-      setTimeout(() => { setVisible(true); setMounted(true); }, 800);
+      setTimeout(() => setVisible(true), 700);
     }).catch(() => {});
   }, [user]);
 
@@ -36,58 +34,109 @@ export function AnnouncementPopup() {
     setTimeout(() => {
       setDismissed(true);
       if (announcement) sessionStorage.setItem(`${DISMISS_KEY}_${announcement.id}`, '1');
-    }, 300);
+    }, 350);
   };
 
   if (!user || !announcement || dismissed) return null;
 
   const meta = CATEGORY_META[announcement.category] ?? CATEGORY_META.announcement;
+  const title = announcement.title || announcement.text.slice(0, 60);
+  const hasBody = announcement.title && announcement.text;
 
   return (
-    <div
-      className={`fixed bottom-5 right-5 z-50 w-[340px] max-w-[calc(100vw-2.5rem)] transition-all duration-300 ${
-        mounted && visible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'
-      }`}
-      role="dialog"
-      aria-label="Announcement"
-    >
-      <div className={`bg-[var(--bg-card)] border ${meta.border} rounded-2xl shadow-2xl overflow-hidden`}>
-        {/* Category strip */}
-        <div className={`${meta.bg} px-4 py-2 flex items-center justify-between`}>
-          <span className="text-white text-xs font-bold tracking-widest uppercase flex items-center gap-1.5">
-            <span>{meta.icon}</span>
-            {meta.label}
-          </span>
-          <button
-            onClick={dismiss}
-            className="text-white/70 hover:text-white bg-transparent border-none cursor-pointer text-lg leading-none"
-            aria-label="Close"
-          >×</button>
-        </div>
+    <>
+      {/* Backdrop blur (subtle) */}
+      <div
+        className={`fixed inset-0 z-40 transition-opacity duration-350 pointer-events-none ${visible ? 'opacity-100' : 'opacity-0'}`}
+        style={{ background: 'rgba(0,0,0,0.25)', backdropFilter: visible ? 'blur(2px)' : 'none' }}
+      />
 
-        {/* Body */}
-        <div className="px-5 py-4">
-          {announcement.title && (
-            <h3 className="font-fraunces text-xl font-bold text-[var(--text-primary)] mb-2 leading-tight">
-              {announcement.title}
-            </h3>
-          )}
-          <p className="text-sm text-[var(--text-secondary)] leading-relaxed">
-            {announcement.text}
-          </p>
+      {/* Dialog card — centered */}
+      <div className={`fixed inset-0 z-50 flex items-center justify-center px-4 pointer-events-none`}>
+        <div
+          className={`w-full max-w-[440px] pointer-events-auto transition-all duration-350 ${
+            visible ? 'opacity-100 scale-100 translate-y-0' : 'opacity-0 scale-95 translate-y-4'
+          }`}
+        >
+          <div className="rounded-2xl overflow-hidden shadow-2xl bg-[var(--bg-card)]">
 
-          {announcement.link && (
-            <a
-              href={announcement.link}
-              target="_blank"
-              rel="noopener noreferrer"
-              className={`mt-4 inline-flex items-center gap-1.5 text-sm font-semibold no-underline px-4 py-2 rounded-lg ${meta.bg} text-white hover:opacity-90 transition-opacity`}
-            >
-              {announcement.linkLabel || 'Learn more'} →
-            </a>
-          )}
+            {/* Gradient header */}
+            <div className={`bg-gradient-to-r ${meta.gradient} px-6 py-5 relative`}>
+              {/* Category chip */}
+              <div className="flex items-center gap-2 mb-3">
+                <span className="text-white/80 text-xs font-bold tracking-widest uppercase">
+                  {meta.icon} {meta.label}
+                </span>
+              </div>
+
+              {/* Title */}
+              <h2 className="text-white font-fraunces text-2xl font-bold leading-tight pr-8">
+                {title}
+              </h2>
+
+              {/* Close */}
+              <button
+                onClick={dismiss}
+                className="absolute top-4 right-4 w-8 h-8 flex items-center justify-center rounded-full bg-white/20 hover:bg-white/30 text-white text-lg cursor-pointer border-0 transition-colors leading-none"
+                aria-label="Close"
+              >
+                ×
+              </button>
+            </div>
+
+            {/* Body */}
+            {hasBody && (
+              <div className="px-6 py-5">
+                <p className="text-[var(--text-secondary)] leading-relaxed text-sm">
+                  {announcement.text}
+                </p>
+
+                {announcement.link && (
+                  <div className="mt-5 flex items-center gap-3">
+                    <a
+                      href={announcement.link}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className={`inline-flex items-center gap-2 px-5 py-2.5 rounded-xl font-semibold text-sm text-white no-underline bg-gradient-to-r ${meta.gradient} hover:opacity-90 transition-opacity shadow-sm`}
+                    >
+                      {announcement.linkLabel || 'Learn more'} →
+                    </a>
+                    <button
+                      onClick={dismiss}
+                      className="text-sm text-[var(--text-secondary)] hover:text-[var(--text-primary)] bg-transparent border-0 cursor-pointer transition-colors"
+                    >
+                      Dismiss
+                    </button>
+                  </div>
+                )}
+
+                {!announcement.link && (
+                  <div className="mt-5">
+                    <button
+                      onClick={dismiss}
+                      className={`px-5 py-2.5 rounded-xl font-semibold text-sm text-white bg-gradient-to-r ${meta.gradient} hover:opacity-90 transition-opacity cursor-pointer border-0`}
+                    >
+                      Got it!
+                    </button>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* If no separate body text, just show close button */}
+            {!hasBody && (
+              <div className="px-6 py-4 flex justify-end">
+                <button
+                  onClick={dismiss}
+                  className={`px-5 py-2 rounded-xl font-semibold text-sm text-white bg-gradient-to-r ${meta.gradient} hover:opacity-90 transition-opacity cursor-pointer border-0`}
+                >
+                  Got it!
+                </button>
+              </div>
+            )}
+          </div>
         </div>
       </div>
-    </div>
+    </>
   );
 }
