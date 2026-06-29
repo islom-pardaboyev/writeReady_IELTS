@@ -275,15 +275,38 @@ export function FeedbackPage() {
         }),
       });
 
-      const text = await res.text();
-      let data: { feedback?: EnhancedFeedbackResult; error?: string; limited?: boolean } = {};
-      try { data = JSON.parse(text); } catch { throw new Error(`Server error (${res.status}): ${text.slice(0, 200)}`); }
-      if (!res.ok) throw new Error(data.error ?? 'Feedback generation failed');
+      if (!res.ok) {
+        const errText = await res.text();
+        let errData: { error?: string } = {};
+        try { errData = JSON.parse(errText); } catch { /* ignore */ }
+        throw new Error(errData.error ?? `Server error (${res.status})`);
+      }
 
-      const feedbackWithLimit = { ...data.feedback!, limited: data.limited ?? data.feedback!.limited ?? false };
+      // Read streaming response chunk by chunk
+      const reader = res.body?.getReader();
+      const decoder = new TextDecoder();
+      let raw = '';
+      if (reader) {
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+          raw += decoder.decode(value, { stream: true });
+        }
+        raw += decoder.decode(); // flush
+      } else {
+        raw = await res.text();
+      }
+
+      let parsedFeedback: EnhancedFeedbackResult;
+      try {
+        parsedFeedback = JSON.parse(raw.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim());
+      } catch {
+        throw new Error('Feedback to\'liq kelmadi. Iltimos, qayta urinib ko\'ring.');
+      }
+
+      const feedbackWithLimit = { ...parsedFeedback, limited: parsedFeedback.limited ?? false };
       setFeedbacks((p) => ({ ...p, [taskKey]: feedbackWithLimit }));
       sessionStorage.setItem(cacheKey, JSON.stringify(feedbackWithLimit));
-      // Refresh profile so bonusAnalyses updates in UI
       refreshProfile().catch(() => {});
 
       getFeedbackReportHistory(user.uid, 5)
