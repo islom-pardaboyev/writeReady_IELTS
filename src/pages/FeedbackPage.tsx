@@ -788,24 +788,21 @@ export function FeedbackPage() {
               )}
 
               {/* Tab bar */}
-              <div className="sticky top-[72px] z-10 -mx-4 mb-6 bg-[var(--bg-card)]/90 backdrop-blur border-b border-[var(--border-color)] relative">
-                {/* right fade hint */}
-                <div className="pointer-events-none absolute right-0 top-0 bottom-0 w-10 bg-gradient-to-l from-[var(--bg-card)] to-transparent z-10" />
-                <div className="flex gap-0 overflow-x-auto scrollbar-none px-4 scroll-smooth"
-                  style={{ WebkitOverflowScrolling: 'touch' }}
-                >
+              <div className="sticky top-[72px] z-10 -mx-4 mb-6 bg-[var(--bg-card)]/90 backdrop-blur border-b border-[var(--border-color)]">
+                <div className="flex justify-between sm:justify-start sm:gap-0 sm:overflow-x-auto sm:scrollbar-none px-2 sm:px-4">
                   {TABS.map((tab) => (
                     <button
                       key={tab.id}
                       onClick={() => setActiveTab(tab.id)}
-                      className={`flex-shrink-0 flex items-center gap-1.5 px-4 py-3.5 text-[0.8125rem] whitespace-nowrap cursor-pointer transition-all border-none bg-transparent relative ${
+                      title={tab.label}
+                      className={`flex-shrink-0 flex flex-col sm:flex-row items-center gap-0.5 sm:gap-1.5 px-2 sm:px-4 py-2.5 sm:py-3.5 text-[0.6rem] sm:text-[0.8125rem] cursor-pointer transition-all border-none bg-transparent relative ${
                         activeTab === tab.id
                           ? 'text-[var(--ink-blue)] font-bold'
                           : 'text-[var(--text-secondary)] font-medium hover:text-[var(--text-primary)]'
                       }`}
                     >
-                      <span>{tab.icon}</span>
-                      {tab.label}
+                      <span className="text-base sm:text-sm leading-none">{tab.icon}</span>
+                      <span className="hidden sm:inline whitespace-nowrap">{tab.label}</span>
                       {activeTab === tab.id && (
                         <span className="absolute bottom-0 left-0 right-0 h-0.5 bg-[var(--ink-blue)] rounded-t-full" />
                       )}
