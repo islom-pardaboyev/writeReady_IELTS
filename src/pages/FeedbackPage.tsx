@@ -684,7 +684,7 @@ export function FeedbackPage() {
                 <div className="w-8 h-8 border-2 border-blue-500 border-t-transparent rounded-full animate-spin" />
               </div>
               <p className="font-semibold text-[var(--text-primary)] text-lg mb-1">Analysing your essay…</p>
-              <p className="text-sm text-[var(--text-secondary)]">This usually takes up to 60 seconds.</p>
+              <p className="text-sm text-[var(--text-secondary)]">This usually takes up to 1-5 minutes.</p>
             </div>
           )}
 
