@@ -43,9 +43,10 @@ async function getUid(req: VercelRequest): Promise<string> {
   return decoded.uid;
 }
 
-async function consumeCredit(uid: string, monthKey: string): Promise<DocumentReference> {
+async function consumeCredit(uid: string, monthKey: string): Promise<{ userRef: DocumentReference; isBonus: boolean }> {
   const db = getFirestore();
   const userRef = db.collection('users').doc(uid);
+  let isBonus = false;
 
   await db.runTransaction(async (tx) => {
     const snap = await tx.get(userRef);
@@ -53,10 +54,11 @@ async function consumeCredit(uid: string, monthKey: string): Promise<DocumentRef
 
     const data = snap.data()!;
 
-    // Bonus analyses granted by admin — bypass subscription check
+    // Bonus analyses (free preview) — limited report
     const bonus = typeof data.bonusAnalyses === 'number' ? data.bonusAnalyses : 0;
     if (bonus > 0) {
       tx.set(userRef, { bonusAnalyses: bonus - 1 }, { merge: true });
+      isBonus = true;
       return;
     }
 
@@ -86,7 +88,7 @@ async function consumeCredit(uid: string, monthKey: string): Promise<DocumentRef
       }
     }
 
-    const planLimits: Record<string, number> = { forever: 9999, premium: 30, standard: 15, basic: 6 };
+    const planLimits: Record<string, number> = { forever: 9999, premium: 30, standard: 12, basic: 5 };
     const monthlyLimit = planLimits[data.plan as string];
     if (!monthlyLimit) throw new CreditError('NOT_PRO'); // free plan, no bonus left
 
@@ -97,7 +99,7 @@ async function consumeCredit(uid: string, monthKey: string): Promise<DocumentRef
     tx.set(userRef, { usage: { monthKey, count: used + 1 } }, { merge: true });
   });
 
-  return userRef;
+  return { userRef, isBonus };
 }
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
@@ -126,9 +128,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
   const monthKey = currentMonthKey();
   let userRef: DocumentReference;
+  let isBonus = false;
 
   try {
-    userRef = await consumeCredit(uid, monthKey);
+    ({ userRef, isBonus } = await consumeCredit(uid, monthKey));
   } catch (e: unknown) {
     if (e instanceof CreditError) {
       if (e.code === 'NOT_PRO') return res.status(403).json({ error: 'AI feedback requires a paid plan (Basic, Standard, Premium, or Lifetime).' });
@@ -146,14 +149,19 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
   try {
     const anthropic = new Anthropic({ apiKey });
+    const prompt = isBonus
+      ? buildLimitedPrompt(essayText as string, questionText as string, resolvedTask, wordCount)
+      : buildPrompt(essayText as string, questionText as string, resolvedTask, wordCount);
     const message = await anthropic.messages.create({
       model: ALLOWED_MODEL,
-      max_tokens: MAX_TOKENS,
-      messages: [{ role: 'user', content: buildPrompt(essayText as string, questionText as string, resolvedTask, wordCount) }],
+      max_tokens: isBonus ? 800 : MAX_TOKENS,
+      messages: [{ role: 'user', content: prompt }],
     });
 
     const raw = message.content[0]?.type === 'text' ? message.content[0].text : '';
-    const feedback = parseResponse(raw, wordCount, resolvedTask);
+    const feedback = isBonus
+      ? parseLimitedResponse(raw, wordCount, resolvedTask)
+      : parseResponse(raw, wordCount, resolvedTask);
 
     const db = getFirestore();
     db.collection('feedback_reports').add({
@@ -170,10 +178,60 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       createdAt: FieldValue.serverTimestamp(),
     }).catch(console.error);
 
-    return res.status(200).json({ feedback });
+    return res.status(200).json({ feedback, limited: isBonus });
   } catch (err) {
     await userRef.set({ usage: { monthKey, count: FieldValue.increment(-1) } }, { merge: true }).catch(console.error);
     return res.status(500).json({ error: (err as Error).message ?? 'AI analysis failed. Please try again.' });
+  }
+}
+
+function buildLimitedPrompt(essay: string, question: string, taskType: string, wordCount: number): string {
+  return `You are a professional IELTS examiner. Score this student essay. Return ONLY valid JSON — no markdown, no backticks.
+
+TASK TYPE: ${taskType}
+QUESTION: ${question}
+STUDENT ESSAY (${wordCount} words):
+${essay}
+
+Return ONLY this JSON structure:
+{
+  "taskType": "${taskType}",
+  "topic": "<2-5 word topic label>",
+  "wordCount": ${wordCount},
+  "scores": {
+    "taskAchievement": <band 4.0-9.0 in 0.5 steps>,
+    "coherenceCohesion": <band 4.0-9.0 in 0.5 steps>,
+    "lexicalResource": <band 4.0-9.0 in 0.5 steps>,
+    "grammaticalRangeAccuracy": <band 4.0-9.0 in 0.5 steps>,
+    "overall": <average rounded to nearest 0.5>
+  },
+  "feedback": {
+    "taskAchievement": {
+      "strengths": ["<1 concrete strength>"],
+      "issues": ["<1 specific issue>"]
+    }
+  },
+  "priorityFixes": ["<most important fix>"]
+}`;
+}
+
+function parseLimitedResponse(raw: string, wordCount: number, taskType: string): ParsedFeedback {
+  try {
+    const cleaned = raw.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
+    const parsed = JSON.parse(cleaned);
+    return { ...parsed, limited: true };
+  } catch {
+    return {
+      taskType,
+      topic: 'General',
+      wordCount,
+      scores: { taskAchievement: 5.5, coherenceCohesion: 5.5, lexicalResource: 5.5, grammaticalRangeAccuracy: 5.5, overall: 5.5 },
+      feedback: {
+        taskAchievement: { strengths: ['Essay addresses the task'], issues: ['See full analysis by upgrading'] },
+      },
+      priorityFixes: ['Upgrade to see detailed recommendations.'],
+      limited: true,
+    };
   }
 }
 
@@ -274,6 +332,7 @@ type ParsedFeedback = {
   sentenceAnalysis?: unknown[];
   vocabulary?: unknown[];
   grammar?: unknown[];
+  limited?: boolean;
 };
 
 function parseResponse(raw: string, wordCount: number, taskType: string): ParsedFeedback {

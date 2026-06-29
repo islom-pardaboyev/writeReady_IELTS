@@ -74,7 +74,7 @@ export async function getUsage(uid: string): Promise<UsageRecord | null> {
   const usage = snap.data()?.usage;
   const count = usage?.monthKey === yearMonth ? (usage?.count ?? 0) : 0;
   const plan: string = snap.data()?.plan ?? 'free';
-  const planLimits: Record<string, number> = { forever: 9999, premium: 30, standard: 15, basic: 6 };
+  const planLimits: Record<string, number> = { forever: 9999, premium: 30, standard: 12, basic: 5 };
   const limit = planLimits[plan] ?? 0;
   return { uid, yearMonth, count, limit, updatedAt: new Date() };
 }

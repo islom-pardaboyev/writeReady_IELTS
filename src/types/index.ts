@@ -131,6 +131,7 @@ export interface EnhancedFeedbackResult {
   sentenceAnalysis: SentenceAnalysis[];
   vocabulary: VocabItem[];
   grammar: GrammarPoint[];
+  limited?: boolean;
 }
 
 // ── Retention quiz (api/retention-check.ts) ────────────────────────────────

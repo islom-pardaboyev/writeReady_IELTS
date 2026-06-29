@@ -27,9 +27,9 @@ interface SelectedPlan {
 }
 
 const PLANS: SelectedPlan[] = [
-  { id: "basic", name: "Basic", price: "39,000", period: "so'm / oy", billingNote: "Har oyda to'lov · istalgan vaqt bekor qiling" },
-  { id: "standard", name: "Standard", price: "59,000", period: "so'm / oy", billingNote: "Har oyda to'lov · istalgan vaqt bekor qiling" },
-  { id: "premium", name: "Premium", price: "89,000", period: "so'm / oy", billingNote: "Har oyda to'lov · istalgan vaqt bekor qiling" },
+  { id: "basic", name: "Basic", price: "19,000", period: "so'm / oy", billingNote: "Har oyda to'lov · istalgan vaqt bekor qiling" },
+  { id: "standard", name: "Standard", price: "29,000", period: "so'm / oy", billingNote: "Har oyda to'lov · istalgan vaqt bekor qiling" },
+  { id: "premium", name: "Premium", price: "49,000", period: "so'm / oy", billingNote: "Har oyda to'lov · istalgan vaqt bekor qiling" },
 ];
 
 function CloseIcon() {
@@ -172,11 +172,11 @@ export function PricingPage() {
                 <div className="text-sm text-[var(--text-secondary)]">AI tahlilni sinab ko'ring</div>
               </div>
               <div className="mb-7">
-                <span className={`${FONT_MONO} text-3xl font-semibold text-[var(--text-primary)]`}>39,000</span>
+                <span className={`${FONT_MONO} text-3xl font-semibold text-[var(--text-primary)]`}>19,000</span>
                 <span className="text-sm text-[var(--text-secondary)] ml-1.5">so'm / oy</span>
               </div>
               <ul className="flex flex-col gap-2.5 mb-7 flex-1 text-[0.875rem]">
-                <li className="flex items-start gap-2.5 text-[var(--text-primary)]"><span className="text-blue-500 font-bold shrink-0 mt-px">✓</span>6 AI tahlil/oy</li>
+                <li className="flex items-start gap-2.5 text-[var(--text-primary)]"><span className="text-blue-500 font-bold shrink-0 mt-px">✓</span>5 AI tahlil/oy</li>
                 <li className="flex items-start gap-2.5 text-[var(--text-primary)]"><span className="text-blue-500 font-bold shrink-0 mt-px">✓</span>Batafsil ball tahlili</li>
                 <li className="flex items-start gap-2.5 text-[var(--text-primary)]"><span className="text-blue-500 font-bold shrink-0 mt-px">✓</span>Lug'at flashcard'lari</li>
                 <li className="flex items-start gap-2.5 text-[var(--text-primary)]"><span className="text-blue-500 font-bold shrink-0 mt-px">✓</span>Grammatika tahlili</li>
@@ -202,11 +202,11 @@ export function PricingPage() {
                 <div className="text-sm text-[var(--text-secondary)]">Ko'pchilik tanlaydigan reja</div>
               </div>
               <div className="mb-7">
-                <span className={`${FONT_MONO} text-3xl font-semibold text-blue-600`}>59,000</span>
+                <span className={`${FONT_MONO} text-3xl font-semibold text-blue-600`}>29,000</span>
                 <span className="text-sm text-[var(--text-secondary)] ml-1.5">so'm / oy</span>
               </div>
               <ul className="flex flex-col gap-2.5 mb-7 flex-1 text-[0.875rem]">
-                <li className="flex items-start gap-2.5 text-[var(--text-primary)]"><span className="text-blue-500 font-bold shrink-0 mt-px">✓</span>15 AI tahlil/oy</li>
+                <li className="flex items-start gap-2.5 text-[var(--text-primary)]"><span className="text-blue-500 font-bold shrink-0 mt-px">✓</span>12 AI tahlil/oy</li>
                 <li className="flex items-start gap-2.5 text-[var(--text-primary)]"><span className="text-blue-500 font-bold shrink-0 mt-px">✓</span>Basic dagi barcha imkoniyatlar</li>
                 <li className="flex items-start gap-2.5 text-[var(--text-primary)]"><span className="text-blue-500 font-bold shrink-0 mt-px">✓</span>Jumlalar tahlili</li>
                 <li className="flex items-start gap-2.5 text-[var(--text-primary)]"><span className="text-blue-500 font-bold shrink-0 mt-px">✓</span>Imlo tekshiruvi</li>
@@ -228,7 +228,7 @@ export function PricingPage() {
                 <div className="text-sm text-white/55">Barcha funksiyalar, maksimal tahlil</div>
               </div>
               <div className="mb-7">
-                <span className={`${FONT_MONO} text-3xl font-semibold text-white`}>89,000</span>
+                <span className={`${FONT_MONO} text-3xl font-semibold text-white`}>49,000</span>
                 <span className="text-sm text-white/50 ml-1.5">so'm / oy</span>
               </div>
               <ul className="flex flex-col gap-2.5 mb-7 flex-1 text-[0.875rem]">
