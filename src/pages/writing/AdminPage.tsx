@@ -62,8 +62,6 @@ interface LeaderEntry {
 
 type NavSection = "dashboard" | "task1" | "task2" | "users" | "leaderboard" | "announcements" | "centers" | "blog";
 
-const CREDENTIALS = { login: "2026SPRING", password: "paidOFF" };
-
 function nextMonthDate() {
   const d = new Date();
   d.setMonth(d.getMonth() + 1);
@@ -97,7 +95,7 @@ function LoginScreen({ onLogin }: { onLogin: (user: string) => void }) {
     if (!login.trim() || !password.trim()) return;
     setLoading(true); setError("");
     // Check admin credentials first
-    if (login === CREDENTIALS.login && password === CREDENTIALS.password) {
+    if (login === import.meta.env.VITE_LOGIN && password === import.meta.env.VITE_PASSWORD) {
       localStorage.setItem("adminLoggedIn", "true");
       localStorage.setItem("adminUser", login);
       setLoading(false);
