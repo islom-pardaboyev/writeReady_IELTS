@@ -341,7 +341,8 @@ export default function Admin() {
   const [viewCenter, setViewCenter] = useState<CenterRow | null>(null);
   const [centerStudents, setCenterStudents] = useState<CenterStudent[]>([]);
   const [newStudentName, setNewStudentName] = useState('');
-  const [newStudentEmail, setNewStudentEmail] = useState('');
+  const [newStudentLogin, setNewStudentLogin] = useState('');
+  const [newStudentPassword, setNewStudentPassword] = useState('');
   const [studentAdding, setStudentAdding] = useState(false);
 
   // Blog
@@ -594,46 +595,32 @@ export default function Admin() {
   };
 
   const addStudentToCenter = async () => {
-    if (!viewCenter || !newStudentName.trim() || !newStudentEmail.trim()) return;
+    if (!viewCenter || !newStudentName.trim() || !newStudentLogin.trim() || !newStudentPassword.trim()) return;
     if ((viewCenter.studentCount ?? 0) >= viewCenter.studentLimit) {
       alert('Student limit reached for this center.');
       return;
     }
     setStudentAdding(true);
     try {
+      // Check login uniqueness within center
+      const existing = await getDocs(query(collection(db, 'learningCenters', viewCenter.id, 'students'), where('login', '==', newStudentLogin.trim())));
+      if (!existing.empty) { alert('Bu login allaqachon mavjud.'); setStudentAdding(false); return; }
       await addDoc(collection(db, 'learningCenters', viewCenter.id, 'students'), {
         fullName: newStudentName.trim(),
-        email: newStudentEmail.trim().toLowerCase(),
+        login: newStudentLogin.trim(),
+        password: newStudentPassword.trim(),
         addedAt: new Date(),
       });
-      // Grant pro access in users collection if user exists
-      try {
-        const usersSnap = await getDocs(query(collection(db, 'users'), where('email', '==', newStudentEmail.trim().toLowerCase())));
-        if (!usersSnap.empty) {
-          await updateDoc(doc(db, 'users', usersSnap.docs[0].id), {
-            plan: 'pro',
-            subscription: viewCenter.expiresAt,
-          });
-        }
-      } catch (e) { console.error('User update failed:', e); }
-      setNewStudentName('');
-      setNewStudentEmail('');
+      setNewStudentName(''); setNewStudentLogin(''); setNewStudentPassword('');
       await loadCenterStudents(viewCenter.id);
       setViewCenter((prev) => prev ? { ...prev, studentCount: (prev.studentCount ?? 0) + 1 } : prev);
     } catch (e) { console.error(e); }
     setStudentAdding(false);
   };
 
-  const removeStudentFromCenter = async (centerId: string, studentId: string, studentEmail: string) => {
+  const removeStudentFromCenter = async (centerId: string, studentId: string) => {
     if (!confirm('Bu o\'quvchini o\'chirishni xohlaysizmi?')) return;
     await deleteDoc(doc(db, 'learningCenters', centerId, 'students', studentId));
-    // Revoke pro access
-    try {
-      const usersSnap = await getDocs(query(collection(db, 'users'), where('email', '==', studentEmail)));
-      if (!usersSnap.empty) {
-        await updateDoc(doc(db, 'users', usersSnap.docs[0].id), { plan: 'free', subscription: '' });
-      }
-    } catch (e) { console.error(e); }
     setCenterStudents((prev) => prev.filter((s) => s.id !== studentId));
     setViewCenter((prev) => prev ? { ...prev, studentCount: Math.max(0, (prev.studentCount ?? 1) - 1) } : prev);
   };
@@ -1636,12 +1623,13 @@ export default function Admin() {
                     {viewCenter && (
                       <div className="flex flex-col gap-4 mt-2">
                         <div className="bg-slate-50 border border-slate-200 rounded-xl p-4 flex flex-col gap-3">
-                          <p className="text-xs font-semibold text-slate-600 uppercase tracking-wide">Add Student</p>
-                          <div className="grid grid-cols-2 gap-2">
-                            <Input placeholder="Full Name" className="border-slate-200 bg-white text-slate-900" value={newStudentName} onChange={(e) => setNewStudentName(e.target.value)} />
-                            <Input placeholder="Email (Gmail)" className="border-slate-200 bg-white text-slate-900" value={newStudentEmail} onChange={(e) => setNewStudentEmail(e.target.value)} />
+                          <p className="text-xs font-semibold text-slate-600 uppercase tracking-wide">O'quvchi qo'shish</p>
+                          <div className="grid grid-cols-3 gap-2">
+                            <Input placeholder="Ism familiya" className="border-slate-200 bg-white text-slate-900" value={newStudentName} onChange={(e) => setNewStudentName(e.target.value)} />
+                            <Input placeholder="Login" className="border-slate-200 bg-white text-slate-900" value={newStudentLogin} onChange={(e) => setNewStudentLogin(e.target.value)} />
+                            <Input placeholder="Parol" className="border-slate-200 bg-white text-slate-900" value={newStudentPassword} onChange={(e) => setNewStudentPassword(e.target.value)} />
                           </div>
-                          <button disabled={studentAdding || !newStudentName.trim() || !newStudentEmail.trim()} onClick={addStudentToCenter}
+                          <button disabled={studentAdding || !newStudentName.trim() || !newStudentLogin.trim() || !newStudentPassword.trim()} onClick={addStudentToCenter}
                             className="self-start px-4 py-2 bg-teal-600 text-white rounded-lg text-sm font-semibold hover:bg-teal-700 transition-colors disabled:opacity-50 cursor-pointer">
                             {studentAdding ? "Qo'shilmoqda..." : '+ Add Student'}
                           </button>
@@ -1654,22 +1642,22 @@ export default function Admin() {
                             <table className="w-full text-sm">
                               <thead>
                                 <tr className="bg-slate-50 border-b border-slate-100">
-                                  <th className="px-4 py-2.5 text-left text-xs font-bold text-slate-500 uppercase tracking-wider">Full Name</th>
-                                  <th className="px-4 py-2.5 text-left text-xs font-bold text-slate-500 uppercase tracking-wider">Email</th>
-                                  <th className="px-4 py-2.5 text-left text-xs font-bold text-slate-500 uppercase tracking-wider">Added</th>
-                                  <th className="px-4 py-2.5 text-right text-xs font-bold text-slate-500 uppercase tracking-wider">Action</th>
+                                  <th className="px-4 py-2.5 text-left text-xs font-bold text-slate-500 uppercase tracking-wider">Ism</th>
+                                  <th className="px-4 py-2.5 text-left text-xs font-bold text-slate-500 uppercase tracking-wider">Login</th>
+                                  <th className="px-4 py-2.5 text-left text-xs font-bold text-slate-500 uppercase tracking-wider">Qo'shildi</th>
+                                  <th className="px-4 py-2.5 text-right text-xs font-bold text-slate-500 uppercase tracking-wider">Amal</th>
                                 </tr>
                               </thead>
                               <tbody className="divide-y divide-slate-100">
                                 {centerStudents.map((s) => (
                                   <tr key={s.id} className="hover:bg-slate-50">
                                     <td className="px-4 py-3 font-medium text-slate-800">{s.fullName}</td>
-                                    <td className="px-4 py-3 text-slate-600 text-xs">{s.email}</td>
+                                    <td className="px-4 py-3 text-slate-600 text-xs font-mono">{(s as unknown as Record<string,unknown>).login as string ?? s.email}</td>
                                     <td className="px-4 py-3 text-slate-400 text-xs">{s.addedAt ? new Date(s.addedAt).toLocaleDateString('en-GB') : '—'}</td>
                                     <td className="px-4 py-3 text-right">
-                                      <button onClick={() => removeStudentFromCenter(viewCenter.id, s.id, s.email)}
+                                      <button onClick={() => removeStudentFromCenter(viewCenter.id, s.id)}
                                         className="text-xs px-2.5 py-1 bg-red-50 text-red-600 border border-red-200 rounded-lg hover:bg-red-100 transition-colors cursor-pointer">
-                                        Remove
+                                        O'chirish
                                       </button>
                                     </td>
                                   </tr>

@@ -7,7 +7,6 @@ import {
   doc,
   query,
   where,
-  updateDoc,
 } from "firebase/firestore";
 import { db } from "@/firebase/firebase";
 import { Input } from "@/components/ui/input";
@@ -167,7 +166,8 @@ export default function CenterAdminPage() {
   const [studentsLoading, setStudentsLoading] = useState(false);
   const [addDialog, setAddDialog] = useState(false);
   const [newName, setNewName] = useState("");
-  const [newEmail, setNewEmail] = useState("");
+  const [newLogin, setNewLogin] = useState("");
+  const [newPass, setNewPass] = useState("");
   const [addingStudent, setAddingStudent] = useState(false);
 
   // Analytics
@@ -324,44 +324,31 @@ export default function CenterAdminPage() {
   };
 
   const addStudent = async () => {
-    if (!newName.trim() || !newEmail.trim()) return;
+    if (!newName.trim() || !newLogin.trim() || !newPass.trim()) return;
     if (students.length >= (centerData?.studentLimit ?? 30)) {
       alert("Student limit reached.");
       return;
     }
     setAddingStudent(true);
     try {
+      // Check login uniqueness
+      const existing = await getDocs(query(collection(db, "learningCenters", centerId, "students"), where("login", "==", newLogin.trim())));
+      if (!existing.empty) { alert("Bu login allaqachon mavjud."); setAddingStudent(false); return; }
       await addDoc(collection(db, "learningCenters", centerId, "students"), {
         fullName: newName.trim(),
-        email: newEmail.trim().toLowerCase(),
+        login: newLogin.trim(),
+        password: newPass.trim(),
         addedAt: new Date(),
       });
-      // Grant pro access
-      try {
-        const usersSnap = await getDocs(query(collection(db, "users"), where("email", "==", newEmail.trim().toLowerCase())));
-        if (!usersSnap.empty && centerData) {
-          await updateDoc(doc(db, "users", usersSnap.docs[0].id), {
-            plan: "pro",
-            subscription: centerData.expiresAt,
-          });
-        }
-      } catch (e) { console.error(e); }
-      setNewName(""); setNewEmail(""); setAddDialog(false);
+      setNewName(""); setNewLogin(""); setNewPass(""); setAddDialog(false);
       await loadStudents(centerId);
     } catch (e) { console.error(e); }
     setAddingStudent(false);
   };
 
-  const removeStudent = async (studentId: string, email: string) => {
-    if (!confirm("Remove this student?")) return;
+  const removeStudent = async (studentId: string) => {
+    if (!confirm("Bu o'quvchini o'chirishni xohlaysizmi?")) return;
     await deleteDoc(doc(db, "learningCenters", centerId, "students", studentId));
-    // Revoke pro access
-    try {
-      const usersSnap = await getDocs(query(collection(db, "users"), where("email", "==", email)));
-      if (!usersSnap.empty) {
-        await updateDoc(doc(db, "users", usersSnap.docs[0].id), { plan: "free", subscription: "" });
-      }
-    } catch (e) { console.error(e); }
     setStudents((prev) => prev.filter((s) => s.id !== studentId));
   };
 
@@ -489,10 +476,10 @@ export default function CenterAdminPage() {
                   <table className="w-full text-sm">
                     <thead>
                       <tr className="border-b border-slate-100 bg-slate-50">
-                        <th className="px-4 py-3 text-left text-xs font-bold text-slate-500 uppercase tracking-wider">Full Name</th>
-                        <th className="px-4 py-3 text-left text-xs font-bold text-slate-500 uppercase tracking-wider">Email</th>
-                        <th className="px-4 py-3 text-left text-xs font-bold text-slate-500 uppercase tracking-wider">Added</th>
-                        <th className="px-4 py-3 text-right text-xs font-bold text-slate-500 uppercase tracking-wider">Action</th>
+                        <th className="px-4 py-3 text-left text-xs font-bold text-slate-500 uppercase tracking-wider">Ism</th>
+                        <th className="px-4 py-3 text-left text-xs font-bold text-slate-500 uppercase tracking-wider">Login</th>
+                        <th className="px-4 py-3 text-left text-xs font-bold text-slate-500 uppercase tracking-wider">Qo'shildi</th>
+                        <th className="px-4 py-3 text-right text-xs font-bold text-slate-500 uppercase tracking-wider">Amal</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-slate-100">
@@ -506,11 +493,11 @@ export default function CenterAdminPage() {
                               <span className="font-medium text-slate-800">{s.fullName}</span>
                             </div>
                           </td>
-                          <td className="px-4 py-3 text-slate-600 text-xs">{s.email}</td>
+                          <td className="px-4 py-3 text-slate-600 text-xs font-mono">{(s as unknown as Record<string,unknown>).login as string ?? '—'}</td>
                           <td className="px-4 py-3 text-slate-400 text-xs">{formatDate(s.addedAt)}</td>
                           <td className="px-4 py-3 text-right">
                             <button
-                              onClick={() => removeStudent(s.id, s.email)}
+                              onClick={() => removeStudent(s.id)}
                               className="text-xs px-2.5 py-1 bg-red-50 text-red-600 border border-red-200 rounded-lg hover:bg-red-100 transition-colors cursor-pointer border-none">
                               Remove
                             </button>
@@ -523,30 +510,35 @@ export default function CenterAdminPage() {
               )}
 
               {/* Add student dialog */}
-              <Dialog open={addDialog} onOpenChange={(open) => { if (!open) setAddDialog(false); }}>
+              <Dialog open={addDialog} onOpenChange={(open) => { if (!open) { setAddDialog(false); setNewName(""); setNewLogin(""); setNewPass(""); } }}>
                 <DialogContent className="bg-white max-w-[440px]">
                   <DialogHeader>
-                    <DialogTitle className="text-slate-900">Add Student</DialogTitle>
+                    <DialogTitle className="text-slate-900">O'quvchi qo'shish</DialogTitle>
                   </DialogHeader>
                   <div className="flex flex-col gap-4 mt-2">
                     <div>
-                      <label className="text-xs font-semibold text-slate-600 mb-1 block uppercase tracking-wide">Full Name</label>
-                      <Input className="border-slate-200 bg-white text-slate-900" placeholder="John Doe" value={newName} onChange={(e) => setNewName(e.target.value)} />
+                      <label className="text-xs font-semibold text-slate-600 mb-1 block uppercase tracking-wide">Ism Familiya</label>
+                      <Input className="border-slate-200 bg-white text-slate-900" placeholder="Ali Valiyev" value={newName} onChange={(e) => setNewName(e.target.value)} />
                     </div>
                     <div>
-                      <label className="text-xs font-semibold text-slate-600 mb-1 block uppercase tracking-wide">Email (Gmail)</label>
-                      <Input className="border-slate-200 bg-white text-slate-900" placeholder="student@gmail.com" value={newEmail} onChange={(e) => setNewEmail(e.target.value)} />
+                      <label className="text-xs font-semibold text-slate-600 mb-1 block uppercase tracking-wide">Login</label>
+                      <Input className="border-slate-200 bg-white text-slate-900" placeholder="ali_valiyev" value={newLogin} onChange={(e) => setNewLogin(e.target.value)} />
                     </div>
+                    <div>
+                      <label className="text-xs font-semibold text-slate-600 mb-1 block uppercase tracking-wide">Parol</label>
+                      <Input className="border-slate-200 bg-white text-slate-900" placeholder="Kamida 6 ta belgi" value={newPass} onChange={(e) => setNewPass(e.target.value)} />
+                    </div>
+                    <p className="text-xs text-slate-400">Bu login va parolni o'quvchi saytga kirish uchun ishlatadi.</p>
                     <div className="flex gap-3">
                       <button
-                        disabled={addingStudent || !newName.trim() || !newEmail.trim()}
+                        disabled={addingStudent || !newName.trim() || !newLogin.trim() || !newPass.trim()}
                         onClick={addStudent}
                         className="flex-1 bg-teal-600 text-white rounded-lg py-2.5 font-semibold text-sm cursor-pointer hover:bg-teal-700 transition-colors disabled:opacity-50 border-none">
-                        {addingStudent ? "Adding..." : "Add Student"}
+                        {addingStudent ? "Qo'shilmoqda..." : "Qo'shish"}
                       </button>
                       <button onClick={() => setAddDialog(false)}
                         className="flex-1 bg-white text-slate-700 border border-slate-200 rounded-lg py-2.5 font-semibold text-sm cursor-pointer hover:bg-slate-50 transition-colors">
-                        Cancel
+                        Bekor
                       </button>
                     </div>
                   </div>

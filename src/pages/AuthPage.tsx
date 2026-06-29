@@ -6,15 +6,20 @@ import { Button } from '../components/ui/Button';
 import { Card } from '../components/ui/Card';
 import { Input } from '../components/ui/input';
 import { Label } from '../components/ui/label';
+import { collection, getDocs, query, where, setDoc, doc, serverTimestamp } from 'firebase/firestore';
+import { db } from '../firebase/config';
+import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword } from 'firebase/auth';
 
-type Mode = 'login' | 'signup';
+type Mode = 'login' | 'signup' | 'student';
 
 export function AuthPage() {
   const [params] = useSearchParams();
-  const initialMode: Mode = params.get('mode') === 'signup' ? 'signup' : 'login';
+  const initialMode: Mode = params.get('mode') === 'signup' ? 'signup' : params.get('mode') === 'student' ? 'student' : 'login';
   const [mode, setMode] = useState<Mode>(initialMode);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [studentLogin, setStudentLogin] = useState('');
+  const [studentPassword, setStudentPassword] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const { signIn, signUp, signInWithGoogle, user } = useAuth();
@@ -54,6 +59,83 @@ export function AuthPage() {
     }
   };
 
+  const handleStudentLogin = async (e: FormEvent) => {
+    e.preventDefault();
+    setError('');
+    setLoading(true);
+    const fakeEmail = `${studentLogin.trim().toLowerCase()}@writeready.student`;
+    const firebaseAuth = getAuth();
+    try {
+      // Try signing in first (returning student)
+      try {
+        await signInWithEmailAndPassword(firebaseAuth, fakeEmail, studentPassword);
+        navigate('/dashboard');
+        return;
+      } catch {
+        // Not registered yet — check if this login exists in any active center
+      }
+      // Find student login in learningCenters subcollections
+      const centersSnap = await getDocs(collection(db, 'learningCenters'));
+      let foundCenter: { id: string; name: string; expiresAt: unknown; status: string } | null = null;
+      let foundStudentDocId: string | null = null;
+      for (const centerDoc of centersSnap.docs) {
+        const cData = centerDoc.data();
+        if (cData.status !== 'active') continue;
+        const studentsSnap = await getDocs(
+          query(collection(db, 'learningCenters', centerDoc.id, 'students'), where('login', '==', studentLogin.trim()))
+        );
+        if (!studentsSnap.empty) {
+          const sDoc = studentsSnap.docs[0];
+          const sData = sDoc.data();
+          if (sData.password !== studentPassword) {
+            setError('Login yoki parol noto\'g\'ri.');
+            setLoading(false);
+            return;
+          }
+          foundCenter = { id: centerDoc.id, name: cData.name, expiresAt: cData.expiresAt, status: cData.status };
+          foundStudentDocId = sDoc.id;
+          break;
+        }
+      }
+      if (!foundCenter || !foundStudentDocId) {
+        setError('Bunday login topilmadi. O\'quv markazingizdan login/parolni oling.');
+        setLoading(false);
+        return;
+      }
+      // Check expiry
+      if (foundCenter.expiresAt) {
+        const exp = foundCenter.expiresAt instanceof Date ? foundCenter.expiresAt : new Date(foundCenter.expiresAt as string);
+        if (exp < new Date()) {
+          setError('O\'quv markazingizning muddati tugagan.');
+          setLoading(false);
+          return;
+        }
+      }
+      // Create Firebase Auth account
+      const cred = await createUserWithEmailAndPassword(firebaseAuth, fakeEmail, studentPassword);
+      const uid = cred.user.uid;
+      // Create user doc
+      await setDoc(doc(db, 'users', uid), {
+        email: fakeEmail,
+        studentLogin: studentLogin.trim(),
+        plan: 'pro',
+        subscriptionExpiresAt: foundCenter.expiresAt ?? null,
+        centerId: foundCenter.id,
+        centerName: foundCenter.name,
+        createdAt: serverTimestamp(),
+        bonusAnalyses: 0,
+      });
+      // Update student doc with uid
+      await setDoc(doc(db, 'learningCenters', foundCenter.id, 'students', foundStudentDocId), { uid }, { merge: true });
+      navigate('/dashboard');
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : 'Xatolik yuz berdi';
+      setError(msg.replace('Firebase: ', '').replace(/\(auth\/.*\)\.?/, '').trim());
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const handleGoogle = async () => {
     setError('');
     setLoading(true);
@@ -85,7 +167,7 @@ export function AuthPage() {
           <Card className="p-8">
             {/* Mode tabs */}
             <div className="flex rounded-[10px] bg-[var(--bg-subtle)] p-1 mb-6 gap-1">
-              {(['login', 'signup'] as Mode[]).map((m) => (
+              {(['login', 'signup', 'student'] as Mode[]).map((m) => (
                 <button
                   key={m}
                   onClick={() => { setMode(m); setError(''); }}
@@ -95,16 +177,20 @@ export function AuthPage() {
                       : 'bg-transparent text-[var(--text-secondary)]'
                   }`}
                 >
-                  {m === 'login' ? 'Sign In' : 'Sign Up'}
+                  {m === 'login' ? 'Sign In' : m === 'signup' ? 'Sign Up' : '🏫 Student'}
                 </button>
               ))}
             </div>
 
             <h2 className="font-[Fraunces,serif] text-2xl mb-1 text-center text-[var(--text-primary)]">
-              {mode === 'login' ? 'Welcome back' : 'Create account'}
+              {mode === 'login' ? 'Welcome back' : mode === 'signup' ? 'Create account' : 'Student Login'}
             </h2>
             <p className="text-center text-[var(--text-secondary)] text-sm mb-6">
-              {mode === 'login' ? 'Sign in to continue your IELTS prep' : 'Start practicing for free'}
+              {mode === 'login'
+                ? 'Sign in to continue your IELTS prep'
+                : mode === 'signup'
+                ? 'Start practicing for free'
+                : 'O\'quv markazingiz bergan login va parolni kiriting'}
             </p>
 
             {error && (
@@ -113,49 +199,85 @@ export function AuthPage() {
               </div>
             )}
 
-            <form onSubmit={handleSubmit} className="flex flex-col gap-4">
-              <div className="flex flex-col gap-1.5">
-                <Label htmlFor="auth-email" className="font-semibold">Email</Label>
-                <Input
-                  id="auth-email"
-                  type="email"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  required
-                  placeholder="you@example.com"
-                />
-              </div>
-              <div className="flex flex-col gap-1.5">
-                <Label htmlFor="auth-password" className="font-semibold">Password</Label>
-                <Input
-                  id="auth-password"
-                  type="password"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  required
-                  placeholder={mode === 'signup' ? 'At least 6 characters' : '••••••••'}
-                  minLength={6}
-                />
-              </div>
-              <Button type="submit" loading={loading} size="lg" className="w-full mt-1 bg-blue-700">
-                {mode === 'login' ? 'Sign In' : 'Create Account'}
-              </Button>
-            </form>
+            {mode === 'student' ? (
+              <form onSubmit={handleStudentLogin} className="flex flex-col gap-4">
+                <div className="flex flex-col gap-1.5">
+                  <Label htmlFor="s-login" className="font-semibold">Login</Label>
+                  <Input
+                    id="s-login"
+                    type="text"
+                    value={studentLogin}
+                    onChange={(e) => setStudentLogin(e.target.value)}
+                    required
+                    placeholder="O'quv markaz bergan login"
+                    autoComplete="username"
+                  />
+                </div>
+                <div className="flex flex-col gap-1.5">
+                  <Label htmlFor="s-pass" className="font-semibold">Parol</Label>
+                  <Input
+                    id="s-pass"
+                    type="password"
+                    value={studentPassword}
+                    onChange={(e) => setStudentPassword(e.target.value)}
+                    required
+                    placeholder="O'quv markaz bergan parol"
+                  />
+                </div>
+                <Button type="submit" loading={loading} size="lg" className="w-full mt-1 bg-emerald-600 hover:bg-emerald-700">
+                  Kirish
+                </Button>
+                <p className="text-center text-xs text-[var(--text-secondary)]">
+                  Login va parolni o'quv markazingizdan oling
+                </p>
+              </form>
+            ) : (
+              <>
+                <form onSubmit={handleSubmit} className="flex flex-col gap-4">
+                  <div className="flex flex-col gap-1.5">
+                    <Label htmlFor="auth-email" className="font-semibold">Email</Label>
+                    <Input
+                      id="auth-email"
+                      type="email"
+                      value={email}
+                      onChange={(e) => setEmail(e.target.value)}
+                      required
+                      placeholder="you@example.com"
+                    />
+                  </div>
+                  <div className="flex flex-col gap-1.5">
+                    <Label htmlFor="auth-password" className="font-semibold">Password</Label>
+                    <Input
+                      id="auth-password"
+                      type="password"
+                      value={password}
+                      onChange={(e) => setPassword(e.target.value)}
+                      required
+                      placeholder={mode === 'signup' ? 'At least 6 characters' : '••••••••'}
+                      minLength={6}
+                    />
+                  </div>
+                  <Button type="submit" loading={loading} size="lg" className="w-full mt-1 bg-blue-700">
+                    {mode === 'login' ? 'Sign In' : 'Create Account'}
+                  </Button>
+                </form>
 
-            <div className="flex items-center gap-3 my-5">
-              <div className="flex-1 h-px bg-[var(--border-color)]" />
-              <span className="text-[0.75rem] text-[var(--text-secondary)]">or</span>
-              <div className="flex-1 h-px bg-[var(--border-color)]" />
-            </div>
+                <div className="flex items-center gap-3 my-5">
+                  <div className="flex-1 h-px bg-[var(--border-color)]" />
+                  <span className="text-[0.75rem] text-[var(--text-secondary)]">or</span>
+                  <div className="flex-1 h-px bg-[var(--border-color)]" />
+                </div>
 
-            <button
-              onClick={handleGoogle}
-              disabled={loading}
-              className="w-full px-5 py-[0.625rem] border-[1.5px] border-[var(--border-color)] rounded-[10px] bg-[var(--bg-card)] text-sm font-medium text-[var(--text-primary)] flex items-center justify-center gap-2 cursor-pointer hover:bg-[var(--bg-subtle)] transition-colors"
-            >
-              <GoogleIcon />
-              Continue with Google
-            </button>
+                <button
+                  onClick={handleGoogle}
+                  disabled={loading}
+                  className="w-full px-5 py-[0.625rem] border-[1.5px] border-[var(--border-color)] rounded-[10px] bg-[var(--bg-card)] text-sm font-medium text-[var(--text-primary)] flex items-center justify-center gap-2 cursor-pointer hover:bg-[var(--bg-subtle)] transition-colors"
+                >
+                  <GoogleIcon />
+                  Continue with Google
+                </button>
+              </>
+            )}
           </Card>
         </div>
       </div>
