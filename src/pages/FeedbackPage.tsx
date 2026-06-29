@@ -213,7 +213,7 @@ export function FeedbackPage() {
     if (user === null) navigate('/auth');
   }, [user, navigate]);
 
-  const isPro = profile?.plan === 'pro' || profile?.plan === 'forever';
+  const isPro = profile?.plan === 'basic' || profile?.plan === 'standard' || profile?.plan === 'premium' || profile?.plan === 'forever';
 
   const loadFeedback = useCallback(async () => {
     if (!reportData || !user) return;

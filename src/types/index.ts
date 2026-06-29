@@ -1,4 +1,4 @@
-export type Plan = 'free' | 'pro' | 'forever';
+export type Plan = 'free' | 'basic' | 'standard' | 'premium' | 'forever';
 export type PracticeMode = 'mock' | 'practice' | 'relax';
 export type TaskType = 'task1' | 'task2';
 

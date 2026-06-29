@@ -26,29 +26,24 @@ function SubscriptionBadge({
       </span>
     );
   }
-  if (plan === "pro") {
+  if (plan === "premium") {
     return (
-      <span className="inline-flex items-center gap-1 text-[0.65rem] font-bold uppercase tracking-wider bg-green-50 text-green-700 border border-green-200 rounded-full px-2 py-0.5 dark:bg-green-900/30 dark:text-green-300 dark:border-green-700">
-        ✓ PRO
+      <span className="inline-flex items-center gap-1 text-[0.65rem] font-bold uppercase tracking-wider bg-purple-50 text-purple-700 border border-purple-200 rounded-full px-2 py-0.5 dark:bg-purple-900/30 dark:text-purple-300 dark:border-purple-700">
+        ✓ PREMIUM
       </span>
     );
   }
-  if (
-    subscription &&
-    subscription !== "" &&
-    new Date(subscription) > new Date()
-  ) {
-    const exp = new Date(subscription);
-    const months = Math.round(
-      (exp.getTime() - Date.now()) / (1000 * 60 * 60 * 24 * 30),
-    );
-    const label =
-      months <= 1
-        ? exp.toLocaleDateString("en-GB", { day: "numeric", month: "short" })
-        : `${months}m`;
+  if (plan === "standard") {
     return (
       <span className="inline-flex items-center gap-1 text-[0.65rem] font-bold uppercase tracking-wider bg-blue-50 text-blue-700 border border-blue-200 rounded-full px-2 py-0.5 dark:bg-blue-900/30 dark:text-blue-300 dark:border-blue-700">
-        ✓ Active ({label})
+        ⭐ STANDARD
+      </span>
+    );
+  }
+  if (plan === "basic") {
+    return (
+      <span className="inline-flex items-center gap-1 text-[0.65rem] font-bold uppercase tracking-wider bg-blue-50 text-blue-700 border border-blue-200 rounded-full px-2 py-0.5 dark:bg-blue-900/30 dark:text-blue-300 dark:border-blue-700">
+        ✓ BASIC
       </span>
     );
   }
@@ -179,13 +174,13 @@ export function Header() {
                   </Link>
                 </DropdownMenuItem>
 
-                {profile?.plan === "free" && (
+                {(profile?.plan === "free" || !profile) && (
                   <DropdownMenuItem asChild>
                     <Link
                       to="/pricing"
                       className="flex items-center gap-2.5 px-3 py-2 text-sm text-amber-700 font-semibold no-underline cursor-pointer hover:bg-amber-50 rounded-md mx-1 dark:text-amber-400 dark:hover:bg-amber-900/20"
                     >
-                      <span>⭐</span> Upgrade to Pro
+                      <span>⭐</span> Rejani yangilash
                     </Link>
                   </DropdownMenuItem>
                 )}

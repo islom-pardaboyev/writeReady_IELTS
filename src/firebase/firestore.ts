@@ -27,16 +27,16 @@ export async function getUserProfile(uid: string): Promise<UserProfile | null> {
   const d = snap.data();
   const subscription: string = d.subscription ?? '';
 
-  // Derive effective plan from subscription field (date string or 'forever')
+  // Derive effective plan from plan field stored directly in Firestore
   let plan: Plan = 'free';
-  if (subscription === 'forever' || d.plan === 'forever') {
+  if (d.plan === 'forever' || subscription === 'forever') {
     plan = 'forever';
-  } else if (
-    (subscription && new Date(subscription) > new Date()) ||
-    d.plan === 'pro' ||
-    (d.subscriptionExpiresAt && new Date(d.subscriptionExpiresAt) > new Date())
-  ) {
-    plan = 'pro';
+  } else if (d.plan === 'premium') {
+    plan = 'premium';
+  } else if (d.plan === 'standard') {
+    plan = 'standard';
+  } else if (d.plan === 'basic') {
+    plan = 'basic';
   }
 
   return {
@@ -73,7 +73,10 @@ export async function getUsage(uid: string): Promise<UsageRecord | null> {
   if (!snap.exists()) return null;
   const usage = snap.data()?.usage;
   const count = usage?.monthKey === yearMonth ? (usage?.count ?? 0) : 0;
-  return { uid, yearMonth, count, limit: 12, updatedAt: new Date() };
+  const plan: string = snap.data()?.plan ?? 'free';
+  const planLimits: Record<string, number> = { forever: 9999, premium: 30, standard: 15, basic: 6 };
+  const limit = planLimits[plan] ?? 0;
+  return { uid, yearMonth, count, limit, updatedAt: new Date() };
 }
 
 export async function getQuestions(count = 10): Promise<Question[]> {

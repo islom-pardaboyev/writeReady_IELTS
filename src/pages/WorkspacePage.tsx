@@ -55,7 +55,7 @@ export function WorkspacePage() {
     if (mode !== 'mock') { setStarted(true); return; }
   }, [mode]);
 
-  const isPro = profile?.plan === 'pro' || profile?.plan === 'forever';
+  const isPro = profile?.plan === 'basic' || profile?.plan === 'standard' || profile?.plan === 'premium' || profile?.plan === 'forever';
   const wordCount = essay.trim() ? essay.trim().split(/\s+/).length : 0;
   const mins = Math.floor(timeLeft / 60);
   const secs = timeLeft % 60;

@@ -64,17 +64,16 @@ interface LeaderEntry {
 
 type NavSection = "dashboard" | "task1" | "task2" | "users" | "leaderboard" | "announcements" | "centers" | "blog";
 
-function nextMonthDate() {
-  const d = new Date();
-  d.setMonth(d.getMonth() + 1);
-  return d.toISOString().slice(0, 10);
-}
 
 function planBadge(plan: string, subscription?: string) {
   if (subscription === "forever" || plan === "forever")
     return { label: "Lifetime", cls: "bg-amber-50 text-amber-700 border border-amber-200" };
-  if (plan === "pro" || (subscription && new Date(subscription) > new Date()))
-    return { label: "Pro", cls: "bg-blue-50 text-blue-700 border border-blue-200" };
+  if (plan === "premium")
+    return { label: "Premium", cls: "bg-purple-50 text-purple-700 border border-purple-200" };
+  if (plan === "standard")
+    return { label: "Standard", cls: "bg-blue-50 text-blue-700 border border-blue-200" };
+  if (plan === "basic")
+    return { label: "Basic", cls: "bg-blue-50 text-blue-600 border border-blue-200" };
   return { label: "Free", cls: "bg-slate-100 text-slate-500 border border-slate-200" };
 }
 
@@ -798,20 +797,24 @@ export default function Admin() {
   };
 
   // ── User subscription ──
-  const setSubscription = async (user: UserRow, type: "month" | "forever" | "free") => {
+  const setSubscription = async (user: UserRow, type: "basic" | "standard" | "premium" | "forever" | "free") => {
     setUserActionLoading(true); setUserError(""); setUserSuccess("");
     try {
       const updates =
-        type === "forever" ? { subscription: "forever", plan: "forever" } :
-        type === "month"   ? { subscription: nextMonthDate(), plan: "pro" } :
-                             { subscription: "", plan: "free" };
+        type === "forever"  ? { plan: "forever", subscription: "forever" } :
+        type === "premium"  ? { plan: "premium", subscription: "" } :
+        type === "standard" ? { plan: "standard", subscription: "" } :
+        type === "basic"    ? { plan: "basic", subscription: "" } :
+                              { plan: "free", subscription: "" };
       await updateDoc(doc(db, "users", user.id), updates);
       setAllUsers((p) => p.map((u) => u.id === user.id ? { ...u, ...updates } : u));
       if (selectedUser?.id === user.id) setSelectedUser((p) => p ? { ...p, ...updates } : null);
       setUserSuccess(
-        type === "forever" ? "Lifetime access granted!" :
-        type === "month"   ? `Pro extended until ${nextMonthDate()}` :
-                             "Subscription revoked — user set to Free."
+        type === "forever"  ? "Lifetime access granted!" :
+        type === "premium"  ? "Premium plan activated!" :
+        type === "standard" ? "Standard plan activated!" :
+        type === "basic"    ? "Basic plan activated!" :
+                              "Plan revoked — user set to Free."
       );
     } catch { setUserError("Failed to update subscription."); }
     finally { setUserActionLoading(false); }
@@ -830,7 +833,7 @@ export default function Admin() {
   const filteredUsers = allUsers.filter((u) =>
     u.email.toLowerCase().includes(userSearch.toLowerCase())
   );
-  const proCount = allUsers.filter((u) => u.plan === "pro" || u.plan === "forever" || (u.subscription && u.subscription !== "" && new Date(u.subscription) > new Date())).length;
+  const proCount = allUsers.filter((u) => u.plan === "basic" || u.plan === "standard" || u.plan === "premium" || u.plan === "forever").length;
   const lifetimeCount = allUsers.filter((u) => u.subscription === "forever" || u.plan === "forever").length;
   const todayStr = new Date().toISOString().slice(0, 10);
   const todayCount = allUsers.filter((u) => u.createdAt?.slice(0, 10) === todayStr).length;
@@ -1173,8 +1176,8 @@ export default function Admin() {
                         <tbody className="divide-y divide-slate-100">
                           {filteredUsers.map((u) => {
                             const b = planBadge(u.plan, u.subscription);
-                            const expiry = u.subscription === "forever" ? "Lifetime ♾️" : formatDate(u.subscription) ? `${formatDate(u.subscription)}` : "—";
-                            const isExpired = u.subscription && u.subscription !== "forever" && new Date(u.subscription) < new Date();
+                            const expiry = (u.plan === "forever" || u.subscription === "forever") ? "Lifetime ♾️" : ["basic","standard","premium"].includes(u.plan) ? u.plan.charAt(0).toUpperCase()+u.plan.slice(1) : "—";
+                            const isExpired = false;
                             return (
                               <tr
                                 key={u.id}
@@ -1208,10 +1211,10 @@ export default function Admin() {
                       <div>
                         <p className="font-bold text-slate-900 text-sm">{selectedUser.email}</p>
                         <p className="text-xs text-slate-500">
-                          {selectedUser.subscription === "forever"
+                          {selectedUser.plan === "forever" || selectedUser.subscription === "forever"
                             ? "Lifetime — never expires"
-                            : formatDate(selectedUser.subscription)
-                            ? `Expires: ${formatDate(selectedUser.subscription)}`
+                            : ["basic", "standard", "premium"].includes(selectedUser.plan)
+                            ? `Active ${selectedUser.plan} plan`
                             : "No active subscription"}
                         </p>
                       </div>
@@ -1220,28 +1223,42 @@ export default function Admin() {
                       </span>
                     </div>
                     <div>
-                      <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">Subscription o'zgartirish</p>
+                      <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">Reja o'zgartirish</p>
                       <div className="flex gap-2 flex-wrap">
                         <button
-                          onClick={() => setSubscription(selectedUser, "month")}
+                          onClick={() => setSubscription(selectedUser, "basic")}
+                          disabled={userActionLoading}
+                          className="bg-blue-500 text-white border-none rounded-lg px-4 py-2 text-xs font-semibold cursor-pointer hover:bg-blue-600 transition-colors disabled:opacity-50"
+                        >
+                          Basic (39,000)
+                        </button>
+                        <button
+                          onClick={() => setSubscription(selectedUser, "standard")}
                           disabled={userActionLoading}
                           className="bg-blue-700 text-white border-none rounded-lg px-4 py-2 text-xs font-semibold cursor-pointer hover:bg-blue-800 transition-colors disabled:opacity-50"
                         >
-                          + 1 Month Pro
+                          Standard (59,000)
+                        </button>
+                        <button
+                          onClick={() => setSubscription(selectedUser, "premium")}
+                          disabled={userActionLoading}
+                          className="bg-purple-600 text-white border-none rounded-lg px-4 py-2 text-xs font-semibold cursor-pointer hover:bg-purple-700 transition-colors disabled:opacity-50"
+                        >
+                          Premium (89,000)
                         </button>
                         <button
                           onClick={() => setSubscription(selectedUser, "forever")}
                           disabled={userActionLoading}
                           className="bg-amber-600 text-white border-none rounded-lg px-4 py-2 text-xs font-semibold cursor-pointer hover:bg-amber-700 transition-colors disabled:opacity-50"
                         >
-                          Lifetime Forever
+                          Lifetime ♾️
                         </button>
                         <button
                           onClick={() => setSubscription(selectedUser, "free")}
                           disabled={userActionLoading}
                           className="bg-white text-red-500 border border-red-300 rounded-lg px-4 py-2 text-xs font-semibold cursor-pointer hover:bg-red-50 transition-colors disabled:opacity-50"
                         >
-                          Revoke to Free
+                          Bepulga o'tish
                         </button>
                       </div>
                     </div>

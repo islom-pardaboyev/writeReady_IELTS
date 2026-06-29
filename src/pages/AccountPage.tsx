@@ -18,11 +18,6 @@ const PRO_FEATURES = [
   'High-level sample essays',
 ];
 
-function isProSubscription(subscription?: string): boolean {
-  if (!subscription) return false;
-  if (subscription === 'forever') return true;
-  return new Date(subscription) > new Date();
-}
 
 export function AccountPage() {
   const { user, profile, logOut } = useAuth();
@@ -52,7 +47,7 @@ export function AccountPage() {
 
   if (!user || !profile) return null;
 
-  const isPro = isProSubscription(profile.subscription) || profile.plan === 'pro' || profile.plan === 'forever';
+  const isPro = profile.plan === 'basic' || profile.plan === 'standard' || profile.plan === 'premium' || profile.plan === 'forever';
   const isForever = profile.subscription === 'forever' || profile.plan === 'forever';
   const displayName = user.displayName || user.email?.split('@')[0] || 'User';
   const initials = displayName.slice(0, 2).toUpperCase();

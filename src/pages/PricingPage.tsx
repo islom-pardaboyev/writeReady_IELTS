@@ -9,24 +9,6 @@ import { useAuth } from "../hooks/useAuth";
 
 gsap.registerPlugin(ScrollTrigger);
 
-const FREE_FEATURES = [
-  "All 3 practice modes (Mock, Practice, Relax)",
-  "Full question bank access",
-  "Word count & timer tools",
-  "Writing history",
-];
-
-const PRO_FEATURES = [
-  "Everything in Free",
-  "12 AI analyses per month",
-  "Sentence-by-sentence feedback",
-  "Vocabulary upgrades with Uzbek meanings",
-  "Band score estimate per sentence",
-  "Model paragraph",
-  "PDF export",
-];
-
-
 const CARD_NUMBER = "9860 1606 4046 4600";
 const CARDHOLDER = "PI";
 const TELEGRAM_USERNAME = "writeready_admin";
@@ -34,7 +16,7 @@ const TELEGRAM_USERNAME = "writeready_admin";
 const FONT_SERIF = "[font-family:'Fraunces',serif]";
 const FONT_MONO = "[font-family:'IBM_Plex_Mono',monospace]";
 
-type PlanId = "pro";
+type PlanId = "basic" | "standard" | "premium";
 
 interface SelectedPlan {
   id: PlanId;
@@ -44,15 +26,11 @@ interface SelectedPlan {
   billingNote: string;
 }
 
-const PRO_PLAN: SelectedPlan = {
-  id: "pro",
-  name: "Pro",
-  price: "25,000",
-  period: "UZS / month",
-  billingNote: "Billed monthly · cancel anytime",
-};
-
-
+const PLANS: SelectedPlan[] = [
+  { id: "basic", name: "Basic", price: "39,000", period: "so'm / oy", billingNote: "Har oyda to'lov · istalgan vaqt bekor qiling" },
+  { id: "standard", name: "Standard", price: "59,000", period: "so'm / oy", billingNote: "Har oyda to'lov · istalgan vaqt bekor qiling" },
+  { id: "premium", name: "Premium", price: "89,000", period: "so'm / oy", billingNote: "Har oyda to'lov · istalgan vaqt bekor qiling" },
+];
 
 function CloseIcon() {
   return (
@@ -106,16 +84,14 @@ function PlanGlyphIcon() {
   );
 }
 
-
 export function PricingPage() {
   const { user, profile } = useAuth();
   const rootRef = useRef<HTMLDivElement>(null);
   const [showPaymentModal, setShowPaymentModal] = useState(false);
-  const [selectedPlan, setSelectedPlan] = useState<SelectedPlan>(PRO_PLAN);
+  const [selectedPlan, setSelectedPlan] = useState<SelectedPlan>(PLANS[1]);
   const [copied, setCopied] = useState(false);
 
-  const isFree = !profile || profile.plan === "free";
-  const isPro = profile?.plan === "pro";
+  const currentPlan = profile?.plan ?? "free";
 
   const openPaymentModal = (plan: SelectedPlan) => {
     setSelectedPlan(plan);
@@ -140,7 +116,7 @@ export function PricingPage() {
       gsap.to(".gs-pricing-header", { y: 0, opacity: 1, duration: 0.65, ease: "power3.out", delay: 0.1 });
       gsap.to(".gs-plan-card", {
         scrollTrigger: { trigger: ".gs-plans", start: "top 82%" },
-        y: 0, opacity: 1, scale: 1, duration: 0.65, stagger: 0.15, ease: "power2.out",
+        y: 0, opacity: 1, scale: 1, duration: 0.65, stagger: 0.12, ease: "power2.out",
       });
     }, rootRef);
 
@@ -157,71 +133,116 @@ export function PricingPage() {
               Pricing
             </div>
             <h1 className={`${FONT_SERIF} text-[clamp(2rem,5vw,2.75rem)] font-extrabold text-[var(--text-primary)] mb-3 leading-[1.15]`}>
-              Simple, honest pricing
+              Oddiy va shaffof narxlar
             </h1>
-            <p className="text-[var(--text-secondary)] text-[1.0625rem] max-w-[460px] mx-auto">
-              Start free. Upgrade when you're ready for AI-powered feedback.
+            <p className="text-[var(--text-secondary)] text-[1.0625rem] max-w-[480px] mx-auto">
+              Bepul boshlang. AI tahlilga tayyor bo'lgach, o'zingizga mos rejani tanlang.
             </p>
           </div>
 
-          {/* Plans */}
-          <div className="gs-plans grid grid-cols-[repeat(auto-fit,minmax(280px,1fr))] gap-6 max-w-[1080px] mx-auto">
-            {/* Free plan */}
-            <Card className="gs-plan-card hover:-translate-y-2 hover:shadow-2xl transition-all duration-200 p-8 flex flex-col">
-              <div className="mb-6">
-                <div className={`${FONT_SERIF} text-[1.375rem] font-bold text-[var(--text-primary)] mb-1`}>Free</div>
-                <div className="text-sm text-[var(--text-secondary)]">Get started with unlimited writing practice</div>
+          {/* Plans grid */}
+          <div className="gs-plans grid grid-cols-[repeat(auto-fit,minmax(240px,1fr))] gap-6 max-w-[1100px] mx-auto">
+
+            {/* Free */}
+            <Card className="gs-plan-card hover:-translate-y-1 hover:shadow-xl transition-all duration-200 p-7 flex flex-col">
+              <div className="mb-5">
+                <div className={`${FONT_SERIF} text-[1.25rem] font-bold text-[var(--text-primary)] mb-1`}>Free</div>
+                <div className="text-sm text-[var(--text-secondary)]">Yozish amaliyotini boshlang</div>
               </div>
-              <div className="mb-8">
-                <span className={`${FONT_MONO} text-4xl font-semibold text-[var(--text-primary)]`}>$0</span>
-                <span className="text-sm text-[var(--text-secondary)] ml-1.5">forever</span>
+              <div className="mb-7">
+                <span className={`${FONT_MONO} text-3xl font-semibold text-[var(--text-primary)]`}>Bepul</span>
               </div>
-              <ul className="flex flex-col gap-3 mb-8 flex-1">
-                {FREE_FEATURES.map((f) => (
-                  <li key={f} className="flex items-start gap-2.5 text-[0.9rem] text-[var(--text-primary)]">
-                    <span className="text-green-500 font-bold shrink-0 mt-px">✓</span>
-                    {f}
-                  </li>
-                ))}
-                <li className="flex items-start gap-2.5 text-[0.9rem] text-[var(--text-secondary)]">
-                  <span className="shrink-0 mt-px">✗</span>
-                  No AI feedback
-                </li>
+              <ul className="flex flex-col gap-2.5 mb-7 flex-1 text-[0.875rem]">
+                <li className="flex items-start gap-2.5 text-[var(--text-primary)]"><span className="text-green-500 font-bold shrink-0 mt-px">✓</span>1 AI tahlil (bonus)</li>
+                <li className="flex items-start gap-2.5 text-[var(--text-primary)]"><span className="text-green-500 font-bold shrink-0 mt-px">✓</span>3 ta yozish rejimi (Mock, Practice, Relax)</li>
+                <li className="flex items-start gap-2.5 text-[var(--text-primary)]"><span className="text-green-500 font-bold shrink-0 mt-px">✓</span>Savolar bazasi</li>
+                <li className="flex items-start gap-2.5 text-[var(--text-primary)]"><span className="text-green-500 font-bold shrink-0 mt-px">✓</span>PDF eksport</li>
               </ul>
               <Link to={user ? "/dashboard" : "/auth?mode=signup"} className="block">
-                <Button variant="secondary" className={`w-full ${isFree ? "opacity-[0.55]" : "opacity-100"}`} disabled={isFree}>
-                  {isFree ? "Current plan" : "Downgrade to Free"}
+                <Button variant="secondary" className={`w-full ${currentPlan === "free" ? "opacity-60" : ""}`} disabled={currentPlan === "free"}>
+                  {currentPlan === "free" ? "Joriy reja" : "Free rejaga o'tish"}
                 </Button>
               </Link>
             </Card>
 
-            {/* Pro plan */}
-            <Card className="gs-plan-card hover:-translate-y-2 hover:shadow-2xl transition-all duration-200 bg-[linear-gradient(135deg,#0f172a,#1e3a5f)] p-8 border-2 border-[#c9900a] shadow-[0_8px_32px_rgba(15,23,42,0.18)] flex flex-col relative">
-              <div className="absolute -top-[13px] left-1/2 -translate-x-1/2 bg-[#c9900a] text-white text-[0.6875rem] font-bold tracking-[0.08em] uppercase px-4 py-[0.3rem] rounded-[20px] whitespace-nowrap">
-                Most popular
+            {/* Basic */}
+            <Card className="gs-plan-card hover:-translate-y-1 hover:shadow-xl transition-all duration-200 p-7 flex flex-col">
+              <div className="mb-5">
+                <div className={`${FONT_SERIF} text-[1.25rem] font-bold text-[var(--text-primary)] mb-1`}>Basic</div>
+                <div className="text-sm text-[var(--text-secondary)]">AI tahlilni sinab ko'ring</div>
               </div>
-              <div className="mb-6">
-                <div className={`${FONT_SERIF} text-[1.375rem] font-bold text-white mb-1`}>Pro</div>
-                <div className="text-sm text-white/55">AI feedback to accelerate your improvement</div>
+              <div className="mb-7">
+                <span className={`${FONT_MONO} text-3xl font-semibold text-[var(--text-primary)]`}>39,000</span>
+                <span className="text-sm text-[var(--text-secondary)] ml-1.5">so'm / oy</span>
               </div>
-              <div className="mb-8">
-                <span className={`${FONT_MONO} text-4xl font-semibold text-white`}>25,000</span>
-                <span className="text-sm text-white/50 ml-1.5">UZS / month</span>
-              </div>
-              <ul className="flex flex-col gap-3 mb-8 flex-1">
-                {PRO_FEATURES.map((f) => (
-                  <li key={f} className="flex items-start gap-2.5 text-[0.9rem] text-white/85">
-                    <span className="text-amber-400 font-bold shrink-0 mt-px">✓</span>
-                    {f}
-                  </li>
-                ))}
+              <ul className="flex flex-col gap-2.5 mb-7 flex-1 text-[0.875rem]">
+                <li className="flex items-start gap-2.5 text-[var(--text-primary)]"><span className="text-blue-500 font-bold shrink-0 mt-px">✓</span>6 AI tahlil/oy</li>
+                <li className="flex items-start gap-2.5 text-[var(--text-primary)]"><span className="text-blue-500 font-bold shrink-0 mt-px">✓</span>Batafsil ball tahlili</li>
+                <li className="flex items-start gap-2.5 text-[var(--text-primary)]"><span className="text-blue-500 font-bold shrink-0 mt-px">✓</span>Lug'at flashcard'lari</li>
+                <li className="flex items-start gap-2.5 text-[var(--text-primary)]"><span className="text-blue-500 font-bold shrink-0 mt-px">✓</span>Grammatika tahlili</li>
+                <li className="flex items-start gap-2.5 text-[var(--text-primary)]"><span className="text-blue-500 font-bold shrink-0 mt-px">✓</span>PDF eksport</li>
               </ul>
               <Button
-                onClick={() => openPaymentModal(PRO_PLAN)}
-                className={`w-full bg-[#c9900a] border-0 hover:bg-[#b8820a] ${isPro ? "opacity-[0.55]" : "opacity-100"}`}
-                disabled={isPro}
+                onClick={() => openPaymentModal(PLANS[0])}
+                variant="secondary"
+                className={`w-full border-blue-300 hover:border-blue-400 ${currentPlan === "basic" ? "opacity-60" : ""}`}
+                disabled={currentPlan === "basic"}
               >
-                {isPro ? "Current plan" : "Get Pro →"}
+                {currentPlan === "basic" ? "Joriy reja" : "Basic olish →"}
+              </Button>
+            </Card>
+
+            {/* Standard — Popular */}
+            <Card className="gs-plan-card hover:-translate-y-1 transition-all duration-200 p-7 flex flex-col relative border-2 border-blue-500 shadow-[0_8px_32px_rgba(59,130,246,0.18)]">
+              <div className="absolute -top-[13px] left-1/2 -translate-x-1/2 bg-blue-600 text-white text-[0.6875rem] font-bold tracking-[0.08em] uppercase px-4 py-[0.3rem] rounded-[20px] whitespace-nowrap">
+                ⭐ Eng mashhur
+              </div>
+              <div className="mb-5">
+                <div className={`${FONT_SERIF} text-[1.25rem] font-bold text-[var(--text-primary)] mb-1`}>Standard</div>
+                <div className="text-sm text-[var(--text-secondary)]">Ko'pchilik tanlaydigan reja</div>
+              </div>
+              <div className="mb-7">
+                <span className={`${FONT_MONO} text-3xl font-semibold text-blue-600`}>59,000</span>
+                <span className="text-sm text-[var(--text-secondary)] ml-1.5">so'm / oy</span>
+              </div>
+              <ul className="flex flex-col gap-2.5 mb-7 flex-1 text-[0.875rem]">
+                <li className="flex items-start gap-2.5 text-[var(--text-primary)]"><span className="text-blue-500 font-bold shrink-0 mt-px">✓</span>15 AI tahlil/oy</li>
+                <li className="flex items-start gap-2.5 text-[var(--text-primary)]"><span className="text-blue-500 font-bold shrink-0 mt-px">✓</span>Basic dagi barcha imkoniyatlar</li>
+                <li className="flex items-start gap-2.5 text-[var(--text-primary)]"><span className="text-blue-500 font-bold shrink-0 mt-px">✓</span>Jumlalar tahlili</li>
+                <li className="flex items-start gap-2.5 text-[var(--text-primary)]"><span className="text-blue-500 font-bold shrink-0 mt-px">✓</span>Imlo tekshiruvi</li>
+                <li className="flex items-start gap-2.5 text-[var(--text-primary)]"><span className="text-blue-500 font-bold shrink-0 mt-px">✓</span>Namuna javoblar</li>
+              </ul>
+              <Button
+                onClick={() => openPaymentModal(PLANS[1])}
+                className={`w-full bg-blue-600 border-0 hover:bg-blue-700 ${currentPlan === "standard" ? "opacity-60" : ""}`}
+                disabled={currentPlan === "standard"}
+              >
+                {currentPlan === "standard" ? "Joriy reja" : "Standard olish →"}
+              </Button>
+            </Card>
+
+            {/* Premium */}
+            <Card className="gs-plan-card hover:-translate-y-1 hover:shadow-xl transition-all duration-200 p-7 flex flex-col bg-gradient-to-br from-slate-900 to-[#2d1b69] border-purple-700">
+              <div className="mb-5">
+                <div className={`${FONT_SERIF} text-[1.25rem] font-bold text-white mb-1`}>Premium</div>
+                <div className="text-sm text-white/55">Barcha funksiyalar, maksimal tahlil</div>
+              </div>
+              <div className="mb-7">
+                <span className={`${FONT_MONO} text-3xl font-semibold text-white`}>89,000</span>
+                <span className="text-sm text-white/50 ml-1.5">so'm / oy</span>
+              </div>
+              <ul className="flex flex-col gap-2.5 mb-7 flex-1 text-[0.875rem]">
+                <li className="flex items-start gap-2.5 text-white/85"><span className="text-purple-300 font-bold shrink-0 mt-px">✓</span>30 AI tahlil/oy</li>
+                <li className="flex items-start gap-2.5 text-white/85"><span className="text-purple-300 font-bold shrink-0 mt-px">✓</span>Standard dagi barcha imkoniyatlar</li>
+                <li className="flex items-start gap-2.5 text-white/85"><span className="text-purple-300 font-bold shrink-0 mt-px">✓</span>Barcha funksiyalar</li>
+                <li className="flex items-start gap-2.5 text-white/85"><span className="text-purple-300 font-bold shrink-0 mt-px">✓</span>Ustuvor qo'llab-quvvatlash</li>
+              </ul>
+              <Button
+                onClick={() => openPaymentModal(PLANS[2])}
+                className={`w-full bg-purple-600 border-0 hover:bg-purple-700 ${currentPlan === "premium" ? "opacity-60" : ""}`}
+                disabled={currentPlan === "premium"}
+              >
+                {currentPlan === "premium" ? "Joriy reja" : "Premium olish →"}
               </Button>
             </Card>
 
@@ -241,7 +262,7 @@ export function PricingPage() {
           >
             <div className="flex justify-between items-start mb-6">
               <div>
-                <h2 className={`${FONT_SERIF} text-2xl font-extrabold text-[var(--text-primary)] mb-1`}>Complete payment</h2>
+                <h2 className={`${FONT_SERIF} text-2xl font-extrabold text-[var(--text-primary)] mb-1`}>To'lovni amalga oshiring</h2>
                 <p className="text-[0.95rem] text-[var(--text-secondary)]">
                   {selectedPlan.name} · {selectedPlan.price} {selectedPlan.period}
                 </p>
@@ -265,13 +286,13 @@ export function PricingPage() {
                     <PlanGlyphIcon />
                   </span>
                   <div>
-                    <div className="text-xs text-[var(--text-secondary)] mb-0.5">Plan</div>
+                    <div className="text-xs text-[var(--text-secondary)] mb-0.5">Reja</div>
                     <div className="text-base font-bold text-[var(--text-primary)]">{selectedPlan.name}</div>
                   </div>
                 </div>
                 <div className="text-right">
-                  <div className="text-xs text-[var(--text-secondary)] mb-0.5">Amount</div>
-                  <div className={`${FONT_MONO} text-base font-bold text-[var(--text-primary)]`}>{selectedPlan.price}</div>
+                  <div className="text-xs text-[var(--text-secondary)] mb-0.5">Miqdor</div>
+                  <div className={`${FONT_MONO} text-base font-bold text-[var(--text-primary)]`}>{selectedPlan.price} so'm</div>
                 </div>
               </div>
 
@@ -286,13 +307,13 @@ export function PricingPage() {
             {/* Step 1 */}
             <div className="flex items-center gap-3 mb-4">
               <span className="w-7 h-7 rounded-full bg-blue-600 text-white flex items-center justify-center font-bold text-sm shrink-0">1</span>
-              <h3 className="text-[1.05rem] font-bold text-[var(--text-primary)]">Transfer to this card</h3>
+              <h3 className="text-[1.05rem] font-bold text-[var(--text-primary)]">Ushbu kartaga o'tkazing</h3>
             </div>
 
             <div className="bg-[var(--bg-subtle)] rounded-2xl px-6 py-5 mb-7">
               <div className="flex items-center gap-2 text-[var(--text-secondary)] text-sm mb-3">
                 <CardIcon />
-                Card number
+                Karta raqami
               </div>
               <div className="flex items-center justify-between gap-4 mb-4">
                 <span className={`${FONT_MONO} text-[1.375rem] font-semibold text-[var(--text-primary)] tracking-[0.02em]`}>{CARD_NUMBER}</span>
@@ -301,23 +322,23 @@ export function PricingPage() {
                   className="flex items-center gap-1.5 border border-[var(--border-color)] rounded-[20px] px-4 py-2 bg-[var(--bg-card)] text-sm font-semibold text-[var(--text-primary)] cursor-pointer whitespace-nowrap hover:bg-[var(--bg-subtle)] transition-colors"
                 >
                   <CopyIcon />
-                  {copied ? "Copied!" : "Copy"}
+                  {copied ? "Nusxalandi!" : "Nusxalash"}
                 </button>
               </div>
               <div className="text-sm text-[var(--text-secondary)]">
-                Cardholder: <strong className="text-[var(--text-primary)]">{CARDHOLDER}</strong>
+                Karta egasi: <strong className="text-[var(--text-primary)]">{CARDHOLDER}</strong>
               </div>
             </div>
 
             <div className="flex items-center gap-3 mb-4">
               <span className="w-7 h-7 rounded-full bg-blue-600 text-white flex items-center justify-center font-bold text-sm shrink-0">2</span>
-              <h3 className="text-[1.05rem] font-bold text-[var(--text-primary)]">Send the payment receipt</h3>
+              <h3 className="text-[1.05rem] font-bold text-[var(--text-primary)]">To'lov chekini yuboring</h3>
             </div>
 
             <p className="text-[0.9375rem] text-[var(--text-secondary)] leading-[1.6] mb-5">
-              Send a screenshot of the transfer on Telegram to{" "}
-              <strong className="text-[var(--text-primary)]">@{TELEGRAM_USERNAME}</strong>. Your{" "}
-              {selectedPlan.name} access will be activated within 24 hours.
+              O'tkazma skrinshotini Telegramda{" "}
+              <strong className="text-[var(--text-primary)]">@{TELEGRAM_USERNAME}</strong> ga yuboring. Sizning{" "}
+              {selectedPlan.name} obunangiz 24 soat ichida faollashtiriladi.
             </p>
 
             <a
@@ -327,7 +348,7 @@ export function PricingPage() {
               className="flex items-center justify-center gap-2 bg-blue-600 text-white rounded-[14px] p-3.5 font-bold text-base no-underline mb-5 hover:bg-blue-700 transition-colors"
             >
               <SendIcon />
-              Open Telegram
+              Telegramni ochish
             </a>
           </div>
         </div>

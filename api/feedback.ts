@@ -4,7 +4,7 @@ import { getAuth } from 'firebase-admin/auth';
 import { getFirestore, FieldValue, type DocumentReference } from 'firebase-admin/firestore';
 import Anthropic from '@anthropic-ai/sdk';
 
-const MONTHLY_LIMIT = 12;
+const CENTER_MONTHLY_LIMIT = 15;
 const ALLOWED_MODEL = 'claude-sonnet-4-6';
 const MAX_TOKENS = 8000;
 
@@ -34,12 +34,6 @@ function currentMonthKey(): string {
   return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
 }
 
-function isProUser(subscription: unknown): boolean {
-  if (subscription === 'forever') return true;
-  if (typeof subscription !== 'string') return false;
-  const expiry = new Date(subscription);
-  return !Number.isNaN(expiry.getTime()) && expiry > new Date();
-}
 
 async function getUid(req: VercelRequest): Promise<string> {
   const auth = req.headers.authorization ?? '';
@@ -85,18 +79,20 @@ async function consumeCredit(uid: string, monthKey: string): Promise<DocumentRef
         if (!studentSnap.empty) {
           const usage = data.usage ?? {};
           const used = usage.monthKey === monthKey ? (usage.count ?? 0) : 0;
-          if (used >= MONTHLY_LIMIT) throw new CreditError('LIMIT_REACHED');
+          if (used >= CENTER_MONTHLY_LIMIT) throw new CreditError('LIMIT_REACHED');
           tx.set(userRef, { usage: { monthKey, count: used + 1 } }, { merge: true });
           return;
         }
       }
     }
 
-    if (!isProUser(data.subscription)) throw new CreditError('NOT_PRO');
+    const planLimits: Record<string, number> = { forever: 9999, premium: 30, standard: 15, basic: 6 };
+    const monthlyLimit = planLimits[data.plan as string];
+    if (!monthlyLimit) throw new CreditError('NOT_PRO'); // free plan, no bonus left
 
     const usage = data.usage ?? {};
     const used = usage.monthKey === monthKey ? (usage.count ?? 0) : 0;
-    if (used >= MONTHLY_LIMIT) throw new CreditError('LIMIT_REACHED');
+    if (used >= monthlyLimit) throw new CreditError('LIMIT_REACHED');
 
     tx.set(userRef, { usage: { monthKey, count: used + 1 } }, { merge: true });
   });
@@ -135,7 +131,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     userRef = await consumeCredit(uid, monthKey);
   } catch (e: unknown) {
     if (e instanceof CreditError) {
-      if (e.code === 'NOT_PRO') return res.status(403).json({ error: 'AI feedback requires a Pro or Lifetime plan.' });
+      if (e.code === 'NOT_PRO') return res.status(403).json({ error: 'AI feedback requires a paid plan (Basic, Standard, Premium, or Lifetime).' });
       if (e.code === 'LIMIT_REACHED') return res.status(429).json({ error: 'Monthly analysis limit reached. Quota resets next month.' });
       if (e.code === 'USER_NOT_FOUND') return res.status(404).json({ error: 'User profile not found.' });
     }

@@ -229,7 +229,7 @@ function Quick() {
   /* ── Loading ── */
   if (loading) {
     return (
-      <div className="flex items-center justify-center min-h-screen bg-[var(--bg-base)]">
+      <div className="flex items-center justify-center min-h-screen bg-slate-50">
         <div className="flex flex-col items-center gap-4">
           <div className="w-8 h-8 border-2 border-violet-600 border-t-transparent rounded-full animate-spin" />
           <p className="text-sm text-slate-500 tracking-wide">Loading questions…</p>
@@ -241,15 +241,15 @@ function Quick() {
   /* ── Task picker screen ── */
   if (selectedTaskType === null) {
     return (
-      <div className="min-h-screen bg-[var(--bg-base)] flex flex-col items-center justify-center p-6">
+      <div className="min-h-screen bg-slate-50 flex flex-col items-center justify-center p-6">
         <div className="w-full max-w-xl">
           {/* Header */}
           <div className="text-center mb-10">
             <div className="inline-flex items-center justify-center w-14 h-14 rounded-2xl bg-violet-600 mb-4">
               <ZapIcon className="w-7 h-7 text-white" />
             </div>
-            <h1 className="text-3xl font-bold text-[var(--text-primary)] mb-2">Quick Write</h1>
-            <p className="text-[var(--text-secondary)] text-base">
+            <h1 className="text-3xl font-bold text-slate-900 mb-2">Quick Write</h1>
+            <p className="text-slate-500 text-base">
               Choose a task, write your response, then get AI feedback.
             </p>
           </div>
@@ -259,11 +259,11 @@ function Quick() {
             {/* Task 1 */}
             <button
               onClick={() => setSelectedTaskType(1)}
-              className="group relative rounded-2xl border-2 border-[var(--border-color)] bg-[var(--bg-card)] p-6 text-left hover:border-violet-400 hover:shadow-lg transition-all duration-200 cursor-pointer"
+              className="group relative rounded-2xl border-2 border-slate-200 bg-white p-6 text-left hover:border-violet-400 hover:shadow-lg transition-all duration-200 cursor-pointer"
             >
               <div className="text-3xl mb-3">🖼️</div>
-              <h2 className="text-lg font-bold text-[var(--text-primary)] mb-1">Task 1</h2>
-              <p className="text-sm text-[var(--text-secondary)] leading-relaxed">
+              <h2 className="text-lg font-bold text-slate-900 mb-1">Task 1</h2>
+              <p className="text-sm text-slate-500 leading-relaxed">
                 Describe a graph, chart, diagram or map. Minimum <strong>150 words</strong>.
               </p>
               <div className="mt-4 inline-flex items-center gap-1 text-xs font-semibold text-violet-600">
@@ -274,11 +274,11 @@ function Quick() {
             {/* Task 2 */}
             <button
               onClick={() => setSelectedTaskType(2)}
-              className="group relative rounded-2xl border-2 border-[var(--border-color)] bg-[var(--bg-card)] p-6 text-left hover:border-violet-400 hover:shadow-lg transition-all duration-200 cursor-pointer"
+              className="group relative rounded-2xl border-2 border-slate-200 bg-white p-6 text-left hover:border-violet-400 hover:shadow-lg transition-all duration-200 cursor-pointer"
             >
               <div className="text-3xl mb-3">✍️</div>
-              <h2 className="text-lg font-bold text-[var(--text-primary)] mb-1">Task 2</h2>
-              <p className="text-sm text-[var(--text-secondary)] leading-relaxed">
+              <h2 className="text-lg font-bold text-slate-900 mb-1">Task 2</h2>
+              <p className="text-sm text-slate-500 leading-relaxed">
                 Respond to an argument or opinion question. Minimum <strong>250 words</strong>.
               </p>
               <div className="mt-4 inline-flex items-center gap-1 text-xs font-semibold text-violet-600">
@@ -288,14 +288,14 @@ function Quick() {
           </div>
 
           {/* Nav links */}
-          <div className="flex justify-center gap-4 text-sm text-[var(--text-secondary)]">
-            <NavLink to="/writing/mock" className="hover:text-[var(--text-primary)] transition-colors">Mock Exam</NavLink>
+          <div className="flex justify-center gap-4 text-sm text-slate-500">
+            <NavLink to="/writing/mock" className="hover:text-slate-900 transition-colors">Mock Exam</NavLink>
             <span>·</span>
-            <NavLink to="/writing/practice" className="hover:text-[var(--text-primary)] transition-colors">Practice</NavLink>
+            <NavLink to="/writing/practice" className="hover:text-slate-900 transition-colors">Practice</NavLink>
             <span>·</span>
-            <NavLink to="/writing/relax" className="hover:text-[var(--text-primary)] transition-colors">Relax</NavLink>
+            <NavLink to="/writing/relax" className="hover:text-slate-900 transition-colors">Relax</NavLink>
             <span>·</span>
-            <NavLink to="/dashboard" className="hover:text-[var(--text-primary)] transition-colors">Dashboard</NavLink>
+            <NavLink to="/dashboard" className="hover:text-slate-900 transition-colors">Dashboard</NavLink>
           </div>
         </div>
       </div>
@@ -304,7 +304,7 @@ function Quick() {
 
   /* ── Writing screen ── */
   return (
-    <div className="flex flex-col min-h-screen bg-[var(--bg-base)] font-sans">
+    <div data-theme="light" className="flex flex-col min-h-screen bg-slate-50 font-sans">
 
       {/* ── Top bar ── */}
       <div className="sticky top-0 z-30 border-b bg-violet-700 border-violet-800">
@@ -356,23 +356,23 @@ function Quick() {
 
       {/* ── Secondary header ── */}
       {showHeader && (
-        <div className="sticky top-[45px] z-20 bg-[var(--bg-card)] border-b border-[var(--border-color)] shadow-sm">
+        <div className="sticky top-[45px] z-20 bg-white border-b border-slate-200 shadow-sm">
           <div className="flex items-center justify-between gap-4 px-5 py-3">
             <div className="flex items-center gap-2">
               <span className="inline-flex items-center justify-center w-6 h-6 rounded-full bg-violet-600 text-white text-[10px] font-bold">
                 {selectedTaskType}
               </span>
-              <span className="text-sm font-medium text-[var(--text-primary)]">Task {selectedTaskType}</span>
-              <span className="text-xs text-[var(--text-secondary)]">— minimum {minWords} words</span>
+              <span className="text-sm font-medium text-slate-900">Task {selectedTaskType}</span>
+              <span className="text-xs text-slate-500">— minimum {minWords} words</span>
             </div>
-            <nav className="hidden md:flex items-center gap-1 text-xs text-[var(--text-secondary)]">
-              <NavLink to="/writing/mock" className="px-2 py-1 hover:text-[var(--text-primary)] hover:bg-[var(--bg-subtle)] rounded transition-colors">Mock</NavLink>
-              <NavLink to="/writing/practice" className="px-2 py-1 hover:text-[var(--text-primary)] hover:bg-[var(--bg-subtle)] rounded transition-colors">Practice</NavLink>
-              <NavLink to="/writing/relax" className="px-2 py-1 hover:text-[var(--text-primary)] hover:bg-[var(--bg-subtle)] rounded transition-colors">Relax</NavLink>
+            <nav className="hidden md:flex items-center gap-1 text-xs text-slate-500">
+              <NavLink to="/writing/mock" className="px-2 py-1 hover:text-slate-900 hover:bg-slate-100 rounded transition-colors">Mock</NavLink>
+              <NavLink to="/writing/practice" className="px-2 py-1 hover:text-slate-900 hover:bg-slate-100 rounded transition-colors">Practice</NavLink>
+              <NavLink to="/writing/relax" className="px-2 py-1 hover:text-slate-900 hover:bg-slate-100 rounded transition-colors">Relax</NavLink>
             </nav>
           </div>
-          <div className="flex items-center gap-3 px-5 py-2 bg-[var(--bg-subtle)] border-t border-[var(--border-color)]">
-            <p className="text-xs text-[var(--text-secondary)]">
+          <div className="flex items-center gap-3 px-5 py-2 bg-slate-100 border-t border-slate-200">
+            <p className="text-xs text-slate-500">
               {selectedTaskType === 1
                 ? "Describe the information in the chart or diagram. Organise, summarise and compare where relevant."
                 : "Present your argument clearly. Give your opinion and support it with examples and explanations."}
@@ -383,9 +383,9 @@ function Quick() {
 
       {/* Minimal task bar when header hidden */}
       {!showHeader && (
-        <div className="flex items-center gap-3 px-5 py-2 bg-[var(--bg-card)] border-b border-[var(--border-color)]">
+        <div className="flex items-center gap-3 px-5 py-2 bg-white border-b border-slate-200">
           <span className="inline-flex items-center justify-center w-5 h-5 rounded-full bg-violet-600 text-white text-[10px] font-bold">{selectedTaskType}</span>
-          <span className="text-xs text-[var(--text-secondary)]">Task {selectedTaskType} · {minWords} words minimum</span>
+          <span className="text-xs text-slate-500">Task {selectedTaskType} · {minWords} words minimum</span>
         </div>
       )}
 
@@ -396,14 +396,14 @@ function Quick() {
         style={{ "--split": splitRatio } as unknown as CSSProperties}
       >
         {/* Question panel */}
-        <div className="w-full overflow-y-auto bg-[var(--bg-card)] border-b border-[var(--border-color)] md:w-[calc(var(--split)*100%)] md:border-b-0 md:border-r max-h-[42vh] md:max-h-none">
+        <div className="w-full overflow-y-auto bg-white border-b border-slate-200 md:w-[calc(var(--split)*100%)] md:border-b-0 md:border-r max-h-[42vh] md:max-h-none">
           <div className="p-6 w-full">
             {selectedTaskType === 1 && task1 ? (
               <WritingTask1Preview task1={task1} />
             ) : selectedTaskType === 2 && task2 ? (
               <WritingTask2Preview task2={task2.report} />
             ) : (
-              <p className="text-sm text-[var(--text-secondary)]">No question available.</p>
+              <p className="text-sm text-slate-500">No question available.</p>
             )}
           </div>
         </div>
@@ -413,7 +413,7 @@ function Quick() {
           onPointerDown={handleSplitPointerDown}
           onPointerMove={handleSplitPointerMove}
           onPointerUp={handleSplitPointerUp}
-          className="relative hidden w-1.5 shrink-0 cursor-col-resize select-none touch-none bg-[var(--bg-subtle)] hover:bg-violet-200 active:bg-violet-300 transition-colors md:flex items-center justify-center group"
+          className="relative hidden w-1.5 shrink-0 cursor-col-resize select-none touch-none bg-slate-100 hover:bg-violet-200 active:bg-violet-300 transition-colors md:flex items-center justify-center group"
         >
           <div className="flex flex-col gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
             <span className="w-1 h-1 rounded-full bg-violet-400" />
@@ -423,7 +423,7 @@ function Quick() {
         </div>
 
         {/* Answer panel */}
-        <div className="flex flex-col flex-1 bg-[var(--bg-base)]">
+        <div className="flex flex-col flex-1 bg-slate-50">
           <textarea
             value={userText}
             onChange={(e) => setUserText(e.target.value)}
@@ -435,19 +435,19 @@ function Quick() {
             data-gramm="false"
             data-gramm_editor="false"
             data-enable-grammarly="false"
-            className="flex-1 w-full p-6 text-sm text-[var(--text-primary)] bg-[var(--bg-card)] outline-none resize-none placeholder:text-[var(--text-secondary)]/40 focus:bg-[var(--bg-card)] transition-colors min-h-[300px] [scrollbar-gutter:stable]"
+            className="flex-1 w-full p-6 text-sm text-slate-900 bg-white outline-none resize-none placeholder:text-slate-500/40 focus:bg-white transition-colors min-h-[300px] [scrollbar-gutter:stable]"
           />
 
           {/* Status bar */}
-          <div className="flex items-center justify-between gap-4 px-5 py-3 border-t border-[var(--border-color)] bg-[var(--bg-card)]">
+          <div className="flex items-center justify-between gap-4 px-5 py-3 border-t border-slate-200 bg-white">
             <div className="flex items-center gap-3">
-              <div className="w-24 h-1.5 bg-[var(--bg-subtle)] rounded-full overflow-hidden">
+              <div className="w-24 h-1.5 bg-slate-100 rounded-full overflow-hidden">
                 <div
                   className={`h-full rounded-full transition-all duration-300 ${meetsMinWords ? "bg-emerald-500" : "bg-violet-500"}`}
                   style={{ width: `${progress}%` }}
                 />
               </div>
-              <span className={`text-xs font-medium ${meetsMinWords ? "text-emerald-600" : "text-[var(--text-secondary)]"}`}>
+              <span className={`text-xs font-medium ${meetsMinWords ? "text-emerald-600" : "text-slate-500"}`}>
                 {wordCount} / {minWords} words
                 {meetsMinWords && <span className="ml-1.5">✓</span>}
               </span>
@@ -455,11 +455,11 @@ function Quick() {
             <div className="flex items-center gap-2">
               <button
                 onClick={handleGetAnother}
-                className="text-xs text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition-colors"
+                className="text-xs text-slate-500 hover:text-slate-900 transition-colors"
               >
                 New question
               </button>
-              <span className="text-[var(--border-color)]">|</span>
+              <span className="text-slate-200">|</span>
               <button
                 onClick={handleFinish}
                 className="text-xs font-medium text-violet-600 hover:text-violet-800 transition-colors"
@@ -474,16 +474,16 @@ function Quick() {
       {/* ── Feedback modal ── */}
       {showFeedbackModal && (
         <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-4 bg-black/40 backdrop-blur-sm">
-          <div className="w-full max-w-sm bg-[var(--bg-card)] rounded-2xl shadow-2xl overflow-hidden">
+          <div className="w-full max-w-sm bg-white rounded-2xl shadow-2xl overflow-hidden">
             <div className="h-1.5 bg-gradient-to-r from-violet-500 to-purple-500" />
             <div className="p-7">
               <div className="flex items-center justify-center w-11 h-11 mx-auto rounded-full bg-violet-50">
                 <CheckIcon className="w-5 h-5 text-violet-600" />
               </div>
-              <h2 className="mt-4 text-base font-semibold text-center text-[var(--text-primary)]">
+              <h2 className="mt-4 text-base font-semibold text-center text-slate-900">
                 Essay saved!
               </h2>
-              <p className="mt-2 text-sm leading-6 text-center text-[var(--text-secondary)]">
+              <p className="mt-2 text-sm leading-6 text-center text-slate-500">
                 Would you like in-depth AI feedback on your writing? We'll analyse grammar, vocabulary, coherence, and task achievement.
               </p>
               <div className="flex flex-col gap-2.5 mt-6">

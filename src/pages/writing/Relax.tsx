@@ -149,7 +149,7 @@ function Relax() {
   /* ── Step 1: select ── */
   if (step === "select") {
     return (
-      <div className="flex flex-col min-h-screen bg-[var(--bg-base)] font-sans">
+      <div data-theme="light" className="flex flex-col min-h-screen bg-slate-50 font-sans">
         <div className="sticky top-0 z-30 bg-slate-900 border-b border-slate-800">
           <div className="flex items-center justify-between gap-4 px-5 py-2.5">
             <div className="flex items-center gap-2">
@@ -201,7 +201,7 @@ function Relax() {
   /* ── Step 2: configure ── */
   if (step === "configure" && activeTask) {
     return (
-      <div className="flex flex-col min-h-screen bg-[var(--bg-base)] font-sans">
+      <div data-theme="light" className="flex flex-col min-h-screen bg-slate-50 font-sans">
         <div className="sticky top-0 z-30 bg-slate-900 border-b border-slate-800">
           <div className="flex items-center justify-between gap-4 px-5 py-2.5">
             <div className="flex items-center gap-2">
@@ -310,7 +310,7 @@ function Relax() {
 
   /* ── Step 3: write ── */
   return (
-    <div className="flex flex-col min-h-screen bg-[var(--bg-base)] font-sans">
+    <div data-theme="light" className="flex flex-col min-h-screen bg-slate-50 font-sans">
 
       {/* Top bar */}
       <div className="sticky top-0 z-30 bg-slate-900 border-b border-slate-800">

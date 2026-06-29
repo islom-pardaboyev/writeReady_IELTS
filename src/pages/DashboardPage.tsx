@@ -135,7 +135,8 @@ export function DashboardPage() {
     }
   };
 
-  const isPro = profile?.plan === 'pro' || profile?.plan === 'forever';
+  const isPaidPlan = profile?.plan === 'basic' || profile?.plan === 'standard' || profile?.plan === 'premium' || profile?.plan === 'forever';
+  const isPro = isPaidPlan;
   const profileAny = profile as unknown as Record<string, unknown> | null;
   const centerName = profileAny?.centerName as string | undefined;
   const centerId = profileAny?.centerId as string | undefined;
@@ -143,9 +144,16 @@ export function DashboardPage() {
   const isStudent = !!(centerId && centerName);
   const bonusAnalyses = profile?.bonusAnalyses ?? 0;
   const usedCount = usage?.count ?? 0;
-  const usageLimit = usage?.limit ?? 12;
-  const usagePct = Math.min(100, (usedCount / usageLimit) * 100);
+  const usageLimit = usage?.limit ?? 0;
+  const usagePct = usageLimit > 0 ? Math.min(100, (usedCount / usageLimit) * 100) : 0;
   const remaining = usageLimit - usedCount;
+
+  function planDisplayName(plan: string): string {
+    const names: Record<string, string> = { free: 'Free', basic: 'Basic', standard: 'Standard', premium: 'Premium', forever: 'Lifetime' };
+    return names[plan] ?? 'Free';
+  }
+
+  const planName = planDisplayName(profile?.plan ?? 'free');
 
   return (
     <Layout>
@@ -172,12 +180,12 @@ export function DashboardPage() {
             </h1>
             <p className="text-[var(--text-secondary)]">
               {isPro && !isStudent
-                ? `${remaining} AI analyses remaining this month${bonusAnalyses > 0 ? ` · +${bonusAnalyses} bonus` : ''}`
+                ? `${planName} · ${remaining} ta tahlil qoldi bu oy${bonusAnalyses > 0 ? ` · +${bonusAnalyses} bonus` : ''}`
                 : !isStudent && bonusAnalyses > 0
                 ? `+${bonusAnalyses} bepul tahlil mavjud 🎁`
                 : !isStudent
-                ? 'Free plan — upgrade to unlock AI feedback'
-                : `AI feedback — ${remaining} analyses remaining this month`}
+                ? 'Free plan — AI tahlilni ochish uchun yangilang'
+                : `AI feedback — ${remaining} ta tahlil qoldi bu oy`}
             </p>
           </div>
 
@@ -218,7 +226,9 @@ export function DashboardPage() {
           {(isPro || bonusAnalyses > 0) && (
             <Card className="gs-db-quota px-6 py-5 mb-8">
               <div className="flex items-center justify-between mb-3 flex-wrap gap-2">
-                <span className="font-semibold text-[0.9375rem] text-[var(--text-primary)]">Monthly AI Feedback Quota</span>
+                <span className="font-semibold text-[0.9375rem] text-[var(--text-primary)]">
+                  {isPro ? `${planName} · Oylik AI tahlil kvotasi` : 'Bepul tahlillar'}
+                </span>
                 <div className="flex items-center gap-2">
                   {bonusAnalyses > 0 && (
                     <Badge variant="warning">🎁 +{bonusAnalyses} bonus</Badge>
@@ -231,12 +241,17 @@ export function DashboardPage() {
                 </div>
               </div>
               {isPro && (
-                <div className="h-1.5 bg-[var(--bg-subtle)] rounded-full overflow-hidden">
-                  <div
-                    className={`h-full rounded-full transition-[width] duration-300 ${usagePct >= 85 ? 'bg-red-500' : 'bg-blue-600'}`}
-                    style={{ width: `${usagePct}%` }}
-                  />
-                </div>
+                <>
+                  <div className="h-1.5 bg-[var(--bg-subtle)] rounded-full overflow-hidden mb-2">
+                    <div
+                      className={`h-full rounded-full transition-[width] duration-300 ${usagePct >= 85 ? 'bg-red-500' : 'bg-blue-600'}`}
+                      style={{ width: `${usagePct}%` }}
+                    />
+                  </div>
+                  <p className="text-xs text-[var(--text-secondary)]">
+                    {usageLimit} ta tahlildan {usedCount} tasi ishlatilgan · {remaining} ta qoldi
+                  </p>
+                </>
               )}
             </Card>
           )}
@@ -367,7 +382,7 @@ export function DashboardPage() {
               </div>
               <Link to="/pricing">
                 <Button className="bg-[#c9900a] shrink-0 hover:bg-[#b8820a]">
-                  Upgrade to Pro
+                  Rejani yangilash
                 </Button>
               </Link>
             </div>
