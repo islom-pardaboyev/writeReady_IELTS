@@ -18,6 +18,7 @@ gsap.registerPlugin(ScrollTrigger);
 const modes = [
   { id: 'mock', emoji: '⏱', title: 'Mock Exam', desc: '60-min timer · Exam simulation' },
   { id: 'practice', emoji: '✏️', title: 'Practice', desc: 'No timer · Build your skills' },
+  { id: 'quick', emoji: '⚡', title: 'Quick Write', desc: 'Task 1 or 2 · PDF + AI feedback' },
   { id: 'relax', emoji: '☕', title: 'Relax', desc: 'Your prompt · Write freely' },
 ];
 
@@ -249,6 +250,8 @@ export function DashboardPage() {
                 className={`gs-db-mode-card rounded-[14px] p-6 text-left cursor-pointer transition-[transform,box-shadow] duration-150 shadow-[var(--shadow-sm)] border-[1.5px] ${
                   m.id === 'mock'
                     ? 'bg-blue-700 border-transparent dark:bg-blue-800'
+                    : m.id === 'quick'
+                    ? 'bg-violet-50 border-violet-200 dark:bg-violet-900/20 dark:border-violet-800'
                     : m.id === 'relax'
                     ? 'bg-green-50 border-green-200 dark:bg-green-900/20 dark:border-green-800'
                     : 'bg-[var(--bg-card)] border-[var(--border-color)]'
@@ -264,10 +267,10 @@ export function DashboardPage() {
                 }}
               >
                 <div className="text-[1.75rem] mb-2">{m.emoji}</div>
-                <div className={`font-fraunces text-lg font-bold mb-1 ${m.id === 'mock' ? 'text-white' : 'text-[var(--text-primary)]'}`}>
+                <div className={`font-fraunces text-lg font-bold mb-1 ${m.id === 'mock' ? 'text-white' : m.id === 'quick' ? 'text-violet-800 dark:text-violet-200' : 'text-[var(--text-primary)]'}`}>
                   {m.title}
                 </div>
-                <div className={`text-[0.8125rem] ${m.id === 'mock' ? 'text-white/75' : 'text-[var(--text-secondary)]'}`}>
+                <div className={`text-[0.8125rem] ${m.id === 'mock' ? 'text-white/75' : m.id === 'quick' ? 'text-violet-600 dark:text-violet-300' : 'text-[var(--text-secondary)]'}`}>
                   {m.desc}
                 </div>
               </button>

@@ -11,6 +11,7 @@ import { AccountPage } from './pages/AccountPage';
 import Mock from './pages/writing/Mock';
 import Practice from './pages/writing/Practice';
 import Relax from './pages/writing/Relax';
+import Quick from './pages/writing/Quick';
 import Admin from './pages/writing/AdminPage';
 import CenterAdminPage from './pages/CenterAdminPage';
 import JoinPage from './pages/JoinPage';
@@ -42,6 +43,7 @@ export default function App() {
           <Route path="/writing/mock" element={<Mock />} />
           <Route path="/writing/practice" element={<Practice />} />
           <Route path="/writing/relax" element={<Relax />} />
+          <Route path="/writing/quick" element={<Quick />} />
           <Route path="/blog" element={<Suspense fallback={BlogSpinner}><BlogIndexPage /></Suspense>} />
           <Route path="/blog/:slug" element={<Suspense fallback={BlogSpinner}><BlogPostPage /></Suspense>} />
           <Route path="*" element={<Navigate to="/" replace />} />
