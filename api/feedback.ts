@@ -6,7 +6,7 @@ import Anthropic from '@anthropic-ai/sdk';
 
 const CENTER_MONTHLY_LIMIT = 15;
 const ALLOWED_MODEL = 'claude-sonnet-4-6';
-const MAX_TOKENS = 8000;
+const MAX_TOKENS = 3500;
 
 type CreditErrorCode = 'USER_NOT_FOUND' | 'NOT_PRO' | 'LIMIT_REACHED';
 class CreditError extends Error {
@@ -281,7 +281,7 @@ Return this EXACT JSON structure:
     "<third most impactful fix>"
   ],
   "bandGapAnalysis": "<Specific measurable steps to the next band level>",
-  "sampleResponse": "<A high-band (band 7-8) model response for THIS exact question — 2-3 paragraphs showing correct structure, vocabulary, and grammar. For Task 1 describe the data clearly; for Task 2 argue both sides or one side with evidence. Without any fancy words etc that make the writing longer without any meaning. You may effective collocations that are related to the topic.>",
+  "sampleResponse": "<A band 7 model response for THIS question — 2 paragraphs max. Clear structure, good vocabulary, correct grammar. No filler words.>",
   "sentenceAnalysis": [
     {
       "sentence": "<copy the EXACT sentence from the student essay>",
@@ -308,9 +308,9 @@ Return this EXACT JSON structure:
 }
 
 STRICT RULES:
-- sentenceAnalysis: cover EVERY sentence in the essay, in order
-- EXACTLY 15 vocabulary items
-- EXACTLY 10 grammar points
+- sentenceAnalysis: pick the 6 most important sentences (mix of good and problematic)
+- EXACTLY 8 vocabulary items
+- EXACTLY 6 grammar points
 - Every category MUST have at least 1 strength
 - Band scores are realistic: most students score 5.0-7.0; 8.0+ is very rare
 - Overall = simple average of the 4 criteria scores rounded to nearest 0.5`;
