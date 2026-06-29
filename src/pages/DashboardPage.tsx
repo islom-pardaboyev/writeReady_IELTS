@@ -105,6 +105,17 @@ export function DashboardPage() {
   }, []);
 
   useEffect(() => {
+    // Redirect admin/center-admin accounts away from user dashboard
+    if (user?.email?.endsWith('@writeready.internal')) {
+      if (localStorage.getItem('centerAdminLoggedIn') === 'true') {
+        navigate('/center-admin');
+      } else if (localStorage.getItem('adminLoggedIn') === 'true') {
+        navigate('/admin');
+      } else {
+        navigate('/');
+      }
+      return;
+    }
     if (!user?.uid) return;
     refreshProfile();
     getRecentFeedbackReports(user.uid, 5)
