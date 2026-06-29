@@ -262,16 +262,30 @@ export function FeedbackPage() {
 
     try {
       const idToken = await user.getIdToken();
+
+      // Step 1: pre-check — Firebase auth + credit deduction (runs fast, separate timeout)
+      const preRes = await fetch('/api/pre-check', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${idToken}` },
+        body: JSON.stringify({}),
+      });
+      if (!preRes.ok) {
+        const errText = await preRes.text();
+        let errData: { error?: string } = {};
+        try { errData = JSON.parse(errText); } catch { /* ignore */ }
+        throw new Error(errData.error ?? `Server error (${preRes.status})`);
+      }
+      const { token: preCheckToken } = await preRes.json() as { token: string };
+
+      // Step 2: feedback — only HMAC verify + Claude stream (no Firebase overhead)
       const res = await fetch('/api/feedback', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${idToken}`,
-        },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           essayText: essay,
           questionText: question,
           taskType: selectedTask === 'task1' ? 'Task 1' : 'Task 2',
+          preCheckToken,
         }),
       });
 

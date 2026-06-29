@@ -7,6 +7,9 @@
     "api/feedback.ts": {
       "maxDuration": 300
     },
+    "api/pre-check.ts": {
+      "maxDuration": 30
+    },
     "api/retention-check.ts": {
       "maxDuration": 30
     },
