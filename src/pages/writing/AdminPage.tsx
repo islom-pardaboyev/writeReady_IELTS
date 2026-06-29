@@ -12,6 +12,7 @@ import {
   orderBy,
 } from "firebase/firestore";
 import { db } from "@/firebase/firebase";
+import { getAuth, signInAnonymously } from "firebase/auth";
 import useUpload from "@/hooks/useUploadImage";
 import Logo from "/logo.png";
 import { getBlogPosts, saveBlogPost, updateBlogPost, deleteBlogPost } from "../../firebase/blog";
@@ -94,6 +95,11 @@ function LoginScreen({ onLogin }: { onLogin: (user: string) => void }) {
   const handle = async () => {
     if (!login.trim() || !password.trim()) return;
     setLoading(true); setError("");
+    try {
+      // Sign in anonymously so Firestore rules (request.auth != null) pass
+      await signInAnonymously(getAuth());
+    } catch (e) { console.error("anon sign-in failed", e); }
+
     // Check admin credentials first
     if (login === import.meta.env.VITE_LOGIN && password === import.meta.env.VITE_PASSWORD) {
       localStorage.setItem("adminLoggedIn", "true");

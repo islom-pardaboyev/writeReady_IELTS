@@ -10,6 +10,7 @@ import {
   where,
 } from "firebase/firestore";
 import { db } from "@/firebase/firebase";
+import { getAuth, signInAnonymously } from "firebase/auth";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
@@ -89,6 +90,7 @@ function CenterLoginScreen({ onLogin }: { onLogin: (id: string, name: string) =>
   const handle = async () => {
     if (!username.trim() || !password.trim()) { setError("Please enter username and password."); return; }
     setLoading(true); setError("");
+    try { await signInAnonymously(getAuth()); } catch (e) { console.error("anon sign-in failed", e); }
     try {
       const snap = await getDocs(
         query(collection(db, "learningCenters"), where("login", "==", username.trim()))
