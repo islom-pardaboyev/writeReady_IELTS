@@ -410,16 +410,18 @@ export default function Admin() {
     setUsersLoading(true);
     try {
       const snap = await getDocs(collection(db, "users"));
-      const rows: UserRow[] = snap.docs.map((d) => {
-        const data = d.data();
-        return {
-          id: d.id,
-          email: data.email ?? "",
-          plan: data.plan ?? "free",
-          subscription: data.subscription ?? "",
-          createdAt: data.createdAt?.toDate?.()?.toISOString() ?? "",
-        };
-      });
+      const rows: UserRow[] = snap.docs
+        .filter((d) => !d.data().email?.endsWith('@writeready.internal'))
+        .map((d) => {
+          const data = d.data();
+          return {
+            id: d.id,
+            email: data.studentLogin ? `${data.studentLogin} (${data.centerName ?? 'student'})` : (data.email ?? ""),
+            plan: data.plan ?? "free",
+            subscription: data.subscription ?? "",
+            createdAt: data.createdAt?.toDate?.()?.toISOString() ?? "",
+          };
+        });
       rows.sort((a, b) => {
         const pa = a.plan === "forever" ? 2 : a.plan === "pro" ? 1 : 0;
         const pb = b.plan === "forever" ? 2 : b.plan === "pro" ? 1 : 0;
