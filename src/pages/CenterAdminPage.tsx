@@ -5,6 +5,7 @@ import {
   addDoc,
   deleteDoc,
   updateDoc,
+  setDoc,
   doc,
   query,
   where,
@@ -199,6 +200,11 @@ export default function CenterAdminPage() {
   // Dashboard stats
   const [reportsToday, setReportsToday] = useState(0);
 
+  // Invite link
+  const [inviteLink, setInviteLink] = useState("");
+  const [inviteCopied, setInviteCopied] = useState(false);
+  const [inviteLoading, setInviteLoading] = useState(false);
+
   useEffect(() => {
     const saved = localStorage.getItem("centerAdminLoggedIn");
     const id = localStorage.getItem("centerAdminId");
@@ -240,6 +246,31 @@ export default function CenterAdminPage() {
       setStudents(rows);
     } catch (e) { console.error(e); }
     setStudentsLoading(false);
+  };
+
+  const generateInviteLink = async () => {
+    setInviteLoading(true);
+    try {
+      const token = Math.random().toString(36).slice(2) + Math.random().toString(36).slice(2);
+      const expiresAt = new Date();
+      expiresAt.setDate(expiresAt.getDate() + 30); // 30 kun
+      await setDoc(doc(db, "invites", token), {
+        centerId,
+        centerName,
+        createdAt: new Date().toISOString(),
+        expiresAt: expiresAt.toISOString(),
+      });
+      const link = `${window.location.origin}/join/${token}`;
+      setInviteLink(link);
+    } catch (e) { console.error(e); }
+    setInviteLoading(false);
+  };
+
+  const copyInviteLink = async () => {
+    if (!inviteLink) return;
+    await navigator.clipboard.writeText(inviteLink);
+    setInviteCopied(true);
+    setTimeout(() => setInviteCopied(false), 2000);
   };
 
   const loadReportsToday = async (studentList: Student[]) => {
@@ -496,12 +527,42 @@ export default function CenterAdminPage() {
           {/* ── STUDENTS ── */}
           {section === "students" && (
             <div className="flex flex-col gap-5">
+              {/* Invite Link Card */}
+              <div className="bg-blue-50 border border-blue-200 rounded-xl p-4">
+                <div className="flex items-center justify-between mb-2">
+                  <div>
+                    <p className="font-semibold text-blue-800 text-sm">🔗 Invite Link orqali qo'shish</p>
+                    <p className="text-xs text-blue-600 mt-0.5">Student linkni ochib o'zi ro'yxatdan o'tadi — parol o'zi tanlaydi</p>
+                  </div>
+                  <button
+                    onClick={generateInviteLink}
+                    disabled={inviteLoading}
+                    className="px-3 py-1.5 bg-blue-600 text-white rounded-lg text-xs font-semibold hover:bg-blue-700 disabled:opacity-50 transition-colors cursor-pointer border-none whitespace-nowrap">
+                    {inviteLoading ? "..." : "Yangi link"}
+                  </button>
+                </div>
+                {inviteLink && (
+                  <div className="flex items-center gap-2 mt-2">
+                    <input
+                      readOnly
+                      value={inviteLink}
+                      className="flex-1 text-xs px-2 py-1.5 border border-blue-200 rounded-lg bg-white text-slate-700 truncate"
+                    />
+                    <button
+                      onClick={copyInviteLink}
+                      className="px-3 py-1.5 bg-white border border-blue-300 text-blue-700 rounded-lg text-xs font-semibold hover:bg-blue-50 cursor-pointer whitespace-nowrap">
+                      {inviteCopied ? "✓ Copied!" : "Nusxa olish"}
+                    </button>
+                  </div>
+                )}
+              </div>
+
               <div className="flex items-center justify-between">
                 <p className="text-sm text-slate-600">{students.length} / {centerData?.studentLimit ?? 30} students enrolled</p>
                 <button
                   onClick={() => setAddDialog(true)}
                   className="px-4 py-2 bg-teal-600 text-white rounded-lg text-sm font-semibold hover:bg-teal-700 transition-colors cursor-pointer border-none">
-                  + Add Student
+                  + Qo'lda qo'shish
                 </button>
               </div>
 

@@ -13,6 +13,7 @@ import Practice from './pages/writing/Practice';
 import Relax from './pages/writing/Relax';
 import Admin from './pages/writing/AdminPage';
 import CenterAdminPage from './pages/CenterAdminPage';
+import JoinPage from './pages/JoinPage';
 
 const BlogIndexPage = lazy(() => import('./pages/blog/BlogIndexPage').then(m => ({ default: m.BlogIndexPage })));
 const BlogPostPage = lazy(() => import('./pages/blog/BlogPostPage').then(m => ({ default: m.BlogPostPage })));
@@ -37,6 +38,7 @@ export default function App() {
           <Route path="/account" element={<AccountPage />} />
           <Route path="/admin" element={<Admin />} />
           <Route path="/center-admin" element={<CenterAdminPage />} />
+          <Route path="/join/:token" element={<JoinPage />} />
           <Route path="/writing/mock" element={<Mock />} />
           <Route path="/writing/practice" element={<Practice />} />
           <Route path="/writing/relax" element={<Relax />} />
