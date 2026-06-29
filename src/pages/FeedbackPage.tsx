@@ -534,16 +534,22 @@ export function FeedbackPage() {
         .fp-flip-back { transform: rotateY(180deg); }
       `}</style>
 
-      <div className="bg-[var(--paper)] min-h-[calc(100vh-120px)] py-10">
+      <div className="bg-[var(--bg-base)] min-h-[calc(100vh-120px)] py-10">
         <div className="container mx-auto max-w-4xl px-4">
 
           {/* ── Top bar ── */}
           <div className="flex items-center justify-between mb-6 flex-wrap gap-3">
             <div>
-              <Link to="/dashboard" className="text-sm text-[var(--text-muted)] hover:underline">
-                ← Dashboard
+              <Link
+                to="/dashboard"
+                className="inline-flex items-center gap-1.5 text-sm text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition-colors group"
+              >
+                <svg className="w-4 h-4 transition-transform group-hover:-translate-x-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" />
+                </svg>
+                Dashboard
               </Link>
-              <h1 className="font-['Fraunces'] text-3xl font-extrabold text-[var(--ink-blue)] mt-1">
+              <h1 className="font-['Fraunces'] text-3xl font-extrabold text-[var(--text-primary)] mt-1">
                 AI Feedback Report
               </h1>
             </div>
@@ -580,14 +586,14 @@ export function FeedbackPage() {
 
           {/* ── Word count warning ── */}
           {wordCountWarning && (
-            <div className="bg-orange-50 border border-orange-200 rounded-xl px-4 py-3 mb-5 text-sm text-orange-800">
+            <div className="bg-orange-50 border border-orange-200 rounded-2xl px-4 py-3 mb-5 text-sm text-orange-800">
               ⚠️ {wordCountWarning}
             </div>
           )}
 
           {/* ── Question card ── */}
-          <div className="bg-[var(--bg-card)] rounded-xl px-6 py-5 border border-[var(--border)] border-l-4 border-l-[var(--ink-blue)] mb-6">
-            <p className="text-xs font-bold tracking-widest uppercase text-[var(--text-muted)] mb-2">
+          <div className="bg-[var(--bg-card)] rounded-2xl px-6 py-5 border border-[var(--border-color)] border-l-4 border-l-[var(--ink-blue)] mb-6 shadow-sm">
+            <p className="text-xs font-bold tracking-widest uppercase text-[var(--text-secondary)] mb-2">
               {selectedTask === 'task1' ? 'Task 1' : 'Task 2'} Question
             </p>
             {selectedTask === 'task1' && reportData.task1?.image && (
@@ -614,16 +620,18 @@ export function FeedbackPage() {
 
           {/* ── Loading ── */}
           {loading && (
-            <div className="bg-[var(--bg-card)] rounded-xl border border-[var(--border)] p-12 text-center">
-              <div className="text-5xl mb-4">🤖</div>
-              <p className="font-semibold text-[var(--ink-blue)] mb-1">Analysing your essay…</p>
-              <p className="text-sm text-[var(--text-muted)]">This usually takes up to 5 minutes.</p>
+            <div className="rounded-2xl border border-[var(--border-color)] p-16 text-center bg-[var(--bg-card)]">
+              <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-blue-50 mb-5">
+                <div className="w-8 h-8 border-2 border-blue-500 border-t-transparent rounded-full animate-spin" />
+              </div>
+              <p className="font-semibold text-[var(--text-primary)] text-lg mb-1">Analysing your essay…</p>
+              <p className="text-sm text-[var(--text-secondary)]">This usually takes up to 60 seconds.</p>
             </div>
           )}
 
           {/* ── Error ── */}
           {feedbackError && (
-            <div className="bg-red-50 border border-red-200 rounded-xl px-6 py-5 mb-6">
+            <div className="bg-red-50 border border-red-200 rounded-2xl px-6 py-5 mb-6">
               <p className="font-semibold text-red-700 mb-3">Error: {feedbackError}</p>
               <Button size="sm" onClick={loadFeedback}>Try again</Button>
             </div>
@@ -633,36 +641,60 @@ export function FeedbackPage() {
           {feedback && (
             <div>
               {/* Score banner */}
-              <div className="rounded-2xl p-7 mb-5 flex items-center gap-8 flex-wrap bg-gradient-to-br from-[var(--ink-blue)] to-[#2d5a8e]">
-                <div className="text-center min-w-[90px]">
-                  <p className="text-[0.7rem] font-bold tracking-widest uppercase text-white/50 mb-1">
+              <div className="rounded-2xl p-7 mb-5 flex items-center gap-8 flex-wrap bg-[var(--bg-card)] border border-[var(--border-color)] shadow-sm">
+                {/* Overall score ring */}
+                <div className="flex flex-col items-center min-w-[110px]">
+                  <p className="text-[0.65rem] font-bold tracking-widest uppercase text-[var(--text-secondary)] mb-3">
                     Band Score
                   </p>
-                  <div className="font-['IBM_Plex_Mono'] text-[3.5rem] font-bold text-[var(--gold)] leading-none">
-                    {feedback.scores.overall.toFixed(1)}
+                  <div className="relative flex items-center justify-center">
+                    <svg className="w-24 h-24 -rotate-90" viewBox="0 0 96 96">
+                      <circle cx="48" cy="48" r="38" fill="none" stroke="var(--border-color)" strokeWidth="7" />
+                      <circle
+                        cx="48" cy="48" r="38" fill="none"
+                        stroke={feedback.scores.overall >= 7 ? '#f59e0b' : feedback.scores.overall >= 6 ? 'var(--ink-blue)' : '#f59e0b'}
+                        strokeWidth="7"
+                        strokeLinecap="round"
+                        strokeDasharray={`${2 * Math.PI * 38}`}
+                        strokeDashoffset={`${2 * Math.PI * 38 * (1 - (feedback.scores.overall - 4) / 5)}`}
+                        className="transition-all duration-700"
+                      />
+                    </svg>
+                    <div className="absolute flex flex-col items-center">
+                      <span className={`font-['IBM_Plex_Mono'] text-2xl font-bold leading-none ${
+                        feedback.scores.overall >= 7 ? 'text-amber-500' : feedback.scores.overall >= 6 ? 'text-[var(--ink-blue)]' : 'text-amber-600'
+                      }`}>
+                        {feedback.scores.overall.toFixed(1)}
+                      </span>
+                      <span className="text-[0.6rem] text-[var(--text-secondary)] mt-0.5">/ 9.0</span>
+                    </div>
                   </div>
-                  <p className="text-[0.7rem] text-white/40 mt-1">{feedback.wordCount} words</p>
+                  <p className="text-[0.65rem] text-[var(--text-secondary)] mt-2">{feedback.wordCount} words</p>
                 </div>
+
+                {/* Category bars */}
                 <div className="flex-1 min-w-[200px]">
-                  <p className="text-white/45 text-[0.7rem] font-bold tracking-widest uppercase mb-3">
+                  <p className="text-[var(--text-secondary)] text-[0.65rem] font-bold tracking-widest uppercase mb-4">
                     Category Scores
                   </p>
-                  <div className="grid grid-cols-2 gap-x-6 gap-y-2">
+                  <div className="flex flex-col gap-3">
                     {([
-                      ['TA', feedback.scores.taskAchievement],
-                      ['CC', feedback.scores.coherenceCohesion],
-                      ['LR', feedback.scores.lexicalResource],
-                      ['GRA', feedback.scores.grammaticalRangeAccuracy],
-                    ] as [string, number][]).map(([abbr, score]) => (
-                      <div key={abbr} className="flex items-center gap-2">
-                        <span className="text-[0.7rem] text-white/45 w-8 font-mono">{abbr}</span>
-                        <div className="flex-1 h-1 bg-white/15 rounded-full">
+                      ['Task Achievement', 'TA', feedback.scores.taskAchievement],
+                      ['Coherence & Cohesion', 'CC', feedback.scores.coherenceCohesion],
+                      ['Lexical Resource', 'LR', feedback.scores.lexicalResource],
+                      ['Grammatical Range', 'GRA', feedback.scores.grammaticalRangeAccuracy],
+                    ] as [string, string, number][]).map(([, abbr, score]) => (
+                      <div key={abbr} className="flex items-center gap-3">
+                        <span className="text-[0.7rem] text-[var(--text-secondary)] w-8 font-mono shrink-0">{abbr}</span>
+                        <div className="flex-1 h-2 bg-[var(--bg-subtle,#f1f5f9)] rounded-full overflow-hidden">
                           <div
-                            className="h-full bg-[var(--gold)] rounded-full"
-                            style={{ width: `${((score - 4) / 5) * 100}%` }}
+                            className={`h-full rounded-full transition-all duration-700 ${
+                              score >= 7 ? 'bg-amber-400' : score >= 6 ? 'bg-[var(--ink-blue)]' : 'bg-amber-500'
+                            }`}
+                            style={{ width: `${Math.max(4, ((score - 4) / 5) * 100)}%` }}
                           />
                         </div>
-                        <span className="text-[0.8125rem] font-bold text-white font-mono min-w-[28px] text-right">
+                        <span className="text-[0.8125rem] font-bold text-[var(--text-primary)] font-mono min-w-[30px] text-right">
                           {score.toFixed(1)}
                         </span>
                       </div>
@@ -673,7 +705,7 @@ export function FeedbackPage() {
 
               {/* Recurring issues */}
               {recurringIssues.length > 0 && (
-                <div className="bg-amber-50 border border-amber-200 rounded-xl px-5 py-4 mb-5">
+                <div className="bg-amber-50 border border-amber-200 rounded-2xl px-5 py-4 mb-5">
                   <p className="font-bold text-amber-800 text-sm mb-2">
                     🔁 Recurring patterns in your recent essays:
                   </p>
@@ -691,21 +723,26 @@ export function FeedbackPage() {
               )}
 
               {/* Tab bar */}
-              <div className="flex gap-1 mb-6 bg-[var(--bg-card)] border border-[var(--border-color)] rounded-xl p-1.5 overflow-x-auto">
-                {TABS.map((tab) => (
-                  <button
-                    key={tab.id}
-                    onClick={() => setActiveTab(tab.id)}
-                    className={`flex items-center gap-1.5 px-3.5 py-2 rounded-lg text-[0.8125rem] whitespace-nowrap cursor-pointer transition-colors border-none ${
-                      activeTab === tab.id
-                        ? 'bg-[var(--ink-blue)] text-white font-bold'
-                        : 'bg-transparent text-[var(--text-muted)] font-medium hover:text-gray-700'
-                    }`}
-                  >
-                    <span>{tab.icon}</span>
-                    {tab.label}
-                  </button>
-                ))}
+              <div className="sticky top-[72px] z-10 -mx-4 px-4 mb-6 bg-[var(--bg-card)]/90 backdrop-blur border-b border-[var(--border-color)]">
+                <div className="flex gap-0 overflow-x-auto scrollbar-none">
+                  {TABS.map((tab) => (
+                    <button
+                      key={tab.id}
+                      onClick={() => setActiveTab(tab.id)}
+                      className={`flex items-center gap-1.5 px-4 py-3.5 text-[0.8125rem] whitespace-nowrap cursor-pointer transition-all border-none bg-transparent relative ${
+                        activeTab === tab.id
+                          ? 'text-[var(--ink-blue)] font-bold'
+                          : 'text-[var(--text-secondary)] font-medium hover:text-[var(--text-primary)]'
+                      }`}
+                    >
+                      <span>{tab.icon}</span>
+                      {tab.label}
+                      {activeTab === tab.id && (
+                        <span className="absolute bottom-0 left-0 right-0 h-0.5 bg-[var(--ink-blue)] rounded-t-full" />
+                      )}
+                    </button>
+                  ))}
+                </div>
               </div>
 
               {/* ── OVERVIEW ── */}
@@ -718,26 +755,26 @@ export function FeedbackPage() {
                       ['Lexical Resource', feedback.scores.lexicalResource],
                       ['Grammatical Range', feedback.scores.grammaticalRangeAccuracy],
                     ] as [string, number][]).map(([name, score]) => (
-                      <div key={name} className="bg-[var(--bg-card)] rounded-xl p-5 border border-[var(--border)] text-center">
-                        <p className="text-[0.7rem] font-bold text-[var(--text-muted)] uppercase tracking-wider mb-2 leading-snug">
+                      <div key={name} className="bg-[var(--bg-card)] rounded-2xl p-5 border border-[var(--border-color)] shadow-sm text-center">
+                        <p className="text-[0.65rem] font-bold text-[var(--text-secondary)] uppercase tracking-wider mb-3 leading-snug">
                           {name}
                         </p>
                         <ScoreBadge score={score} />
-                        <div className="h-1 bg-slate-100 rounded-full mt-3">
+                        <div className="h-1.5 bg-slate-100 rounded-full mt-3">
                           <div
                             className={`h-full rounded-full ${
-                              score >= 7 ? 'bg-green-500' : score >= 6 ? 'bg-[var(--ink-blue)]' : 'bg-[var(--gold)]'
+                              score >= 7 ? 'bg-amber-400' : score >= 6 ? 'bg-[var(--ink-blue)]' : 'bg-amber-500'
                             }`}
-                            style={{ width: `${((score - 4) / 5) * 100}%` }}
+                            style={{ width: `${Math.max(4, ((score - 4) / 5) * 100)}%` }}
                           />
                         </div>
                       </div>
                     ))}
                   </div>
 
-                  <div className="bg-[var(--bg-card)] rounded-xl p-6 border border-[var(--border)] border-l-4 border-l-[var(--gold)]">
-                    <p className="font-bold text-[var(--ink-blue)] mb-3">📈 Band Gap Analysis</p>
-                    <p className="font-['Georgia'] leading-relaxed text-gray-800 text-[0.9375rem] m-0">
+                  <div className="bg-[var(--bg-card)] rounded-2xl p-6 border border-[var(--border-color)] border-l-4 border-l-[var(--gold)] shadow-sm">
+                    <p className="font-bold text-[var(--text-primary)] mb-3">📈 Band Gap Analysis</p>
+                    <p className="font-['Georgia'] leading-relaxed text-[var(--text-primary)] text-[0.9375rem] m-0">
                       {feedback.bandGapAnalysis}
                     </p>
                   </div>
@@ -751,23 +788,24 @@ export function FeedbackPage() {
                     const accent = i === 0 ? '#b91c1c' : i === 1 ? '#c9900a' : '#166534';
                     const label = i === 0 ? 'High priority' : i === 1 ? 'Medium priority' : 'Also consider';
                     const labelColor = i === 0 ? 'text-red-700' : i === 1 ? 'text-amber-800' : 'text-green-700';
+                    const bgGradient = i === 0 ? 'from-red-50 to-transparent' : i === 1 ? 'from-amber-50 to-transparent' : 'from-green-50 to-transparent';
                     return (
                       <div
                         key={i}
-                        className="bg-[var(--bg-card)] rounded-xl px-6 py-5 border border-[var(--border)] flex gap-5 items-start"
+                        className={`bg-gradient-to-r ${bgGradient} bg-[var(--bg-card)] rounded-2xl px-6 py-5 border border-[var(--border-color)] flex gap-5 items-start shadow-sm`}
                         style={{ borderLeft: `4px solid ${accent}` }}
                       >
                         <div
-                          className="w-9 h-9 rounded-xl flex items-center justify-center text-white font-mono font-bold text-base shrink-0"
+                          className="w-9 h-9 rounded-xl flex items-center justify-center text-white font-mono font-bold text-base shrink-0 shadow-sm"
                           style={{ background: accent }}
                         >
                           {i + 1}
                         </div>
                         <div>
-                          <p className={`text-xs font-bold uppercase tracking-wider mb-1 ${labelColor}`}>
+                          <p className={`text-xs font-bold uppercase tracking-wider mb-1.5 ${labelColor}`}>
                             {label}
                           </p>
-                          <p className="text-gray-800 leading-relaxed text-[0.9375rem] m-0">{fix}</p>
+                          <p className="text-[var(--text-primary)] leading-relaxed text-[0.9375rem] m-0">{fix}</p>
                         </div>
                       </div>
                     );
@@ -780,40 +818,40 @@ export function FeedbackPage() {
                 <div className="flex flex-col gap-3">
                   {(Object.entries(feedback.feedback) as [string, { strengths: string[]; issues: string[] }][]).map(
                     ([key, cat]) => (
-                      <div key={key} className="bg-[var(--bg-card)] rounded-xl border border-[var(--border)] overflow-hidden">
+                      <div key={key} className="bg-[var(--bg-card)] rounded-2xl border border-[var(--border-color)] overflow-hidden shadow-sm">
                         <button
                           onClick={() => setExpandedCat(expandedCat === key ? null : key)}
                           className="w-full px-5 py-4 bg-transparent border-none flex items-center justify-between cursor-pointer"
                         >
-                          <span className="font-bold text-[var(--ink-blue)] text-[0.9375rem]">
+                          <span className="font-bold text-[var(--text-primary)] text-[0.9375rem]">
                             {CAT_LABELS[key] ?? key}
                           </span>
-                          <span className="text-[var(--text-muted)]">{expandedCat === key ? '▲' : '▼'}</span>
+                          <span className="text-[var(--text-secondary)] text-sm">{expandedCat === key ? '▲' : '▼'}</span>
                         </button>
                         {expandedCat === key && (
-                          <div className="px-5 pb-5 border-t border-[var(--border)]">
+                          <div className="px-5 pb-5 border-t border-[var(--border-color)]">
                             {cat.strengths.length > 0 && (
                               <div className="mt-4 mb-3">
-                                <p className="text-[0.7rem] font-bold uppercase tracking-wider text-green-700 mb-2">
+                                <p className="text-[0.65rem] font-bold uppercase tracking-wider text-green-700 mb-2">
                                   Strengths
                                 </p>
                                 {cat.strengths.map((s, i) => (
                                   <div key={i} className="flex gap-2.5 mb-1.5 items-start">
-                                    <span className="text-green-700 text-sm mt-0.5">✓</span>
-                                    <p className="text-[0.9rem] text-gray-700 leading-relaxed m-0">{s}</p>
+                                    <span className="text-green-600 text-sm mt-0.5">✓</span>
+                                    <p className="text-[0.9rem] text-[var(--text-primary)] leading-relaxed m-0">{s}</p>
                                   </div>
                                 ))}
                               </div>
                             )}
                             {cat.issues.length > 0 && (
                               <div>
-                                <p className="text-[0.7rem] font-bold uppercase tracking-wider text-red-700 mb-2">
+                                <p className="text-[0.65rem] font-bold uppercase tracking-wider text-red-600 mb-2">
                                   Issues to Improve
                                 </p>
                                 {cat.issues.map((s, i) => (
                                   <div key={i} className="flex gap-2.5 mb-1.5 items-start">
-                                    <span className="text-red-700 text-sm mt-0.5">✗</span>
-                                    <p className="text-[0.9rem] text-gray-700 leading-relaxed m-0">{s}</p>
+                                    <span className="text-red-600 text-sm mt-0.5">✗</span>
+                                    <p className="text-[0.9rem] text-[var(--text-primary)] leading-relaxed m-0">{s}</p>
                                   </div>
                                 ))}
                               </div>
@@ -876,14 +914,14 @@ export function FeedbackPage() {
               {activeTab === 'grammar' && (
                 <div className="flex flex-col gap-3">
                   {feedback.grammar.map((g, i) => (
-                    <div key={i} className="bg-[var(--bg-card)] rounded-xl px-6 py-5 border border-[var(--border)]">
+                    <div key={i} className="bg-[var(--bg-card)] rounded-2xl px-6 py-5 border border-[var(--border-color)] shadow-sm">
                       <div className="flex gap-4 items-start">
                         <div className="w-8 h-8 rounded-lg flex items-center justify-center bg-[var(--ink-blue)]/10 text-[var(--ink-blue)] font-mono font-bold text-sm shrink-0">
                           {i + 1}
                         </div>
                         <div className="flex-1">
-                          <p className="font-bold text-[var(--ink-blue)] mb-1.5 text-[0.9375rem]">{g.point}</p>
-                          <p className="text-sm text-gray-700 leading-relaxed mb-2.5">{g.explanation}</p>
+                          <p className="font-bold text-[var(--text-primary)] mb-1.5 text-[0.9375rem]">{g.point}</p>
+                          <p className="text-sm text-[var(--text-secondary)] leading-relaxed mb-2.5">{g.explanation}</p>
                           <div className="bg-[var(--gold)]/10 border border-[var(--gold)]/30 rounded-lg px-3.5 py-2.5">
                             <p className="text-[0.8125rem] text-amber-900 italic font-['Georgia'] m-0">
                               Example: "{g.example}"
@@ -969,11 +1007,11 @@ export function FeedbackPage() {
 
               {/* ── SAMPLE RESPONSE ── */}
               {activeTab === 'sample' && (
-                <div className="bg-[var(--bg-card)] rounded-xl border border-[var(--border)] border-l-4 border-l-[var(--gold)] px-6 py-6">
+                <div className="bg-[var(--bg-card)] rounded-2xl border border-[var(--border-color)] border-l-4 border-l-[var(--gold)] px-6 py-6 shadow-sm">
                   <p className="text-xs font-bold tracking-widest uppercase text-[var(--gold)] mb-4">
                     ✍️ Band 7–8 Sample Response
                   </p>
-                  <p className="font-['Georgia'] text-gray-800 leading-[1.9] text-[0.9375rem] whitespace-pre-wrap">
+                  <p className="font-['Georgia'] text-[var(--text-primary)] leading-[1.9] text-[0.9375rem] whitespace-pre-wrap">
                     {feedback.sampleResponse ?? 'Sample response not available for this analysis.'}
                   </p>
                 </div>
@@ -985,8 +1023,8 @@ export function FeedbackPage() {
                 return (
                 <div>
                   {!ltChecked ? (
-                    <div className="bg-[var(--bg-card)] rounded-xl border border-[var(--border)] overflow-hidden">
-                      <div className="flex items-center justify-between px-5 py-3 border-b border-[var(--border)] bg-slate-50">
+                    <div className="bg-[var(--bg-card)] rounded-2xl border border-[var(--border-color)] overflow-hidden shadow-sm">
+                      <div className="flex items-center justify-between px-5 py-3 border-b border-[var(--border-color)] bg-slate-50">
                         <div className="flex gap-1">
                           {(['en-GB', 'en-US'] as const).map((lang) => (
                             <button
@@ -1012,8 +1050,8 @@ export function FeedbackPage() {
                       {ltError && <p className="px-5 pb-3 text-sm text-red-600">{ltError}</p>}
                     </div>
                   ) : (
-                    <div className="bg-[var(--bg-card)] rounded-xl border border-[var(--border)] overflow-hidden">
-                      <div className="flex items-center justify-between px-5 py-3 border-b border-[var(--border)] bg-slate-50">
+                    <div className="bg-[var(--bg-card)] rounded-2xl border border-[var(--border-color)] overflow-hidden shadow-sm">
+                      <div className="flex items-center justify-between px-5 py-3 border-b border-[var(--border-color)] bg-slate-50">
                         <span className={`text-sm font-semibold ${ltMatches.length === 0 ? 'text-green-700' : 'text-red-600'}`}>
                           {ltMatches.length === 0 ? '✓ No issues found' : `${ltMatches.length} issue${ltMatches.length !== 1 ? 's' : ''} found`}
                         </span>
@@ -1074,7 +1112,7 @@ export function FeedbackPage() {
                     <div className="mt-4 flex flex-col gap-2">
                       <p className="text-xs font-bold uppercase tracking-widest text-[var(--text-muted)] mb-1">All Issues</p>
                       {ltMatches.map((m, i) => (
-                        <div key={i} className="bg-[var(--bg-card)] rounded-xl px-4 py-3 border border-[var(--border)] flex items-center gap-3">
+                        <div key={i} className="bg-[var(--bg-card)] rounded-2xl px-4 py-3 border border-[var(--border-color)] flex items-center gap-3">
                           <span className="w-2 h-2 rounded-full shrink-0" style={{ background: ltColor(m.rule.issueType) }} />
                           <div className="flex-1 min-w-0">
                             <span className="font-semibold text-sm text-gray-900 block">"{ltCorrected.slice(m.offset, m.offset + m.length)}"</span>
@@ -1104,7 +1142,7 @@ export function FeedbackPage() {
                     {feedback.vocabulary.map((v, i) => {
                       const key = `vocab_${i}`;
                       return (
-                        <div key={key} className="bg-[var(--bg-card)] rounded-xl px-5 py-4 border border-[var(--border)]">
+                        <div key={key} className="bg-[var(--bg-card)] rounded-2xl px-5 py-4 border border-[var(--border-color)] shadow-sm">
                           <div className="flex items-center gap-3 mb-3">
                             <span className="bg-[var(--ink-blue)]/10 text-[var(--ink-blue)] text-xs font-bold px-2 py-0.5 rounded-full uppercase tracking-wide">Vocab</span>
                             <span className="font-['Georgia'] font-bold text-[var(--ink-blue)] text-base">{v.word}</span>
@@ -1146,7 +1184,7 @@ export function FeedbackPage() {
                     {feedback.grammar.map((g, i) => {
                       const key = `grammar_${i}`;
                       return (
-                        <div key={key} className="bg-[var(--bg-card)] rounded-xl px-5 py-4 border border-[var(--border)]">
+                        <div key={key} className="bg-[var(--bg-card)] rounded-2xl px-5 py-4 border border-[var(--border-color)] shadow-sm">
                           <div className="flex items-center gap-3 mb-1">
                             <span className="bg-[var(--gold)]/20 text-amber-800 text-xs font-bold px-2 py-0.5 rounded-full uppercase tracking-wide">Grammar</span>
                             <span className="font-bold text-gray-800 text-sm">{g.point}</span>
