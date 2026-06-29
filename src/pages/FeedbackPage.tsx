@@ -13,13 +13,13 @@ type Tab = 'overview' | 'priority' | 'detailed' | 'essay' | 'sample' | 'vocabula
 
 const TABS: { id: Tab; label: string; icon: string }[] = [
   { id: 'overview', label: 'Overview', icon: '📊' },
-  { id: 'priority', label: 'Priority Fixes', icon: '🎯' },
+  { id: 'priority', label: 'Priority', icon: '🎯' },
   { id: 'detailed', label: 'Detailed', icon: '📝' },
   { id: 'essay', label: 'Essay', icon: '🖊️' },
   { id: 'sample', label: 'Sample', icon: '✍️' },
-  { id: 'vocabulary', label: 'Vocabulary', icon: '📚' },
+  { id: 'vocabulary', label: 'Vocab', icon: '📚' },
   { id: 'grammar', label: 'Grammar', icon: '✏️' },
-  { id: 'spelling', label: 'Spelling', icon: '🔍' },
+  { id: 'spelling', label: 'Spell', icon: '🔍' },
   { id: 'quiz', label: 'Practice', icon: '🧠' },
 ];
 
@@ -788,8 +788,12 @@ export function FeedbackPage() {
               )}
 
               {/* Tab bar */}
-              <div className="sticky top-[72px] z-10 -mx-4 px-4 mb-6 bg-[var(--bg-card)]/90 backdrop-blur border-b border-[var(--border-color)]">
-                <div className="flex gap-0 overflow-x-auto scrollbar-none">
+              <div className="sticky top-[72px] z-10 -mx-4 mb-6 bg-[var(--bg-card)]/90 backdrop-blur border-b border-[var(--border-color)] relative">
+                {/* right fade hint */}
+                <div className="pointer-events-none absolute right-0 top-0 bottom-0 w-10 bg-gradient-to-l from-[var(--bg-card)] to-transparent z-10" />
+                <div className="flex gap-0 overflow-x-auto scrollbar-none px-4 scroll-smooth"
+                  style={{ WebkitOverflowScrolling: 'touch' }}
+                >
                   {TABS.map((tab) => (
                     <button
                       key={tab.id}
