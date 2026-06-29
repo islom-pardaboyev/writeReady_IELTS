@@ -209,7 +209,7 @@ export default function CenterAdminPage() {
           name: d.name ?? "",
           studentLimit: d.studentLimit ?? 30,
           expiresAt: d.expiresAt ?? "",
-          status: d.status ?? "active",
+          status: d.expiresAt ? (new Date(d.expiresAt) > new Date() ? "active" : "expired") : "pending",
           paymentAmount: d.paymentAmount ?? 0,
         });
       }

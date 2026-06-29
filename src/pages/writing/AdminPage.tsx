@@ -313,7 +313,8 @@ export default function Admin() {
           phone: data.phone ?? '', contractNumber: data.contractNumber ?? '',
           paymentAmount: data.paymentAmount ?? 0, studentLimit: data.studentLimit ?? 30,
           login: data.login ?? '', password: data.password ?? '',
-          expiresAt: data.expiresAt ?? '', status: data.status ?? 'pending',
+          expiresAt: data.expiresAt ?? '',
+          status: data.expiresAt ? (new Date(data.expiresAt) > new Date() ? 'active' : 'expired') : 'pending',
           studentCount: studSnap.size,
         };
       }));
@@ -343,7 +344,7 @@ export default function Admin() {
         paymentAmount: Number(centerEditor.paymentAmount) || 0,
         studentLimit: Number(centerEditor.studentLimit) || 30,
         login: centerEditor.login, password: centerEditor.password,
-        expiresAt: centerEditor.expiresAt, status: centerEditor.status ?? 'pending',
+        expiresAt: centerEditor.expiresAt,
       };
       if (centerEditor.id) { await updateDoc(doc(db, 'learningCenters', centerEditor.id), payload); }
       else { await addDoc(collection(db, 'learningCenters'), { ...payload, createdAt: new Date() }); }
@@ -943,18 +944,7 @@ export default function Admin() {
                     </div>
                   ))}
                 </div>
-                <div>
-                  <label className="text-xs font-semibold text-slate-600 mb-1 block uppercase tracking-wide">Status</label>
-                  <select
-                    className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm text-slate-900 bg-white outline-none"
-                    value={centerEditor.status ?? 'pending'}
-                    onChange={(e) => setCenterEditor((p) => ({ ...p, status: e.target.value }))}
-                  >
-                    <option value="pending">Pending</option>
-                    <option value="active">Active</option>
-                    <option value="expired">Expired</option>
-                  </select>
-                </div>
+                {/* Status is auto-calculated from expiresAt */}
                 <div className="flex gap-3">
                   <button disabled={centerSaving} onClick={saveCenter}
                     className="flex-1 bg-teal-600 text-white border-none rounded-lg py-2.5 font-semibold text-sm cursor-pointer hover:bg-teal-700 transition-colors disabled:opacity-50">
