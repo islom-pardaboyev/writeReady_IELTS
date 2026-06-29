@@ -283,14 +283,16 @@ export async function getActiveAnnouncement(): Promise<Announcement | null> {
   const q = query(
     collection(db, 'announcements'),
     orderBy('createdAt', 'desc'),
-    limit(10)
+    limit(50)
   );
   const snap = await getDocs(q);
-  const active = snap.docs.find((d) => d.data().active === true);
-  if (!active) return null;
-  const data = active.data();
+  const activeDocs = snap.docs.filter((d) => d.data().active === true);
+  if (activeDocs.length === 0) return null;
+  // Pick a random active announcement each visit
+  const picked = activeDocs[Math.floor(Math.random() * activeDocs.length)];
+  const data = picked.data();
   return {
-    id: active.id,
+    id: picked.id,
     title: data.title ?? '',
     text: data.text ?? '',
     category: data.category ?? 'announcement',

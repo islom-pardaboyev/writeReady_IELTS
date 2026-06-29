@@ -19,7 +19,8 @@ const CATEGORY_META: Record<
   offer:        { label: 'Taklif',         icon: Gift,       from: 'from-rose-600',    to: 'to-rose-500',    chipText: 'text-rose-50',    ring: 'ring-rose-400/40' },
 };
 
-const DISMISS_KEY = 'ann_dismissed';
+// One key per session — cleared when user closes the tab/browser
+const SESSION_DISMISSED_KEY = 'ann_session_dismissed';
 
 export function AnnouncementPopup() {
   const { user } = useAuth();
@@ -28,10 +29,10 @@ export function AnnouncementPopup() {
 
   useEffect(() => {
     if (!user) return;
+    // If already dismissed in this session, don't show again
+    if (sessionStorage.getItem(SESSION_DISMISSED_KEY)) return;
     getActiveAnnouncement().then((ann) => {
       if (!ann) return;
-      const key = `${DISMISS_KEY}_${ann.id}`;
-      if (sessionStorage.getItem(key)) return;
       setAnnouncement(ann);
       setTimeout(() => setOpen(true), 600);
     }).catch(() => {});
@@ -39,7 +40,7 @@ export function AnnouncementPopup() {
 
   const dismiss = () => {
     setOpen(false);
-    if (announcement) sessionStorage.setItem(`${DISMISS_KEY}_${announcement.id}`, '1');
+    sessionStorage.setItem(SESSION_DISMISSED_KEY, '1');
   };
 
   if (!user || !announcement) return null;
