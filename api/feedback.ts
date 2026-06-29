@@ -192,7 +192,7 @@ Return this EXACT JSON structure:
     "<third most impactful fix>"
   ],
   "bandGapAnalysis": "<Specific measurable steps to the next band level>",
-  "sampleResponse": "<A high-band (band 7-8) model response for THIS exact question — 2-3 paragraphs showing correct structure, vocabulary, and grammar. For Task 1 describe the data clearly; for Task 2 argue both sides or one side with evidence. Without any fancy words etc that make the writing longer without any meaning. You may effective collocations that are related to the topic.>",
+  "sampleResponse": "<A high-band (band 7-9) model response for THIS exact question. STRICT REQUIREMENTS: (1) For Task 1: write a FULL essay of at least 180 words covering ALL key data points, trends, comparisons, and figures shown in the chart/graph/diagram — include an introduction paraphrasing the question, an overview paragraph highlighting 2-3 main trends, and 2 detailed body paragraphs with specific data and figures. Do NOT omit any significant data. (2) For Task 2: write a FULL essay of at least 280 words with introduction, 2-3 body paragraphs each with a main point, supporting explanation and example, and a conclusion. Use precise academic vocabulary, varied sentence structures, and effective cohesive devices. Do NOT add filler words — every sentence must carry meaning. Write as a band 7-9 IELTS candidate would.>",
   "sentenceAnalysis": [
     {
       "sentence": "<copy the EXACT sentence from the student essay>",
