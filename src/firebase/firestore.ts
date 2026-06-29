@@ -62,8 +62,8 @@ export async function createUserProfile(uid: string, email: string): Promise<voi
     plan: 'free',
     subscriptionExpiresAt: null,
     createdAt: serverTimestamp(),
-    bonusAnalyses: 1,
-    notification: '🎁 Xush kelibsiz! Sizga 1 ta bepul AI tahlil berildi. Sinab ko\'ring!',
+    bonusAnalyses: 2,
+    notification: '🎁 Xush kelibsiz! Sizga 2 ta bepul AI tahlil berildi. Sinab ko\'ring!',
   });
 }
 
