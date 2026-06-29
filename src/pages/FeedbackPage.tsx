@@ -525,6 +525,13 @@ export function FeedbackPage() {
       spacer(2);
     });
 
+    if (feedback.sampleResponse) {
+      newPage();
+      addText('Sample Response (Band 7-9)', 12, true, [30, 58, 95]);
+      spacer(2);
+      addText(feedback.sampleResponse, 10, false, [30, 41, 59]);
+    }
+
     pdf.save(`WriteReady_Feedback_${new Date().toISOString().slice(0, 10)}.pdf`);
     setExporting(false);
   };
