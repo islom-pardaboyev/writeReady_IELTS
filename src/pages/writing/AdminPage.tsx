@@ -152,6 +152,30 @@ export default function Admin() {
   const [userSuccess, setUserSuccess] = useState("");
   const [userError, setUserError] = useState("");
 
+  // Centers
+  interface CenterRow {
+    id: string; name: string; contactPerson: string; phone: string;
+    contractNumber: string; paymentAmount: number; studentLimit: number;
+    login: string; password: string; expiresAt: string; status: string;
+    studentCount?: number;
+  }
+  interface CenterStudent { id: string; fullName: string; login: string; addedAt?: string; }
+  const [centers, setCenters] = useState<CenterRow[]>([]);
+  const [centersLoading, setCentersLoading] = useState(false);
+  const [centerEditor, setCenterEditor] = useState<Partial<CenterRow> | null>(null);
+  const [centerSaving, setCenterSaving] = useState(false);
+  const [viewCenter, setViewCenter] = useState<CenterRow | null>(null);
+  const [centerStudents, setCenterStudents] = useState<CenterStudent[]>([]);
+  const [newStudentName, setNewStudentName] = useState('');
+  const [newStudentLogin, setNewStudentLogin] = useState('');
+  const [newStudentPassword, setNewStudentPassword] = useState('');
+  const [studentAdding, setStudentAdding] = useState(false);
+  const [editCenterStudent, setEditCenterStudent] = useState<CenterStudent | null>(null);
+  const [editCSName, setEditCSName] = useState('');
+  const [editCSLogin, setEditCSLogin] = useState('');
+  const [editCSPass, setEditCSPass] = useState('');
+  const [savingCS, setSavingCS] = useState(false);
+
   const { uploadImage, uploading } = useUpload();
 
   useEffect(() => {
@@ -275,6 +299,113 @@ export default function Admin() {
     } catch { setUserError("Failed to update subscription."); }
     finally { setUserActionLoading(false); }
   };
+
+  // ── Centers ──
+  const loadCenters = async () => {
+    setCentersLoading(true);
+    try {
+      const snap = await getDocs(collection(db, 'learningCenters'));
+      const rows: CenterRow[] = await Promise.all(snap.docs.map(async (d) => {
+        const data = d.data();
+        const studSnap = await getDocs(collection(db, 'learningCenters', d.id, 'students'));
+        return {
+          id: d.id, name: data.name ?? '', contactPerson: data.contactPerson ?? '',
+          phone: data.phone ?? '', contractNumber: data.contractNumber ?? '',
+          paymentAmount: data.paymentAmount ?? 0, studentLimit: data.studentLimit ?? 30,
+          login: data.login ?? '', password: data.password ?? '',
+          expiresAt: data.expiresAt ?? '', status: data.status ?? 'pending',
+          studentCount: studSnap.size,
+        };
+      }));
+      setCenters(rows);
+    } catch (e) { console.error(e); }
+    setCentersLoading(false);
+  };
+
+  const loadCenterStudents = async (centerId: string) => {
+    const snap = await getDocs(collection(db, 'learningCenters', centerId, 'students'));
+    setCenterStudents(snap.docs.map((d) => ({
+      id: d.id, fullName: d.data().fullName ?? '',
+      login: d.data().login ?? '',
+      addedAt: d.data().addedAt?.toDate?.()?.toISOString?.() ?? '',
+    })));
+  };
+
+  const saveCenter = async () => {
+    if (!centerEditor?.name || !centerEditor?.login || !centerEditor?.password || !centerEditor?.expiresAt) {
+      alert('Majburiy: name, login, password, expiresAt'); return;
+    }
+    setCenterSaving(true);
+    try {
+      const payload = {
+        name: centerEditor.name, contactPerson: centerEditor.contactPerson ?? '',
+        phone: centerEditor.phone ?? '', contractNumber: centerEditor.contractNumber ?? '',
+        paymentAmount: Number(centerEditor.paymentAmount) || 0,
+        studentLimit: Number(centerEditor.studentLimit) || 30,
+        login: centerEditor.login, password: centerEditor.password,
+        expiresAt: centerEditor.expiresAt, status: centerEditor.status ?? 'pending',
+      };
+      if (centerEditor.id) { await updateDoc(doc(db, 'learningCenters', centerEditor.id), payload); }
+      else { await addDoc(collection(db, 'learningCenters'), { ...payload, createdAt: new Date() }); }
+      setCenterEditor(null); await loadCenters();
+    } catch (e) { console.error(e); }
+    setCenterSaving(false);
+  };
+
+  const deleteCenter = async (id: string) => {
+    if (!confirm("O'chirishni xohlaysizmi?")) return;
+    await deleteDoc(doc(db, 'learningCenters', id));
+    setCenters((p) => p.filter((c) => c.id !== id));
+  };
+
+  const addStudentToCenter = async () => {
+    if (!viewCenter || !newStudentName.trim() || !newStudentLogin.trim() || !newStudentPassword.trim()) return;
+    setStudentAdding(true);
+    try {
+      const existing = await getDocs(query(collection(db, 'learningCenters', viewCenter.id, 'students'), where('login', '==', newStudentLogin.trim())));
+      if (!existing.empty) { alert('Bu login allaqachon mavjud.'); setStudentAdding(false); return; }
+      await addDoc(collection(db, 'learningCenters', viewCenter.id, 'students'), {
+        fullName: newStudentName.trim(), login: newStudentLogin.trim(),
+        password: newStudentPassword.trim(), addedAt: new Date(),
+      });
+      setNewStudentName(''); setNewStudentLogin(''); setNewStudentPassword('');
+      await loadCenterStudents(viewCenter.id);
+      setViewCenter((p) => p ? { ...p, studentCount: (p.studentCount ?? 0) + 1 } : p);
+    } catch (e) { console.error(e); }
+    setStudentAdding(false);
+  };
+
+  const removeStudentFromCenter = async (centerId: string, studentId: string) => {
+    if (!confirm("O'chirishni xohlaysizmi?")) return;
+    await deleteDoc(doc(db, 'learningCenters', centerId, 'students', studentId));
+    setCenterStudents((p) => p.filter((s) => s.id !== studentId));
+    setViewCenter((p) => p ? { ...p, studentCount: Math.max(0, (p.studentCount ?? 1) - 1) } : p);
+  };
+
+  const openEditCenterStudent = (s: CenterStudent) => {
+    setEditCenterStudent(s); setEditCSName(s.fullName); setEditCSLogin(s.login); setEditCSPass('');
+  };
+
+  const saveEditCenterStudent = async () => {
+    if (!editCenterStudent || !viewCenter || !editCSName.trim() || !editCSLogin.trim()) return;
+    setSavingCS(true);
+    try {
+      if (editCSLogin.trim() !== editCenterStudent.login) {
+        const ex = await getDocs(query(collection(db, 'learningCenters', viewCenter.id, 'students'), where('login', '==', editCSLogin.trim())));
+        if (!ex.empty) { alert('Bu login allaqachon mavjud.'); setSavingCS(false); return; }
+      }
+      const updates: Record<string, string> = { fullName: editCSName.trim(), login: editCSLogin.trim() };
+      if (editCSPass.trim()) updates.password = editCSPass.trim();
+      await updateDoc(doc(db, 'learningCenters', viewCenter.id, 'students', editCenterStudent.id), updates);
+      setCenterStudents((p) => p.map((s) => s.id === editCenterStudent.id ? { ...s, fullName: editCSName.trim(), login: editCSLogin.trim() } : s));
+      setEditCenterStudent(null);
+    } catch (e) { console.error(e); }
+    setSavingCS(false);
+  };
+
+  useEffect(() => {
+    if (isLoggedIn && section === 'centers' && centers.length === 0) loadCenters();
+  }, [isLoggedIn, section]);
 
   const signOut = () => {
     setIsLoggedIn(false);
@@ -714,15 +845,220 @@ export default function Admin() {
         {/* ── LEARNING CENTERS ── */}
         {section === "centers" && (
           <div className="flex flex-col gap-6">
-            <div>
-              <p className="text-[0.7rem] font-bold tracking-widest uppercase text-teal-700 mb-1">Learning Centers</p>
-              <h1 className="text-2xl font-bold text-slate-900 m-0">O'quv markazlari</h1>
+            <div className="flex items-center justify-between flex-wrap gap-4">
+              <div>
+                <p className="text-[0.7rem] font-bold tracking-widest uppercase text-teal-700 mb-1">Learning Centers</p>
+                <h1 className="text-2xl font-bold text-slate-900 m-0">O'quv markazlari</h1>
+              </div>
+              <div className="flex gap-2">
+                <button onClick={loadCenters} disabled={centersLoading}
+                  className="px-4 py-2 bg-white border border-slate-200 rounded-lg text-sm font-semibold text-slate-700 hover:bg-slate-50 cursor-pointer transition-colors">
+                  {centersLoading ? "..." : "↻ Yangilash"}
+                </button>
+                <button onClick={() => setCenterEditor({ status: 'pending', studentLimit: 30 })}
+                  className="px-4 py-2 bg-teal-600 text-white rounded-lg text-sm font-semibold hover:bg-teal-700 transition-colors cursor-pointer border-none">
+                  + Markaz qo'shish
+                </button>
+              </div>
             </div>
-            <div className="bg-white rounded-xl border border-dashed border-slate-300 p-12 text-center">
-              <p className="text-3xl mb-3">🏫</p>
-              <p className="text-slate-600 font-semibold mb-1">Tez kunda</p>
-              <p className="text-sm text-slate-400">Bu bo'lim hali ishlab chiqilmoqda.</p>
-            </div>
+
+            {centersLoading ? (
+              <div className="py-16 text-center text-slate-400">Yuklanmoqda...</div>
+            ) : centers.length === 0 ? (
+              <div className="bg-white rounded-xl border border-dashed border-slate-300 p-12 text-center">
+                <p className="text-3xl mb-3">🏫</p>
+                <p className="text-slate-600 font-semibold">Hali markaz yo'q</p>
+              </div>
+            ) : (
+              <div className="bg-white rounded-xl border border-slate-200 overflow-hidden">
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="bg-slate-50 border-b border-slate-100">
+                      <th className="px-4 py-3 text-left text-xs font-bold text-slate-500 uppercase tracking-wider">Markaz</th>
+                      <th className="px-4 py-3 text-left text-xs font-bold text-slate-500 uppercase tracking-wider">Login</th>
+                      <th className="px-4 py-3 text-center text-xs font-bold text-slate-500 uppercase tracking-wider">O'quvchi</th>
+                      <th className="px-4 py-3 text-left text-xs font-bold text-slate-500 uppercase tracking-wider">Muddat</th>
+                      <th className="px-4 py-3 text-left text-xs font-bold text-slate-500 uppercase tracking-wider">Status</th>
+                      <th className="px-4 py-3 text-right text-xs font-bold text-slate-500 uppercase tracking-wider">Amal</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-100">
+                    {centers.map((c) => (
+                      <tr key={c.id} className="hover:bg-slate-50">
+                        <td className="px-4 py-3 font-medium text-slate-800">{c.name}</td>
+                        <td className="px-4 py-3 text-xs font-mono text-slate-500">{c.login}</td>
+                        <td className="px-4 py-3 text-center text-sm text-slate-600">{c.studentCount ?? 0}/{c.studentLimit}</td>
+                        <td className="px-4 py-3 text-xs text-slate-500">{c.expiresAt || '—'}</td>
+                        <td className="px-4 py-3">
+                          <span className={`text-xs px-2 py-0.5 rounded-full font-semibold ${c.status === 'active' ? 'bg-emerald-100 text-emerald-700' : c.status === 'expired' ? 'bg-red-100 text-red-600' : 'bg-slate-100 text-slate-500'}`}>
+                            {c.status}
+                          </span>
+                        </td>
+                        <td className="px-4 py-3 text-right">
+                          <div className="flex items-center justify-end gap-1.5">
+                            <button onClick={() => { setViewCenter(c); loadCenterStudents(c.id); }}
+                              className="text-xs px-2.5 py-1 bg-blue-50 text-blue-600 border border-blue-200 rounded-lg hover:bg-blue-100 cursor-pointer transition-colors">
+                              O'quvchilar
+                            </button>
+                            <button onClick={() => setCenterEditor(c)}
+                              className="text-xs px-2.5 py-1 bg-slate-50 text-slate-600 border border-slate-200 rounded-lg hover:bg-slate-100 cursor-pointer transition-colors">
+                              Tahrir
+                            </button>
+                            <button onClick={() => deleteCenter(c.id)}
+                              className="text-xs px-2.5 py-1 bg-red-50 text-red-600 border border-red-200 rounded-lg hover:bg-red-100 cursor-pointer transition-colors">
+                              O'chir
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+
+            {/* Center editor modal */}
+            {centerEditor !== null && (
+              <Modal onClose={() => setCenterEditor(null)}>
+                <h2 className="text-lg font-bold text-slate-900 m-0">{centerEditor.id ? 'Markazni tahrirlash' : 'Yangi markaz'}</h2>
+                <div className="grid grid-cols-2 gap-3">
+                  {[
+                    { label: 'Markaz nomi *', key: 'name', placeholder: 'IELTS Academy' },
+                    { label: 'Mas\'ul shaxs', key: 'contactPerson', placeholder: 'Ali Valiyev' },
+                    { label: 'Telefon', key: 'phone', placeholder: '+998901234567' },
+                    { label: 'Shartnoma raqami', key: 'contractNumber', placeholder: '2024-001' },
+                    { label: 'Login *', key: 'login', placeholder: 'ielts_academy' },
+                    { label: 'Parol *', key: 'password', placeholder: 'parol123' },
+                    { label: "Muddat (YYYY-MM-DD) *", key: 'expiresAt', placeholder: '2025-12-31' },
+                    { label: "O'quvchi limiti", key: 'studentLimit', placeholder: '30' },
+                  ].map(({ label, key, placeholder }) => (
+                    <div key={key}>
+                      <label className="text-xs font-semibold text-slate-600 mb-1 block uppercase tracking-wide">{label}</label>
+                      <input
+                        className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm text-slate-900 bg-white outline-none focus:border-teal-500"
+                        placeholder={placeholder}
+                        value={(centerEditor as Record<string, unknown>)[key] as string ?? ''}
+                        onChange={(e) => setCenterEditor((p) => ({ ...p, [key]: e.target.value }))}
+                      />
+                    </div>
+                  ))}
+                </div>
+                <div>
+                  <label className="text-xs font-semibold text-slate-600 mb-1 block uppercase tracking-wide">Status</label>
+                  <select
+                    className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm text-slate-900 bg-white outline-none"
+                    value={centerEditor.status ?? 'pending'}
+                    onChange={(e) => setCenterEditor((p) => ({ ...p, status: e.target.value }))}
+                  >
+                    <option value="pending">Pending</option>
+                    <option value="active">Active</option>
+                    <option value="expired">Expired</option>
+                  </select>
+                </div>
+                <div className="flex gap-3">
+                  <button disabled={centerSaving} onClick={saveCenter}
+                    className="flex-1 bg-teal-600 text-white border-none rounded-lg py-2.5 font-semibold text-sm cursor-pointer hover:bg-teal-700 transition-colors disabled:opacity-50">
+                    {centerSaving ? 'Saqlanmoqda...' : 'Saqlash'}
+                  </button>
+                  <button onClick={() => setCenterEditor(null)}
+                    className="flex-1 bg-white text-slate-700 border border-slate-200 rounded-lg py-2.5 font-semibold text-sm cursor-pointer hover:bg-slate-50 transition-colors">
+                    Bekor
+                  </button>
+                </div>
+              </Modal>
+            )}
+
+            {/* Edit student modal */}
+            {editCenterStudent && (
+              <Modal onClose={() => setEditCenterStudent(null)}>
+                <h2 className="text-lg font-bold text-slate-900 m-0">O'quvchini tahrirlash</h2>
+                <div>
+                  <label className="text-xs font-semibold text-slate-600 mb-1 block uppercase tracking-wide">Ism Familiya</label>
+                  <input className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm text-slate-900 bg-white outline-none focus:border-blue-500"
+                    value={editCSName} onChange={(e) => setEditCSName(e.target.value)} />
+                </div>
+                <div>
+                  <label className="text-xs font-semibold text-slate-600 mb-1 block uppercase tracking-wide">Login</label>
+                  <input className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm text-slate-900 bg-white outline-none focus:border-blue-500"
+                    value={editCSLogin} onChange={(e) => setEditCSLogin(e.target.value)} />
+                </div>
+                <div>
+                  <label className="text-xs font-semibold text-slate-600 mb-1 block uppercase tracking-wide">Yangi Parol (ixtiyoriy)</label>
+                  <input type="password" placeholder="Bo'sh qoldirsa o'zgarmaydi"
+                    className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm text-slate-900 bg-white outline-none focus:border-blue-500"
+                    value={editCSPass} onChange={(e) => setEditCSPass(e.target.value)} />
+                </div>
+                <div className="flex gap-3">
+                  <button disabled={savingCS || !editCSName.trim() || !editCSLogin.trim()} onClick={saveEditCenterStudent}
+                    className="flex-1 bg-blue-600 text-white border-none rounded-lg py-2.5 font-semibold text-sm cursor-pointer hover:bg-blue-700 transition-colors disabled:opacity-50">
+                    {savingCS ? 'Saqlanmoqda...' : 'Saqlash'}
+                  </button>
+                  <button onClick={() => setEditCenterStudent(null)}
+                    className="flex-1 bg-white text-slate-700 border border-slate-200 rounded-lg py-2.5 font-semibold text-sm cursor-pointer hover:bg-slate-50 transition-colors">
+                    Bekor
+                  </button>
+                </div>
+              </Modal>
+            )}
+
+            {/* View students modal */}
+            {viewCenter && (
+              <Modal onClose={() => { setViewCenter(null); setCenterStudents([]); }}>
+                <h2 className="text-lg font-bold text-slate-900 m-0">{viewCenter.name} — O'quvchilar</h2>
+                <div className="bg-slate-50 border border-slate-200 rounded-xl p-4 flex flex-col gap-3">
+                  <p className="text-xs font-semibold text-slate-600 uppercase tracking-wide">O'quvchi qo'shish</p>
+                  <div className="grid grid-cols-3 gap-2">
+                    <input placeholder="Ism familiya" className="px-3 py-2 border border-slate-200 rounded-lg text-sm text-slate-900 bg-white outline-none"
+                      value={newStudentName} onChange={(e) => setNewStudentName(e.target.value)} />
+                    <input placeholder="Login" className="px-3 py-2 border border-slate-200 rounded-lg text-sm text-slate-900 bg-white outline-none"
+                      value={newStudentLogin} onChange={(e) => setNewStudentLogin(e.target.value)} />
+                    <input placeholder="Parol" className="px-3 py-2 border border-slate-200 rounded-lg text-sm text-slate-900 bg-white outline-none"
+                      value={newStudentPassword} onChange={(e) => setNewStudentPassword(e.target.value)} />
+                  </div>
+                  <button disabled={studentAdding || !newStudentName.trim() || !newStudentLogin.trim() || !newStudentPassword.trim()}
+                    onClick={addStudentToCenter}
+                    className="self-start px-4 py-2 bg-teal-600 text-white rounded-lg text-sm font-semibold hover:bg-teal-700 transition-colors disabled:opacity-50 cursor-pointer border-none">
+                    {studentAdding ? "Qo'shilmoqda..." : "+ Qo'shish"}
+                  </button>
+                </div>
+                <p className="text-xs text-slate-500">{centerStudents.length} / {viewCenter.studentLimit} students</p>
+                {centerStudents.length === 0 ? (
+                  <div className="py-8 text-center text-slate-400 text-sm">Hali o'quvchi yo'q.</div>
+                ) : (
+                  <div className="rounded-xl border border-slate-200 overflow-hidden">
+                    <table className="w-full text-sm">
+                      <thead>
+                        <tr className="bg-slate-50 border-b border-slate-100">
+                          <th className="px-4 py-2.5 text-left text-xs font-bold text-slate-500 uppercase tracking-wider">Ism</th>
+                          <th className="px-4 py-2.5 text-left text-xs font-bold text-slate-500 uppercase tracking-wider">Login</th>
+                          <th className="px-4 py-2.5 text-right text-xs font-bold text-slate-500 uppercase tracking-wider">Amal</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-slate-100">
+                        {centerStudents.map((s) => (
+                          <tr key={s.id} className="hover:bg-slate-50">
+                            <td className="px-4 py-3 font-medium text-slate-800">{s.fullName}</td>
+                            <td className="px-4 py-3 text-xs font-mono text-slate-500">{s.login}</td>
+                            <td className="px-4 py-3 text-right">
+                              <div className="flex items-center justify-end gap-1.5">
+                                <button onClick={() => openEditCenterStudent(s)}
+                                  className="text-xs px-2.5 py-1 bg-blue-50 text-blue-600 border border-blue-200 rounded-lg hover:bg-blue-100 transition-colors cursor-pointer">
+                                  Tahrir
+                                </button>
+                                <button onClick={() => removeStudentFromCenter(viewCenter.id, s.id)}
+                                  className="text-xs px-2.5 py-1 bg-red-50 text-red-600 border border-red-200 rounded-lg hover:bg-red-100 transition-colors cursor-pointer">
+                                  O'chir
+                                </button>
+                              </div>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+              </Modal>
+            )}
           </div>
         )}
       </main>
