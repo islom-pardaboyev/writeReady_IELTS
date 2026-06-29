@@ -142,8 +142,7 @@ export function DashboardPage() {
   const centerId = profileAny?.centerId as string | undefined;
   const subscriptionExpiresAt = profileAny?.subscriptionExpiresAt as string | null | undefined;
   const isStudent = !!(centerId && centerName);
-  // Don't show bonus to paid users — they don't need it
-  const bonusAnalyses = isPaidPlan ? 0 : (profile?.bonusAnalyses ?? 0);
+  const bonusAnalyses = profile?.bonusAnalyses ?? 0;
   const usedCount = usage?.count ?? 0;
   const usageLimit = usage?.limit ?? 0;
   const usagePct = usageLimit > 0 ? Math.min(100, (usedCount / usageLimit) * 100) : 0;
