@@ -37,9 +37,12 @@ async function getUid(req: VercelRequest): Promise<string> {
 
 function signToken(uid: string, isBonus: boolean): string {
   const secret = process.env.NONCE_SECRET ?? 'fallback-secret-change-in-prod';
-  const payload = `${uid}:${isBonus ? '1' : '0'}:${Date.now()}`;
+  const b64uid = Buffer.from(uid).toString('base64url');
+  const ts = Date.now().toString();
+  const bonus = isBonus ? '1' : '0';
+  const payload = `${b64uid}.${bonus}.${ts}`;
   const sig = createHmac('sha256', secret).update(payload).digest('hex');
-  return `${payload}:${sig}`;
+  return `${payload}.${sig}`;
 }
 
 async function consumeCredit(uid: string, monthKey: string): Promise<boolean> {

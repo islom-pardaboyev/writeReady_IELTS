@@ -10,14 +10,15 @@ const TOKEN_MAX_AGE_MS = 3 * 60 * 1000; // 3 minutes
 
 function verifyToken(raw: string): { uid: string; isBonus: boolean } {
   const secret = process.env.NONCE_SECRET ?? 'fallback-secret-change-in-prod';
-  const parts = raw.split(':');
+  const parts = raw.split('.');
   if (parts.length !== 4) throw new Error('INVALID_TOKEN');
-  const [uid, bonusFlag, ts, sig] = parts;
-  const payload = `${uid}:${bonusFlag}:${ts}`;
+  const [b64uid, bonus, ts, sig] = parts;
+  const payload = `${b64uid}.${bonus}.${ts}`;
   const expected = createHmac('sha256', secret).update(payload).digest('hex');
   if (sig !== expected) throw new Error('INVALID_TOKEN');
   if (Date.now() - Number(ts) > TOKEN_MAX_AGE_MS) throw new Error('TOKEN_EXPIRED');
-  return { uid, isBonus: bonusFlag === '1' };
+  const uid = Buffer.from(b64uid, 'base64url').toString();
+  return { uid, isBonus: bonus === '1' };
 }
 
 function initFirebase() {
