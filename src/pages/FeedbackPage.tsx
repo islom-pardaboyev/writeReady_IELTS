@@ -789,20 +789,20 @@ export function FeedbackPage() {
 
               {/* Tab bar */}
               <div className="sticky top-[72px] z-10 -mx-4 mb-6 bg-[var(--bg-card)]/90 backdrop-blur border-b border-[var(--border-color)]">
-                <div className="flex justify-between sm:justify-start sm:gap-0 sm:overflow-x-auto sm:scrollbar-none px-2 sm:px-4">
+                <div className="flex flex-wrap px-1">
                   {TABS.map((tab) => (
                     <button
                       key={tab.id}
                       onClick={() => setActiveTab(tab.id)}
                       title={tab.label}
-                      className={`flex-shrink-0 flex flex-col sm:flex-row items-center gap-0.5 sm:gap-1.5 px-2 sm:px-4 py-2.5 sm:py-3.5 text-[0.6rem] sm:text-[0.8125rem] cursor-pointer transition-all border-none bg-transparent relative ${
+                      className={`flex flex-col items-center gap-0.5 px-2.5 py-2 text-[0.6rem] cursor-pointer transition-all border-none bg-transparent relative ${
                         activeTab === tab.id
                           ? 'text-[var(--ink-blue)] font-bold'
                           : 'text-[var(--text-secondary)] font-medium hover:text-[var(--text-primary)]'
                       }`}
                     >
-                      <span className="text-base sm:text-sm leading-none">{tab.icon}</span>
-                      <span className="hidden sm:inline whitespace-nowrap">{tab.label}</span>
+                      <span className="text-base leading-none">{tab.icon}</span>
+                      <span className="whitespace-nowrap">{tab.label}</span>
                       {activeTab === tab.id && (
                         <span className="absolute bottom-0 left-0 right-0 h-0.5 bg-[var(--ink-blue)] rounded-t-full" />
                       )}
