@@ -256,13 +256,33 @@ export function FeedbackPage() {
         }),
       });
 
-      const text = await res.text();
-      let data: { feedback?: EnhancedFeedbackResult; error?: string } = {};
-      try { data = JSON.parse(text); } catch { throw new Error(`Server error (${res.status}): ${text.slice(0, 200)}`); }
-      if (!res.ok) throw new Error(data.error ?? 'Feedback generation failed');
+      if (!res.ok) {
+        const errText = await res.text();
+        let errData: { error?: string } = {};
+        try { errData = JSON.parse(errText); } catch { /* ignore */ }
+        throw new Error(errData.error ?? `Server error (${res.status})`);
+      }
 
-      setFeedbacks((p) => ({ ...p, [taskKey]: data.feedback! }));
-      sessionStorage.setItem(cacheKey, JSON.stringify(data.feedback));
+      // Read streaming response
+      const reader = res.body?.getReader();
+      const decoder = new TextDecoder();
+      let raw = '';
+      if (reader) {
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+          raw += decoder.decode(value, { stream: true });
+        }
+      } else {
+        raw = await res.text();
+      }
+
+      let parsedFeedback: EnhancedFeedbackResult;
+      try { parsedFeedback = JSON.parse(raw.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim()); }
+      catch { throw new Error('Failed to parse feedback response. Please try again.'); }
+
+      setFeedbacks((p) => ({ ...p, [taskKey]: parsedFeedback }));
+      sessionStorage.setItem(cacheKey, JSON.stringify(parsedFeedback));
 
       getFeedbackReportHistory(user.uid, 5)
         .then((history) => {

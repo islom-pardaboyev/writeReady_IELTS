@@ -150,13 +150,29 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
   try {
     const anthropic = new Anthropic({ apiKey });
-    const message = await anthropic.messages.create({
+
+    // Stream response to avoid Vercel timeout
+    res.setHeader('Content-Type', 'text/plain; charset=utf-8');
+    res.setHeader('Transfer-Encoding', 'chunked');
+    res.setHeader('X-Accel-Buffering', 'no');
+    res.status(200);
+
+    let raw = '';
+    const stream = await anthropic.messages.stream({
       model: ALLOWED_MODEL,
       max_tokens: MAX_TOKENS,
       messages: [{ role: 'user', content: buildPrompt(essayText as string, questionText as string, resolvedTask, wordCount) }],
     });
 
-    const raw = message.content[0]?.type === 'text' ? message.content[0].text : '';
+    for await (const chunk of stream) {
+      if (chunk.type === 'content_block_delta' && chunk.delta.type === 'text_delta') {
+        raw += chunk.delta.text;
+        res.write(chunk.delta.text);
+      }
+    }
+
+    res.end();
+
     const feedback = parseResponse(raw, wordCount, resolvedTask);
 
     const db = getFirestore();
@@ -173,11 +189,13 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       ],
       createdAt: FieldValue.serverTimestamp(),
     }).catch(console.error);
-
-    return res.status(200).json({ feedback });
   } catch (err) {
-    await userRef.set({ usage: { monthKey, count: FieldValue.increment(-1) } }, { merge: true }).catch(console.error);
-    return res.status(500).json({ error: (err as Error).message ?? 'AI analysis failed. Please try again.' });
+    try {
+      await userRef.set({ usage: { monthKey, count: FieldValue.increment(-1) } }, { merge: true });
+    } catch { /* ignore */ }
+    if (!res.headersSent) {
+      return res.status(500).json({ error: (err as Error).message ?? 'AI analysis failed. Please try again.' });
+    }
   }
 }
 
