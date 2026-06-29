@@ -48,6 +48,8 @@ export async function getUserProfile(uid: string): Promise<UserProfile | null> {
     createdAt: toDate(d.createdAt),
     bonusAnalyses: typeof d.bonusAnalyses === 'number' ? d.bonusAnalyses : 0,
     notification: typeof d.notification === 'string' ? d.notification : '',
+    centerName: typeof d.centerName === 'string' ? d.centerName : undefined,
+    studentLogin: typeof d.studentLogin === 'string' ? d.studentLogin : undefined,
   };
 }
 

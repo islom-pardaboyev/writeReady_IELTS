@@ -26,6 +26,13 @@ function SubscriptionBadge({
       </span>
     );
   }
+  if (plan === "pro") {
+    return (
+      <span className="inline-flex items-center gap-1 text-[0.65rem] font-bold uppercase tracking-wider bg-green-50 text-green-700 border border-green-200 rounded-full px-2 py-0.5 dark:bg-green-900/30 dark:text-green-300 dark:border-green-700">
+        ✓ PRO
+      </span>
+    );
+  }
   if (
     subscription &&
     subscription !== "" &&
@@ -136,9 +143,13 @@ export function Header() {
               <DropdownMenuContent align="end" sideOffset={8} className="w-56 py-1 bg-[var(--bg-card)] border-[var(--border-color)]">
                 <div className="px-3 py-2.5 border-b border-[var(--border-color)]">
                   <p className="text-sm font-semibold text-[var(--text-primary)] truncate">
-                    {user.displayName ?? firstName}
+                    {profile?.studentLogin ?? user.displayName ?? firstName}
                   </p>
-                  <p className="text-xs text-[var(--text-secondary)] truncate">{user.email}</p>
+                  {profile?.centerName ? (
+                    <p className="text-xs text-blue-600 font-medium truncate mt-0.5">🏫 {profile.centerName}</p>
+                  ) : (
+                    <p className="text-xs text-[var(--text-secondary)] truncate">{user.email}</p>
+                  )}
                   <div className="mt-2">
                     <SubscriptionBadge
                       plan={profile?.plan ?? "free"}
@@ -165,7 +176,7 @@ export function Header() {
                   </Link>
                 </DropdownMenuItem>
 
-                {(profile?.plan === "free" || !profile?.subscription) && (
+                {profile?.plan === "free" && (
                   <DropdownMenuItem asChild>
                     <Link
                       to="/pricing"

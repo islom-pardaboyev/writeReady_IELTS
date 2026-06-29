@@ -11,6 +11,8 @@ export interface UserProfile {
   createdAt: Date;
   bonusAnalyses?: number;
   notification?: string;
+  centerName?: string;
+  studentLogin?: string;
 }
 
 export interface UsageRecord {
