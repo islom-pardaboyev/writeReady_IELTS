@@ -10,7 +10,7 @@ import {
   where,
 } from "firebase/firestore";
 import { db } from "@/firebase/firebase";
-import { getAuth, signInAnonymously } from "firebase/auth";
+import { getAuth, signInAnonymously, signInWithEmailAndPassword, createUserWithEmailAndPassword } from "firebase/auth";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
@@ -90,7 +90,9 @@ function CenterLoginScreen({ onLogin }: { onLogin: (id: string, name: string) =>
   const handle = async () => {
     if (!username.trim() || !password.trim()) { setError("Please enter username and password."); return; }
     setLoading(true); setError("");
-    try { await signInAnonymously(getAuth()); } catch (e) { console.error("anon sign-in failed", e); }
+    const auth = getAuth();
+    // Need auth to read Firestore
+    try { await signInAnonymously(auth); } catch { /* already signed in */ }
     try {
       const snap = await getDocs(
         query(collection(db, "learningCenters"), where("login", "==", username.trim()))
@@ -99,6 +101,16 @@ function CenterLoginScreen({ onLogin }: { onLogin: (id: string, name: string) =>
       const centerDoc = snap.docs[0];
       const data = centerDoc.data();
       if (data.password !== password) { setError("Incorrect password."); setLoading(false); return; }
+      // Sign in with dedicated Firebase account for this center
+      const centerEmail = `center_${centerDoc.id}@writeready.internal`;
+      const centerFbPass = `CENTER_${centerDoc.id}_internal`;
+      try {
+        try {
+          await signInWithEmailAndPassword(auth, centerEmail, centerFbPass);
+        } catch {
+          await createUserWithEmailAndPassword(auth, centerEmail, centerFbPass);
+        }
+      } catch { /* keep anonymous if fails */ }
       localStorage.setItem("centerAdminLoggedIn", "true");
       localStorage.setItem("centerAdminId", centerDoc.id);
       localStorage.setItem("centerAdminName", data.name ?? "Center");

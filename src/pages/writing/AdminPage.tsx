@@ -12,7 +12,7 @@ import {
   orderBy,
 } from "firebase/firestore";
 import { db } from "@/firebase/firebase";
-import { getAuth, signInAnonymously } from "firebase/auth";
+import { getAuth, signInAnonymously, signInWithEmailAndPassword, createUserWithEmailAndPassword } from "firebase/auth";
 import useUpload from "@/hooks/useUploadImage";
 import Logo from "/logo.png";
 import { getBlogPosts, saveBlogPost, updateBlogPost, deleteBlogPost } from "../../firebase/blog";
@@ -95,21 +95,31 @@ function LoginScreen({ onLogin }: { onLogin: (user: string) => void }) {
   const handle = async () => {
     if (!login.trim() || !password.trim()) return;
     setLoading(true); setError("");
-    try {
-      // Sign in anonymously so Firestore rules (request.auth != null) pass
-      await signInAnonymously(getAuth());
-    } catch (e) { console.error("anon sign-in failed", e); }
 
-    // Check admin credentials first
-    if (login === import.meta.env.VITE_LOGIN && password === import.meta.env.VITE_PASSWORD) {
-      localStorage.setItem("adminLoggedIn", "true");
-      localStorage.setItem("adminUser", login);
-      setLoading(false);
-      onLogin(login);
-      return;
+    const auth = getAuth();
+    const ADMIN_FB_EMAIL = "admin@writeready.internal";
+    const CENTER_FB_PREFIX = "center_";
+
+    // Check main admin credentials
+    if (login.trim() === import.meta.env.VITE_LOGIN && password === import.meta.env.VITE_PASSWORD) {
+      try {
+        try {
+          await signInWithEmailAndPassword(auth, ADMIN_FB_EMAIL, `ADMIN_${import.meta.env.VITE_PASSWORD}_internal`);
+        } catch {
+          await createUserWithEmailAndPassword(auth, ADMIN_FB_EMAIL, `ADMIN_${import.meta.env.VITE_PASSWORD}_internal`);
+        }
+        localStorage.setItem("adminLoggedIn", "true");
+        localStorage.setItem("adminUser", login.trim());
+        setLoading(false);
+        onLogin(login.trim());
+        return;
+      } catch (e) { console.error(e); }
     }
+
     // Check if it's a learning center login
     try {
+      // Need anonymous auth first to read Firestore
+      try { await signInAnonymously(auth); } catch { /* already signed in */ }
       const snap = await getDocs(
         query(collection(db, "learningCenters"), where("login", "==", login.trim()))
       );
@@ -117,6 +127,16 @@ function LoginScreen({ onLogin }: { onLogin: (user: string) => void }) {
         const centerDoc = snap.docs[0];
         const data = centerDoc.data();
         if (data.password === password) {
+          // Sign in as center admin with dedicated Firebase account
+          const centerEmail = `${CENTER_FB_PREFIX}${centerDoc.id}@writeready.internal`;
+          const centerFbPass = `CENTER_${centerDoc.id}_internal`;
+          try {
+            try {
+              await signInWithEmailAndPassword(auth, centerEmail, centerFbPass);
+            } catch {
+              await createUserWithEmailAndPassword(auth, centerEmail, centerFbPass);
+            }
+          } catch { /* use anonymous if email fails */ }
           localStorage.setItem("centerAdminLoggedIn", "true");
           localStorage.setItem("centerAdminId", centerDoc.id);
           localStorage.setItem("centerAdminName", data.name ?? "Center");
