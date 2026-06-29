@@ -32,7 +32,7 @@ interface CenterData {
 interface Student {
   id: string;
   fullName: string;
-  email: string;
+  login: string;
   addedAt?: string;
 }
 
@@ -212,7 +212,7 @@ export default function CenterAdminPage() {
       const rows: Student[] = snap.docs.map((d) => ({
         id: d.id,
         fullName: d.data().fullName ?? "",
-        email: d.data().email ?? "",
+        login: d.data().login ?? "",
         addedAt: d.data().addedAt?.toDate?.()?.toISOString?.() ?? "",
       }));
       setStudents(rows);
@@ -225,15 +225,13 @@ export default function CenterAdminPage() {
       const todayStart = new Date();
       todayStart.setHours(0, 0, 0, 0);
       const snap = await getDocs(collection(db, "feedback_reports"));
-      const studentEmails = new Set(studentList.map((s) => s.email));
-      // Get uids for those emails
+      const studentLogins = new Set(studentList.map((s) => s.login).filter(Boolean));
       const usersSnap = await getDocs(collection(db, "users"));
-      const emailToUid: Record<string, string> = {};
+      const studentUids = new Set<string>();
       usersSnap.docs.forEach((d) => {
-        const email = d.data().email;
-        if (email && studentEmails.has(email)) emailToUid[email] = d.id;
+        const sLogin = d.data().studentLogin;
+        if (sLogin && studentLogins.has(sLogin)) studentUids.add(d.id);
       });
-      const studentUids = new Set(Object.values(emailToUid));
       let count = 0;
       snap.docs.forEach((d) => {
         const data = d.data();
@@ -271,16 +269,16 @@ export default function CenterAdminPage() {
       const studs: Student[] = studSnap.docs.map((d) => ({
         id: d.id,
         fullName: d.data().fullName ?? "",
-        email: d.data().email ?? "",
+        login: d.data().login ?? "",
         addedAt: d.data().addedAt?.toDate?.()?.toISOString?.() ?? "",
       }));
 
-      // Get uid for each email
+      // Get uid for each student login
       const usersSnap = await getDocs(collection(db, "users"));
-      const emailToUid: Record<string, string> = {};
+      const loginToUid: Record<string, string> = {};
       usersSnap.docs.forEach((d) => {
-        const email = d.data().email;
-        if (email) emailToUid[email] = d.id;
+        const sLogin = d.data().studentLogin;
+        if (sLogin) loginToUid[sLogin] = d.id;
       });
 
       const reportsSnap = await getDocs(collection(db, "feedback_reports"));
@@ -289,7 +287,7 @@ export default function CenterAdminPage() {
       const monthKey = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
 
       const result: StudentAnalytics[] = studs.map((s) => {
-        const uid = emailToUid[s.email];
+        const uid = loginToUid[s.login];
         if (!uid) return { student: s, avgBand: null, reportCount: 0, lastActive: null, monthlyCount: 0 };
 
         const myReports = reportsSnap.docs.filter((d) => d.data().uid === uid);
@@ -603,7 +601,7 @@ export default function CenterAdminPage() {
                                   </Avatar>
                                   <div>
                                     <p className="font-medium text-slate-800 leading-tight">{a.student.fullName}</p>
-                                    <p className="text-xs text-slate-400">{a.student.email}</p>
+                                    <p className="text-xs text-slate-400 font-mono">{a.student.login}</p>
                                   </div>
                                 </div>
                               </td>
