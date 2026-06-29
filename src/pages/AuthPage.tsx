@@ -63,109 +63,77 @@ export function AuthPage() {
     e.preventDefault();
     setError('');
     setLoading(true);
-    const fakeEmail = `${studentLogin.trim().toLowerCase()}@writeready.student`;
+    const loginKey = studentLogin.trim().toLowerCase();
+    const fakeEmail = `${loginKey}@writeready.student`;
+    // Fixed internal password for Firebase Auth — real password checked in Firestore only
+    const FB_PASS = `WR_${loginKey}_2024!`;
     const firebaseAuth = getAuth();
     try {
-      // Try signing in first (returning student)
-      try {
-        await signInWithEmailAndPassword(firebaseAuth, fakeEmail, studentPassword);
-        // Find the student's center and check if it's still active
-        const centersSnap2 = await getDocs(collection(db, 'learningCenters'));
-        let centerActive = false;
-        for (const centerDoc of centersSnap2.docs) {
-          const cData = centerDoc.data();
-          const studSnap = await getDocs(
-            query(collection(db, 'learningCenters', centerDoc.id, 'students'), where('login', '==', studentLogin.trim()))
-          );
-          if (!studSnap.empty && studSnap.docs[0].data().password === studentPassword) {
-            // Check center expiry
-            const isActive = cData.expiresAt ? new Date(cData.expiresAt) > new Date() : false;
-            if (!isActive) {
-              await firebaseAuth.currentUser?.reload();
-              await firebaseAuth.signOut();
-              setError('O\'quv markazingizning muddati tugagan. Markaz administratoriga murojaat qiling.');
-              setLoading(false);
-              return;
-            }
-            centerActive = true;
-            const uid = firebaseAuth.currentUser?.uid;
-            if (uid) {
-              await setDoc(doc(db, 'users', uid), {
-                plan: 'pro',
-                subscriptionExpiresAt: cData.expiresAt ?? null,
-                centerId: centerDoc.id,
-                centerName: cData.name,
-                studentLogin: studentLogin.trim(),
-              }, { merge: true });
-            }
-            break;
-          }
-        }
-        if (!centerActive) {
-          await firebaseAuth.signOut();
-          setError('O\'quv markazingiz topilmadi yoki muddati tugagan.');
+      // Step 1: Find student in Firestore and verify password
+      const centersSnap = await getDocs(collection(db, 'learningCenters'));
+      let foundCenter: { id: string; name: string; expiresAt: unknown } | null = null;
+      let foundStudentDocId: string | null = null;
+
+      for (const centerDoc of centersSnap.docs) {
+        const cData = centerDoc.data();
+        const studentsSnap = await getDocs(
+          query(collection(db, 'learningCenters', centerDoc.id, 'students'), where('login', '==', loginKey))
+        );
+        if (studentsSnap.empty) continue;
+
+        const sDoc = studentsSnap.docs[0];
+        const sData = sDoc.data();
+
+        // Check password
+        if (sData.password?.trim() !== studentPassword.trim()) {
+          setError('Login yoki parol noto\'g\'ri.');
           setLoading(false);
           return;
         }
-        navigate('/dashboard');
-        return;
-      } catch {
-        // Not registered yet — check if this login exists in any active center
-      }
-      // Find student login in learningCenters subcollections
-      const centersSnap = await getDocs(collection(db, 'learningCenters'));
-      let foundCenter: { id: string; name: string; expiresAt: unknown; status: string } | null = null;
-      let foundStudentDocId: string | null = null;
-      for (const centerDoc of centersSnap.docs) {
-        const cData = centerDoc.data();
-        const centerIsActive = cData.expiresAt ? new Date(cData.expiresAt) > new Date() : false;
-        if (!centerIsActive) continue;
-        const studentsSnap = await getDocs(
-          query(collection(db, 'learningCenters', centerDoc.id, 'students'), where('login', '==', studentLogin.trim()))
-        );
-        if (!studentsSnap.empty) {
-          const sDoc = studentsSnap.docs[0];
-          const sData = sDoc.data();
-          if (sData.password !== studentPassword) {
-            setError('Login yoki parol noto\'g\'ri.');
-            setLoading(false);
-            return;
-          }
-          foundCenter = { id: centerDoc.id, name: cData.name, expiresAt: cData.expiresAt, status: cData.status };
-          foundStudentDocId = sDoc.id;
-          break;
+
+        // Check center active
+        const isActive = cData.expiresAt ? new Date(cData.expiresAt) > new Date() : false;
+        if (!isActive) {
+          setError('O\'quv markazingizning muddati tugagan. Markaz administratoriga murojaat qiling.');
+          setLoading(false);
+          return;
         }
+
+        foundCenter = { id: centerDoc.id, name: cData.name, expiresAt: cData.expiresAt };
+        foundStudentDocId = sDoc.id;
+        break;
       }
+
       if (!foundCenter || !foundStudentDocId) {
         setError('Bunday login topilmadi. O\'quv markazingizdan login/parolni oling.');
         setLoading(false);
         return;
       }
-      // Check expiry
-      if (foundCenter.expiresAt) {
-        const exp = foundCenter.expiresAt instanceof Date ? foundCenter.expiresAt : new Date(foundCenter.expiresAt as string);
-        if (exp < new Date()) {
-          setError('O\'quv markazingizning muddati tugagan.');
-          setLoading(false);
-          return;
-        }
+
+      // Step 2: Sign in or create Firebase Auth account (using fixed internal password)
+      let uid: string;
+      try {
+        const cred = await signInWithEmailAndPassword(firebaseAuth, fakeEmail, FB_PASS);
+        uid = cred.user.uid;
+      } catch {
+        // First time — create account
+        const cred = await createUserWithEmailAndPassword(firebaseAuth, fakeEmail, FB_PASS);
+        uid = cred.user.uid;
+        await setDoc(doc(db, 'learningCenters', foundCenter.id, 'students', foundStudentDocId), { uid }, { merge: true });
       }
-      // Create Firebase Auth account
-      const cred = await createUserWithEmailAndPassword(firebaseAuth, fakeEmail, studentPassword);
-      const uid = cred.user.uid;
-      // Create user doc
+
+      // Step 3: Update user doc
       await setDoc(doc(db, 'users', uid), {
         email: fakeEmail,
-        studentLogin: studentLogin.trim(),
+        studentLogin: loginKey,
         plan: 'pro',
         subscriptionExpiresAt: foundCenter.expiresAt ?? null,
         centerId: foundCenter.id,
         centerName: foundCenter.name,
         createdAt: serverTimestamp(),
         bonusAnalyses: 0,
-      });
-      // Update student doc with uid
-      await setDoc(doc(db, 'learningCenters', foundCenter.id, 'students', foundStudentDocId), { uid }, { merge: true });
+      }, { merge: true });
+
       navigate('/dashboard');
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : 'Xatolik yuz berdi';
