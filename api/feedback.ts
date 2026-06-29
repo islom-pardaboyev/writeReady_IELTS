@@ -6,7 +6,7 @@ import Anthropic from '@anthropic-ai/sdk';
 
 const CENTER_MONTHLY_LIMIT = 15;
 const ALLOWED_MODEL = 'claude-sonnet-4-6';
-const MAX_TOKENS = 3500;
+const MAX_TOKENS = 8000;
 
 type CreditErrorCode = 'USER_NOT_FOUND' | 'NOT_PRO' | 'LIMIT_REACHED';
 class CreditError extends Error {
@@ -33,7 +33,6 @@ function currentMonthKey(): string {
   const now = new Date();
   return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
 }
-
 
 async function getUid(req: VercelRequest): Promise<string> {
   const auth = req.headers.authorization ?? '';
@@ -92,7 +91,7 @@ async function consumeCredit(uid: string, monthKey: string): Promise<{ userRef: 
 
     const planLimits: Record<string, number> = { forever: 9999, premium: 30, standard: 12, basic: 5 };
     const monthlyLimit = planLimits[data.plan as string];
-    if (!monthlyLimit) throw new CreditError('NOT_PRO'); // free plan, no bonus left
+    if (!monthlyLimit) throw new CreditError('NOT_PRO');
 
     const usage = data.usage ?? {};
     const used = usage.monthKey === monthKey ? (usage.count ?? 0) : 0;
@@ -154,13 +153,30 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     const prompt = isBonus
       ? buildLimitedPrompt(essayText as string, questionText as string, resolvedTask, wordCount)
       : buildPrompt(essayText as string, questionText as string, resolvedTask, wordCount);
-    const message = await anthropic.messages.create({
+
+    // Stream the response so Vercel doesn't timeout on long AI responses
+    res.setHeader('Content-Type', 'text/plain; charset=utf-8');
+    res.setHeader('Transfer-Encoding', 'chunked');
+    res.setHeader('X-Accel-Buffering', 'no');
+    res.status(200);
+
+    let raw = '';
+    const stream = await anthropic.messages.stream({
       model: ALLOWED_MODEL,
       max_tokens: isBonus ? 800 : MAX_TOKENS,
       messages: [{ role: 'user', content: prompt }],
     });
 
-    const raw = message.content[0]?.type === 'text' ? message.content[0].text : '';
+    for await (const chunk of stream) {
+      if (chunk.type === 'content_block_delta' && chunk.delta.type === 'text_delta') {
+        raw += chunk.delta.text;
+        res.write(chunk.delta.text);
+      }
+    }
+
+    res.end();
+
+    // Save report to Firestore (non-blocking)
     const feedback = isBonus
       ? parseLimitedResponse(raw, wordCount, resolvedTask)
       : parseResponse(raw, wordCount, resolvedTask);
@@ -180,10 +196,13 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       createdAt: FieldValue.serverTimestamp(),
     }).catch(console.error);
 
-    return res.status(200).json({ feedback, limited: isBonus });
   } catch (err) {
-    await userRef.set({ usage: { monthKey, count: FieldValue.increment(-1) } }, { merge: true }).catch(console.error);
-    return res.status(500).json({ error: (err as Error).message ?? 'AI analysis failed. Please try again.' });
+    try {
+      await userRef.set({ usage: { monthKey, count: FieldValue.increment(-1) } }, { merge: true });
+    } catch { /* ignore */ }
+    if (!res.headersSent) {
+      return res.status(500).json({ error: (err as Error).message ?? 'AI analysis failed. Please try again.' });
+    }
   }
 }
 
@@ -281,7 +300,7 @@ Return this EXACT JSON structure:
     "<third most impactful fix>"
   ],
   "bandGapAnalysis": "<Specific measurable steps to the next band level>",
-  "sampleResponse": "<A band 7 model response for THIS question — 2 paragraphs max. Clear structure, good vocabulary, correct grammar. No filler words.>",
+  "sampleResponse": "<A high-band (band 7-8) model response for THIS exact question — 2-3 paragraphs showing correct structure, vocabulary, and grammar. For Task 1 describe the data clearly; for Task 2 argue both sides or one side with evidence. Without any fancy words etc that make the writing longer without any meaning. You may use effective collocations that are related to the topic.>",
   "sentenceAnalysis": [
     {
       "sentence": "<copy the EXACT sentence from the student essay>",
@@ -308,9 +327,9 @@ Return this EXACT JSON structure:
 }
 
 STRICT RULES:
-- sentenceAnalysis: pick the 6 most important sentences (mix of good and problematic)
-- EXACTLY 8 vocabulary items
-- EXACTLY 6 grammar points
+- sentenceAnalysis: cover EVERY sentence in the essay, in order
+- EXACTLY 15 vocabulary items
+- EXACTLY 10 grammar points
 - Every category MUST have at least 1 strength
 - Band scores are realistic: most students score 5.0-7.0; 8.0+ is very rare
 - Overall = simple average of the 4 criteria scores rounded to nearest 0.5`;
