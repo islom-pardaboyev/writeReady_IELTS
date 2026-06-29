@@ -798,7 +798,7 @@ export function FeedbackPage() {
                     <button
                       key={tab.id}
                       onClick={() => setActiveTab(tab.id)}
-                      className={`flex items-center gap-1.5 px-4 py-3.5 text-[0.8125rem] whitespace-nowrap cursor-pointer transition-all border-none bg-transparent relative ${
+                      className={`flex-shrink-0 flex items-center gap-1.5 px-4 py-3.5 text-[0.8125rem] whitespace-nowrap cursor-pointer transition-all border-none bg-transparent relative ${
                         activeTab === tab.id
                           ? 'text-[var(--ink-blue)] font-bold'
                           : 'text-[var(--text-secondary)] font-medium hover:text-[var(--text-primary)]'
