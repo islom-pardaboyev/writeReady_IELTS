@@ -102,13 +102,13 @@ export function LandingPage() {
             </Link>
           </div>
 
-          <div className="grid grid-cols-2 gap-x-6 gap-y-2">
+          <ul className="grid grid-cols-2 gap-x-6 gap-y-2 list-none m-0 p-0">
             {['First analysis free', 'No credit card required', 'Real exam-style prompts', 'Sentence-level feedback'].map((t) => (
-              <div key={t} className="gs-hero-bullet flex items-center gap-2 text-sm text-[var(--text-secondary)]">
-                <span className="text-green-500 font-bold text-base">✓</span> {t}
-              </div>
+              <li key={t} className="gs-hero-bullet flex items-center gap-2 text-sm text-[var(--text-secondary)]">
+                <span className="text-green-500 font-bold text-base" aria-hidden="true">✓</span> {t}
+              </li>
             ))}
-          </div>
+          </ul>
         </div>
 
         {/* Right — feedback UI mockup */}
@@ -172,9 +172,9 @@ export function LandingPage() {
             { value: '4 modes', sub: 'Practice styles', note: 'Mock · Practice · Quick · Relax' },
           ].map((s) => (
             <div key={s.sub} className="gs-stat-item px-6 py-5">
-              <div className="text-[1.75rem] font-black text-[var(--text-primary)] tracking-[-0.02em] mb-[0.125rem]">{s.value}</div>
-              <div className="text-[0.8125rem] font-bold text-[var(--text-secondary)] mb-[0.125rem] uppercase tracking-[0.04em]">{s.sub}</div>
-              <div className="text-[0.75rem] text-[var(--text-secondary)] opacity-60">{s.note}</div>
+              <strong className="block text-[1.75rem] font-black text-[var(--text-primary)] tracking-[-0.02em] mb-[0.125rem]">{s.value}</strong>
+              <p className="text-[0.8125rem] font-bold text-[var(--text-secondary)] mb-[0.125rem] uppercase tracking-[0.04em] m-0">{s.sub}</p>
+              <p className="text-[0.75rem] text-[var(--text-secondary)] opacity-60 m-0">{s.note}</p>
             </div>
           ))}
         </div>
@@ -227,8 +227,8 @@ export function LandingPage() {
                   onMouseEnter={(e) => { (e.currentTarget as HTMLDivElement).style.transform = 'translateY(-2px)'; (e.currentTarget as HTMLDivElement).style.boxShadow = '0 8px 24px rgba(0,0,0,0.1)'; }}
                   onMouseLeave={(e) => { (e.currentTarget as HTMLDivElement).style.transform = ''; (e.currentTarget as HTMLDivElement).style.boxShadow = ''; }}
                 >
-                  <div className="text-[1.75rem] mb-4 text-white">{m.emoji}</div>
-                  <div className={`text-[0.7rem] font-bold uppercase tracking-[0.08em] mb-[0.375rem] ${m.dark ? 'text-white/50' : 'text-[var(--text-secondary)]'}`}>{m.tag}</div>
+                  <span className="block text-[1.75rem] mb-4" aria-hidden="true">{m.emoji}</span>
+                  <p className={`text-[0.7rem] font-bold uppercase tracking-[0.08em] mb-[0.375rem] m-0 ${m.dark ? 'text-white/50' : 'text-[var(--text-secondary)]'}`}>{m.tag}</p>
                   <h3 className={`text-[1.125rem] font-extrabold mb-2 tracking-[-0.01em] ${m.dark ? 'text-white' : 'text-[var(--text-primary)]'}`}>{m.title}</h3>
                   <p className={`text-[0.875rem] leading-[1.7] ${m.dark ? 'text-white/70' : 'text-[var(--text-secondary)]'}`}>{m.desc}</p>
                 </div>
