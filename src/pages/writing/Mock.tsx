@@ -26,8 +26,14 @@ interface Task2 {
 
 function hasAccess(data: Record<string, unknown>): boolean {
   const plan = data.plan as string | undefined;
-  if (plan === 'forever' || plan === 'premium' || plan === 'standard' || plan === 'basic') return true;
-  const bonus = typeof data.bonusAnalyses === 'number' ? data.bonusAnalyses : 0;
+  if (
+    plan === "forever" ||
+    plan === "premium" ||
+    plan === "standard" ||
+    plan === "basic"
+  )
+    return true;
+  const bonus = typeof data.bonusAnalyses === "number" ? data.bonusAnalyses : 0;
   return bonus > 0;
 }
 
@@ -55,7 +61,6 @@ function Mock() {
   const [checkingAccess, setCheckingAccess] = useState(false);
   const [autoSubmittedByTimer, setAutoSubmittedByTimer] = useState(false);
   const autoSubmitRef = useRef(false);
-
 
   const meetsMinWords =
     (activeTask === 1 && userText1.trim().split(/\s+/).length >= 150) ||
@@ -170,17 +175,25 @@ function Mock() {
     }
   };
 
-  async function loadImgBase64(src: string): Promise<{ b64: string; w: number; h: number } | null> {
+  async function loadImgBase64(
+    src: string,
+  ): Promise<{ b64: string; w: number; h: number } | null> {
     if (!src) return null;
-    if (src.startsWith('data:application/pdf') || /\.pdf(\?|$)/i.test(src)) return null;
+    if (src.startsWith("data:application/pdf") || /\.pdf(\?|$)/i.test(src))
+      return null;
     return new Promise((resolve) => {
       const img = new Image();
-      img.crossOrigin = 'anonymous';
+      img.crossOrigin = "anonymous";
       img.onload = () => {
-        const canvas = document.createElement('canvas');
-        canvas.width = img.naturalWidth; canvas.height = img.naturalHeight;
-        canvas.getContext('2d')!.drawImage(img, 0, 0);
-        resolve({ b64: canvas.toDataURL('image/jpeg', 0.85), w: img.naturalWidth, h: img.naturalHeight });
+        const canvas = document.createElement("canvas");
+        canvas.width = img.naturalWidth;
+        canvas.height = img.naturalHeight;
+        canvas.getContext("2d")!.drawImage(img, 0, 0);
+        resolve({
+          b64: canvas.toDataURL("image/jpeg", 0.85),
+          w: img.naturalWidth,
+          h: img.naturalHeight,
+        });
       };
       img.onerror = () => resolve(null);
       img.src = src;
@@ -213,13 +226,28 @@ function Mock() {
 
     let y = 52;
     const tasks = [
-      { taskNum: 1 as const, question: task1?.report, answer: userText1, minW: 150, imgSrc: task1?.image },
-      { taskNum: 2 as const, question: task2?.report, answer: userText2, minW: 250, imgSrc: undefined as string | undefined },
+      {
+        taskNum: 1 as const,
+        question: task1?.report,
+        answer: userText1,
+        minW: 150,
+        imgSrc: task1?.image,
+      },
+      {
+        taskNum: 2 as const,
+        question: task2?.report,
+        answer: userText2,
+        minW: 250,
+        imgSrc: undefined as string | undefined,
+      },
     ];
 
     for (let index = 0; index < tasks.length; index++) {
       const { taskNum, question, answer, minW, imgSrc } = tasks[index];
-      if (index > 0) { pdfdoc.addPage(); y = 20; }
+      if (index > 0) {
+        pdfdoc.addPage();
+        y = 20;
+      }
 
       pdfdoc.setFillColor(240, 244, 255);
       pdfdoc.roundedRect(margin, y - 5, contentW, 12, 2, 2, "F");
@@ -245,8 +273,11 @@ function Mock() {
         const imgData = await loadImgBase64(imgSrc);
         if (imgData) {
           const imgH = Math.min(contentW * (imgData.h / imgData.w), 100);
-          if (y + imgH > pageH - margin) { pdfdoc.addPage(); y = 20; }
-          pdfdoc.addImage(imgData.b64, 'JPEG', margin, y, contentW, imgH);
+          if (y + imgH > pageH - margin) {
+            pdfdoc.addPage();
+            y = 20;
+          }
+          pdfdoc.addImage(imgData.b64, "JPEG", margin, y, contentW, imgH);
           y += imgH + 8;
         }
       }
@@ -259,9 +290,15 @@ function Mock() {
       pdfdoc.text("YOUR ANSWER", margin + 3, y + 1);
       y += 12;
 
-      const answerLines = pdfdoc.splitTextToSize(answer || "(No answer provided)", contentW - 10);
+      const answerLines = pdfdoc.splitTextToSize(
+        answer || "(No answer provided)",
+        contentW - 10,
+      );
       const totalHeight = answerLines.length * 5.6 + 10;
-      if (y + totalHeight > pageH - margin) { pdfdoc.addPage(); y = 20; }
+      if (y + totalHeight > pageH - margin) {
+        pdfdoc.addPage();
+        y = 20;
+      }
       pdfdoc.setFillColor(245, 252, 245);
       pdfdoc.roundedRect(margin, y, contentW, totalHeight, 2, 2, "FD");
       pdfdoc.setTextColor(15, 23, 42);
@@ -278,7 +315,9 @@ function Mock() {
       pdfdoc.setFontSize(7);
       pdfdoc.setTextColor(255, 255, 255);
       pdfdoc.text("WriteReady — IELTS Writing Practice", margin, pageH - 5);
-      pdfdoc.text(`Page ${i} of ${pages}`, pageW - margin, pageH - 5, { align: "right" });
+      pdfdoc.text(`Page ${i} of ${pages}`, pageW - margin, pageH - 5, {
+        align: "right",
+      });
     }
 
     pdfdoc.save("WriteReady_Mock.pdf");
@@ -289,11 +328,18 @@ function Mock() {
     setCheckingAccess(true);
     try {
       const user = auth.currentUser;
-      if (!user) { navigate("/auth"); return; }
+      if (!user) {
+        navigate("/auth");
+        return;
+      }
 
       const snap = await getDoc(doc(db, "users", user.uid));
-      if (!snap.exists() || !hasAccess(snap.data() as Record<string, unknown>)) {
-        navigate("/pricing"); return;
+      if (
+        !snap.exists() ||
+        !hasAccess(snap.data() as Record<string, unknown>)
+      ) {
+        navigate("/pricing");
+        return;
       }
 
       const encoded = encodeReport({ task1, task2, userText1, userText2 });
@@ -313,7 +359,9 @@ function Mock() {
       <div className="flex items-center justify-center min-h-screen bg-slate-50">
         <div className="flex flex-col items-center gap-4">
           <div className="w-8 h-8 border-2 border-blue-600 border-t-transparent rounded-full animate-spin" />
-          <p className="text-sm text-slate-500 tracking-wide">Setting up your exam…</p>
+          <p className="text-sm text-slate-500 tracking-wide">
+            Setting up your exam…
+          </p>
         </div>
       </div>
     );
@@ -321,25 +369,31 @@ function Mock() {
 
   const taskProgress1 = Math.min(
     100,
-    Math.round((userText1.trim().split(/\s+/).filter(Boolean).length / 150) * 100)
+    Math.round(
+      (userText1.trim().split(/\s+/).filter(Boolean).length / 150) * 100,
+    ),
   );
   const taskProgress2 = Math.min(
     100,
-    Math.round((userText2.trim().split(/\s+/).filter(Boolean).length / 250) * 100)
+    Math.round(
+      (userText2.trim().split(/\s+/).filter(Boolean).length / 250) * 100,
+    ),
   );
   const currentProgress = activeTask === 1 ? taskProgress1 : taskProgress2;
 
   return (
-    <div data-theme="light" className="flex flex-col min-h-screen bg-slate-50 font-sans">
-
+    <div
+      data-theme="light"
+      className="flex flex-col min-h-screen bg-slate-50 font-sans"
+    >
       {/* ── Top bar ── */}
       <div
         className={`sticky top-0 z-30 border-b transition-colors duration-500 ${
           isTimeUp
             ? "bg-red-600 border-red-700"
             : isLowTime
-            ? "bg-amber-500 border-amber-600"
-            : "bg-slate-900 border-slate-800"
+              ? "bg-amber-500 border-amber-600"
+              : "bg-slate-900 border-slate-800"
         }`}
       >
         <div className="flex items-center justify-between gap-4 px-5 py-2.5">
@@ -349,15 +403,23 @@ function Mock() {
               WriteReady
             </span>
             <ChevronRightIcon className="hidden sm:block w-3 h-3 text-white/30" />
-            <span className="text-sm font-medium text-white truncate">Mock Exam</span>
+            <span className="text-sm font-medium text-white truncate">
+              Mock Exam
+            </span>
           </div>
 
           {/* Centre: timer */}
           <div className="flex items-center gap-2">
-            <ClockIcon className={`w-3.5 h-3.5 ${isLowTime || isTimeUp ? "text-white" : "text-white/60"}`} />
+            <ClockIcon
+              className={`w-3.5 h-3.5 ${isLowTime || isTimeUp ? "text-white" : "text-white/60"}`}
+            />
             <span
               className={`text-sm font-mono font-semibold tabular-nums ${
-                isTimeUp ? "text-white" : isLowTime ? "text-white" : "text-white/90"
+                isTimeUp
+                  ? "text-white"
+                  : isLowTime
+                    ? "text-white"
+                    : "text-white/90"
               }`}
             >
               {isTimeUp ? "Time's up" : timerLabel}
@@ -403,7 +465,8 @@ function Mock() {
             {/* Task tabs */}
             <div className="flex items-center gap-1">
               {([1, 2] as const).map((t) => {
-                const done = t === 1 ? taskProgress1 >= 100 : taskProgress2 >= 100;
+                const done =
+                  t === 1 ? taskProgress1 >= 100 : taskProgress2 >= 100;
                 return (
                   <button
                     key={t}
@@ -418,7 +481,9 @@ function Mock() {
                     {done && (
                       <span
                         className={`flex items-center justify-center w-4 h-4 rounded-full text-[10px] ${
-                          activeTask === t ? "bg-white/20 text-white" : "bg-emerald-100 text-emerald-700"
+                          activeTask === t
+                            ? "bg-white/20 text-white"
+                            : "bg-emerald-100 text-emerald-700"
                         }`}
                       >
                         <CheckIcon className="w-2.5 h-2.5" />
@@ -431,9 +496,30 @@ function Mock() {
 
             {/* Nav links */}
             <nav className="hidden md:flex items-center gap-1 text-xs text-slate-500">
-              <NavLink to="/" className="px-2 py-1 hover:text-slate-900 hover:bg-slate-100 rounded transition-colors">Home</NavLink>
-              <NavLink to="/writing/practice" className="px-2 py-1 hover:text-slate-900 hover:bg-slate-100 rounded transition-colors">Practice</NavLink>
-              <NavLink to="/writing/relax" className="px-2 py-1 hover:text-slate-900 hover:bg-slate-100 rounded transition-colors">Relax</NavLink>
+              <NavLink
+                to="/"
+                className="px-2 py-1 hover:text-slate-900 hover:bg-slate-100 rounded transition-colors"
+              >
+                Home
+              </NavLink>
+              <NavLink
+                to="/writing/practice"
+                className="px-2 py-1 hover:text-slate-900 hover:bg-slate-100 rounded transition-colors"
+              >
+                Practice
+              </NavLink>
+              <NavLink
+                to="/writing/quick"
+                className="px-2 py-1 hover:text-slate-900 hover:bg-slate-100 rounded transition-colors"
+              >
+                Quick Write
+              </NavLink>
+              <NavLink
+                to="/writing/relax"
+                className="px-2 py-1 hover:text-slate-900 hover:bg-slate-100 rounded transition-colors"
+              >
+                Relax
+              </NavLink>
             </nav>
           </div>
 
@@ -443,8 +529,9 @@ function Mock() {
               {activeTask}
             </span>
             <p className="text-xs text-slate-600">
-              Spend about <strong>{activeTask === 1 ? "20" : "40"} minutes</strong> on this task.
-              Write at least <strong>{minWords} words</strong>.
+              Spend about{" "}
+              <strong>{activeTask === 1 ? "20" : "40"} minutes</strong> on this
+              task. Write at least <strong>{minWords} words</strong>.
             </p>
           </div>
         </div>
@@ -459,7 +546,9 @@ function Mock() {
                 key={t}
                 onClick={() => setActiveTask(t)}
                 className={`px-3 py-1 text-xs font-medium rounded-md transition-colors ${
-                  activeTask === t ? "bg-blue-600 text-white" : "text-slate-500 hover:bg-slate-100"
+                  activeTask === t
+                    ? "bg-blue-600 text-white"
+                    : "text-slate-500 hover:bg-slate-100"
                 }`}
               >
                 Task {t}
@@ -486,7 +575,9 @@ function Mock() {
             ) : activeTask === 2 && task2 ? (
               <WritingTask2Preview task2={task2.report} />
             ) : (
-              <p className="text-sm text-slate-400">No question available yet.</p>
+              <p className="text-sm text-slate-400">
+                No question available yet.
+              </p>
             )}
           </div>
         </div>
@@ -515,7 +606,9 @@ function Mock() {
             name={`answer-task-${activeTask}`}
             value={activeTask === 1 ? userText1 : userText2}
             onChange={(e) =>
-              activeTask === 1 ? setUserText1(e.target.value) : setUserText2(e.target.value)
+              activeTask === 1
+                ? setUserText1(e.target.value)
+                : setUserText2(e.target.value)
             }
             placeholder="Start writing your response here…"
             spellCheck={false}
@@ -540,7 +633,9 @@ function Mock() {
                   style={{ width: `${currentProgress}%` }}
                 />
               </div>
-              <span className={`text-xs font-medium ${meetsMinWords ? "text-emerald-600" : "text-slate-400"}`}>
+              <span
+                className={`text-xs font-medium ${meetsMinWords ? "text-emerald-600" : "text-slate-400"}`}
+              >
                 {wordCount} / {minWords} words
                 {meetsMinWords && <span className="ml-1.5">✓</span>}
               </span>
@@ -582,11 +677,15 @@ function Mock() {
               </div>
 
               <h2 className="mt-4 text-base font-semibold text-center text-slate-900">
-                {autoSubmittedByTimer ? "Time's up — exam complete" : "Exam saved"}
+                {autoSubmittedByTimer
+                  ? "Time's up — exam complete"
+                  : "Exam saved"}
               </h2>
               <p className="mt-2 text-sm leading-6 text-center text-slate-500">
-                {autoSubmittedByTimer && "Your answers were automatically saved. "}
-                Would you like in-depth AI feedback on your writing? We'll analyse grammar, vocabulary, coherence, and task achievement.
+                {autoSubmittedByTimer &&
+                  "Your answers were automatically saved. "}
+                Would you like in-depth AI feedback on your writing? We'll
+                analyse grammar, vocabulary, coherence, and task achievement.
               </p>
 
               <div className="flex flex-col gap-2.5 mt-6">

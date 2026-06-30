@@ -26,8 +26,14 @@ interface Task2 {
 
 function hasAccess(data: Record<string, unknown>): boolean {
   const plan = data.plan as string | undefined;
-  if (plan === 'forever' || plan === 'premium' || plan === 'standard' || plan === 'basic') return true;
-  const bonus = typeof data.bonusAnalyses === 'number' ? data.bonusAnalyses : 0;
+  if (
+    plan === "forever" ||
+    plan === "premium" ||
+    plan === "standard" ||
+    plan === "basic"
+  )
+    return true;
+  const bonus = typeof data.bonusAnalyses === "number" ? data.bonusAnalyses : 0;
   return bonus > 0;
 }
 
@@ -145,17 +151,25 @@ function Practice() {
       e.currentTarget.releasePointerCapture(e.pointerId);
   };
 
-  async function loadImgBase64(src: string): Promise<{ b64: string; w: number; h: number } | null> {
+  async function loadImgBase64(
+    src: string,
+  ): Promise<{ b64: string; w: number; h: number } | null> {
     if (!src) return null;
-    if (src.startsWith('data:application/pdf') || /\.pdf(\?|$)/i.test(src)) return null;
+    if (src.startsWith("data:application/pdf") || /\.pdf(\?|$)/i.test(src))
+      return null;
     return new Promise((resolve) => {
       const img = new Image();
-      img.crossOrigin = 'anonymous';
+      img.crossOrigin = "anonymous";
       img.onload = () => {
-        const canvas = document.createElement('canvas');
-        canvas.width = img.naturalWidth; canvas.height = img.naturalHeight;
-        canvas.getContext('2d')!.drawImage(img, 0, 0);
-        resolve({ b64: canvas.toDataURL('image/jpeg', 0.85), w: img.naturalWidth, h: img.naturalHeight });
+        const canvas = document.createElement("canvas");
+        canvas.width = img.naturalWidth;
+        canvas.height = img.naturalHeight;
+        canvas.getContext("2d")!.drawImage(img, 0, 0);
+        resolve({
+          b64: canvas.toDataURL("image/jpeg", 0.85),
+          w: img.naturalWidth,
+          h: img.naturalHeight,
+        });
       };
       img.onerror = () => resolve(null);
       img.src = src;
@@ -192,8 +206,20 @@ function Practice() {
 
     let y = 52;
     const tasks = [
-      { taskNum: 1 as const, question: task1?.report, answer: userText1, minW: 150, imgSrc: task1?.image },
-      { taskNum: 2 as const, question: task2?.report, answer: userText2, minW: 250, imgSrc: undefined as string | undefined },
+      {
+        taskNum: 1 as const,
+        question: task1?.report,
+        answer: userText1,
+        minW: 150,
+        imgSrc: task1?.image,
+      },
+      {
+        taskNum: 2 as const,
+        question: task2?.report,
+        answer: userText2,
+        minW: 250,
+        imgSrc: undefined as string | undefined,
+      },
     ];
 
     for (let i = 0; i < tasks.length; i++) {
@@ -223,8 +249,11 @@ function Practice() {
         const imgData = await loadImgBase64(imgSrc);
         if (imgData) {
           const imgH = Math.min(contentW * (imgData.h / imgData.w), 100);
-          if (y + imgH > pageH - margin) { pdfdoc.addPage(); y = 20; }
-          pdfdoc.addImage(imgData.b64, 'JPEG', margin, y, contentW, imgH);
+          if (y + imgH > pageH - margin) {
+            pdfdoc.addPage();
+            y = 20;
+          }
+          pdfdoc.addImage(imgData.b64, "JPEG", margin, y, contentW, imgH);
           y += imgH + 8;
         }
       }
@@ -274,10 +303,16 @@ function Practice() {
         return;
       }
       const snap = await getDoc(doc(db, "users", user.uid));
-      if (!snap.exists() || !hasAccess(snap.data() as Record<string, unknown>)) {
-        navigate("/pricing"); return;
+      if (
+        !snap.exists() ||
+        !hasAccess(snap.data() as Record<string, unknown>)
+      ) {
+        navigate("/pricing");
+        return;
       }
-      navigate(`/feedback/${encodeReport({ task1, task2, userText1, userText2 })}`);
+      navigate(
+        `/feedback/${encodeReport({ task1, task2, userText1, userText2 })}`,
+      );
     } catch (err) {
       console.error(err);
       navigate("/auth");
@@ -301,7 +336,10 @@ function Practice() {
   }
 
   return (
-    <div data-theme="light" className="flex flex-col min-h-screen bg-slate-50 font-sans">
+    <div
+      data-theme="light"
+      className="flex flex-col min-h-screen bg-slate-50 font-sans"
+    >
       {/* ── Top bar ── */}
       <div className="sticky top-0 z-30 bg-slate-900 border-b border-slate-800">
         <div className="flex items-center justify-between gap-4 px-5 py-2.5">
@@ -391,6 +429,12 @@ function Practice() {
                 Mock Test
               </NavLink>
               <NavLink
+                to="/writing/quick"
+                className="px-2 py-1 hover:text-slate-900 hover:bg-slate-100 rounded transition-colors"
+              >
+                Quick Write
+              </NavLink>
+              <NavLink
                 to="/writing/relax"
                 className="px-2 py-1 hover:text-slate-900 hover:bg-slate-100 rounded transition-colors"
               >
@@ -444,7 +488,9 @@ function Practice() {
             ) : activeTask === 2 && task2 ? (
               <WritingTask2Preview task2={task2.report} />
             ) : (
-              <p className="text-sm text-slate-400">No question available yet.</p>
+              <p className="text-sm text-slate-400">
+                No question available yet.
+              </p>
             )}
           </div>
         </div>
