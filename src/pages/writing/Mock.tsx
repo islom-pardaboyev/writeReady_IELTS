@@ -170,6 +170,23 @@ function Mock() {
     }
   };
 
+  async function loadImgBase64(src: string): Promise<{ b64: string; w: number; h: number } | null> {
+    if (!src) return null;
+    if (src.startsWith('data:application/pdf') || /\.pdf(\?|$)/i.test(src)) return null;
+    return new Promise((resolve) => {
+      const img = new Image();
+      img.crossOrigin = 'anonymous';
+      img.onload = () => {
+        const canvas = document.createElement('canvas');
+        canvas.width = img.naturalWidth; canvas.height = img.naturalHeight;
+        canvas.getContext('2d')!.drawImage(img, 0, 0);
+        resolve({ b64: canvas.toDataURL('image/jpeg', 0.85), w: img.naturalWidth, h: img.naturalHeight });
+      };
+      img.onerror = () => resolve(null);
+      img.src = src;
+    });
+  }
+
   const handleDownloadPDF = async () => {
     const pdfdoc = new jsPDF();
     const pageW = pdfdoc.internal.pageSize.getWidth();
