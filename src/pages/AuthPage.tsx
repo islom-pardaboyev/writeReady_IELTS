@@ -26,12 +26,8 @@ export function AuthPage() {
   const navigate = useNavigate();
   const rootRef = useRef<HTMLDivElement>(null);
 
-  // While auth state is loading, show nothing (avoids GSAP flash then redirect)
-  if (authLoading) return null;
-  // Already logged in — redirect immediately without rendering the form
-  if (user) return <Navigate to="/dashboard" replace />;
-
   useLayoutEffect(() => {
+    if (authLoading || user) return;
     const ctx = gsap.context(() => {
       gsap.set('.gs-auth-logo', { y: -20, opacity: 0 });
       gsap.set('.gs-auth-card', { y: 36, opacity: 0, scale: 0.97 });
@@ -40,7 +36,12 @@ export function AuthPage() {
         .to('.gs-auth-card', { y: 0, opacity: 1, scale: 1, duration: 0.6 }, '-=0.25');
     }, rootRef);
     return () => ctx.revert();
-  }, []);
+  }, [authLoading, user]);
+
+  // While auth state is loading, show nothing (avoids GSAP flash then redirect)
+  if (authLoading) return null;
+  // Already logged in — redirect immediately without rendering the form
+  if (user) return <Navigate to="/dashboard" replace />;
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
