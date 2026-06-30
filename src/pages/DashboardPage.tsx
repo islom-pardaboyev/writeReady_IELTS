@@ -81,6 +81,8 @@ export function DashboardPage() {
   const [notification, setNotification] = useState<string | null>(null);
 
   useLayoutEffect(() => {
+    // Wait for profile to load before animating — otherwise elements are hidden forever
+    if (!profile) return;
     const ctx = gsap.context(() => {
       gsap.set('.gs-db-welcome', { y: 28, opacity: 0 });
       gsap.set('.gs-db-quota', { y: 20, opacity: 0 });
@@ -103,7 +105,7 @@ export function DashboardPage() {
     }, rootRef);
 
     return () => ctx.revert();
-  }, []);
+  }, [profile]);
 
   useEffect(() => {
     // Redirect admin/center-admin accounts away from user dashboard

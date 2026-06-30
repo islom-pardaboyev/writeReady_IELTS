@@ -10,6 +10,7 @@ import { collection, doc, getDoc, getDocs } from "firebase/firestore";
 import jsPDF from "jspdf";
 import WritingTask1Preview from "@/components/writingTask1Preview/WritingTask1Preview";
 import { NavLink, useNavigate } from "react-router-dom";
+import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/Button";
 import WritingTask2Preview from "@/components/writingTask2Preview/WritingTask2Preview";
 import { encodeReport } from "@/lib/reportEncoding";
@@ -68,6 +69,12 @@ function hasAccess(data: Record<string, unknown>): boolean {
 
 function Practice() {
   const navigate = useNavigate();
+  const { user, loading: authLoading } = useAuth();
+
+  useEffect(() => {
+    if (!authLoading && !user) navigate("/auth", { replace: true });
+  }, [user, authLoading, navigate]);
+
   const [activeTask, setActiveTask] = useState<1 | 2>(1);
   const [userText1, setUserText1] = useState("");
   const [userText2, setUserText2] = useState("");
@@ -87,6 +94,7 @@ function Practice() {
   const isDraggingSplit = useRef(false);
 
   useEffect(() => {
+    if (!user) return;
     const fetchTasks = async () => {
       setLoading(true);
       try {
@@ -108,7 +116,7 @@ function Practice() {
       }
     };
     fetchTasks();
-  }, []);
+  }, [user]);
 
   const activeText = activeTask === 1 ? userText1 : userText2;
   const wordCount =

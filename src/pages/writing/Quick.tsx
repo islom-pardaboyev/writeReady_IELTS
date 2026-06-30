@@ -10,6 +10,7 @@ import { collection, doc, getDoc, getDocs } from "firebase/firestore";
 import jsPDF from "jspdf";
 import WritingTask1Preview from "@/components/writingTask1Preview/WritingTask1Preview";
 import { NavLink, useNavigate } from "react-router-dom";
+import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/Button";
 import WritingTask2Preview from "@/components/writingTask2Preview/WritingTask2Preview";
 import { encodeReport } from "@/lib/reportEncoding";
@@ -68,6 +69,12 @@ function hasAccess(data: Record<string, unknown>): boolean {
 
 function Quick() {
   const navigate = useNavigate();
+  const { user, loading: authLoading } = useAuth();
+
+  // Redirect to auth if not logged in
+  useEffect(() => {
+    if (!authLoading && !user) navigate("/auth", { replace: true });
+  }, [user, authLoading, navigate]);
 
   // Task selection (null = not chosen yet)
   const [selectedTaskType, setSelectedTaskType] = useState<1 | 2 | null>(null);
@@ -80,8 +87,6 @@ function Quick() {
   const [showHeader, setShowHeader] = useState(true);
   const [showFeedbackModal, setShowFeedbackModal] = useState(false);
   const [checkingAccess, setCheckingAccess] = useState(false);
-  const [customImage, setCustomImage] = useState<string | null>(null);
-  const [imageLoading, setImageLoading] = useState(false);
 
   const [splitRatio, setSplitRatio] = useState(0.46);
   const splitContainerRef = useRef<HTMLDivElement>(null);
@@ -94,6 +99,7 @@ function Quick() {
 
   // Load both task lists on mount
   useEffect(() => {
+    if (!user) return;
     const fetchTasks = async () => {
       setLoading(true);
       try {
@@ -114,7 +120,7 @@ function Quick() {
       }
     };
     fetchTasks();
-  }, []);
+  }, [user]);
 
   const pickRandom = <T,>(items: T[], current: T | null): T => {
     if (items.length <= 1) return items[0];
@@ -201,16 +207,13 @@ function Quick() {
     }
 
     // Task 1 chart image
-    if (selectedTaskType === 1) {
-      const imgSrc = customImage ?? task1?.image;
-      if (imgSrc) {
-        const imgData = await loadImgBase64(imgSrc);
-        if (imgData) {
-          const imgH = Math.min(contentW * (imgData.h / imgData.w), 100);
-          if (y + imgH > pageH - margin) { pdf.addPage(); y = 20; }
-          pdf.addImage(imgData.b64, 'JPEG', margin, y, contentW, imgH);
-          y += imgH + 8;
-        }
+    if (selectedTaskType === 1 && task1?.image) {
+      const imgData = await loadImgBase64(task1.image);
+      if (imgData) {
+        const imgH = Math.min(contentW * (imgData.h / imgData.w), 100);
+        if (y + imgH > pageH - margin) { pdf.addPage(); y = 20; }
+        pdf.addImage(imgData.b64, 'JPEG', margin, y, contentW, imgH);
+        y += imgH + 8;
       }
     }
 
@@ -261,10 +264,9 @@ function Quick() {
         navigate("/pricing"); return;
       }
 
-      const t1 = customImage ? { ...task1!, image: customImage } : task1;
       const encoded = encodeReport(
         selectedTaskType === 1
-          ? { task1: t1, task2: null, userText1: userText, userText2: "" }
+          ? { task1, task2: null, userText1: userText, userText2: "" }
           : { task1: null, task2, userText1: "", userText2: userText }
       );
       navigate(`/feedback/${encoded}`);
@@ -451,39 +453,7 @@ function Quick() {
         <div className="w-full overflow-y-auto bg-white border-b border-slate-200 md:w-[calc(var(--split)*100%)] md:border-b-0 md:border-r max-h-[42vh] md:max-h-none">
           <div className="p-6 w-full">
             {selectedTaskType === 1 && task1 ? (
-              <>
-                {customImage ? (
-                  <div className="mb-4">
-                    {isPdf(customImage) ? (
-                      <object data={customImage} type="application/pdf" className="w-full h-[340px] rounded-lg border border-slate-200">
-                        <iframe src={customImage} className="w-full h-[340px] border-0 rounded-lg" title="Task 1 chart" />
-                      </object>
-                    ) : (
-                      <img src={customImage} alt="Task 1 chart" className="w-full max-h-72 object-contain rounded-lg border border-slate-200" />
-                    )}
-                    <p className="text-xs text-slate-500 mt-1">{task1.report}</p>
-                  </div>
-                ) : (
-                  <WritingTask1Preview task1={task1} />
-                )}
-                <label className="mt-3 inline-flex items-center gap-1.5 text-xs text-slate-400 hover:text-violet-600 cursor-pointer transition-colors">
-                  <UploadIcon className="w-3.5 h-3.5" />
-                  {imageLoading ? "Loading…" : customImage ? "Replace chart" : "Upload your own chart (PDF/image)"}
-                  <input
-                    type="file"
-                    accept="image/*,application/pdf"
-                    className="sr-only"
-                    onChange={async (e) => {
-                      const file = e.target.files?.[0];
-                      if (!file) return;
-                      setImageLoading(true);
-                      try { setCustomImage(await readFileAsDataUrl(file)); }
-                      catch { alert("Could not load file. Please try another."); }
-                      finally { setImageLoading(false); e.target.value = ""; }
-                    }}
-                  />
-                </label>
-              </>
+              <WritingTask1Preview task1={task1} />
             ) : selectedTaskType === 2 && task2 ? (
               <WritingTask2Preview task2={task2.report} />
             ) : (
