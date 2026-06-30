@@ -14,43 +14,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/Button";
 import WritingTask2Preview from "@/components/writingTask2Preview/WritingTask2Preview";
 import { encodeReport } from "@/lib/reportEncoding";
-import { CheckIcon, ChevronRightIcon, UploadIcon } from "lucide-react";
-
-function readFileAsDataUrl(file: File): Promise<string> {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onload = () => resolve(reader.result as string);
-    reader.onerror = () => reject(reader.error ?? new Error("File read failed"));
-    reader.readAsDataURL(file);
-  });
-}
-
-function isPdf(src: string) {
-  return src.startsWith('data:application/pdf') || /\.pdf(\?|$)/i.test(src);
-}
-
-async function loadImgBase64(src: string): Promise<{ b64: string; w: number; h: number } | null> {
-  if (isPdf(src)) return null;
-  try {
-    let dataUrl = src;
-    if (!src.startsWith('data:')) {
-      const res = await fetch(src);
-      const blob = await res.blob();
-      dataUrl = await new Promise<string>((resolve) => {
-        const reader = new FileReader();
-        reader.onload = () => resolve(reader.result as string);
-        reader.readAsDataURL(blob);
-      });
-    }
-    const { w, h } = await new Promise<{ w: number; h: number }>((resolve) => {
-      const img = new Image();
-      img.onload = () => resolve({ w: img.naturalWidth, h: img.naturalHeight });
-      img.onerror = () => resolve({ w: 4, h: 3 });
-      img.src = dataUrl;
-    });
-    return { b64: dataUrl, w, h };
-  } catch { return null; }
-}
+import { CheckIcon, ChevronRightIcon } from "lucide-react";
 
 interface Task1 {
   image: string;
@@ -86,8 +50,6 @@ function Practice() {
   const [showHeader, setShowHeader] = useState(true);
   const [showFeedbackModal, setShowFeedbackModal] = useState(false);
   const [checkingAccess, setCheckingAccess] = useState(false);
-  const [customImage, setCustomImage] = useState<string | null>(null);
-  const [imageLoading, setImageLoading] = useState(false);
 
   const [splitRatio, setSplitRatio] = useState(0.46);
   const splitContainerRef = useRef<HTMLDivElement>(null);
@@ -183,6 +145,23 @@ function Practice() {
       e.currentTarget.releasePointerCapture(e.pointerId);
   };
 
+  async function loadImgBase64(src: string): Promise<{ b64: string; w: number; h: number } | null> {
+    if (!src) return null;
+    if (src.startsWith('data:application/pdf') || /\.pdf(\?|$)/i.test(src)) return null;
+    return new Promise((resolve) => {
+      const img = new Image();
+      img.crossOrigin = 'anonymous';
+      img.onload = () => {
+        const canvas = document.createElement('canvas');
+        canvas.width = img.naturalWidth; canvas.height = img.naturalHeight;
+        canvas.getContext('2d')!.drawImage(img, 0, 0);
+        resolve({ b64: canvas.toDataURL('image/jpeg', 0.85), w: img.naturalWidth, h: img.naturalHeight });
+      };
+      img.onerror = () => resolve(null);
+      img.src = src;
+    });
+  }
+
   const handleDownloadPDF = async () => {
     const pdfdoc = new jsPDF();
     const pageW = pdfdoc.internal.pageSize.getWidth();
@@ -213,7 +192,7 @@ function Practice() {
 
     let y = 52;
     const tasks = [
-      { taskNum: 1 as const, question: task1?.report, answer: userText1, minW: 150, imgSrc: customImage ?? task1?.image },
+      { taskNum: 1 as const, question: task1?.report, answer: userText1, minW: 150, imgSrc: task1?.image },
       { taskNum: 2 as const, question: task2?.report, answer: userText2, minW: 250, imgSrc: undefined as string | undefined },
     ];
 
@@ -298,8 +277,7 @@ function Practice() {
       if (!snap.exists() || !hasAccess(snap.data() as Record<string, unknown>)) {
         navigate("/pricing"); return;
       }
-      const t1 = customImage ? { ...task1!, image: customImage } : task1;
-      navigate(`/feedback/${encodeReport({ task1: t1, task2, userText1, userText2 })}`);
+      navigate(`/feedback/${encodeReport({ task1, task2, userText1, userText2 })}`);
     } catch (err) {
       console.error(err);
       navigate("/auth");
@@ -462,39 +440,7 @@ function Practice() {
         <div className="w-full overflow-y-auto bg-white border-b border-slate-200 md:w-[calc(var(--split)*100%)] md:border-b-0 md:border-r max-h-[42vh] md:max-h-none">
           <div className="p-6 w-full">
             {activeTask === 1 && task1 ? (
-              <>
-                {customImage ? (
-                  <div className="mb-4">
-                    {isPdf(customImage) ? (
-                      <object data={customImage} type="application/pdf" className="w-full h-[340px] rounded-lg border border-slate-200">
-                        <iframe src={customImage} className="w-full h-[340px] border-0 rounded-lg" title="Task 1 chart" />
-                      </object>
-                    ) : (
-                      <img src={customImage} alt="Task 1 chart" className="w-full max-h-72 object-contain rounded-lg border border-slate-200" />
-                    )}
-                    <p className="text-xs text-slate-500 mt-1">{task1.report}</p>
-                  </div>
-                ) : (
-                  <WritingTask1Preview task1={task1} />
-                )}
-                <label className="mt-3 inline-flex items-center gap-1.5 text-xs text-slate-400 hover:text-blue-600 cursor-pointer transition-colors">
-                  <UploadIcon className="w-3.5 h-3.5" />
-                  {imageLoading ? "Loading…" : customImage ? "Replace chart" : "Upload your own chart (PDF/image)"}
-                  <input
-                    type="file"
-                    accept="image/*,application/pdf"
-                    className="sr-only"
-                    onChange={async (e) => {
-                      const file = e.target.files?.[0];
-                      if (!file) return;
-                      setImageLoading(true);
-                      try { setCustomImage(await readFileAsDataUrl(file)); }
-                      catch { alert("Could not load file. Please try another."); }
-                      finally { setImageLoading(false); e.target.value = ""; }
-                    }}
-                  />
-                </label>
-              </>
+              <WritingTask1Preview task1={task1} />
             ) : activeTask === 2 && task2 ? (
               <WritingTask2Preview task2={task2.report} />
             ) : (
