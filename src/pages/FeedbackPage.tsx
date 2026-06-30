@@ -84,7 +84,7 @@ function PracticeResult({ result, accentClass }: {
   if (isSystemError) {
     return (
       <div className="mt-2 rounded-lg px-3 py-2.5 border bg-amber-50 border-amber-200">
-        <p className="text-xs font-bold text-amber-700 mb-1">⚠️ Tekshirib bo'lmadi</p>
+        <p className="text-xs font-bold text-amber-700 mb-1">⚠️ Could not check</p>
         <p className="text-xs text-amber-800 m-0">{result.feedback}</p>
       </div>
     );
@@ -95,7 +95,7 @@ function PracticeResult({ result, accentClass }: {
     <div className={`mt-2 rounded-lg px-3 py-2.5 border ${result.correct ? 'bg-green-50 border-green-200' : 'bg-red-50 border-red-200'}`}>
       <div className="flex items-center gap-2 mb-2">
         <span className={`text-xs font-bold ${result.correct ? 'text-green-700' : 'text-red-700'}`}>
-          {result.correct ? '✓ To\'g\'ri ishlatilgan' : '✗ Xato topildi'}
+          {result.correct ? '✓ Correct' : '✗ Error found'}
         </span>
         <span className="ml-auto text-xs font-mono font-bold text-gray-500">{result.score}/100</span>
       </div>
@@ -105,7 +105,7 @@ function PracticeResult({ result, accentClass }: {
       {improved && (
         <div className={`bg-white/80 rounded-lg px-3 py-2.5 border ${result.correct ? 'border-green-200' : 'border-red-200'}`}>
           <p className={`text-[0.65rem] font-bold uppercase tracking-widest mb-1 ${accentClass ?? 'text-[var(--ink-blue)]'}`}>
-            ✨ Yaxshilangan versiya
+            ✨ Improved version
           </p>
           <p className={`font-['Georgia'] text-sm leading-relaxed m-0 italic ${accentClass?.replace('text-', 'text-') ?? 'text-[var(--ink-blue)]'}`}>
             {improved}
@@ -120,16 +120,16 @@ function UpgradePrompt() {
   return (
     <div className="flex flex-col items-center justify-center py-16 px-6 text-center">
       <div className="text-5xl mb-4">🔒</div>
-      <h3 className="text-xl font-bold text-[var(--text-primary)] mb-2">Bu bo'lim qulflangan</h3>
+      <h3 className="text-xl font-bold text-[var(--text-primary)] mb-2">This section is locked</h3>
       <p className="text-[var(--text-secondary)] text-sm max-w-xs mb-6">
-        To'liq tahlil ko'rish uchun Basic, Standard yoki Premium tarifga o'ting.
-        Bepul namunada faqat asosiy ball va Task Achievement ko'rsatiladi.
+        Upgrade to Basic, Standard, or Premium to unlock full analysis.
+        The free preview shows only the overall band score and Task Achievement.
       </p>
       <a
         href="/pricing"
         className="inline-block bg-[var(--ink-blue)] text-white px-6 py-3 rounded-xl font-bold text-sm hover:opacity-90 transition-opacity"
       >
-        Tariflarni ko'rish →
+        View plans →
       </a>
     </div>
   );
@@ -1244,13 +1244,13 @@ export function FeedbackPage() {
                               disabled={practiceChecking[key] || !(practiceInputs[key] ?? '').trim()}
                               className="text-xs bg-[var(--ink-blue)] text-white px-3 py-1 rounded cursor-pointer border-none disabled:opacity-40"
                             >
-                              {practiceChecking[key] ? 'Tekshirilmoqda…' : '🤖 Gemini bilan tekshir'}
+                              {practiceChecking[key] ? 'Checking…' : '🤖 Check with AI'}
                             </button>
                             <button
                               onClick={() => setPracticeRevealed((p) => ({ ...p, [key]: !p[key] }))}
                               className="text-xs text-[var(--ink-blue)] underline cursor-pointer bg-transparent border-none"
                             >
-                              {practiceRevealed[key] ? 'Yashirish' : "Namuna ko'rish"}
+                              {practiceRevealed[key] ? 'Hide' : 'Show example'}
                             </button>
                           </div>
                           {practiceChecked[key] && (
@@ -1286,13 +1286,13 @@ export function FeedbackPage() {
                               disabled={practiceChecking[key] || !(practiceInputs[key] ?? '').trim()}
                               className="text-xs bg-amber-700 text-white px-3 py-1 rounded cursor-pointer border-none disabled:opacity-40"
                             >
-                              {practiceChecking[key] ? 'Tekshirilmoqda…' : '🤖 Gemini bilan tekshir'}
+                              {practiceChecking[key] ? 'Checking…' : '🤖 Check with AI'}
                             </button>
                             <button
                               onClick={() => setPracticeRevealed((p) => ({ ...p, [key]: !p[key] }))}
                               className="text-xs text-amber-700 underline cursor-pointer bg-transparent border-none"
                             >
-                              {practiceRevealed[key] ? 'Yashirish' : "Namuna ko'rish"}
+                              {practiceRevealed[key] ? 'Hide' : 'Show example'}
                             </button>
                           </div>
                           {practiceChecked[key] && (

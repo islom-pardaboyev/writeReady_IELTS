@@ -76,7 +76,7 @@ export function AuthPage() {
         const cred = await signInWithEmailAndPassword(firebaseAuth, fakeEmail, studentPassword);
         uid = cred.user.uid;
       } catch {
-        setError('Login yoki parol noto\'g\'ri. Agar yangi bo\'lsangiz, invite link orqali ro\'yxatdan o\'ting.');
+        setError('Incorrect login or password. If you are new, please register via your invite link.');
         setLoading(false);
         return;
       }
@@ -95,7 +95,7 @@ export function AuthPage() {
             const isActive = cData.expiresAt ? new Date(cData.expiresAt) > new Date() : false;
             if (!isActive) {
               await firebaseAuth.signOut();
-              setError('O\'quv markazingizning muddati tugagan. Markaz administratoriga murojaat qiling.');
+              setError('Your learning centre subscription has expired. Please contact your administrator.');
               setLoading(false);
               return;
             }
@@ -106,7 +106,7 @@ export function AuthPage() {
       await refreshProfile();
       navigate('/dashboard');
     } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : 'Xatolik yuz berdi';
+      const msg = err instanceof Error ? err.message : 'An error occurred';
       setError(msg.replace('Firebase: ', '').replace(/\(auth\/.*\)\.?/, '').trim());
     } finally {
       setLoading(false);
@@ -167,7 +167,7 @@ export function AuthPage() {
                 ? 'Sign in to continue your IELTS prep'
                 : mode === 'signup'
                 ? 'Start practicing for free'
-                : 'O\'quv markazingiz bergan login va parolni kiriting'}
+                : 'Enter the login and password provided by your learning centre'}
             </p>
 
             {error && (
@@ -186,25 +186,25 @@ export function AuthPage() {
                     value={studentLogin}
                     onChange={(e) => setStudentLogin(e.target.value)}
                     required
-                    placeholder="O'quv markaz bergan login"
+                    placeholder="Login provided by your centre"
                     autoComplete="username"
                   />
                 </div>
                 <div className="flex flex-col gap-1.5">
-                  <Label htmlFor="s-pass" className="font-semibold">Parol</Label>
+                  <Label htmlFor="s-pass" className="font-semibold">Password</Label>
                   <PasswordInput
                     id="s-pass"
                     value={studentPassword}
                     onChange={(e) => setStudentPassword(e.target.value)}
                     required
-                    placeholder="O'quv markaz bergan parol"
+                    placeholder="Password provided by your centre"
                   />
                 </div>
                 <Button type="submit" loading={loading} size="lg" className="w-full mt-1 bg-emerald-600 hover:bg-emerald-700">
-                  Kirish
+                  Sign In
                 </Button>
                 <p className="text-center text-xs text-[var(--text-secondary)]">
-                  Login va parolni o'quv markazingizdan oling
+                  Get your login and password from your learning centre
                 </p>
               </form>
             ) : (

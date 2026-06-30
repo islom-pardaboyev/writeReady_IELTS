@@ -38,7 +38,7 @@ export default function JoinPage() {
         const centerActive = cData.expiresAt ? new Date(cData.expiresAt) > new Date() : false;
         if (!centerActive) { setStep("invalid"); return; }
 
-        setCenterName(cData.name ?? data.centerName ?? "O'quv markaz");
+        setCenterName(cData.name ?? data.centerName ?? "Learning Centre");
         setCenterId(data.centerId);
         setCenterExpiresAt(cData.expiresAt ?? "");
         setStep("form");
@@ -51,9 +51,9 @@ export default function JoinPage() {
   const handleJoin = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
-    if (!fullName.trim() || !login.trim() || !password) { setError("Barcha maydonlarni to'ldiring."); return; }
-    if (password.length < 6) { setError("Parol kamida 6 ta belgi bo'lishi kerak."); return; }
-    if (password !== password2) { setError("Parollar mos kelmadi."); return; }
+    if (!fullName.trim() || !login.trim() || !password) { setError("Please fill in all fields."); return; }
+    if (password.length < 6) { setError("Password must be at least 6 characters."); return; }
+    if (password !== password2) { setError("Passwords do not match."); return; }
 
     setLoading(true);
     const loginKey = login.trim().toLowerCase();
@@ -65,7 +65,7 @@ export default function JoinPage() {
       const studentsSnap = await getDocs(
         query(collection(db, "learningCenters", centerId, "students"), where("login", "==", loginKey))
       );
-      if (!studentsSnap.empty) { setError("Bu login allaqachon band. Boshqa login tanlang."); setLoading(false); return; }
+      if (!studentsSnap.empty) { setError("This login is already taken. Please choose another."); setLoading(false); return; }
 
       // Create Firebase Auth account
       let uid: string;
@@ -80,10 +80,10 @@ export default function JoinPage() {
             const cred = await signInWithEmailAndPassword(auth, fakeEmail, password);
             uid = cred.user.uid;
           } catch {
-            setError("Bu login band. Boshqa login tanlang."); setLoading(false); return;
+            setError("This login is taken. Please choose another."); setLoading(false); return;
           }
         } else {
-          setError("Xatolik yuz berdi. Qayta urinib ko'ring."); setLoading(false); return;
+          setError("An error occurred. Please try again."); setLoading(false); return;
         }
       }
 
@@ -110,7 +110,7 @@ export default function JoinPage() {
 
       navigate("/dashboard");
     } catch {
-      setError("Xatolik yuz berdi. Qayta urinib ko'ring.");
+      setError("An error occurred. Please try again.");
     }
     setLoading(false);
   };
@@ -128,9 +128,9 @@ export default function JoinPage() {
       <div className="min-h-screen flex items-center justify-center bg-slate-50 px-4">
         <div className="text-center">
           <div className="text-5xl mb-4">🔗</div>
-          <h1 className="text-xl font-bold text-slate-800 mb-2">Havola yaroqsiz</h1>
-          <p className="text-slate-500 text-sm mb-6">Bu invite havola muddati tugagan yoki noto'g'ri.</p>
-          <Link to="/auth" className="text-blue-600 text-sm font-medium hover:underline">Kirish sahifasiga qaytish</Link>
+          <h1 className="text-xl font-bold text-slate-800 mb-2">Invalid link</h1>
+          <p className="text-slate-500 text-sm mb-6">This invite link has expired or is invalid.</p>
+          <Link to="/auth" className="text-blue-600 text-sm font-medium hover:underline">Back to sign in</Link>
         </div>
       </div>
     );
@@ -148,9 +148,9 @@ export default function JoinPage() {
         <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-8">
           <div className="text-center mb-6">
             <div className="text-4xl mb-3">🏫</div>
-            <h1 className="text-xl font-bold text-slate-800">Qo'shilish</h1>
+            <h1 className="text-xl font-bold text-slate-800">Join</h1>
             <p className="text-sm text-slate-500 mt-1">
-              <span className="font-semibold text-blue-600">{centerName}</span> o'quv markazi taklif qilmoqda
+              <span className="font-semibold text-blue-600">{centerName}</span> learning centre invites you
             </p>
           </div>
 
@@ -162,7 +162,7 @@ export default function JoinPage() {
 
           <form onSubmit={handleJoin} className="flex flex-col gap-4">
             <div>
-              <label className="text-xs font-semibold text-slate-600 mb-1 block uppercase tracking-wide">To'liq ism</label>
+              <label className="text-xs font-semibold text-slate-600 mb-1 block uppercase tracking-wide">Full name</label>
               <input
                 type="text"
                 className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
@@ -174,7 +174,7 @@ export default function JoinPage() {
             </div>
 
             <div>
-              <label className="text-xs font-semibold text-slate-600 mb-1 block uppercase tracking-wide">Login (foydalanuvchi nomi)</label>
+              <label className="text-xs font-semibold text-slate-600 mb-1 block uppercase tracking-wide">Login (username)</label>
               <input
                 type="text"
                 className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
@@ -183,15 +183,15 @@ export default function JoinPage() {
                 onChange={(e) => setLogin(e.target.value.toLowerCase().replace(/\s/g, "_"))}
                 required
               />
-              <p className="text-xs text-slate-400 mt-1">Faqat lotin harflar, raqamlar va _ belgisi</p>
+              <p className="text-xs text-slate-400 mt-1">Only Latin letters, numbers and _ allowed</p>
             </div>
 
             <div>
-              <label className="text-xs font-semibold text-slate-600 mb-1 block uppercase tracking-wide">Parol</label>
+              <label className="text-xs font-semibold text-slate-600 mb-1 block uppercase tracking-wide">Password</label>
               <input
                 type="password"
                 className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                placeholder="Kamida 6 ta belgi"
+                placeholder="At least 6 characters"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 required
@@ -200,11 +200,11 @@ export default function JoinPage() {
             </div>
 
             <div>
-              <label className="text-xs font-semibold text-slate-600 mb-1 block uppercase tracking-wide">Parolni tasdiqlang</label>
+              <label className="text-xs font-semibold text-slate-600 mb-1 block uppercase tracking-wide">Confirm password</label>
               <input
                 type="password"
                 className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                placeholder="Parolni qayta kiriting"
+                placeholder="Re-enter password"
                 value={password2}
                 onChange={(e) => setPassword2(e.target.value)}
                 required
@@ -216,13 +216,13 @@ export default function JoinPage() {
               disabled={loading}
               className="w-full py-2.5 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white font-semibold rounded-lg text-sm transition-colors cursor-pointer"
             >
-              {loading ? "Ro'yxatdan o'tilmoqda..." : "Ro'yxatdan o'tish"}
+              {loading ? "Creating account…" : "Create Account"}
             </button>
           </form>
 
           <p className="text-center text-xs text-slate-400 mt-4">
-            Allaqachon ro'yxatdan o'tganmisiz?{" "}
-            <Link to="/auth?mode=student" className="text-blue-600 hover:underline">Kirish</Link>
+            Already have an account?{" "}
+            <Link to="/auth?mode=student" className="text-blue-600 hover:underline">Sign in</Link>
           </p>
         </div>
       </div>

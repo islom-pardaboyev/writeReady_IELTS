@@ -170,7 +170,7 @@ export function DashboardPage() {
               <button
                 onClick={dismissNotification}
                 className="text-amber-500 hover:text-amber-700 bg-transparent border-none cursor-pointer text-lg leading-none shrink-0"
-                aria-label="Yopish"
+                aria-label="Dismiss"
               >×</button>
             </div>
           )}
@@ -182,12 +182,12 @@ export function DashboardPage() {
             </h1>
             <p className="text-[var(--text-secondary)]">
               {isPro && !isStudent
-                ? `${planName} · ${remaining} ta tahlil qoldi bu oy${bonusAnalyses > 0 ? ` · +${bonusAnalyses} bonus` : ''}`
+                ? `${planName} · ${remaining} analyses left this month${bonusAnalyses > 0 ? ` · +${bonusAnalyses} bonus` : ''}`
                 : !isStudent && bonusAnalyses > 0
-                ? `+${bonusAnalyses} bepul tahlil mavjud 🎁`
+                ? `+${bonusAnalyses} free analyses available 🎁`
                 : !isStudent
-                ? 'Free plan — AI tahlilni ochish uchun yangilang'
-                : `AI feedback — ${remaining} ta tahlil qoldi bu oy`}
+                ? 'Free plan — upgrade to unlock AI feedback'
+                : `AI feedback — ${remaining} analyses left this month`}
             </p>
           </div>
 
@@ -229,7 +229,7 @@ export function DashboardPage() {
             <Card className="gs-db-quota px-6 py-5 mb-8">
               <div className="flex items-center justify-between mb-3 flex-wrap gap-2">
                 <span className="font-semibold text-[0.9375rem] text-[var(--text-primary)]">
-                  {isPro ? `${planName} · Oylik AI tahlil kvotasi` : 'Bepul tahlillar'}
+                  {isPro ? `${planName} · Monthly AI analyses` : 'Free analyses'}
                 </span>
                 <div className="flex items-center gap-2">
                   {bonusAnalyses > 0 && (
@@ -251,7 +251,7 @@ export function DashboardPage() {
                     />
                   </div>
                   <p className="text-xs text-[var(--text-secondary)]">
-                    {usageLimit} ta tahlildan {usedCount} tasi ishlatilgan · {remaining} ta qoldi
+                    {usedCount} of {usageLimit} analyses used · {remaining} remaining
                   </p>
                 </>
               )}
@@ -384,7 +384,7 @@ export function DashboardPage() {
               </div>
               <Link to="/pricing">
                 <Button className="bg-[#c9900a] shrink-0 hover:bg-[#b8820a]">
-                  Rejani yangilash
+                  Upgrade Plan
                 </Button>
               </Link>
             </div>
