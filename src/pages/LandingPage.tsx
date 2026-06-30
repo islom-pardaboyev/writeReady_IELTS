@@ -169,7 +169,7 @@ export function LandingPage() {
             { value: 'Band 7+', sub: 'Target score', note: 'IELTS Writing' },
             { value: '4', sub: 'Scoring criteria', note: 'TA · CC · LR · GRA' },
             { value: 'Instant', sub: 'AI feedback', note: 'Uzbek & English' },
-            { value: '3 modes', sub: 'Practice styles', note: 'Mock · Practice · Relax' },
+            { value: '4 modes', sub: 'Practice styles', note: 'Mock · Practice · Quick · Relax' },
           ].map((s) => (
             <div key={s.sub} className="gs-stat-item px-6 py-5">
               <div className="text-[1.75rem] font-black text-[var(--text-primary)] tracking-[-0.02em] mb-[0.125rem]">{s.value}</div>
@@ -188,7 +188,7 @@ export function LandingPage() {
         </div>
         <div className="grid grid-cols-[repeat(auto-fit,minmax(260px,1fr))] gap-6">
           {[
-            { n: '01', title: 'Choose your mode', desc: 'Mock exam for pressure, Practice for pace, or Relax for free writing with your own prompt.' },
+            { n: '01', title: 'Choose your mode', desc: 'Mock exam for pressure, Practice for pace, Quick Write for daily warm-up, or Relax for free writing.' },
             { n: '02', title: 'Write your essay', desc: 'Real IELTS Task 1 and Task 2 prompts, selected randomly from our exam bank.' },
             { n: '03', title: 'Get AI feedback', desc: 'Sentence-level grammar notes, vocabulary upgrades with Uzbek meanings, and a band score estimate.' },
           ].map((s) => (
@@ -206,15 +206,16 @@ export function LandingPage() {
         <div className="max-w-[1160px] mx-auto px-6 py-20">
           <div className="gs-modes-header mb-12">
             <p className="text-[0.8125rem] font-bold uppercase tracking-[0.08em] text-blue-600 dark:text-blue-400 mb-2">Practice modes</p>
-            <h2 className="text-[clamp(1.75rem,3vw,2.25rem)] font-black text-[var(--text-primary)] tracking-[-0.02em]">One goal, three ways to train</h2>
+            <h2 className="text-[clamp(1.75rem,3vw,2.25rem)] font-black text-[var(--text-primary)] tracking-[-0.02em]">One goal, four ways to train</h2>
           </div>
           <div className="grid grid-cols-[repeat(auto-fit,minmax(260px,1fr))] gap-5">
             {[
-              { emoji: '⏱', title: 'Mock Exam', tag: 'Exam simulation', desc: '60-minute timer, both Task 1 and Task 2. Mirrors the real IELTS on-computer experience.', dark: true },
-              { emoji: '✏️', title: 'Practice Mode', tag: 'Targeted improvement', desc: 'No timer pressure. Work through tasks at your own pace with randomly selected prompts.', dark: false },
-              { emoji: '☕', title: 'Relax Mode', tag: 'Free writing', desc: 'Use your own custom prompt. Enter any question you like, optionally upload a chart, and write freely.', dark: false, tinted: true },
+              { emoji: '⏱', title: 'Mock Exam', tag: 'Exam simulation', desc: '60-minute timer, both Task 1 and Task 2. Mirrors the real IELTS on-computer experience.', dark: true, href: '/writing/mock' },
+              { emoji: '✏️', title: 'Practice Mode', tag: 'Targeted improvement', desc: 'No timer pressure. Work through tasks at your own pace with randomly selected prompts.', dark: false, href: '/writing/practice' },
+              { emoji: '⚡', title: 'Quick Write', tag: 'Speed training', desc: 'One random task, no timer, instant submission. Great for daily warm-up and building writing habits.', dark: false, tinted: false, href: '/writing/quick' },
+              { emoji: '☕', title: 'Relax Mode', tag: 'Free writing', desc: 'Use your own custom prompt. Enter any question you like, optionally upload a chart, and write freely.', dark: false, tinted: true, href: '/writing/relax' },
             ].map((m) => (
-              <Link key={m.title} to="/writing/mock" className="no-underline">
+              <Link key={m.title} to={m.href} className="no-underline">
                 <div
                   className={`gs-mode-card rounded-xl p-8 h-full block cursor-pointer transition-[transform,box-shadow] duration-150 border ${
                     m.dark
