@@ -1186,7 +1186,7 @@ export default function Admin() {
                               >
                                 <td className="px-4 py-3 font-medium text-slate-800">{u.email}</td>
                                 <td className="px-4 py-3">
-                                  <Badge variant={b.label === 'Lifetime' ? 'warning' : b.label === 'Pro' ? 'info' : 'outline'} className="text-[0.65rem]">{b.label}</Badge>
+                                  <Badge variant={b.label === 'Lifetime' ? 'warning' : b.label === 'Premium' ? 'purple' : b.label === 'Standard' || b.label === 'Basic' ? 'info' : 'secondary'} className="text-[0.65rem]">{b.label}</Badge>
                                 </td>
                                 <td className={`px-4 py-3 text-sm ${isExpired ? "text-red-500" : "text-slate-600"}`}>{expiry}</td>
                                 <td className="px-4 py-3 text-right">
