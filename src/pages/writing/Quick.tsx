@@ -14,20 +14,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/Button";
 import WritingTask2Preview from "@/components/writingTask2Preview/WritingTask2Preview";
 import { encodeReport } from "@/lib/reportEncoding";
-import { CheckIcon, ChevronRightIcon, ZapIcon, UploadIcon } from "lucide-react";
-
-function readFileAsDataUrl(file: File): Promise<string> {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onload = () => resolve(reader.result as string);
-    reader.onerror = () => reject(reader.error ?? new Error("File read failed"));
-    reader.readAsDataURL(file);
-  });
-}
-
-function isPdf(src: string) {
-  return src.startsWith('data:application/pdf') || /\.pdf(\?|$)/i.test(src);
-}
+import { CheckIcon, ChevronRightIcon, ZapIcon } from "lucide-react";
 
 async function loadImgBase64(src: string): Promise<{ b64: string; w: number; h: number } | null> {
   if (isPdf(src)) return null;
