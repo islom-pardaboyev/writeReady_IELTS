@@ -17,7 +17,7 @@ import { encodeReport } from "@/lib/reportEncoding";
 import { CheckIcon, ChevronRightIcon, ZapIcon } from "lucide-react";
 
 async function loadImgBase64(src: string): Promise<{ b64: string; w: number; h: number } | null> {
-  if (isPdf(src)) return null;
+  if (src.startsWith('data:application/pdf') || /\.pdf(\?|$)/i.test(src)) return null;
   try {
     let dataUrl = src;
     if (!src.startsWith('data:')) {
