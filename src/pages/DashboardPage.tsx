@@ -8,9 +8,7 @@ import { Layout } from '../components/layout/Layout';
 import { Button } from '../components/ui/Button';
 import { Card } from '../components/ui/Card';
 import { Badge } from '../components/ui/badge';
-import { getRecentFeedbackReports, getDueSpacedRepItems, type FeedbackReport } from '../firebase/firestore';
-import { VocabReviewModal } from '../components/ui/VocabReviewModal';
-import type { SpacedRepItem } from '../types';
+import { getRecentFeedbackReports, type FeedbackReport } from '../firebase/firestore';
 import { ProgressSection } from '../components/ui/ProgressSection';
 import { doc, updateDoc } from 'firebase/firestore';
 import { db } from '../firebase/config';
@@ -81,8 +79,6 @@ export function DashboardPage() {
   const [reports, setReports] = useState<FeedbackReport[]>([]);
   const [reportsLoading, setReportsLoading] = useState(true);
   const [notification, setNotification] = useState<string | null>(null);
-  const [dueCards, setDueCards] = useState<SpacedRepItem[]>([]);
-  const [showReview, setShowReview] = useState(false);
 
   useLayoutEffect(() => {
     // Wait for profile to load before animating — otherwise elements are hidden forever
@@ -130,7 +126,6 @@ export function DashboardPage() {
     getRecentFeedbackReports(user.uid, 5)
       .then(setReports)
       .finally(() => setReportsLoading(false));
-    getDueSpacedRepItems(user.uid).then(setDueCards).catch(() => {});
   }, [user?.uid]);
 
   useEffect(() => {
@@ -301,25 +296,6 @@ export function DashboardPage() {
             ))}
           </div>
 
-          {/* Vocab Review Banner */}
-          {dueCards.length > 0 && (
-            <div className="flex items-center justify-between gap-4 bg-[#1e3a5f] rounded-2xl px-6 py-4 mb-2">
-              <div className="flex items-center gap-3">
-                <span className="text-2xl">🗂</span>
-                <div>
-                  <p className="text-white font-bold text-sm">Vocab Review</p>
-                  <p className="text-white/60 text-xs">{dueCards.length} card{dueCards.length > 1 ? 's' : ''} due for review today</p>
-                </div>
-              </div>
-              <button
-                onClick={() => setShowReview(true)}
-                className="bg-white text-[#1e3a5f] font-bold text-sm px-5 py-2 rounded-full hover:bg-blue-50 transition-colors shrink-0"
-              >
-                Start Review →
-              </button>
-            </div>
-          )}
-
           {/* Progress Section */}
           {user?.uid && <ProgressSection uid={user.uid} />}
 
@@ -419,16 +395,6 @@ export function DashboardPage() {
         </div>
       </div>
 
-      {showReview && user && dueCards.length > 0 && (
-        <VocabReviewModal
-          items={dueCards}
-          uid={user.uid}
-          onClose={() => {
-            setShowReview(false);
-            getDueSpacedRepItems(user.uid).then(setDueCards).catch(() => {});
-          }}
-        />
-      )}
     </Layout>
   );
 }
