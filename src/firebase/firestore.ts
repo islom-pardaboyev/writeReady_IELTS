@@ -158,6 +158,7 @@ const SRS_INTERVALS: Record<SRSRating, number> = { again: 0, hard: 1, good: 2, e
 
 export async function saveVocabCards(uid: string, items: VocabItem[]): Promise<void> {
   const now = new Date();
+  now.setMinutes(now.getMinutes() - 1); // ensure immediately due
   await Promise.all(
     items.map((v) => {
       const safeId = v.word.replace(/[^a-zA-Z0-9]/g, '_').slice(0, 60);
@@ -263,15 +264,21 @@ export async function saveSpacedRepResult(
 }
 
 export async function getDueSpacedRepItems(uid: string): Promise<SpacedRepItem[]> {
-  const now = Timestamp.fromDate(new Date());
+  const now = new Date();
   const q = query(
     collection(db, 'spaced_rep'),
     where('uid', '==', uid),
-    where('nextReviewDate', '<=', now),
-    limit(30)
+    limit(100)
   );
   const snap = await getDocs(q);
-  return snap.docs.map((d) => {
+  return snap.docs
+    .filter((d) => {
+      const nd = d.data().nextReviewDate;
+      if (!nd) return true;
+      const date = nd.toDate ? nd.toDate() : new Date(nd);
+      return date <= now;
+    })
+    .map((d) => {
     const data = d.data();
     return {
       itemId: data.itemId,
@@ -287,7 +294,7 @@ export async function getDueSpacedRepItems(uid: string): Promise<SpacedRepItem[]
       lastReviewed: toDate(data.lastReviewed),
       nextReviewDate: toDate(data.nextReviewDate),
     };
-  });
+  }).slice(0, 30);
 }
 
 // Returns issues from the last N feedback reports (for error-pattern tracking)
