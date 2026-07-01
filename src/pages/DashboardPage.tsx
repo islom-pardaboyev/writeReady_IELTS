@@ -93,10 +93,12 @@ export function DashboardPage() {
         .to('.gs-db-quota', { y: 0, opacity: 1, duration: 0.5 }, '-=0.3')
         .to('.gs-db-mode-card', { y: 0, opacity: 1, duration: 0.5, stagger: 0.1 }, '-=0.25');
 
-      gsap.from('.gs-db-upsell', {
-        scrollTrigger: { trigger: '.gs-db-upsell', start: 'top 88%' },
-        y: 36, opacity: 0, duration: 0.65, ease: 'power3.out',
-      });
+      if (document.querySelector('.gs-db-upsell')) {
+        gsap.from('.gs-db-upsell', {
+          scrollTrigger: { trigger: '.gs-db-upsell', start: 'top 88%' },
+          y: 36, opacity: 0, duration: 0.65, ease: 'power3.out',
+        });
+      }
 
       gsap.from('.gs-db-history', {
         scrollTrigger: { trigger: '.gs-db-history', start: 'top 88%' },

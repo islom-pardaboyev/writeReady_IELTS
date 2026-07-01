@@ -341,7 +341,7 @@ export function FeedbackPage() {
       try {
         parsedFeedback = JSON.parse(raw.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim());
       } catch {
-        throw new Error('Feedback to\'liq kelmadi. Iltimos, qayta urinib ko\'ring.');
+        throw new Error('Feedback incomplete. Please try again.');
       }
 
       const feedbackWithLimit = { ...parsedFeedback, limited: parsedFeedback.limited ?? false };
