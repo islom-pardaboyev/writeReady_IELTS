@@ -13,7 +13,7 @@ import {
   Timestamp,
 } from 'firebase/firestore';
 import { db } from './config';
-import type { UserProfile, UsageRecord, Question, Submission, Plan, SpacedRepItem } from '../types';
+import type { UserProfile, UsageRecord, Question, Submission, Plan, SpacedRepItem, SRSRating, VocabItem } from '../types';
 
 function toDate(val: unknown): Date {
   if (val instanceof Timestamp) return val.toDate();
@@ -153,6 +153,78 @@ export async function getUserSubmissions(uid: string): Promise<Submission[]> {
 
 // ── Spaced Repetition ─────────────────────────────────────────────────────
 
+// SRS intervals (minutes for 'again', days for the rest)
+const SRS_INTERVALS: Record<SRSRating, number> = { again: 0, hard: 1, good: 2, easy: 6 };
+
+export async function saveVocabCards(uid: string, items: VocabItem[]): Promise<void> {
+  const now = new Date();
+  await Promise.all(
+    items.map((v) => {
+      const safeId = v.word.replace(/[^a-zA-Z0-9]/g, '_').slice(0, 60);
+      const docId = `${uid}_${safeId}`;
+      const ref = doc(db, 'spaced_rep', docId);
+      return setDoc(ref, {
+        uid,
+        itemId: v.word,
+        itemLabel: v.word,
+        word: v.word,
+        uzbek: v.uzbek,
+        english: v.english,
+        exampleFromEssay: v.exampleFromEssay,
+        interval: 0,
+        easeFactor: 2.5,
+        correctStreak: 0,
+        lastReviewed: serverTimestamp(),
+        nextReviewDate: Timestamp.fromDate(now),
+      }, { merge: false });
+    })
+  );
+}
+
+export async function rateVocabCard(
+  uid: string,
+  itemId: string,
+  rating: SRSRating,
+  currentInterval: number,
+  currentEaseFactor: number,
+): Promise<{ nextReviewDate: Date; interval: number; easeFactor: number }> {
+  const safeId = itemId.replace(/[^a-zA-Z0-9]/g, '_').slice(0, 60);
+  const docId = `${uid}_${safeId}`;
+  const ref = doc(db, 'spaced_rep', docId);
+
+  // SM-2 style calculation
+  const easeDeltas: Record<SRSRating, number> = { again: -0.3, hard: -0.15, good: 0, easy: 0.15 };
+  const newEaseFactor = Math.max(1.3, currentEaseFactor + easeDeltas[rating]);
+
+  let newInterval: number;
+  if (rating === 'again') {
+    newInterval = 0;
+  } else if (rating === 'hard') {
+    newInterval = Math.max(1, Math.round(currentInterval * 1.2));
+  } else if (rating === 'good') {
+    newInterval = currentInterval === 0 ? 1 : Math.round(currentInterval * newEaseFactor);
+  } else {
+    newInterval = currentInterval === 0 ? 4 : Math.round(currentInterval * newEaseFactor * 1.3);
+  }
+
+  const nextReviewDate = new Date();
+  if (rating === 'again') {
+    nextReviewDate.setMinutes(nextReviewDate.getMinutes() + 10);
+  } else {
+    nextReviewDate.setDate(nextReviewDate.getDate() + SRS_INTERVALS[rating]);
+  }
+
+  await setDoc(ref, {
+    interval: newInterval,
+    easeFactor: newEaseFactor,
+    correctStreak: rating === 'again' ? 0 : 1,
+    lastReviewed: serverTimestamp(),
+    nextReviewDate: Timestamp.fromDate(nextReviewDate),
+  }, { merge: true });
+
+  return { nextReviewDate, interval: newInterval, easeFactor: newEaseFactor };
+}
+
 export async function saveSpacedRepResult(
   uid: string,
   itemId: string,
@@ -167,7 +239,6 @@ export async function saveSpacedRepResult(
   const prevStreak: number = snap.exists() ? (snap.data().correctStreak ?? 0) : 0;
   const newStreak = correct ? prevStreak + 1 : 0;
 
-  // Anki-style intervals: 1 day → 3 days → 7 days → 14 days
   const daysMap: Record<number, number> = { 0: 1, 1: 1, 2: 3, 3: 7 };
   const days = !correct ? 1 : (daysMap[newStreak] ?? 14);
   const nextReviewDate = new Date();
@@ -177,10 +248,16 @@ export async function saveSpacedRepResult(
     uid,
     itemId,
     itemLabel,
+    word: itemLabel,
+    uzbek: '',
+    english: '',
+    exampleFromEssay: '',
+    interval: days,
+    easeFactor: 2.5,
     correctStreak: newStreak,
     lastReviewed: serverTimestamp(),
     nextReviewDate: Timestamp.fromDate(nextReviewDate),
-  });
+  }, { merge: true });
 
   return { nextReviewDate };
 }
@@ -191,7 +268,7 @@ export async function getDueSpacedRepItems(uid: string): Promise<SpacedRepItem[]
     collection(db, 'spaced_rep'),
     where('uid', '==', uid),
     where('nextReviewDate', '<=', now),
-    limit(20)
+    limit(30)
   );
   const snap = await getDocs(q);
   return snap.docs.map((d) => {
@@ -200,6 +277,12 @@ export async function getDueSpacedRepItems(uid: string): Promise<SpacedRepItem[]
       itemId: data.itemId,
       uid: data.uid,
       itemLabel: data.itemLabel,
+      word: data.word ?? data.itemLabel,
+      uzbek: data.uzbek ?? '',
+      english: data.english ?? '',
+      exampleFromEssay: data.exampleFromEssay ?? '',
+      interval: data.interval ?? 0,
+      easeFactor: data.easeFactor ?? 2.5,
       correctStreak: data.correctStreak ?? 0,
       lastReviewed: toDate(data.lastReviewed),
       nextReviewDate: toDate(data.nextReviewDate),
