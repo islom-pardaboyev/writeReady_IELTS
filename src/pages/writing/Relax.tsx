@@ -1,4 +1,5 @@
 import { useState, useRef, type PointerEvent, type CSSProperties } from "react";
+import { useStopwatch } from "@/hooks/useStopwatch";
 import jsPDF from "jspdf";
 import { NavLink, useNavigate } from "react-router-dom";
 import { doc, getDoc } from "firebase/firestore";
@@ -76,6 +77,8 @@ function Relax() {
   const [checkingAccess, setCheckingAccess] = useState(false);
 
   const [splitRatio, setSplitRatio] = useState(0.46);
+  const [timerRunning, setTimerRunning] = useState(false);
+  const elapsed = useStopwatch(timerRunning);
   const splitContainerRef = useRef<HTMLDivElement>(null);
   const isDraggingSplit = useRef(false);
 
@@ -521,6 +524,9 @@ function Relax() {
             >
               Start over
             </button>
+            <span className="hidden sm:inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-mono text-white/70 border border-white/20 rounded-md">
+              ⏱ {elapsed}
+            </span>
             <nav className="hidden sm:flex items-center gap-1">
               <NavLink
                 to="/"
@@ -616,7 +622,7 @@ function Relax() {
         <div className="flex flex-col flex-1 bg-slate-50">
           <textarea
             value={userText}
-            onChange={(e) => setUserText(e.target.value)}
+            onChange={(e) => { setUserText(e.target.value); if (!timerRunning && e.target.value.length > 0) setTimerRunning(true); }}
             placeholder="Start writing your response here…"
             spellCheck={false}
             autoCorrect="off"

@@ -5,6 +5,7 @@ import {
   type PointerEvent,
   type CSSProperties,
 } from "react";
+import { useStopwatch } from "@/hooks/useStopwatch";
 import { auth, db } from "@/firebase/firebase";
 import { collection, doc, getDoc, getDocs } from "firebase/firestore";
 import jsPDF from "jspdf";
@@ -58,6 +59,8 @@ function Practice() {
   const [checkingAccess, setCheckingAccess] = useState(false);
 
   const [splitRatio, setSplitRatio] = useState(0.46);
+  const [timerRunning, setTimerRunning] = useState(false);
+  const elapsed = useStopwatch(timerRunning);
   const splitContainerRef = useRef<HTMLDivElement>(null);
   const isDraggingSplit = useRef(false);
 
@@ -366,6 +369,9 @@ function Practice() {
             >
               New question
             </button>
+            <span className="hidden sm:inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-mono text-white/70 border border-white/20 rounded-md">
+              ⏱ {elapsed}
+            </span>
             <button
               onClick={handleDownloadPDF}
               className="flex items-center gap-1.5 px-4 py-1.5 text-xs font-semibold text-slate-900 bg-white hover:bg-slate-100 rounded-md transition-colors"
@@ -515,11 +521,12 @@ function Practice() {
           <textarea
             id={`answer-task-${activeTask}`}
             value={activeTask === 1 ? userText1 : userText2}
-            onChange={(e) =>
+            onChange={(e) => {
               activeTask === 1
                 ? setUserText1(e.target.value)
-                : setUserText2(e.target.value)
-            }
+                : setUserText2(e.target.value);
+              if (!timerRunning && e.target.value.length > 0) setTimerRunning(true);
+            }}
             placeholder="Start writing your response here…"
             spellCheck={false}
             autoCorrect="off"
