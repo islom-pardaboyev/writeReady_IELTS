@@ -51,6 +51,7 @@ interface UserRow {
   email: string;
   plan: string;
   subscription?: string;
+  expiresAt?: string;
   createdAt?: string;
 }
 interface LeaderEntry {
@@ -424,6 +425,7 @@ export default function Admin() {
             email: data.studentLogin ? `${data.studentLogin} (${data.centerName ?? 'student'})` : (data.email ?? ""),
             plan: data.plan ?? "free",
             subscription: data.subscription ?? "",
+            expiresAt: data.expiresAt ?? "",
             createdAt: data.createdAt?.toDate?.()?.toISOString() ?? "",
           };
         });
@@ -800,12 +802,16 @@ export default function Admin() {
   const setSubscription = async (user: UserRow, type: "basic" | "standard" | "premium" | "forever" | "free") => {
     setUserActionLoading(true); setUserError(""); setUserSuccess("");
     try {
+      const oneMonthLater = new Date();
+      oneMonthLater.setMonth(oneMonthLater.getMonth() + 1);
+      const expiresAt = oneMonthLater.toISOString().slice(0, 10);
+
       const updates =
-        type === "forever"  ? { plan: "forever", subscription: "forever" } :
-        type === "premium"  ? { plan: "premium", subscription: "" } :
-        type === "standard" ? { plan: "standard", subscription: "" } :
-        type === "basic"    ? { plan: "basic", subscription: "" } :
-                              { plan: "free", subscription: "" };
+        type === "forever"  ? { plan: "forever", subscription: "forever", expiresAt: "" } :
+        type === "premium"  ? { plan: "premium",  subscription: "",        expiresAt } :
+        type === "standard" ? { plan: "standard", subscription: "",        expiresAt } :
+        type === "basic"    ? { plan: "basic",    subscription: "",        expiresAt } :
+                              { plan: "free",     subscription: "",        expiresAt: "" };
       await updateDoc(doc(db, "users", user.id), updates);
       setAllUsers((p) => p.map((u) => u.id === user.id ? { ...u, ...updates } : u));
       if (selectedUser?.id === user.id) setSelectedUser((p) => p ? { ...p, ...updates } : null);
@@ -1176,8 +1182,10 @@ export default function Admin() {
                         <tbody className="divide-y divide-slate-100">
                           {filteredUsers.map((u) => {
                             const b = planBadge(u.plan, u.subscription);
-                            const expiry = (u.plan === "forever" || u.subscription === "forever") ? "Lifetime ♾️" : ["basic","standard","premium"].includes(u.plan) ? u.plan.charAt(0).toUpperCase()+u.plan.slice(1) : "—";
-                            const isExpired = false;
+                            const isLifetime = u.plan === "forever" || u.subscription === "forever";
+                            const isPaid = ["basic","standard","premium"].includes(u.plan);
+                            const isExpired = isPaid && !!u.expiresAt && new Date(u.expiresAt) < new Date();
+                            const expiry = isLifetime ? "Lifetime ♾️" : isPaid && u.expiresAt ? (isExpired ? `Expired ${u.expiresAt}` : u.expiresAt) : "—";
                             return (
                               <tr
                                 key={u.id}
@@ -1213,8 +1221,10 @@ export default function Admin() {
                         <p className="text-xs text-slate-500">
                           {selectedUser.plan === "forever" || selectedUser.subscription === "forever"
                             ? "Lifetime — never expires"
-                            : ["basic", "standard", "premium"].includes(selectedUser.plan)
-                            ? `Active ${selectedUser.plan} plan`
+                            : ["basic", "standard", "premium"].includes(selectedUser.plan) && selectedUser.expiresAt
+                            ? (new Date(selectedUser.expiresAt) < new Date()
+                                ? `⚠️ Expired on ${selectedUser.expiresAt}`
+                                : `Active ${selectedUser.plan} plan · expires ${selectedUser.expiresAt}`)
                             : "No active subscription"}
                         </p>
                       </div>

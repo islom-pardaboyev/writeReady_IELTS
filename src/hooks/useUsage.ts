@@ -24,7 +24,10 @@ export function useUsage(uid: string | null) {
       const usage = data?.usage;
       const count = usage?.monthKey === yearMonth ? (usage?.count ?? 0) : 0;
       const plan: string = data?.plan ?? 'free';
-      const limit = planLimits[plan] ?? 0;
+      const expiresAt: string = data?.expiresAt ?? '';
+      const isExpired = plan !== 'forever' && !!expiresAt && new Date(expiresAt) < new Date();
+      const effectivePlan = isExpired ? 'free' : plan;
+      const limit = planLimits[effectivePlan] ?? 0;
       setUsage({ uid, yearMonth, count, limit, updatedAt: new Date() });
     }, () => {
       setLoading(false);
