@@ -759,6 +759,7 @@ export function FeedbackPage() {
                         {feedback.scores.overall.toFixed(1)}
                       </span>
                       <span className="text-[0.6rem] text-[var(--text-secondary)] mt-0.5">/ 9.0</span>
+                      <span className="text-[0.55rem] text-[var(--text-secondary)] opacity-60 mt-0.5">±0.5</span>
                     </div>
                   </div>
                   <p className="text-[0.65rem] text-[var(--text-secondary)] mt-2">{feedback.wordCount} words</p>
