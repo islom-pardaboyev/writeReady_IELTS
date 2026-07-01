@@ -332,8 +332,8 @@ export function DashboardPage() {
                         {/* Header */}
                         <div className="flex items-start justify-between gap-2">
                           <div className="flex-1 min-w-0">
-                            <Badge variant={r.taskType === 'task1' ? 'purple' : 'info'} className="mb-2 text-[0.65rem] uppercase tracking-wider">
-                              {r.taskType === 'task1' ? 'Task 1' : 'Task 2'}
+                            <Badge variant={r.taskType?.toLowerCase().includes('1') ? 'purple' : 'info'} className="mb-2 text-[0.65rem] uppercase tracking-wider">
+                              {r.taskType?.toLowerCase().includes('1') ? 'Task 1' : 'Task 2'}
                             </Badge>
                             <p className="text-sm font-semibold text-[var(--text-primary)] truncate leading-tight">
                               {r.topic}
