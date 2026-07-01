@@ -15,6 +15,7 @@ import { Button } from "@/components/ui/Button";
 import WritingTask2Preview from "@/components/writingTask2Preview/WritingTask2Preview";
 import { encodeReport } from "@/lib/reportEncoding";
 import { CheckIcon, ChevronRightIcon, ZapIcon } from "lucide-react";
+import { useStopwatch } from "@/hooks/useStopwatch";
 
 async function loadImgBase64(src: string): Promise<{ b64: string; w: number; h: number } | null> {
   if (src.startsWith('data:application/pdf') || /\.pdf(\?|$)/i.test(src)) return null;
@@ -76,6 +77,8 @@ function Quick() {
   const [checkingAccess, setCheckingAccess] = useState(false);
 
   const [splitRatio, setSplitRatio] = useState(0.46);
+  const [timerRunning, setTimerRunning] = useState(false);
+  const elapsed = useStopwatch(timerRunning);
   const splitContainerRef = useRef<HTMLDivElement>(null);
   const isDraggingSplit = useRef(false);
 
@@ -358,6 +361,9 @@ function Quick() {
 
           {/* Right: actions */}
           <div className="flex items-center gap-2">
+            <span className="hidden sm:inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-mono text-white/70 border border-white/20 rounded-md">
+              ⏱ {elapsed}
+            </span>
             <button
               onClick={() => setShowHeader((p) => !p)}
               className="hidden sm:inline-flex items-center gap-1 px-3 py-1.5 text-xs text-white/70 hover:text-white border border-white/20 hover:border-white/40 rounded-md transition-colors"
@@ -467,7 +473,7 @@ function Quick() {
         <div className="flex flex-col flex-1 bg-slate-50">
           <textarea
             value={userText}
-            onChange={(e) => setUserText(e.target.value)}
+            onChange={(e) => { setUserText(e.target.value); if (!timerRunning && e.target.value.length > 0) setTimerRunning(true); }}
             placeholder="Start writing your response here…"
             spellCheck={false}
             autoCorrect="off"
