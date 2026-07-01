@@ -179,8 +179,14 @@ export function FeedbackPage() {
   const [practiceChecked, setPracticeChecked] = useState<Record<string, { score: number; correct: boolean; feedback: string; improved: string }>>({});
   const [practiceChecking, setPracticeChecking] = useState<Record<string, boolean>>({});
 
-  // Essay sentence analysis
-  const [activeSentence, setActiveSentence] = useState<number | null>(null);
+  // Essay sentence analysis — Set so multiple can be open simultaneously
+  const [openSentences, setOpenSentences] = useState<Set<number>>(new Set());
+  const toggleSentence = (i: number) =>
+    setOpenSentences((prev) => {
+      const next = new Set(prev);
+      next.has(i) ? next.delete(i) : next.add(i);
+      return next;
+    });
 
   // Spelling checker (auto-filled from user's essay)
   const [ltMatches, setLtMatches] = useState<LTMatch[]>([]);
@@ -434,164 +440,240 @@ export function FeedbackPage() {
     const pdf = new jsPDF({ unit: 'mm', format: 'a4' });
     const pageW = pdf.internal.pageSize.getWidth();
     const pageH = pdf.internal.pageSize.getHeight();
-    const margin = 18;
-    const contentW = pageW - margin * 2;
-    let y = 28;
+    const M = 16;          // margin
+    const CW = pageW - M * 2; // content width
+    const BOTTOM = pageH - 14;
+    let y = 0;
 
-    const newPage = () => { pdf.addPage(); y = 20; };
-    const ensureSpace = (needed: number) => { if (y + needed > pageH - 15) newPage(); };
+    // helpers
+    const guard = (need: number) => { if (y + need > BOTTOM) { pdf.addPage(); y = 16; } };
 
-    const addText = (
+    const write = (
       text: string,
-      fontSize: number,
-      bold = false,
-      color: [number, number, number] = [44, 44, 44],
-      indent = 0
+      size: number,
+      opts: { bold?: boolean; color?: [number, number, number]; indent?: number; lineGap?: number } = {}
     ) => {
-      pdf.setFontSize(fontSize);
+      const { bold = false, color = [44, 44, 44], indent = 0, lineGap = 1.8 } = opts;
+      pdf.setFontSize(size);
       pdf.setFont('helvetica', bold ? 'bold' : 'normal');
       pdf.setTextColor(...color);
-      const lineH = fontSize * 0.45;
-      const lines = pdf.splitTextToSize(text, contentW - indent) as string[];
-      ensureSpace(lines.length * lineH + 3);
-      pdf.text(lines, margin + indent, y);
-      y += lines.length * lineH + 3;
+      const lh = size * 0.3528 * 1.35; // mm per line
+      const lines = pdf.splitTextToSize(text, CW - indent) as string[];
+      const blockH = lines.length * lh + lineGap;
+      guard(blockH);
+      pdf.text(lines, M + indent, y);
+      y += blockH;
     };
-    const spacer = (h = 5) => { y += h; };
-    const sectionHeader = (title: string) => {
-      ensureSpace(10);
-      pdf.setFontSize(12);
+
+    const gap = (h = 4) => { y += h; };
+
+    const section = (title: string) => {
+      guard(14);
+      gap(3);
+      // coloured left bar
+      pdf.setFillColor(30, 58, 95);
+      pdf.rect(M, y - 4, 3, 9, 'F');
+      pdf.setFontSize(11);
       pdf.setFont('helvetica', 'bold');
       pdf.setTextColor(30, 58, 95);
-      pdf.text(title, margin, y);
+      pdf.text(title, M + 5, y + 1);
       y += 7;
-      pdf.setDrawColor(30, 58, 95);
-      pdf.setLineWidth(0.3);
-      pdf.line(margin, y, margin + contentW, y);
+      pdf.setDrawColor(200, 210, 230);
+      pdf.setLineWidth(0.25);
+      pdf.line(M, y, M + CW, y);
       y += 4;
     };
 
-    // ── Header ──────────────────────────────────────────────────
+    const pill = (label: string, x: number, py: number, bg: [number, number, number], fg: [number, number, number]) => {
+      pdf.setFontSize(7);
+      pdf.setFont('helvetica', 'bold');
+      const tw = pdf.getTextWidth(label) + 4;
+      pdf.setFillColor(...bg);
+      pdf.roundedRect(x, py - 3.5, tw, 5, 1.5, 1.5, 'F');
+      pdf.setTextColor(...fg);
+      pdf.text(label, x + 2, py);
+    };
+
+    // page footer helper
+    const addFooters = () => {
+      const total = (pdf.internal as any).getNumberOfPages() as number;
+      for (let i = 1; i <= total; i++) {
+        pdf.setPage(i);
+        pdf.setFillColor(30, 58, 95);
+        pdf.rect(0, pageH - 10, pageW, 10, 'F');
+        pdf.setFontSize(7);
+        pdf.setFont('helvetica', 'normal');
+        pdf.setTextColor(255, 255, 255);
+        pdf.text('WriteReady IELTS — AI Feedback Report', M, pageH - 4);
+        pdf.text(`Page ${i} of ${total}`, pageW - M, pageH - 4, { align: 'right' });
+      }
+    };
+
+    // ── PAGE 1: Header + Scores ──────────────────────────────────
     pdf.setFillColor(30, 58, 95);
-    pdf.rect(0, 0, pageW, 20, 'F');
+    pdf.rect(0, 0, pageW, 26, 'F');
     pdf.setTextColor(255, 255, 255);
-    pdf.setFontSize(13);
+    pdf.setFontSize(14);
     pdf.setFont('helvetica', 'bold');
-    pdf.text('WriteReady IELTS — AI Feedback Report', margin, 13);
+    pdf.text('WriteReady IELTS', M, 11);
     pdf.setFontSize(9);
     pdf.setFont('helvetica', 'normal');
+    pdf.text('AI Feedback Report', M, 17);
     pdf.text(
-      `Generated ${new Date().toLocaleDateString()} · ${feedback.taskType} · ${feedback.wordCount} words`,
-      margin, 18
+      `${new Date().toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })} · ${feedback.taskType} · ${feedback.wordCount} words`,
+      pageW - M, 17, { align: 'right' }
     );
+    y = 32;
 
-    // ── Band score strip ─────────────────────────────────────────
-    pdf.setFillColor(249, 247, 242);
-    pdf.rect(0, 20, pageW, 22, 'F');
-    pdf.setFontSize(10);
-    pdf.setFont('helvetica', 'bold');
-    pdf.setTextColor(30, 58, 95);
-    pdf.text('Overall Band Score:', margin, 30);
-    pdf.setFontSize(20);
-    pdf.setTextColor(201, 144, 10);
-    pdf.text(feedback.scores.overall.toFixed(1), margin + 46, 36);
-    pdf.setFontSize(8);
-    pdf.setTextColor(120, 120, 120);
-    pdf.text('(+/-0.5)', margin + 62, 36);
-    y = 50;
-
-    // ── Category Scores ──────────────────────────────────────────
-    sectionHeader('Category Scores');
-    ([
+    // Overall score box
+    pdf.setFillColor(249, 247, 240);
+    pdf.roundedRect(M, y, CW, 22, 3, 3, 'F');
+    pdf.setFontSize(9); pdf.setFont('helvetica', 'bold'); pdf.setTextColor(30, 58, 95);
+    pdf.text('Overall Band Score', M + 4, y + 8);
+    pdf.setFontSize(22); pdf.setTextColor(201, 144, 10);
+    pdf.text(feedback.scores.overall.toFixed(1), M + 4, y + 18);
+    pdf.setFontSize(8); pdf.setTextColor(130, 130, 130);
+    pdf.text('(±0.5)', M + 22, y + 18);
+    // Mini score grid on the right
+    const cats: [string, number][] = [
       ['Task Achievement', feedback.scores.taskAchievement],
       ['Coherence & Cohesion', feedback.scores.coherenceCohesion],
       ['Lexical Resource', feedback.scores.lexicalResource],
-      ['Grammatical Range & Accuracy', feedback.scores.grammaticalRangeAccuracy],
-    ] as [string, number][]).forEach(([name, score]) =>
-      addText(`${name}: ${score.toFixed(1)}`, 10)
-    );
-    spacer(4);
+      ['Grammar Range', feedback.scores.grammaticalRangeAccuracy],
+    ];
+    const colX = M + CW / 2 + 2;
+    cats.forEach(([name, score], ci) => {
+      const cy = y + 5 + ci * 4.5;
+      pdf.setFontSize(7.5); pdf.setFont('helvetica', 'normal'); pdf.setTextColor(70, 70, 70);
+      pdf.text(name, colX, cy);
+      pdf.setFont('helvetica', 'bold'); pdf.setTextColor(30, 58, 95);
+      pdf.text(score.toFixed(1), M + CW - 1, cy, { align: 'right' });
+    });
+    y += 26;
 
     // ── Priority Fixes ───────────────────────────────────────────
-    sectionHeader('Priority Fixes');
+    section('Priority Fixes');
     feedback.priorityFixes.forEach((fix, i) => {
-      addText(`${i + 1}. ${fix}`, 10);
-      spacer(2);
+      write(`${i + 1}.  ${fix}`, 9.5, { color: [44, 44, 44] });
+      gap(2);
     });
-    spacer(2);
 
     // ── Band Gap Analysis ────────────────────────────────────────
-    sectionHeader('Band Gap Analysis');
-    addText(feedback.bandGapAnalysis, 10);
-    spacer(4);
+    section('Band Gap Analysis');
+    write(feedback.bandGapAnalysis, 9.5);
 
     // ── Detailed Feedback ────────────────────────────────────────
-    sectionHeader('Detailed Feedback');
+    section('Detailed Feedback');
     ([
       ['Task Achievement', feedback.feedback.taskAchievement],
       ['Coherence & Cohesion', feedback.feedback.coherenceCohesion],
       ['Lexical Resource', feedback.feedback.lexicalResource],
       ['Grammatical Range & Accuracy', feedback.feedback.grammaticalRangeAccuracy],
     ] as [string, { strengths: string[]; issues: string[] }][]).forEach(([name, cat]) => {
-      addText(name, 11, true);
-      cat.strengths.forEach((s) => addText(`+ ${s}`, 9, false, [22, 101, 52], 3));
-      cat.issues.forEach((s) => addText(`- ${s}`, 9, false, [185, 28, 28], 3));
-      spacer(3);
+      guard(12);
+      write(name, 10, { bold: true, color: [30, 58, 95] });
+      cat.strengths.forEach((s) => write(`✓  ${s}`, 9, { color: [22, 101, 52], indent: 2 }));
+      cat.issues.forEach((s) => write(`✗  ${s}`, 9, { color: [185, 28, 28], indent: 2 }));
+      gap(3);
     });
 
-    // ── Essay (user's writing + sentence analysis) ───────────────
-    newPage();
-    sectionHeader('Your Essay');
+    // ── Your Essay ───────────────────────────────────────────────
+    pdf.addPage(); y = 16;
+    section('Your Essay');
     const essayText = selectedTask === 'task1' ? reportData!.userText1 : reportData!.userText2;
-    addText(essayText || '(No essay text)', 10, false, [30, 41, 59]);
-    spacer(5);
+    write(essayText || '(No essay text)', 9.5, { color: [30, 41, 59] });
 
+    // ── Sentence Analysis ────────────────────────────────────────
     if (feedback.sentenceAnalysis?.length) {
-      sectionHeader('Sentence-by-Sentence Analysis');
+      section('Sentence-by-Sentence Analysis');
       const typeLabel: Record<string, string> = {
         word_choice: 'Word Choice', grammar: 'Grammar',
         coherence: 'Coherence', structure: 'Structure', ok: 'Good',
       };
+      const typeColor2: Record<string, { bg: [number,number,number]; fg: [number,number,number] }> = {
+        word_choice: { bg: [237,233,254], fg: [109,40,217] },
+        grammar:     { bg: [254,243,199], fg: [146,64,14]  },
+        coherence:   { bg: [219,234,254], fg: [30,64,175]  },
+        structure:   { bg: [254,226,226], fg: [185,28,28]  },
+        ok:          { bg: [220,252,231], fg: [22,101,52]  },
+      };
       feedback.sentenceAnalysis.forEach((s, i) => {
-        ensureSpace(20);
-        const label = typeLabel[s.type] ?? s.type;
-        addText(`${i + 1}. [${label}] ${s.sentence}`, 9, false, [44, 44, 44]);
-        if (s.feedback) addText(`   Feedback: ${s.feedback}`, 9, false, [80, 80, 80], 3);
-        if (s.improved && s.type !== 'ok') addText(`   Improved: ${s.improved}`, 9, false, [30, 58, 95], 3);
-        spacer(2);
+        const labelText = typeLabel[s.type] ?? s.type;
+        const tc = typeColor2[s.type] ?? typeColor2.ok;
+        // estimate block height
+        const sentLines = (pdf.splitTextToSize(s.sentence, CW - 20) as string[]).length;
+        const fbLines  = s.feedback ? (pdf.splitTextToSize(s.feedback, CW - 22) as string[]).length : 0;
+        const impLines = (s.improved && s.type !== 'ok') ? (pdf.splitTextToSize(s.improved, CW - 22) as string[]).length : 0;
+        const blockH = (sentLines + fbLines + impLines) * 3.8 + 14;
+        guard(blockH);
+
+        // card bg
+        pdf.setFillColor(250, 250, 252);
+        pdf.roundedRect(M, y, CW, blockH - 4, 2, 2, 'F');
+        pdf.setDrawColor(220, 225, 235);
+        pdf.setLineWidth(0.2);
+        pdf.roundedRect(M, y, CW, blockH - 4, 2, 2, 'D');
+        y += 4;
+
+        // number + pill
+        pdf.setFontSize(8); pdf.setFont('helvetica', 'bold'); pdf.setTextColor(150, 150, 150);
+        pdf.text(`${i + 1}`, M + 3, y + 1);
+        pill(labelText, M + 9, y + 1, tc.bg, tc.fg);
+
+        write(s.sentence, 9.5, { color: [44, 44, 44] });
+
+        if (s.feedback) {
+          write(`Feedback: ${s.feedback}`, 8.5, { color: [80, 80, 80], indent: 4 });
+        }
+        if (s.improved && s.type !== 'ok') {
+          write(`Improved: ${s.improved}`, 8.5, { color: [30, 58, 95], indent: 4 });
+        }
+        gap(3);
       });
     }
 
     // ── Vocabulary ───────────────────────────────────────────────
-    newPage();
-    sectionHeader('Vocabulary');
+    pdf.addPage(); y = 16;
+    section('Vocabulary');
     feedback.vocabulary.forEach((v) => {
-      ensureSpace(18);
-      addText(v.word, 10, true, [201, 144, 10]);
-      addText(`O'zbek: ${v.uzbek}  |  English: ${v.english}`, 9, false, [107, 114, 128], 3);
-      addText(`"${v.exampleFromEssay}"`, 9, false, [75, 85, 99], 3);
-      spacer(3);
+      const exLines = (pdf.splitTextToSize(`"${v.exampleFromEssay}"`, CW - 6) as string[]).length;
+      guard(exLines * 3.8 + 14);
+      write(v.word, 10.5, { bold: true, color: [201, 144, 10] });
+      write(`O'zbek: ${v.uzbek}`, 9, { color: [107, 114, 128], indent: 3 });
+      write(`English: ${v.english}`, 9, { color: [80, 80, 90], indent: 3 });
+      write(`"${v.exampleFromEssay}"`, 9, { color: [30, 58, 95], indent: 3 });
+      gap(4);
     });
 
     // ── Grammar Points ───────────────────────────────────────────
-    newPage();
-    sectionHeader('Grammar Points');
+    pdf.addPage(); y = 16;
+    section('Grammar Points');
     feedback.grammar.forEach((g, i) => {
-      ensureSpace(18);
-      addText(`${i + 1}. ${g.point}`, 10, true);
-      addText(g.explanation, 9, false, [44, 44, 44], 3);
-      addText(`Example: "${g.example}"`, 9, false, [75, 85, 99], 3);
-      spacer(3);
+      const expLines = (pdf.splitTextToSize(g.explanation, CW - 6) as string[]).length;
+      const exLines  = (pdf.splitTextToSize(g.example, CW - 6) as string[]).length;
+      guard((expLines + exLines) * 3.8 + 14);
+      write(`${i + 1}.  ${g.point}`, 10, { bold: true, color: [30, 58, 95] });
+      write(g.explanation, 9, { color: [60, 60, 60], indent: 4 });
+      // example box
+      const exH = exLines * 3.8 + 6;
+      guard(exH + 2);
+      pdf.setFillColor(253, 246, 227);
+      pdf.roundedRect(M + 4, y, CW - 8, exH, 2, 2, 'F');
+      y += 3;
+      write(`Example: "${g.example}"`, 9, { color: [120, 80, 20], indent: 7 });
+      y += 2;
+      gap(4);
     });
 
     // ── Sample Response ──────────────────────────────────────────
     if (feedback.sampleResponse) {
-      newPage();
-      sectionHeader('Sample Response (Band 7-9)');
-      spacer(2);
-      addText(feedback.sampleResponse, 10, false, [30, 41, 59]);
+      pdf.addPage(); y = 16;
+      section('Sample Response (Band 7-9)');
+      gap(1);
+      write(feedback.sampleResponse, 10, { color: [30, 41, 59] });
     }
 
+    addFooters();
     pdf.save(`WriteReady_Feedback_${new Date().toISOString().slice(0, 10)}.pdf`);
     setExporting(false);
   };
@@ -1104,12 +1186,12 @@ export function FeedbackPage() {
                       <div className="flex flex-col gap-3">
                         {sentences.map((s, i) => {
                           const style = typeColor[s.type] ?? typeColor.ok;
-                          const isOpen = activeSentence === i;
+                          const isOpen = openSentences.has(i);
                           return (
                             <div
                               key={i}
                               className={`rounded-xl border px-5 py-3.5 cursor-pointer transition-all ${style.bg} ${style.border}`}
-                              onClick={() => setActiveSentence(isOpen ? null : i)}
+                              onClick={() => toggleSentence(i)}
                             >
                               <div className="flex items-start gap-3">
                                 <span className={`mt-1.5 w-2 h-2 rounded-full shrink-0 ${style.dot}`} />
