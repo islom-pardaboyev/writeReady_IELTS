@@ -149,7 +149,7 @@ Return ONLY this JSON structure:
 }
 
 function buildPrompt(essay: string, question: string, taskType: string, wordCount: number): string {
-  return `You are a professional IELTS examiner with 10+ years of experience. Analyze this student essay using official IELTS band descriptors. Return ONLY valid JSON — no markdown, no backticks, no extra text. Be generous and honest while assessing the reports.
+  return `You are a professional IELTS examiner with 10+ years of experience. Assess this essay strictly using the official IELTS public band descriptors. Return ONLY valid JSON—no markdown, no backticks, no extra text. Score each criterion independently, calculate the overall band from their average rounded to the nearest 0.5, and if uncertain between two bands, choose the lower one. The overall band is an estimated IELTS score.
 
 TASK TYPE: ${taskType}
 QUESTION: ${question}
@@ -223,7 +223,8 @@ STRICT RULES:
 - EXACTLY 15 vocabulary items
 - EXACTLY 10 grammar points
 - Every category MUST have at least 1 strength
-- Band scores are realistic: most students score 5.0-7.0; 8.0+ is very rare
+- Every issue should reference the essay where possible
+- Band 8.0+ only if fully supported by the descriptors
 - Overall = simple average of the 4 criteria scores rounded to nearest 0.5`;
 }
 
