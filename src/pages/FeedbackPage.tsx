@@ -433,27 +433,45 @@ export function FeedbackPage() {
 
     const pdf = new jsPDF({ unit: 'mm', format: 'a4' });
     const pageW = pdf.internal.pageSize.getWidth();
+    const pageH = pdf.internal.pageSize.getHeight();
     const margin = 18;
-    const lineW = pageW - margin * 2;
+    const contentW = pageW - margin * 2;
     let y = 28;
 
     const newPage = () => { pdf.addPage(); y = 20; };
+    const ensureSpace = (needed: number) => { if (y + needed > pageH - 15) newPage(); };
+
     const addText = (
       text: string,
       fontSize: number,
       bold = false,
-      color: [number, number, number] = [44, 44, 44]
+      color: [number, number, number] = [44, 44, 44],
+      indent = 0
     ) => {
       pdf.setFontSize(fontSize);
       pdf.setFont('helvetica', bold ? 'bold' : 'normal');
       pdf.setTextColor(...color);
-      const lines = pdf.splitTextToSize(text, lineW) as string[];
-      if (y + lines.length * (fontSize * 0.45) > 275) newPage();
-      pdf.text(lines, margin, y);
-      y += lines.length * (fontSize * 0.45) + 3;
+      const lineH = fontSize * 0.45;
+      const lines = pdf.splitTextToSize(text, contentW - indent) as string[];
+      ensureSpace(lines.length * lineH + 3);
+      pdf.text(lines, margin + indent, y);
+      y += lines.length * lineH + 3;
     };
     const spacer = (h = 5) => { y += h; };
+    const sectionHeader = (title: string) => {
+      ensureSpace(10);
+      pdf.setFontSize(12);
+      pdf.setFont('helvetica', 'bold');
+      pdf.setTextColor(30, 58, 95);
+      pdf.text(title, margin, y);
+      y += 7;
+      pdf.setDrawColor(30, 58, 95);
+      pdf.setLineWidth(0.3);
+      pdf.line(margin, y, margin + contentW, y);
+      y += 4;
+    };
 
+    // ── Header ──────────────────────────────────────────────────
     pdf.setFillColor(30, 58, 95);
     pdf.rect(0, 0, pageW, 20, 'F');
     pdf.setTextColor(255, 255, 255);
@@ -467,6 +485,7 @@ export function FeedbackPage() {
       margin, 18
     );
 
+    // ── Band score strip ─────────────────────────────────────────
     pdf.setFillColor(249, 247, 242);
     pdf.rect(0, 20, pageW, 22, 'F');
     pdf.setFontSize(10);
@@ -475,27 +494,39 @@ export function FeedbackPage() {
     pdf.text('Overall Band Score:', margin, 30);
     pdf.setFontSize(20);
     pdf.setTextColor(201, 144, 10);
-    pdf.text(feedback.scores.overall.toFixed(1), margin + 45, 36);
+    pdf.text(feedback.scores.overall.toFixed(1), margin + 46, 36);
+    pdf.setFontSize(8);
+    pdf.setTextColor(120, 120, 120);
+    pdf.text('(+/-0.5)', margin + 62, 36);
     y = 50;
 
-    addText('Category Scores', 12, true, [30, 58, 95]);
+    // ── Category Scores ──────────────────────────────────────────
+    sectionHeader('Category Scores');
     ([
       ['Task Achievement', feedback.scores.taskAchievement],
       ['Coherence & Cohesion', feedback.scores.coherenceCohesion],
       ['Lexical Resource', feedback.scores.lexicalResource],
       ['Grammatical Range & Accuracy', feedback.scores.grammaticalRangeAccuracy],
-    ] as [string, number][]).forEach(([name, score]) => addText(`${name}: ${score.toFixed(1)}`, 10));
+    ] as [string, number][]).forEach(([name, score]) =>
+      addText(`${name}: ${score.toFixed(1)}`, 10)
+    );
     spacer(4);
 
-    addText('Priority Fixes', 12, true, [30, 58, 95]);
-    feedback.priorityFixes.forEach((fix, i) => addText(`${i + 1}. ${fix}`, 10));
-    spacer(4);
+    // ── Priority Fixes ───────────────────────────────────────────
+    sectionHeader('Priority Fixes');
+    feedback.priorityFixes.forEach((fix, i) => {
+      addText(`${i + 1}. ${fix}`, 10);
+      spacer(2);
+    });
+    spacer(2);
 
-    addText('Band Gap Analysis', 12, true, [30, 58, 95]);
+    // ── Band Gap Analysis ────────────────────────────────────────
+    sectionHeader('Band Gap Analysis');
     addText(feedback.bandGapAnalysis, 10);
-    spacer(6);
+    spacer(4);
 
-    addText('Detailed Feedback', 12, true, [30, 58, 95]);
+    // ── Detailed Feedback ────────────────────────────────────────
+    sectionHeader('Detailed Feedback');
     ([
       ['Task Achievement', feedback.feedback.taskAchievement],
       ['Coherence & Cohesion', feedback.feedback.coherenceCohesion],
@@ -503,32 +534,60 @@ export function FeedbackPage() {
       ['Grammatical Range & Accuracy', feedback.feedback.grammaticalRangeAccuracy],
     ] as [string, { strengths: string[]; issues: string[] }][]).forEach(([name, cat]) => {
       addText(name, 11, true);
-      cat.strengths.forEach((s) => addText(`  ✓ ${s}`, 9, false, [22, 101, 52]));
-      cat.issues.forEach((s) => addText(`  ✗ ${s}`, 9, false, [185, 28, 28]));
+      cat.strengths.forEach((s) => addText(`+ ${s}`, 9, false, [22, 101, 52], 3));
+      cat.issues.forEach((s) => addText(`- ${s}`, 9, false, [185, 28, 28], 3));
       spacer(3);
     });
 
+    // ── Essay (user's writing + sentence analysis) ───────────────
     newPage();
-    addText('Vocabulary', 12, true, [30, 58, 95]);
+    sectionHeader('Your Essay');
+    const essayText = selectedTask === 'task1' ? reportData!.userText1 : reportData!.userText2;
+    addText(essayText || '(No essay text)', 10, false, [30, 41, 59]);
+    spacer(5);
+
+    if (feedback.sentenceAnalysis?.length) {
+      sectionHeader('Sentence-by-Sentence Analysis');
+      const typeLabel: Record<string, string> = {
+        word_choice: 'Word Choice', grammar: 'Grammar',
+        coherence: 'Coherence', structure: 'Structure', ok: 'Good',
+      };
+      feedback.sentenceAnalysis.forEach((s, i) => {
+        ensureSpace(20);
+        const label = typeLabel[s.type] ?? s.type;
+        addText(`${i + 1}. [${label}] ${s.sentence}`, 9, false, [44, 44, 44]);
+        if (s.feedback) addText(`   Feedback: ${s.feedback}`, 9, false, [80, 80, 80], 3);
+        if (s.improved && s.type !== 'ok') addText(`   Improved: ${s.improved}`, 9, false, [30, 58, 95], 3);
+        spacer(2);
+      });
+    }
+
+    // ── Vocabulary ───────────────────────────────────────────────
+    newPage();
+    sectionHeader('Vocabulary');
     feedback.vocabulary.forEach((v) => {
+      ensureSpace(18);
       addText(v.word, 10, true, [201, 144, 10]);
-      addText(`  O'zbek: ${v.uzbek} · English: ${v.english}`, 9, false, [107, 114, 128]);
-      addText(`  "${v.exampleFromEssay}"`, 9, false, [75, 85, 99]);
-      spacer(2);
+      addText(`O'zbek: ${v.uzbek}  |  English: ${v.english}`, 9, false, [107, 114, 128], 3);
+      addText(`"${v.exampleFromEssay}"`, 9, false, [75, 85, 99], 3);
+      spacer(3);
     });
 
+    // ── Grammar Points ───────────────────────────────────────────
     newPage();
-    addText('Grammar Points', 12, true, [30, 58, 95]);
+    sectionHeader('Grammar Points');
     feedback.grammar.forEach((g, i) => {
+      ensureSpace(18);
       addText(`${i + 1}. ${g.point}`, 10, true);
-      addText(`  ${g.explanation}`, 9);
-      addText(`  Example: "${g.example}"`, 9, false, [75, 85, 99]);
-      spacer(2);
+      addText(g.explanation, 9, false, [44, 44, 44], 3);
+      addText(`Example: "${g.example}"`, 9, false, [75, 85, 99], 3);
+      spacer(3);
     });
 
+    // ── Sample Response ──────────────────────────────────────────
     if (feedback.sampleResponse) {
       newPage();
-      addText('Sample Response (Band 7-9)', 12, true, [30, 58, 95]);
+      sectionHeader('Sample Response (Band 7-9)');
       spacer(2);
       addText(feedback.sampleResponse, 10, false, [30, 41, 59]);
     }
