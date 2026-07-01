@@ -149,15 +149,7 @@ export interface SpacedRepItem {
   itemId: string;
   uid: string;
   itemLabel: string;
-  word: string;
-  uzbek: string;
-  english: string;
-  exampleFromEssay: string;
-  interval: number;
-  easeFactor: number;
   correctStreak: number;
   lastReviewed: Date;
   nextReviewDate: Date;
 }
-
-export type SRSRating = 'again' | 'hard' | 'good' | 'easy';

@@ -6,9 +6,8 @@ import { Layout } from '../components/layout/Layout';
 import { Button } from '../components/ui/Button';
 import { decodeReport } from '../lib/reportEncoding';
 import type { ReportData } from '../lib/reportEncoding';
-import { getFeedbackReportHistory, saveVocabCards, getDueSpacedRepItems } from '../firebase/firestore';
-import type { EnhancedFeedbackResult, SpacedRepItem } from '../types';
-import { VocabReviewModal } from '../components/ui/VocabReviewModal';
+import { getFeedbackReportHistory } from '../firebase/firestore';
+import type { EnhancedFeedbackResult } from '../types';
 
 type Tab = 'overview' | 'priority' | 'detailed' | 'essay' | 'sample' | 'vocabulary' | 'grammar' | 'spelling' | 'quiz';
 
@@ -173,11 +172,6 @@ export function FeedbackPage() {
   const [flipped, setFlipped] = useState<Record<number, boolean>>({});
   const [expandedCat, setExpandedCat] = useState<string | null>('taskAchievement');
 
-  // Vocab review (spaced repetition)
-  const [vocabSaved, setVocabSaved] = useState(false);
-  const [vocabSaving, setVocabSaving] = useState(false);
-  const [dueItems, setDueItems] = useState<SpacedRepItem[]>([]);
-  const [showReview, setShowReview] = useState(false);
 
   // Writing practice quiz
   const [practiceInputs, setPracticeInputs] = useState<Record<string, string>>({});
@@ -200,25 +194,6 @@ export function FeedbackPage() {
 
   const [recurringIssues, setRecurringIssues] = useState<string[]>([]);
   const [exporting, setExporting] = useState(false);
-
-  // Load due review cards when user is available
-  useEffect(() => {
-    if (!user) return;
-    getDueSpacedRepItems(user.uid).then(setDueItems).catch(() => {});
-  }, [user?.uid]);
-
-  async function handleSaveVocab() {
-    if (!user || !feedback?.vocabulary?.length || vocabSaved) return;
-    setVocabSaving(true);
-    try {
-      await saveVocabCards(user.uid, feedback.vocabulary);
-      setVocabSaved(true);
-      // Reload due items so the review button shows immediately
-      const due = await getDueSpacedRepItems(user.uid);
-      setDueItems(due);
-    } catch { /* silent */ }
-    finally { setVocabSaving(false); }
-  }
 
   // Decode report from URL
   useEffect(() => {
@@ -977,34 +952,9 @@ export function FeedbackPage() {
               {/* ── VOCABULARY ── */}
               {activeTab === 'vocabulary' && (feedback.limited ? <UpgradePrompt /> :(
                 <div>
-                  <div className="flex flex-wrap items-center justify-between gap-3 mb-5">
-                    <p className="text-sm text-[var(--text-muted)]">
-                      Tap a card to flip it and see the meaning and example sentence.
-                    </p>
-                    <div className="flex items-center gap-2 shrink-0">
-                      {dueItems.length > 0 && (
-                        <button
-                          onClick={() => setShowReview(true)}
-                          className="flex items-center gap-1.5 bg-[#1e3a5f] text-white text-[0.8125rem] font-bold px-4 py-2 rounded-full hover:opacity-90 transition-opacity"
-                        >
-                          <span>🗂</span> Review {dueItems.length} due
-                        </button>
-                      )}
-                      {user && !feedback.limited && (
-                        <button
-                          onClick={handleSaveVocab}
-                          disabled={vocabSaving || vocabSaved}
-                          className={`flex items-center gap-1.5 text-[0.8125rem] font-bold px-4 py-2 rounded-full transition-all ${
-                            vocabSaved
-                              ? 'bg-green-100 text-green-700 border border-green-300'
-                              : 'bg-[var(--bg-card)] border border-[var(--border-color)] text-[var(--text-primary)] hover:border-[var(--ink-blue)]'
-                          }`}
-                        >
-                          {vocabSaved ? '✓ Saved to deck' : vocabSaving ? 'Saving…' : '+ Add to Review Deck'}
-                        </button>
-                      )}
-                    </div>
-                  </div>
+                  <p className="text-sm text-[var(--text-muted)] mb-5">
+                    Tap a card to flip it and see the meaning and example sentence.
+                  </p>
                   <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
                     {feedback.vocabulary.map((v, i) => (
                       <div
@@ -1372,26 +1322,6 @@ export function FeedbackPage() {
         </div>
       </div>
 
-      {/* Floating review button (shows when due cards exist and vocab tab not active) */}
-      {dueItems.length > 0 && activeTab !== 'vocabulary' && (
-        <button
-          onClick={() => setShowReview(true)}
-          className="fixed bottom-6 right-6 z-40 flex items-center gap-2 bg-[#1e3a5f] text-white font-bold text-sm px-5 py-3 rounded-full shadow-lg hover:opacity-90 transition-opacity"
-        >
-          🗂 Review {dueItems.length} cards
-        </button>
-      )}
-
-      {showReview && user && dueItems.length > 0 && (
-        <VocabReviewModal
-          items={dueItems}
-          uid={user.uid}
-          onClose={() => {
-            setShowReview(false);
-            getDueSpacedRepItems(user.uid).then(setDueItems).catch(() => {});
-          }}
-        />
-      )}
     </Layout>
   );
 }
