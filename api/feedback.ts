@@ -4,7 +4,7 @@ import { getApps, initializeApp, cert } from 'firebase-admin/app';
 import { createHmac } from 'crypto';
 import Anthropic from '@anthropic-ai/sdk';
 
-const ALLOWED_MODEL = 'claude-sonnet-5';
+const ALLOWED_MODEL = 'claude-sonnet-4-6';
 const MAX_TOKENS = 8000;
 const TOKEN_MAX_AGE_MS = 3 * 60 * 1000; // 3 minutes
 
