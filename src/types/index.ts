@@ -133,23 +133,3 @@ export interface EnhancedFeedbackResult {
   grammar: GrammarPoint[];
   limited?: boolean;
 }
-
-// ── Retention quiz (api/retention-check.ts) ────────────────────────────────
-
-export interface QuizQuestion {
-  id: string;
-  type: 'multiple-choice';
-  question: string;
-  options: string[];
-  correctAnswer: string;
-  itemRef: string;
-}
-
-export interface SpacedRepItem {
-  itemId: string;
-  uid: string;
-  itemLabel: string;
-  correctStreak: number;
-  lastReviewed: Date;
-  nextReviewDate: Date;
-}

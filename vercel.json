@@ -10,9 +10,6 @@
     "api/pre-check.ts": {
       "maxDuration": 30
     },
-    "api/retention-check.ts": {
-      "maxDuration": 30
-    },
     "api/check-practice.ts": {
       "maxDuration": 30
     }

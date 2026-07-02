@@ -713,7 +713,7 @@ export function FeedbackPage() {
               </h2>
               <p className="text-white/70 mb-7 leading-relaxed">
                 Your essay has been saved. Upgrade to Pro to unlock AI-powered feedback with band
-                scores, vocabulary flashcards, grammar analysis, and retention quizzes.
+                scores, vocabulary flashcards, grammar analysis, and sentence practice.
               </p>
               <div className="flex gap-3 justify-center flex-wrap">
                 <Link to="/pricing">
