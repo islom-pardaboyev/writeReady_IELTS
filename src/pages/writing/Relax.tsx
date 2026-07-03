@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/Button";
 import WritingTask2Preview from "@/components/writingTask2Preview/WritingTask2Preview";
 import WritingTask1Preview from "@/components/writingTask1Preview/WritingTask1Preview";
 import { encodeReport } from "@/lib/reportEncoding";
-import { CheckIcon, ChevronRightIcon, UploadIcon } from "lucide-react";
+import { CheckIcon, ChevronRightIcon, ClockIcon, UploadIcon } from "lucide-react";
 
 function readFileAsDataUrl(file: File): Promise<string> {
   return new Promise((resolve, reject) => {
@@ -517,6 +517,14 @@ function Relax() {
             </span>
           </div>
 
+          {/* Centre: timer */}
+          <div className="flex items-center gap-2">
+            <ClockIcon className="w-3.5 h-3.5 text-white/60" />
+            <span className="text-sm font-mono font-semibold tabular-nums text-white/90">
+              {elapsed}
+            </span>
+          </div>
+
           <div className="flex items-center gap-2">
             <button
               onClick={handleReset}
@@ -524,9 +532,6 @@ function Relax() {
             >
               Start over
             </button>
-            <span className="hidden sm:inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-mono text-white/70 border border-white/20 rounded-md">
-              ⏱ {elapsed}
-            </span>
             <nav className="hidden sm:flex items-center gap-1">
               <NavLink
                 to="/"

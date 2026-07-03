@@ -15,7 +15,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/Button";
 import WritingTask2Preview from "@/components/writingTask2Preview/WritingTask2Preview";
 import { encodeReport } from "@/lib/reportEncoding";
-import { CheckIcon, ChevronRightIcon } from "lucide-react";
+import { CheckIcon, ChevronRightIcon, ClockIcon } from "lucide-react";
 
 interface Task1 {
   image: string;
@@ -356,6 +356,14 @@ function Practice() {
             </span>
           </div>
 
+          {/* Centre: timer */}
+          <div className="flex items-center gap-2">
+            <ClockIcon className="w-3.5 h-3.5 text-white/60" />
+            <span className="text-sm font-mono font-semibold tabular-nums text-white/90">
+              {elapsed}
+            </span>
+          </div>
+
           <div className="flex items-center gap-2">
             <button
               onClick={() => setShowHeader((p) => !p)}
@@ -369,9 +377,6 @@ function Practice() {
             >
               New question
             </button>
-            <span className="hidden sm:inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-mono text-white/70 border border-white/20 rounded-md">
-              ⏱ {elapsed}
-            </span>
             <button
               onClick={handleDownloadPDF}
               className="flex items-center gap-1.5 px-4 py-1.5 text-xs font-semibold text-slate-900 bg-white hover:bg-slate-100 rounded-md transition-colors"

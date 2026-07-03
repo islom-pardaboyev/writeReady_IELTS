@@ -14,7 +14,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/Button";
 import WritingTask2Preview from "@/components/writingTask2Preview/WritingTask2Preview";
 import { encodeReport } from "@/lib/reportEncoding";
-import { CheckIcon, ChevronRightIcon, ZapIcon } from "lucide-react";
+import { CheckIcon, ChevronRightIcon, ClockIcon, ZapIcon } from "lucide-react";
 import { useStopwatch } from "@/hooks/useStopwatch";
 
 async function loadImgBase64(src: string): Promise<{ b64: string; w: number; h: number } | null> {
@@ -359,11 +359,16 @@ function Quick() {
             <span className="text-sm font-medium text-white">Quick Write — Task {selectedTaskType}</span>
           </div>
 
+          {/* Centre: timer */}
+          <div className="flex items-center gap-2">
+            <ClockIcon className="w-3.5 h-3.5 text-white/60" />
+            <span className="text-sm font-mono font-semibold tabular-nums text-white/90">
+              {elapsed}
+            </span>
+          </div>
+
           {/* Right: actions */}
           <div className="flex items-center gap-2">
-            <span className="hidden sm:inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-mono text-white/70 border border-white/20 rounded-md">
-              ⏱ {elapsed}
-            </span>
             <button
               onClick={() => setShowHeader((p) => !p)}
               className="hidden sm:inline-flex items-center gap-1 px-3 py-1.5 text-xs text-white/70 hover:text-white border border-white/20 hover:border-white/40 rounded-md transition-colors"
