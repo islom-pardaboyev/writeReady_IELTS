@@ -112,6 +112,11 @@ function Quick() {
     fetchTasks();
   }, [user]);
 
+  // Start the timer as soon as the writing screen is shown, not on first keystroke
+  useEffect(() => {
+    if (selectedTaskType !== null) setTimerRunning(true);
+  }, [selectedTaskType]);
+
   const pickRandom = <T,>(items: T[], current: T | null): T => {
     if (items.length <= 1) return items[0];
     let next = items[Math.floor(Math.random() * items.length)];
@@ -478,7 +483,7 @@ function Quick() {
         <div className="flex flex-col flex-1 bg-slate-50">
           <textarea
             value={userText}
-            onChange={(e) => { setUserText(e.target.value); if (!timerRunning && e.target.value.length > 0) setTimerRunning(true); }}
+            onChange={(e) => setUserText(e.target.value)}
             placeholder="Start writing your response here…"
             spellCheck={false}
             autoCorrect="off"

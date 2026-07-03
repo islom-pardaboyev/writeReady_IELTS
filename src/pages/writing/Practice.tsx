@@ -89,6 +89,11 @@ function Practice() {
     fetchTasks();
   }, [user]);
 
+  // Start the timer as soon as the writing screen is shown, not on first keystroke
+  useEffect(() => {
+    if (!loading) setTimerRunning(true);
+  }, [loading]);
+
   const activeText = activeTask === 1 ? userText1 : userText2;
   const wordCount =
     activeText.trim() === "" ? 0 : activeText.trim().split(/\s+/).length;
@@ -530,7 +535,6 @@ function Practice() {
               activeTask === 1
                 ? setUserText1(e.target.value)
                 : setUserText2(e.target.value);
-              if (!timerRunning && e.target.value.length > 0) setTimerRunning(true);
             }}
             placeholder="Start writing your response here…"
             spellCheck={false}

@@ -1,4 +1,4 @@
-import { useState, useRef, type PointerEvent, type CSSProperties } from "react";
+import { useState, useEffect, useRef, type PointerEvent, type CSSProperties } from "react";
 import { useStopwatch } from "@/hooks/useStopwatch";
 import jsPDF from "jspdf";
 import { NavLink, useNavigate } from "react-router-dom";
@@ -90,6 +90,11 @@ function Relax() {
     100,
     Math.round((wordCount / minWords) * 100),
   );
+
+  // Start the timer as soon as the writing screen is shown, not on first keystroke
+  useEffect(() => {
+    if (step === "write") setTimerRunning(true);
+  }, [step]);
 
   const handleSelectTask = (task: 1 | 2) => {
     setActiveTask(task);
@@ -627,7 +632,7 @@ function Relax() {
         <div className="flex flex-col flex-1 bg-slate-50">
           <textarea
             value={userText}
-            onChange={(e) => { setUserText(e.target.value); if (!timerRunning && e.target.value.length > 0) setTimerRunning(true); }}
+            onChange={(e) => setUserText(e.target.value)}
             placeholder="Start writing your response here…"
             spellCheck={false}
             autoCorrect="off"
