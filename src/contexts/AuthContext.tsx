@@ -6,6 +6,10 @@ import {
   onAuthStateChanged,
   GoogleAuthProvider,
   signInWithPopup,
+  updateProfile,
+  updatePassword,
+  reauthenticateWithCredential,
+  EmailAuthProvider,
   type User,
 } from 'firebase/auth';
 import { auth } from '../firebase/config';
@@ -62,8 +66,21 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if (user) await loadProfile(user);
   };
 
+  const updateDisplayName = async (name: string) => {
+    if (!auth.currentUser) throw new Error('Not signed in.');
+    await updateProfile(auth.currentUser, { displayName: name });
+    setUser({ ...auth.currentUser });
+  };
+
+  const changePassword = async (currentPassword: string, newPassword: string) => {
+    if (!auth.currentUser || !auth.currentUser.email) throw new Error('Not signed in.');
+    const credential = EmailAuthProvider.credential(auth.currentUser.email, currentPassword);
+    await reauthenticateWithCredential(auth.currentUser, credential);
+    await updatePassword(auth.currentUser, newPassword);
+  };
+
   return (
-    <AuthContext.Provider value={{ user, profile, loading, signUp, signIn, signInWithGoogle, logOut, refreshProfile }}>
+    <AuthContext.Provider value={{ user, profile, loading, signUp, signIn, signInWithGoogle, logOut, refreshProfile, updateDisplayName, changePassword }}>
       {children}
     </AuthContext.Provider>
   );
