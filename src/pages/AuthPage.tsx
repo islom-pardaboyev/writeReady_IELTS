@@ -76,7 +76,7 @@ export function AuthPage() {
         const cred = await signInWithEmailAndPassword(firebaseAuth, fakeEmail, studentPassword);
         uid = cred.user.uid;
       } catch {
-        setError('Incorrect login or password. If you are new, please register via your invite link.');
+        setError('Incorrect login or password. Please check with your learning centre.');
         setLoading(false);
         return;
       }

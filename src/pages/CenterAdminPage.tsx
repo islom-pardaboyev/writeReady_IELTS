@@ -2,15 +2,16 @@ import { useState, useEffect } from "react";
 import {
   collection,
   getDocs,
-  addDoc,
   deleteDoc,
   updateDoc,
   setDoc,
   doc,
   query,
   where,
+  serverTimestamp,
 } from "firebase/firestore";
 import { adminDb as db, adminAuth } from "@/firebase/adminConfig";
+import { createStudentAuthAccount } from "@/firebase/createStudentAccount";
 import { signInAnonymously, signInWithEmailAndPassword, createUserWithEmailAndPassword } from "firebase/auth";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -200,11 +201,6 @@ export default function CenterAdminPage() {
   // Dashboard stats
   const [reportsToday, setReportsToday] = useState(0);
 
-  // Invite link
-  const [inviteLink, setInviteLink] = useState("");
-  const [inviteCopied, setInviteCopied] = useState(false);
-  const [inviteLoading, setInviteLoading] = useState(false);
-
   useEffect(() => {
     const saved = localStorage.getItem("centerAdminLoggedIn");
     const id = localStorage.getItem("centerAdminId");
@@ -250,31 +246,6 @@ export default function CenterAdminPage() {
       setStudents(rows);
     } catch (e) { console.error(e); }
     setStudentsLoading(false);
-  };
-
-  const generateInviteLink = async () => {
-    setInviteLoading(true);
-    try {
-      const token = Math.random().toString(36).slice(2) + Math.random().toString(36).slice(2);
-      const expiresAt = new Date();
-      expiresAt.setDate(expiresAt.getDate() + 30); // 30 kun
-      await setDoc(doc(db, "invites", token), {
-        centerId,
-        centerName,
-        createdAt: new Date().toISOString(),
-        expiresAt: expiresAt.toISOString(),
-      });
-      const link = `${window.location.origin}/join/${token}`;
-      setInviteLink(link);
-    } catch (e) { console.error(e); }
-    setInviteLoading(false);
-  };
-
-  const copyInviteLink = async () => {
-    if (!inviteLink) return;
-    await navigator.clipboard.writeText(inviteLink);
-    setInviteCopied(true);
-    setTimeout(() => setInviteCopied(false), 2000);
   };
 
   const loadReportsToday = async (studentList: Student[]) => {
@@ -380,24 +351,55 @@ export default function CenterAdminPage() {
 
   const addStudent = async () => {
     if (!newName.trim() || !newLogin.trim() || !newPass.trim()) return;
+    if (newPass.trim().length < 6) { alert("Parol kamida 6 ta belgidan iborat bo'lishi kerak."); return; }
     if (students.length >= (centerData?.studentLimit ?? 30)) {
       alert("Student limit reached.");
       return;
     }
     setAddingStudent(true);
     try {
+      const loginKey = newLogin.trim().toLowerCase();
       // Check login uniqueness
-      const existing = await getDocs(query(collection(db, "learningCenters", centerId, "students"), where("login", "==", newLogin.trim())));
+      const existing = await getDocs(query(collection(db, "learningCenters", centerId, "students"), where("login", "==", loginKey)));
       if (!existing.empty) { alert("Bu login allaqachon mavjud."); setAddingStudent(false); return; }
-      await addDoc(collection(db, "learningCenters", centerId, "students"), {
+
+      // Create the student's Firebase Auth account so they can actually sign in.
+      const fakeEmail = `${loginKey}@writeready.student`;
+      let uid: string;
+      try {
+        uid = await createStudentAuthAccount(fakeEmail, newPass.trim());
+      } catch (err) {
+        const code = (err as { code?: string })?.code;
+        alert(code === "auth/email-already-in-use" ? "Bu login allaqachon band." : "Xatolik yuz berdi. Qaytadan urinib ko'ring.");
+        setAddingStudent(false);
+        return;
+      }
+
+      // User profile — grants pro access tied to the center's expiry
+      await setDoc(doc(db, "users", uid), {
+        email: fakeEmail,
+        studentLogin: loginKey,
         fullName: newName.trim(),
-        login: newLogin.trim(),
-        password: newPass.trim(),
-        addedAt: new Date(),
+        plan: "pro",
+        subscriptionExpiresAt: centerData?.expiresAt || null,
+        centerId,
+        centerName,
+        createdAt: serverTimestamp(),
+        bonusAnalyses: 0,
       });
+
+      // Student record under the center (doc id = uid so it maps to the account)
+      await setDoc(doc(db, "learningCenters", centerId, "students", uid), {
+        fullName: newName.trim(),
+        login: loginKey,
+        password: newPass.trim(),
+        uid,
+        addedAt: serverTimestamp(),
+      });
+
       setNewName(""); setNewLogin(""); setNewPass(""); setAddDialog(false);
       await loadStudents(centerId);
-    } catch (e) { console.error(e); }
+    } catch (e) { console.error(e); alert("Xatolik yuz berdi. Qaytadan urinib ko'ring."); }
     setAddingStudent(false);
   };
 
@@ -531,36 +533,6 @@ export default function CenterAdminPage() {
           {/* ── STUDENTS ── */}
           {section === "students" && (
             <div className="flex flex-col gap-5">
-              {/* Invite Link Card */}
-              <div className="bg-blue-50 border border-blue-200 rounded-xl p-4">
-                <div className="flex items-center justify-between mb-2">
-                  <div>
-                    <p className="font-semibold text-blue-800 text-sm">🔗 Invite Link orqali qo'shish</p>
-                    <p className="text-xs text-blue-600 mt-0.5">Student linkni ochib o'zi ro'yxatdan o'tadi — parol o'zi tanlaydi</p>
-                  </div>
-                  <button
-                    onClick={generateInviteLink}
-                    disabled={inviteLoading}
-                    className="px-3 py-1.5 bg-blue-600 text-white rounded-lg text-xs font-semibold hover:bg-blue-700 disabled:opacity-50 transition-colors cursor-pointer border-none whitespace-nowrap">
-                    {inviteLoading ? "..." : "Yangi link"}
-                  </button>
-                </div>
-                {inviteLink && (
-                  <div className="flex items-center gap-2 mt-2">
-                    <input
-                      readOnly
-                      value={inviteLink}
-                      className="flex-1 text-xs px-2 py-1.5 border border-blue-200 rounded-lg bg-white text-slate-700 truncate"
-                    />
-                    <button
-                      onClick={copyInviteLink}
-                      className="px-3 py-1.5 bg-white border border-blue-300 text-blue-700 rounded-lg text-xs font-semibold hover:bg-blue-50 cursor-pointer whitespace-nowrap">
-                      {inviteCopied ? "✓ Copied!" : "Nusxa olish"}
-                    </button>
-                  </div>
-                )}
-              </div>
-
               <div className="flex items-center justify-between">
                 <p className="text-sm text-slate-600">{students.length} / {centerData?.studentLimit ?? 30} students enrolled</p>
                 <button

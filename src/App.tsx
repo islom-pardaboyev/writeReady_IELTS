@@ -14,7 +14,6 @@ import Relax from './pages/writing/Relax';
 import Quick from './pages/writing/Quick';
 import Admin from './pages/writing/AdminPage';
 import CenterAdminPage from './pages/CenterAdminPage';
-import JoinPage from './pages/JoinPage';
 import TeacherPortalPage from './pages/TeacherPortalPage';
 import { HumanReviewPage } from './pages/HumanReviewPage';
 
@@ -43,7 +42,6 @@ export default function App() {
           <Route path="/center-admin" element={<CenterAdminPage />} />
           <Route path="/teacher-portal" element={<TeacherPortalPage />} />
           <Route path="/human-review/:id" element={<HumanReviewPage />} />
-          <Route path="/join/:token" element={<JoinPage />} />
           <Route path="/writing/mock" element={<Mock />} />
           <Route path="/writing/practice" element={<Practice />} />
           <Route path="/writing/relax" element={<Relax />} />

@@ -6,13 +6,16 @@ import {
   getDocs,
   deleteDoc,
   updateDoc,
+  setDoc,
   doc,
   query,
   where,
   orderBy,
   increment,
+  serverTimestamp,
 } from "firebase/firestore";
 import { adminDb as db, adminAuth } from "@/firebase/adminConfig";
+import { createStudentAuthAccount } from "@/firebase/createStudentAccount";
 import { signInAnonymously, signInWithEmailAndPassword, createUserWithEmailAndPassword } from "firebase/auth";
 import useUpload from "@/hooks/useUploadImage";
 import Logo from "/logo.png";
@@ -848,25 +851,54 @@ export default function Admin() {
 
   const addStudentToCenter = async () => {
     if (!viewCenter || !newStudentName.trim() || !newStudentLogin.trim() || !newStudentPassword.trim()) return;
+    if (newStudentPassword.trim().length < 6) { alert("Parol kamida 6 ta belgidan iborat bo'lishi kerak."); return; }
     if ((viewCenter.studentCount ?? 0) >= viewCenter.studentLimit) {
       alert('Student limit reached for this center.');
       return;
     }
     setStudentAdding(true);
     try {
+      const loginKey = newStudentLogin.trim().toLowerCase();
       // Check login uniqueness within center
-      const existing = await getDocs(query(collection(db, 'learningCenters', viewCenter.id, 'students'), where('login', '==', newStudentLogin.trim())));
+      const existing = await getDocs(query(collection(db, 'learningCenters', viewCenter.id, 'students'), where('login', '==', loginKey)));
       if (!existing.empty) { alert('Bu login allaqachon mavjud.'); setStudentAdding(false); return; }
-      await addDoc(collection(db, 'learningCenters', viewCenter.id, 'students'), {
+
+      // Create the student's Firebase Auth account so they can actually sign in.
+      const fakeEmail = `${loginKey}@writeready.student`;
+      let uid: string;
+      try {
+        uid = await createStudentAuthAccount(fakeEmail, newStudentPassword.trim());
+      } catch (err) {
+        const code = (err as { code?: string })?.code;
+        alert(code === 'auth/email-already-in-use' ? 'Bu login allaqachon band.' : "Xatolik yuz berdi. Qaytadan urinib ko'ring.");
+        setStudentAdding(false);
+        return;
+      }
+
+      await setDoc(doc(db, 'users', uid), {
+        email: fakeEmail,
+        studentLogin: loginKey,
         fullName: newStudentName.trim(),
-        login: newStudentLogin.trim(),
-        password: newStudentPassword.trim(),
-        addedAt: new Date(),
+        plan: 'pro',
+        subscriptionExpiresAt: viewCenter.expiresAt || null,
+        centerId: viewCenter.id,
+        centerName: viewCenter.name,
+        createdAt: serverTimestamp(),
+        bonusAnalyses: 0,
       });
+
+      await setDoc(doc(db, 'learningCenters', viewCenter.id, 'students', uid), {
+        fullName: newStudentName.trim(),
+        login: loginKey,
+        password: newStudentPassword.trim(),
+        uid,
+        addedAt: serverTimestamp(),
+      });
+
       setNewStudentName(''); setNewStudentLogin(''); setNewStudentPassword('');
       await loadCenterStudents(viewCenter.id);
       setViewCenter((prev) => prev ? { ...prev, studentCount: (prev.studentCount ?? 0) + 1 } : prev);
-    } catch (e) { console.error(e); }
+    } catch (e) { console.error(e); alert("Xatolik yuz berdi. Qaytadan urinib ko'ring."); }
     setStudentAdding(false);
   };
 
