@@ -12,6 +12,7 @@ gsap.registerPlugin(ScrollTrigger);
 const CARD_NUMBER = "9860 1606 4046 4600";
 const CARDHOLDER = "PI";
 const TELEGRAM_USERNAME = "writeready_admin";
+const MIN_TOPUP_UZS = 50000;
 
 const FONT_SERIF = "[font-family:'Fraunces',serif]";
 const FONT_MONO = "[font-family:'IBM_Plex_Mono',monospace]";
@@ -176,9 +177,12 @@ export function PricingPage() {
 
   const openBalanceTopUp = () => {
     const amount = Number(topUpAmount);
-    if (!amount || amount <= 0) return;
+    if (!amount || amount < MIN_TOPUP_UZS) return;
     setPaymentTarget({ kind: "balance", amount });
   };
+
+  const topUpValue = Number(topUpAmount);
+  const topUpTooLow = topUpAmount !== "" && topUpValue < MIN_TOPUP_UZS;
 
   const handleCopyCard = async () => {
     try {
@@ -507,20 +511,24 @@ export function PricingPage() {
               <div className="flex items-center gap-2 flex-wrap">
                 <input
                   type="number"
-                  min="1"
-                  placeholder="Amount (UZS)"
+                  min={MIN_TOPUP_UZS}
+                  step="1000"
+                  placeholder={`Amount (min ${MIN_TOPUP_UZS.toLocaleString()} UZS)`}
                   value={topUpAmount}
                   onChange={(e) => setTopUpAmount(e.target.value)}
-                  className="flex-1 min-w-[160px] h-11 px-4 rounded-xl border border-[var(--border-color)] bg-[var(--bg-base)] text-[var(--text-primary)] text-sm outline-none focus:border-blue-500"
+                  className={`flex-1 min-w-[160px] h-11 px-4 rounded-xl border bg-[var(--bg-base)] text-[var(--text-primary)] text-sm outline-none focus:border-blue-500 ${topUpTooLow ? "border-red-400" : "border-[var(--border-color)]"}`}
                 />
                 <Button
                   onClick={openBalanceTopUp}
-                  disabled={!topUpAmount || Number(topUpAmount) <= 0}
+                  disabled={!topUpAmount || topUpValue < MIN_TOPUP_UZS}
                   className="bg-emerald-600 hover:bg-emerald-700 shrink-0"
                 >
                   Top Up →
                 </Button>
               </div>
+              <p className={`text-xs mt-2 ${topUpTooLow ? "text-red-500" : "text-[var(--text-secondary)]"}`}>
+                Minimum top-up is {MIN_TOPUP_UZS.toLocaleString()} UZS. Enter any amount above that.
+              </p>
             </div>
           )}
         </div>

@@ -156,6 +156,18 @@ export function Header() {
                   </div>
                 </div>
 
+                <Link
+                  to="/pricing"
+                  className="flex items-center justify-between gap-2 px-3 py-2.5 mx-1 mt-1 rounded-md no-underline cursor-pointer hover:bg-[var(--bg-subtle)] transition-colors"
+                >
+                  <span className="flex items-center gap-2.5 text-sm text-[var(--text-primary)]">
+                    <span>💰</span> Balance
+                  </span>
+                  <span className="text-sm font-bold font-mono text-emerald-600">
+                    {(profile?.balanceUZS ?? 0).toLocaleString()} UZS
+                  </span>
+                </Link>
+
                 <DropdownMenuItem asChild>
                   <Link
                     to="/dashboard"
