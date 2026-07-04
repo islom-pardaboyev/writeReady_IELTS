@@ -199,6 +199,28 @@ function LoginScreen({ onLogin }: { onLogin: (user: string) => void }) {
           >
             {loading ? "Tekshirilmoqda..." : "Kirish"}
           </button>
+
+          <div className="flex items-center gap-3 pt-1">
+            <span className="h-px flex-1 bg-slate-200" />
+            <span className="text-[0.7rem] font-semibold uppercase tracking-wide text-slate-400">Boshqa panellar</span>
+            <span className="h-px flex-1 bg-slate-200" />
+          </div>
+          <div className="grid grid-cols-2 gap-2.5">
+            <button
+              type="button"
+              onClick={() => navigate("/center-admin")}
+              className="flex items-center justify-center gap-1.5 rounded-lg border border-slate-200 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50 hover:border-slate-300 transition-colors"
+            >
+              🏫 Learning Center
+            </button>
+            <button
+              type="button"
+              onClick={() => navigate("/teacher-portal")}
+              className="flex items-center justify-center gap-1.5 rounded-lg border border-slate-200 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50 hover:border-slate-300 transition-colors"
+            >
+              🎓 Teacher Portal
+            </button>
+          </div>
         </div>
       </div>
     </div>

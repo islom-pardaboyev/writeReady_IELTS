@@ -149,11 +149,22 @@ export interface CreateHumanReviewInput {
 }
 
 export async function createHumanReview(input: CreateHumanReviewInput, dbInstance: Firestore = db): Promise<string> {
-  const ref = await addDoc(collection(dbInstance, 'humanReviews'), {
-    ...input,
+  // Firestore rejects `undefined` field values, so only include the task parts
+  // that are actually present (an essay may have just Task 1 or just Task 2).
+  const payload: Record<string, unknown> = {
+    uid: input.uid,
+    studentName: input.studentName,
+    studentEmail: input.studentEmail,
+    teacherId: input.teacherId,
+    teacherName: input.teacherName,
+    mode: input.mode,
     status: 'pending',
     requestedAt: serverTimestamp(),
-  });
+  };
+  if (input.task1 !== undefined) payload.task1 = input.task1;
+  if (input.task2 !== undefined) payload.task2 = input.task2;
+
+  const ref = await addDoc(collection(dbInstance, 'humanReviews'), payload);
   return ref.id;
 }
 
