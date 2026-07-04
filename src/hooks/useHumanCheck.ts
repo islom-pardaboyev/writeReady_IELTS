@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useAuth } from './useAuth';
 import { createHumanReview, InsufficientBalanceError } from '../firebase/teachers';
-import { getHumanCheckPrice } from './useFeatureFlag';
+import { getHumanCheckPrice, getHumanCheckPlatformFee } from './useFeatureFlag';
 import type { HumanReview, HumanReviewTaskPart, Teacher } from '../types';
 
 interface HumanCheckParts {
@@ -14,6 +14,7 @@ export function useHumanCheck(mode: HumanReview['mode']) {
   const [showCostConfirm, setShowCostConfirm] = useState(false);
   const [showPicker, setShowPicker] = useState(false);
   const [price, setPrice] = useState<number | null>(null);
+  const [platformFee, setPlatformFee] = useState(0);
   const [priceLoading, setPriceLoading] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -30,7 +31,9 @@ export function useHumanCheck(mode: HumanReview['mode']) {
     setPriceLoading(true);
     setShowCostConfirm(true);
     try {
-      setPrice(await getHumanCheckPrice());
+      const [p, fee] = await Promise.all([getHumanCheckPrice(), getHumanCheckPlatformFee()]);
+      setPrice(p);
+      setPlatformFee(fee);
     } catch {
       setError('Could not load the Human Check price. Please try again.');
       setShowCostConfirm(false);
@@ -68,7 +71,7 @@ export function useHumanCheck(mode: HumanReview['mode']) {
         mode,
         task1: pendingParts.task1,
         task2: pendingParts.task2,
-      }, price);
+      }, price, platformFee);
 
       await refreshProfile();
       setSuccess(true);

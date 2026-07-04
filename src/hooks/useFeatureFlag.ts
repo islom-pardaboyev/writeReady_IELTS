@@ -26,6 +26,19 @@ export async function setHumanCheckPrice(priceUZS: number): Promise<void> {
   await setDoc(doc(db, 'config', 'featureFlags'), { humanCheckPriceUZS: priceUZS }, { merge: true });
 }
 
+const DEFAULT_PLATFORM_FEE_UZS = 5000;
+
+// The platform (admin) keeps this fee per checked review; the teacher earns the rest.
+export async function getHumanCheckPlatformFee(): Promise<number> {
+  const snap = await getDoc(doc(db, 'config', 'featureFlags'));
+  const fee = snap.exists() ? snap.data().humanCheckPlatformFeeUZS : undefined;
+  return typeof fee === 'number' && fee >= 0 ? fee : DEFAULT_PLATFORM_FEE_UZS;
+}
+
+export async function setHumanCheckPlatformFee(feeUZS: number): Promise<void> {
+  await setDoc(doc(db, 'config', 'featureFlags'), { humanCheckPlatformFeeUZS: feeUZS }, { merge: true });
+}
+
 /**
  * Reads a feature flag once on mount. Defaults to `false` (hidden) until loaded or if unset.
  * A `?preview=<key>` URL param bypasses the Firestore flag so you can test an unreleased

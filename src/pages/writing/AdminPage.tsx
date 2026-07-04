@@ -25,9 +25,10 @@ import {
   deleteTeacher as deleteTeacherDoc,
   getHumanReviewsForTeacher,
   compressImageToBase64,
+  teacherEarningUZS,
 } from "../../firebase/teachers";
 import type { Teacher } from "../../types";
-import { getFeatureFlag, setFeatureFlag, getHumanCheckPrice, setHumanCheckPrice } from "../../hooks/useFeatureFlag";
+import { getFeatureFlag, setFeatureFlag, getHumanCheckPrice, setHumanCheckPrice, getHumanCheckPlatformFee, setHumanCheckPlatformFee } from "../../hooks/useFeatureFlag";
 import { Badge } from "@/components/ui/badge";
 import { RichEditor } from "@/components/ui/RichEditor";
 import { Input } from "@/components/ui/input";
@@ -422,6 +423,9 @@ export default function Admin() {
   const [humanCheckPriceInput, setHumanCheckPriceInput] = useState('');
   const [humanCheckPriceSaving, setHumanCheckPriceSaving] = useState(false);
   const [humanCheckPriceMsg, setHumanCheckPriceMsg] = useState('');
+  const [platformFeeInput, setPlatformFeeInput] = useState('');
+  const [platformFeeSaving, setPlatformFeeSaving] = useState(false);
+  const [platformFeeMsg, setPlatformFeeMsg] = useState('');
   const [teacherEarningsFor, setTeacherEarningsFor] = useState<Teacher | null>(null);
   const [teacherEarnings, setTeacherEarnings] = useState<{ month: string; count: number; total: number }[]>([]);
   const [teacherEarningsLoading, setTeacherEarningsLoading] = useState(false);
@@ -729,6 +733,7 @@ export default function Admin() {
     try {
       setHumanCheckFlag(await getFeatureFlag('humanCheck'));
       setHumanCheckPriceInput(String(await getHumanCheckPrice()));
+      setPlatformFeeInput(String(await getHumanCheckPlatformFee()));
     } catch (e) { console.error(e); }
     setHumanCheckFlagLoading(false);
   };
@@ -757,6 +762,21 @@ export default function Admin() {
       setHumanCheckPriceMsg('Failed to save.');
     }
     setHumanCheckPriceSaving(false);
+  };
+
+  const savePlatformFee = async () => {
+    const fee = Number(platformFeeInput);
+    if (Number.isNaN(fee) || fee < 0) return;
+    setPlatformFeeSaving(true);
+    try {
+      await setHumanCheckPlatformFee(fee);
+      setPlatformFeeMsg('Saved.');
+      setTimeout(() => setPlatformFeeMsg(''), 2000);
+    } catch (e) {
+      console.error(e);
+      setPlatformFeeMsg('Failed to save.');
+    }
+    setPlatformFeeSaving(false);
   };
 
   const saveTeacher = async () => {
@@ -805,7 +825,7 @@ export default function Admin() {
           const key = r.checkedAt!.toISOString().slice(0, 7); // YYYY-MM
           const entry = byMonth.get(key) ?? { count: 0, total: 0 };
           entry.count += 1;
-          entry.total += r.priceUZS ?? 0;
+          entry.total += teacherEarningUZS(r);
           byMonth.set(key, entry);
         });
       const rows = Array.from(byMonth.entries())
@@ -2091,6 +2111,33 @@ export default function Admin() {
                       {humanCheckPriceSaving ? 'Saving...' : 'Save'}
                     </button>
                     {humanCheckPriceMsg && <span className="text-xs text-emerald-600">{humanCheckPriceMsg}</span>}
+                  </div>
+                </div>
+
+                <div className="bg-white border border-slate-200 rounded-xl p-4 flex items-center justify-between gap-4 flex-wrap">
+                  <div>
+                    <p className="text-sm font-semibold text-slate-800">Platform fee (your cut)</p>
+                    <p className="text-xs text-slate-500 mt-0.5">
+                      Kept by you per checked review. The teacher earns the price minus this fee
+                      (e.g. price 35,000 − fee 5,000 = teacher earns 30,000).
+                    </p>
+                  </div>
+                  <div className="flex items-center gap-2 shrink-0">
+                    <Input
+                      type="number" min="0"
+                      value={platformFeeInput}
+                      onChange={(e) => setPlatformFeeInput(e.target.value)}
+                      className="w-32 h-9 border-slate-200 bg-white text-slate-900 font-mono text-sm"
+                    />
+                    <span className="text-xs text-slate-500">UZS</span>
+                    <button
+                      onClick={savePlatformFee}
+                      disabled={platformFeeSaving || platformFeeInput === ''}
+                      className="px-3 py-2 bg-emerald-600 text-white rounded-lg text-xs font-semibold hover:bg-emerald-700 transition-colors disabled:opacity-50 cursor-pointer"
+                    >
+                      {platformFeeSaving ? 'Saving...' : 'Save'}
+                    </button>
+                    {platformFeeMsg && <span className="text-xs text-emerald-600">{platformFeeMsg}</span>}
                   </div>
                 </div>
 

@@ -112,11 +112,20 @@ function mapReview(id: string, data: Record<string, any>): HumanReview {
     task2: data.task2 ?? undefined,
     status: data.status ?? 'pending',
     priceUZS: typeof data.priceUZS === 'number' ? data.priceUZS : 0,
+    // Legacy reviews created before the platform-fee feature default to the
+    // standard 5,000 UZS fee so historical teacher earnings stay consistent.
+    platformFeeUZS: typeof data.platformFeeUZS === 'number' ? data.platformFeeUZS : 5000,
     feedbackDocBase64: data.feedbackDocBase64 ?? undefined,
     feedbackFileName: data.feedbackFileName ?? undefined,
     requestedAt: toDate(data.requestedAt),
     checkedAt: data.checkedAt ? toDate(data.checkedAt) : undefined,
   };
+}
+
+// What the teacher actually earns for a review = price paid minus the
+// platform fee, never below zero.
+export function teacherEarningUZS(review: HumanReview): number {
+  return Math.max(0, review.priceUZS - review.platformFeeUZS);
 }
 
 // No orderBy in these queries on purpose: a `where` equality filter combined
@@ -169,6 +178,7 @@ export class InsufficientBalanceError extends Error {
 export async function createHumanReview(
   input: CreateHumanReviewInput,
   priceUZS: number,
+  platformFeeUZS: number,
   dbInstance: Firestore = db,
 ): Promise<string> {
   const userRef = doc(dbInstance, 'users', input.uid);
@@ -181,6 +191,8 @@ export async function createHumanReview(
 
     // Firestore rejects `undefined` field values, so only include the task
     // parts that are actually present (an essay may have just Task 1 or 2).
+    // priceUZS + platformFeeUZS are snapshotted so the teacher's earning stays
+    // fixed even if the admin later changes the price or fee.
     const payload: Record<string, unknown> = {
       uid: input.uid,
       studentName: input.studentName,
@@ -190,6 +202,7 @@ export async function createHumanReview(
       mode: input.mode,
       status: 'pending',
       priceUZS,
+      platformFeeUZS,
       requestedAt: serverTimestamp(),
     };
     if (input.task1 !== undefined) payload.task1 = input.task1;

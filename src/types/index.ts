@@ -170,6 +170,7 @@ export interface HumanReview {
   task2?: HumanReviewTaskPart;
   status: HumanReviewStatus;
   priceUZS: number;
+  platformFeeUZS: number;
   feedbackDocBase64?: string;
   feedbackFileName?: string;
   requestedAt: Date;

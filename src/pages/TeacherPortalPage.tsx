@@ -11,6 +11,7 @@ import {
   findTeacherByLogin,
   getHumanReviewsForTeacher,
   uploadTeacherFeedback,
+  teacherEarningUZS,
 } from "@/firebase/teachers";
 import { buildReviewDocx, downloadBlob, fileToBase64 } from "@/lib/reviewDocx";
 import type { HumanReview } from "@/types";
@@ -200,7 +201,7 @@ export default function TeacherPortalPage() {
       const key = monthKey(r.checkedAt!);
       const entry = earningsByMonth.get(key) ?? { count: 0, total: 0 };
       entry.count += 1;
-      entry.total += r.priceUZS ?? 0;
+      entry.total += teacherEarningUZS(r);
       earningsByMonth.set(key, entry);
     });
 
