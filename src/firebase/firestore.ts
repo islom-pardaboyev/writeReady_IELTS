@@ -50,6 +50,7 @@ export async function getUserProfile(uid: string): Promise<UserProfile | null> {
     notification: typeof d.notification === 'string' ? d.notification : '',
     centerName: typeof d.centerName === 'string' ? d.centerName : undefined,
     studentLogin: typeof d.studentLogin === 'string' ? d.studentLogin : undefined,
+    balanceUZS: typeof d.balanceUZS === 'number' ? d.balanceUZS : 0,
   };
 }
 

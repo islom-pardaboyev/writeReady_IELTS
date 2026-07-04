@@ -163,6 +163,20 @@ export function AccountPage() {
             )}
           </Card>
 
+          {/* Balance card */}
+          <Card className="gs-profile-card px-6 py-5 mb-4 flex items-center justify-between gap-4">
+            <div>
+              <div className="text-sm font-semibold text-[var(--text-primary)]">Account Balance</div>
+              <div className="text-xs text-[var(--text-secondary)] mt-0.5">Used for Human Check and other pay-per-use features</div>
+            </div>
+            <div className="flex items-center gap-3 shrink-0">
+              <span className="font-mono text-xl font-bold text-emerald-600">{(profile.balanceUZS ?? 0).toLocaleString()} UZS</span>
+              <Link to="/pricing">
+                <Button size="sm" variant="outline">Top up</Button>
+              </Link>
+            </div>
+          </Card>
+
           {/* Plan card */}
           {isPro ? (
             <Card className="gs-plan-card bg-gradient-to-br from-slate-900 to-[#1e3a5f] p-8 mb-4 text-white border-0">

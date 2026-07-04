@@ -19,6 +19,7 @@ import { CheckIcon, ChevronRightIcon, ClockIcon, Bot, GraduationCap } from "luci
 import { useHumanCheck } from "@/hooks/useHumanCheck";
 import { useFeatureFlag } from "@/hooks/useFeatureFlag";
 import { TeacherPickerModal } from "@/components/ui/TeacherPickerModal";
+import { HumanCheckConfirmModal } from "@/components/ui/HumanCheckConfirmModal";
 
 interface Task1 {
   image: string;
@@ -643,6 +644,16 @@ function Practice() {
           </div>
         </div>
       )}
+
+      <HumanCheckConfirmModal
+        open={humanCheck.showCostConfirm}
+        priceLoading={humanCheck.priceLoading}
+        price={humanCheck.price}
+        balance={humanCheck.balance}
+        canAfford={humanCheck.canAfford}
+        onCancel={humanCheck.cancelCostConfirm}
+        onConfirm={humanCheck.confirmCost}
+      />
 
       <TeacherPickerModal
         open={humanCheck.showPicker}

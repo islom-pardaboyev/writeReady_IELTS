@@ -26,6 +26,10 @@ interface SelectedPlan {
   billingNote: string;
 }
 
+type PaymentTarget =
+  | { kind: "plan"; plan: SelectedPlan }
+  | { kind: "balance"; amount: number };
+
 const PLANS: SelectedPlan[] = [
   {
     id: "basic",
@@ -159,15 +163,21 @@ function PlanGlyphIcon() {
 export function PricingPage() {
   const { user, profile } = useAuth();
   const rootRef = useRef<HTMLDivElement>(null);
-  const [showPaymentModal, setShowPaymentModal] = useState(false);
-  const [selectedPlan, setSelectedPlan] = useState<SelectedPlan>(PLANS[1]);
+  const [paymentTarget, setPaymentTarget] = useState<PaymentTarget | null>(null);
   const [copied, setCopied] = useState(false);
+  const [topUpAmount, setTopUpAmount] = useState("");
 
   const currentPlan = profile?.plan ?? "free";
+  const balance = profile?.balanceUZS ?? 0;
 
   const openPaymentModal = (plan: SelectedPlan) => {
-    setSelectedPlan(plan);
-    setShowPaymentModal(true);
+    setPaymentTarget({ kind: "plan", plan });
+  };
+
+  const openBalanceTopUp = () => {
+    const amount = Number(topUpAmount);
+    if (!amount || amount <= 0) return;
+    setPaymentTarget({ kind: "balance", amount });
   };
 
   const handleCopyCard = async () => {
@@ -477,13 +487,49 @@ export function PricingPage() {
               </Button>
             </Card>
           </div>
+
+          {/* Balance top-up */}
+          {user && (
+            <div className="gs-plan-card max-w-[560px] mx-auto mt-10 bg-[var(--bg-card)] border border-[var(--border-color)] rounded-2xl p-7">
+              <div className="flex items-center justify-between gap-4 mb-4 flex-wrap">
+                <div>
+                  <div className={`${FONT_SERIF} text-lg font-bold text-[var(--text-primary)]`}>
+                    Account Balance
+                  </div>
+                  <div className="text-sm text-[var(--text-secondary)]">
+                    Used for pay-per-use features like Human Check
+                  </div>
+                </div>
+                <div className={`${FONT_MONO} text-2xl font-bold text-emerald-600`}>
+                  {balance.toLocaleString()} UZS
+                </div>
+              </div>
+              <div className="flex items-center gap-2 flex-wrap">
+                <input
+                  type="number"
+                  min="1"
+                  placeholder="Amount (UZS)"
+                  value={topUpAmount}
+                  onChange={(e) => setTopUpAmount(e.target.value)}
+                  className="flex-1 min-w-[160px] h-11 px-4 rounded-xl border border-[var(--border-color)] bg-[var(--bg-base)] text-[var(--text-primary)] text-sm outline-none focus:border-blue-500"
+                />
+                <Button
+                  onClick={openBalanceTopUp}
+                  disabled={!topUpAmount || Number(topUpAmount) <= 0}
+                  className="bg-emerald-600 hover:bg-emerald-700 shrink-0"
+                >
+                  Top Up →
+                </Button>
+              </div>
+            </div>
+          )}
         </div>
       </div>
 
       {/* Payment modal */}
-      {showPaymentModal && (
+      {paymentTarget && (
         <div
-          onClick={() => setShowPaymentModal(false)}
+          onClick={() => setPaymentTarget(null)}
           className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-6 z-[1000]"
         >
           <div
@@ -498,12 +544,13 @@ export function PricingPage() {
                   Complete payment
                 </h2>
                 <p className="text-[0.95rem] text-[var(--text-secondary)]">
-                  {selectedPlan.name} · {selectedPlan.price}{" "}
-                  {selectedPlan.period}
+                  {paymentTarget.kind === "balance"
+                    ? `Balance Top-up · ${paymentTarget.amount.toLocaleString()} UZS`
+                    : `${paymentTarget.plan.name} · ${paymentTarget.plan.price} ${paymentTarget.plan.period}`}
                 </p>
               </div>
               <button
-                onClick={() => setShowPaymentModal(false)}
+                onClick={() => setPaymentTarget(null)}
                 className="bg-transparent border-0 cursor-pointer text-[var(--text-secondary)] p-1 hover:text-[var(--text-primary)] transition-colors"
                 aria-label="Close"
               >
@@ -522,10 +569,10 @@ export function PricingPage() {
                   </span>
                   <div>
                     <div className="text-xs text-[var(--text-secondary)] mb-0.5">
-                      Plan
+                      {paymentTarget.kind === "balance" ? "Top-up" : "Plan"}
                     </div>
                     <div className="text-base font-bold text-[var(--text-primary)]">
-                      {selectedPlan.name}
+                      {paymentTarget.kind === "balance" ? "Account Balance" : paymentTarget.plan.name}
                     </div>
                   </div>
                 </div>
@@ -536,7 +583,7 @@ export function PricingPage() {
                   <div
                     className={`${FONT_MONO} text-base font-bold text-[var(--text-primary)]`}
                   >
-                    {selectedPlan.price} UZS
+                    {paymentTarget.kind === "balance" ? paymentTarget.amount.toLocaleString() : paymentTarget.plan.price} UZS
                   </div>
                 </div>
               </div>
@@ -545,7 +592,7 @@ export function PricingPage() {
 
               <div className="flex items-center gap-2 text-sm text-[var(--text-secondary)]">
                 <CheckIcon />
-                {selectedPlan.billingNote}
+                {paymentTarget.kind === "balance" ? "One-time balance top-up" : paymentTarget.plan.billingNote}
               </div>
             </div>
 
@@ -600,8 +647,10 @@ export function PricingPage() {
               <strong className="text-[var(--text-primary)]">
                 @{TELEGRAM_USERNAME}
               </strong>{" "}
-              on Telegram. Your {selectedPlan.name} subscription will be
-              activated within 24 hours.
+              on Telegram.{" "}
+              {paymentTarget.kind === "balance"
+                ? "Your balance will be topped up within 24 hours."
+                : `Your ${paymentTarget.plan.name} subscription will be activated within 24 hours.`}
             </p>
 
             <a

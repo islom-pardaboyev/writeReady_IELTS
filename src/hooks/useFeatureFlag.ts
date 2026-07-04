@@ -14,6 +14,18 @@ export async function setFeatureFlag(key: FeatureFlagKey, value: boolean): Promi
   await setDoc(doc(db, 'config', 'featureFlags'), { [key]: value }, { merge: true });
 }
 
+const DEFAULT_HUMAN_CHECK_PRICE_UZS = 20000;
+
+export async function getHumanCheckPrice(): Promise<number> {
+  const snap = await getDoc(doc(db, 'config', 'featureFlags'));
+  const price = snap.exists() ? snap.data().humanCheckPriceUZS : undefined;
+  return typeof price === 'number' && price > 0 ? price : DEFAULT_HUMAN_CHECK_PRICE_UZS;
+}
+
+export async function setHumanCheckPrice(priceUZS: number): Promise<void> {
+  await setDoc(doc(db, 'config', 'featureFlags'), { humanCheckPriceUZS: priceUZS }, { merge: true });
+}
+
 /**
  * Reads a feature flag once on mount. Defaults to `false` (hidden) until loaded or if unset.
  * A `?preview=<key>` URL param bypasses the Firestore flag so you can test an unreleased

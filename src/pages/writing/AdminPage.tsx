@@ -10,6 +10,7 @@ import {
   query,
   where,
   orderBy,
+  increment,
 } from "firebase/firestore";
 import { adminDb as db, adminAuth } from "@/firebase/adminConfig";
 import { signInAnonymously, signInWithEmailAndPassword, createUserWithEmailAndPassword } from "firebase/auth";
@@ -26,7 +27,7 @@ import {
   compressImageToBase64,
 } from "../../firebase/teachers";
 import type { Teacher } from "../../types";
-import { getFeatureFlag, setFeatureFlag } from "../../hooks/useFeatureFlag";
+import { getFeatureFlag, setFeatureFlag, getHumanCheckPrice, setHumanCheckPrice } from "../../hooks/useFeatureFlag";
 import { Badge } from "@/components/ui/badge";
 import { RichEditor } from "@/components/ui/RichEditor";
 import { Input } from "@/components/ui/input";
@@ -63,6 +64,7 @@ interface UserRow {
   subscription?: string;
   expiresAt?: string;
   createdAt?: string;
+  balanceUZS?: number;
 }
 interface LeaderEntry {
   uid: string;
@@ -360,6 +362,7 @@ export default function Admin() {
   const [userActionLoading, setUserActionLoading] = useState(false);
   const [userSuccess, setUserSuccess] = useState("");
   const [userError, setUserError] = useState("");
+  const [balanceInput, setBalanceInput] = useState("");
 
   // Image preview
   const [previewImage, setPreviewImage] = useState<string | null>(null);
@@ -416,6 +419,12 @@ export default function Admin() {
   const [teacherReviewCounts, setTeacherReviewCounts] = useState<Record<string, { pending: number; checked: number }>>({});
   const [humanCheckFlag, setHumanCheckFlag] = useState(false);
   const [humanCheckFlagLoading, setHumanCheckFlagLoading] = useState(false);
+  const [humanCheckPriceInput, setHumanCheckPriceInput] = useState('');
+  const [humanCheckPriceSaving, setHumanCheckPriceSaving] = useState(false);
+  const [humanCheckPriceMsg, setHumanCheckPriceMsg] = useState('');
+  const [teacherEarningsFor, setTeacherEarningsFor] = useState<Teacher | null>(null);
+  const [teacherEarnings, setTeacherEarnings] = useState<{ month: string; count: number; total: number }[]>([]);
+  const [teacherEarningsLoading, setTeacherEarningsLoading] = useState(false);
 
   // Blog
   interface BlogPostRow { id: string; title: string; slug: string; status: string; category: string; viewCount: number; likeCount: number; commentCount: number; publishedAt?: string; }
@@ -469,6 +478,7 @@ export default function Admin() {
             subscription: data.subscription ?? "",
             expiresAt: data.expiresAt ?? "",
             createdAt: data.createdAt?.toDate?.()?.toISOString() ?? "",
+            balanceUZS: typeof data.balanceUZS === "number" ? data.balanceUZS : 0,
           };
         });
       rows.sort((a, b) => {
@@ -718,6 +728,7 @@ export default function Admin() {
     setHumanCheckFlagLoading(true);
     try {
       setHumanCheckFlag(await getFeatureFlag('humanCheck'));
+      setHumanCheckPriceInput(String(await getHumanCheckPrice()));
     } catch (e) { console.error(e); }
     setHumanCheckFlagLoading(false);
   };
@@ -731,6 +742,21 @@ export default function Admin() {
       console.error(e);
       setHumanCheckFlag(!next);
     }
+  };
+
+  const saveHumanCheckPrice = async () => {
+    const price = Number(humanCheckPriceInput);
+    if (!price || price <= 0) return;
+    setHumanCheckPriceSaving(true);
+    try {
+      await setHumanCheckPrice(price);
+      setHumanCheckPriceMsg('Saved.');
+      setTimeout(() => setHumanCheckPriceMsg(''), 2000);
+    } catch (e) {
+      console.error(e);
+      setHumanCheckPriceMsg('Failed to save.');
+    }
+    setHumanCheckPriceSaving(false);
   };
 
   const saveTeacher = async () => {
@@ -765,6 +791,32 @@ export default function Admin() {
     if (!confirm('Delete this teacher?')) return;
     await deleteTeacherDoc(id, db);
     setTeachers((prev) => prev.filter((t) => t.id !== id));
+  };
+
+  const loadTeacherEarnings = async (teacher: Teacher) => {
+    setTeacherEarningsFor(teacher);
+    setTeacherEarningsLoading(true);
+    try {
+      const reviews = await getHumanReviewsForTeacher(teacher.id, db);
+      const byMonth = new Map<string, { count: number; total: number }>();
+      reviews
+        .filter((r) => r.status === 'checked' && r.checkedAt)
+        .forEach((r) => {
+          const key = r.checkedAt!.toISOString().slice(0, 7); // YYYY-MM
+          const entry = byMonth.get(key) ?? { count: 0, total: 0 };
+          entry.count += 1;
+          entry.total += r.priceUZS ?? 0;
+          byMonth.set(key, entry);
+        });
+      const rows = Array.from(byMonth.entries())
+        .map(([month, { count, total }]) => ({ month, count, total }))
+        .sort((a, b) => b.month.localeCompare(a.month));
+      setTeacherEarnings(rows);
+    } catch (e) {
+      console.error(e);
+      setTeacherEarnings([]);
+    }
+    setTeacherEarningsLoading(false);
   };
 
   const handleTeacherPhotoUpload = async (file: File, field: 'photoBase64' | 'certificateBase64') => {
@@ -948,6 +1000,20 @@ export default function Admin() {
                               "Plan revoked — user set to Free."
       );
     } catch { setUserError("Failed to update subscription."); }
+    finally { setUserActionLoading(false); }
+  };
+
+  const addBalance = async (user: UserRow, amountUZS: number) => {
+    if (!amountUZS || amountUZS <= 0) return;
+    setUserActionLoading(true); setUserError(""); setUserSuccess("");
+    try {
+      await updateDoc(doc(db, "users", user.id), { balanceUZS: increment(amountUZS) });
+      const newBalance = (user.balanceUZS ?? 0) + amountUZS;
+      setAllUsers((p) => p.map((u) => u.id === user.id ? { ...u, balanceUZS: newBalance } : u));
+      if (selectedUser?.id === user.id) setSelectedUser((p) => p ? { ...p, balanceUZS: newBalance } : null);
+      setBalanceInput("");
+      setUserSuccess(`+${amountUZS.toLocaleString()} UZS added — new balance: ${newBalance.toLocaleString()} UZS`);
+    } catch { setUserError("Failed to add balance."); }
     finally { setUserActionLoading(false); }
   };
 
@@ -1300,6 +1366,7 @@ export default function Admin() {
                           <tr className="border-b border-slate-100 bg-slate-50">
                             <th className="text-left px-4 py-3 text-xs font-bold text-slate-500 uppercase tracking-wider">Email</th>
                             <th className="text-left px-4 py-3 text-xs font-bold text-slate-500 uppercase tracking-wider">Plan</th>
+                            <th className="text-right px-4 py-3 text-xs font-bold text-slate-500 uppercase tracking-wider">Balance</th>
                             <th className="text-left px-4 py-3 text-xs font-bold text-slate-500 uppercase tracking-wider">Subscription tugaydi</th>
                             <th className="text-right px-4 py-3 text-xs font-bold text-slate-500 uppercase tracking-wider">Amallar</th>
                           </tr>
@@ -1321,6 +1388,7 @@ export default function Admin() {
                                 <td className="px-4 py-3">
                                   <Badge variant={b.label === 'Lifetime' ? 'warning' : b.label === 'Premium' ? 'purple' : b.label === 'Standard' || b.label === 'Basic' ? 'info' : 'secondary'} className="text-[0.65rem]">{b.label}</Badge>
                                 </td>
+                                <td className="px-4 py-3 text-right font-mono text-sm text-emerald-700">{(u.balanceUZS ?? 0).toLocaleString()}</td>
                                 <td className={`px-4 py-3 text-sm ${isExpired ? "text-red-500" : "text-slate-600"}`}>{expiry}</td>
                                 <td className="px-4 py-3 text-right">
                                   <span className="text-[0.7rem] text-slate-400">{selectedUser?.id === u.id ? "▲ yopish" : "▼ boshqarish"}</span>
@@ -1353,9 +1421,30 @@ export default function Admin() {
                             : "No active subscription"}
                         </p>
                       </div>
-                      <span className={`ml-auto text-xs font-bold px-2.5 py-1 rounded-full ${planBadge(selectedUser.plan, selectedUser.subscription).cls}`}>
+                      <span className="text-xs font-bold px-2.5 py-1 rounded-full bg-emerald-50 text-emerald-700 font-mono">
+                        {(selectedUser.balanceUZS ?? 0).toLocaleString()} UZS
+                      </span>
+                      <span className={`text-xs font-bold px-2.5 py-1 rounded-full ${planBadge(selectedUser.plan, selectedUser.subscription).cls}`}>
                         {planBadge(selectedUser.plan, selectedUser.subscription).label}
                       </span>
+                    </div>
+                    <div>
+                      <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">Balance qo'shish</p>
+                      <div className="flex gap-2 flex-wrap items-center">
+                        <Input
+                          type="number" min="1" placeholder="Summani kiriting (UZS)"
+                          value={balanceInput}
+                          onChange={(e) => setBalanceInput(e.target.value)}
+                          className="w-48 h-9 border-slate-200 bg-white text-slate-900 font-mono text-sm"
+                        />
+                        <button
+                          onClick={() => addBalance(selectedUser, Number(balanceInput))}
+                          disabled={userActionLoading || !balanceInput || Number(balanceInput) <= 0}
+                          className="bg-emerald-600 text-white border-none rounded-lg px-4 py-2 text-xs font-semibold cursor-pointer hover:bg-emerald-700 transition-colors disabled:opacity-50"
+                        >
+                          + Balance qo'shish
+                        </button>
+                      </div>
                     </div>
                     <div>
                       <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">Reja o'zgartirish</p>
@@ -1960,6 +2049,32 @@ export default function Admin() {
                   </button>
                 </div>
 
+                <div className="bg-white border border-slate-200 rounded-xl p-4 flex items-center justify-between gap-4 flex-wrap">
+                  <div>
+                    <p className="text-sm font-semibold text-slate-800">Human Check price</p>
+                    <p className="text-xs text-slate-500 mt-0.5">
+                      Deducted from a student's balance each time they submit a Human Check request.
+                    </p>
+                  </div>
+                  <div className="flex items-center gap-2 shrink-0">
+                    <Input
+                      type="number" min="1"
+                      value={humanCheckPriceInput}
+                      onChange={(e) => setHumanCheckPriceInput(e.target.value)}
+                      className="w-32 h-9 border-slate-200 bg-white text-slate-900 font-mono text-sm"
+                    />
+                    <span className="text-xs text-slate-500">UZS</span>
+                    <button
+                      onClick={saveHumanCheckPrice}
+                      disabled={humanCheckPriceSaving || !humanCheckPriceInput}
+                      className="px-3 py-2 bg-emerald-600 text-white rounded-lg text-xs font-semibold hover:bg-emerald-700 transition-colors disabled:opacity-50 cursor-pointer"
+                    >
+                      {humanCheckPriceSaving ? 'Saving...' : 'Save'}
+                    </button>
+                    {humanCheckPriceMsg && <span className="text-xs text-emerald-600">{humanCheckPriceMsg}</span>}
+                  </div>
+                </div>
+
                 {teachersLoading ? (
                   <div className="flex items-center justify-center py-16 text-slate-400 text-sm gap-2">
                     <Spinner color="#94a3b8" /> Loading...
@@ -2018,6 +2133,8 @@ export default function Admin() {
                               </td>
                               <td className="px-4 py-3 text-right">
                                 <div className="flex items-center justify-end gap-1">
+                                  <button onClick={() => loadTeacherEarnings(t)}
+                                    className="text-xs px-2.5 py-1 bg-emerald-50 text-emerald-700 border border-emerald-200 rounded-lg hover:bg-emerald-100 transition-colors cursor-pointer">Earnings</button>
                                   <button onClick={() => setTeacherEditor(t)}
                                     className="text-xs px-2.5 py-1 bg-slate-50 text-slate-700 border border-slate-200 rounded-lg hover:bg-slate-100 transition-colors cursor-pointer">Edit</button>
                                   <button onClick={() => deleteTeacher(t.id)}
@@ -2092,6 +2209,50 @@ export default function Admin() {
                             Cancel
                           </button>
                         </div>
+                      </div>
+                    )}
+                  </DialogContent>
+                </Dialog>
+
+                {/* Teacher Earnings Dialog */}
+                <Dialog open={!!teacherEarningsFor} onOpenChange={(open) => { if (!open) { setTeacherEarningsFor(null); setTeacherEarnings([]); } }}>
+                  <DialogContent className="bg-white max-w-[480px] max-h-[90vh] overflow-y-auto">
+                    <DialogHeader>
+                      <DialogTitle className="text-slate-900">{teacherEarningsFor?.name} — Earnings by month</DialogTitle>
+                    </DialogHeader>
+                    {teacherEarningsLoading ? (
+                      <div className="flex items-center justify-center py-12 text-slate-400 text-sm gap-2">
+                        <Spinner color="#94a3b8" /> Loading...
+                      </div>
+                    ) : teacherEarnings.length === 0 ? (
+                      <p className="text-sm text-slate-500 text-center py-8">No checked reviews yet.</p>
+                    ) : (
+                      <div className="mt-2 rounded-xl border border-slate-200 overflow-hidden">
+                        <table className="w-full text-sm">
+                          <thead>
+                            <tr className="bg-slate-50 border-b border-slate-100">
+                              <th className="px-4 py-2.5 text-left text-xs font-bold text-slate-500 uppercase tracking-wider">Month</th>
+                              <th className="px-4 py-2.5 text-center text-xs font-bold text-slate-500 uppercase tracking-wider">Reviews</th>
+                              <th className="px-4 py-2.5 text-right text-xs font-bold text-slate-500 uppercase tracking-wider">Earned</th>
+                            </tr>
+                          </thead>
+                          <tbody className="divide-y divide-slate-100">
+                            {teacherEarnings.map((row) => (
+                              <tr key={row.month}>
+                                <td className="px-4 py-3 font-medium text-slate-800">{row.month}</td>
+                                <td className="px-4 py-3 text-center text-slate-600">{row.count}</td>
+                                <td className="px-4 py-3 text-right font-mono font-semibold text-emerald-700">{row.total.toLocaleString()} UZS</td>
+                              </tr>
+                            ))}
+                          </tbody>
+                          <tfoot>
+                            <tr className="border-t-2 border-slate-200 bg-slate-50">
+                              <td className="px-4 py-3 font-bold text-slate-800">Total</td>
+                              <td className="px-4 py-3 text-center font-bold text-slate-800">{teacherEarnings.reduce((s, r) => s + r.count, 0)}</td>
+                              <td className="px-4 py-3 text-right font-mono font-bold text-emerald-700">{teacherEarnings.reduce((s, r) => s + r.total, 0).toLocaleString()} UZS</td>
+                            </tr>
+                          </tfoot>
+                        </table>
                       </div>
                     )}
                   </DialogContent>

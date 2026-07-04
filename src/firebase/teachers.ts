@@ -11,6 +11,7 @@ import {
   addDoc,
   serverTimestamp,
   Timestamp,
+  runTransaction,
   type Firestore,
 } from 'firebase/firestore';
 import { db } from './config';
@@ -110,6 +111,7 @@ function mapReview(id: string, data: Record<string, any>): HumanReview {
     task1: data.task1 ?? undefined,
     task2: data.task2 ?? undefined,
     status: data.status ?? 'pending',
+    priceUZS: typeof data.priceUZS === 'number' ? data.priceUZS : 0,
     feedbackDocBase64: data.feedbackDocBase64 ?? undefined,
     feedbackFileName: data.feedbackFileName ?? undefined,
     requestedAt: toDate(data.requestedAt),
@@ -152,24 +154,52 @@ export interface CreateHumanReviewInput {
   task2?: HumanReviewTaskPart;
 }
 
-export async function createHumanReview(input: CreateHumanReviewInput, dbInstance: Firestore = db): Promise<string> {
-  // Firestore rejects `undefined` field values, so only include the task parts
-  // that are actually present (an essay may have just Task 1 or just Task 2).
-  const payload: Record<string, unknown> = {
-    uid: input.uid,
-    studentName: input.studentName,
-    studentEmail: input.studentEmail,
-    teacherId: input.teacherId,
-    teacherName: input.teacherName,
-    mode: input.mode,
-    status: 'pending',
-    requestedAt: serverTimestamp(),
-  };
-  if (input.task1 !== undefined) payload.task1 = input.task1;
-  if (input.task2 !== undefined) payload.task2 = input.task2;
+export class InsufficientBalanceError extends Error {
+  constructor() {
+    super('INSUFFICIENT_BALANCE');
+  }
+}
 
-  const ref = await addDoc(collection(dbInstance, 'humanReviews'), payload);
-  return ref.id;
+/**
+ * Atomically checks the student's balance and creates the review in one
+ * Firestore transaction, so two in-flight requests can never both succeed
+ * off the same balance (and a failed/insufficient check never leaves a
+ * review behind with no payment).
+ */
+export async function createHumanReview(
+  input: CreateHumanReviewInput,
+  priceUZS: number,
+  dbInstance: Firestore = db,
+): Promise<string> {
+  const userRef = doc(dbInstance, 'users', input.uid);
+  const reviewRef = doc(collection(dbInstance, 'humanReviews'));
+
+  await runTransaction(dbInstance, async (tx) => {
+    const userSnap = await tx.get(userRef);
+    const balance = typeof userSnap.data()?.balanceUZS === 'number' ? (userSnap.data()!.balanceUZS as number) : 0;
+    if (balance < priceUZS) throw new InsufficientBalanceError();
+
+    // Firestore rejects `undefined` field values, so only include the task
+    // parts that are actually present (an essay may have just Task 1 or 2).
+    const payload: Record<string, unknown> = {
+      uid: input.uid,
+      studentName: input.studentName,
+      studentEmail: input.studentEmail,
+      teacherId: input.teacherId,
+      teacherName: input.teacherName,
+      mode: input.mode,
+      status: 'pending',
+      priceUZS,
+      requestedAt: serverTimestamp(),
+    };
+    if (input.task1 !== undefined) payload.task1 = input.task1;
+    if (input.task2 !== undefined) payload.task2 = input.task2;
+
+    tx.update(userRef, { balanceUZS: balance - priceUZS });
+    tx.set(reviewRef, payload);
+  });
+
+  return reviewRef.id;
 }
 
 export async function uploadTeacherFeedback(

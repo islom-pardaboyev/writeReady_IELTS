@@ -19,6 +19,7 @@ import { useStopwatch } from "@/hooks/useStopwatch";
 import { useHumanCheck } from "@/hooks/useHumanCheck";
 import { useFeatureFlag } from "@/hooks/useFeatureFlag";
 import { TeacherPickerModal } from "@/components/ui/TeacherPickerModal";
+import { HumanCheckConfirmModal } from "@/components/ui/HumanCheckConfirmModal";
 
 async function loadImgBase64(src: string): Promise<{ b64: string; w: number; h: number } | null> {
   if (src.startsWith('data:application/pdf') || /\.pdf(\?|$)/i.test(src)) return null;
@@ -590,6 +591,16 @@ function Quick() {
           </div>
         </div>
       )}
+
+      <HumanCheckConfirmModal
+        open={humanCheck.showCostConfirm}
+        priceLoading={humanCheck.priceLoading}
+        price={humanCheck.price}
+        balance={humanCheck.balance}
+        canAfford={humanCheck.canAfford}
+        onCancel={humanCheck.cancelCostConfirm}
+        onConfirm={humanCheck.confirmCost}
+      />
 
       <TeacherPickerModal
         open={humanCheck.showPicker}

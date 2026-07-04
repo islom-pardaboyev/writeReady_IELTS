@@ -13,6 +13,7 @@ export interface UserProfile {
   notification?: string;
   centerName?: string;
   studentLogin?: string;
+  balanceUZS?: number;
 }
 
 export interface UsageRecord {
@@ -168,6 +169,7 @@ export interface HumanReview {
   task1?: HumanReviewTaskPart;
   task2?: HumanReviewTaskPart;
   status: HumanReviewStatus;
+  priceUZS: number;
   feedbackDocBase64?: string;
   feedbackFileName?: string;
   requestedAt: Date;

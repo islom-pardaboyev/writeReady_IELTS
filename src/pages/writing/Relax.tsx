@@ -12,6 +12,7 @@ import { CheckIcon, ChevronRightIcon, ClockIcon, UploadIcon, Bot, GraduationCap 
 import { useHumanCheck } from "@/hooks/useHumanCheck";
 import { useFeatureFlag } from "@/hooks/useFeatureFlag";
 import { TeacherPickerModal } from "@/components/ui/TeacherPickerModal";
+import { HumanCheckConfirmModal } from "@/components/ui/HumanCheckConfirmModal";
 
 function readFileAsDataUrl(file: File): Promise<string> {
   return new Promise((resolve, reject) => {
@@ -741,6 +742,16 @@ function Relax() {
           </div>
         </div>
       )}
+
+      <HumanCheckConfirmModal
+        open={humanCheck.showCostConfirm}
+        priceLoading={humanCheck.priceLoading}
+        price={humanCheck.price}
+        balance={humanCheck.balance}
+        canAfford={humanCheck.canAfford}
+        onCancel={humanCheck.cancelCostConfirm}
+        onConfirm={humanCheck.confirmCost}
+      />
 
       <TeacherPickerModal
         open={humanCheck.showPicker}
