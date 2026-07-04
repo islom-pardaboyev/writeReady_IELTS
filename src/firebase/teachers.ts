@@ -117,18 +117,22 @@ function mapReview(id: string, data: Record<string, any>): HumanReview {
   };
 }
 
+// No orderBy in these queries on purpose: a `where` equality filter combined
+// with `orderBy` on a different field requires a manually-created Firestore
+// composite index, which silently fails until that index exists. Sorting the
+// small per-teacher/per-student result set client-side avoids that entirely.
+function sortByRequestedAtDesc(reviews: HumanReview[]): HumanReview[] {
+  return [...reviews].sort((a, b) => b.requestedAt.getTime() - a.requestedAt.getTime());
+}
+
 export async function getHumanReviewsForTeacher(teacherId: string, dbInstance: Firestore = db): Promise<HumanReview[]> {
-  const snap = await getDocs(
-    query(collection(dbInstance, 'humanReviews'), where('teacherId', '==', teacherId), orderBy('requestedAt', 'desc')),
-  );
-  return snap.docs.map((d) => mapReview(d.id, d.data()));
+  const snap = await getDocs(query(collection(dbInstance, 'humanReviews'), where('teacherId', '==', teacherId)));
+  return sortByRequestedAtDesc(snap.docs.map((d) => mapReview(d.id, d.data())));
 }
 
 export async function getHumanReviewsForStudent(uid: string, dbInstance: Firestore = db): Promise<HumanReview[]> {
-  const snap = await getDocs(
-    query(collection(dbInstance, 'humanReviews'), where('uid', '==', uid), orderBy('requestedAt', 'desc')),
-  );
-  return snap.docs.map((d) => mapReview(d.id, d.data()));
+  const snap = await getDocs(query(collection(dbInstance, 'humanReviews'), where('uid', '==', uid)));
+  return sortByRequestedAtDesc(snap.docs.map((d) => mapReview(d.id, d.data())));
 }
 
 export async function getHumanReview(reviewId: string, dbInstance: Firestore = db): Promise<HumanReview | null> {

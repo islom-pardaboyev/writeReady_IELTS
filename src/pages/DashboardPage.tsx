@@ -130,9 +130,11 @@ export function DashboardPage() {
     refreshProfile();
     getRecentFeedbackReports(user.uid, 5)
       .then(setReports)
+      .catch((e) => console.error('Failed to load feedback reports:', e))
       .finally(() => setReportsLoading(false));
     getHumanReviewsForStudent(user.uid)
       .then(setHumanReviews)
+      .catch((e) => console.error('Failed to load human reviews:', e))
       .finally(() => setHumanReviewsLoading(false));
   }, [user?.uid]);
 
