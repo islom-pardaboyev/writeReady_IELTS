@@ -9,9 +9,12 @@ import { Button } from '../components/ui/Button';
 import { Card } from '../components/ui/Card';
 import { Badge } from '../components/ui/badge';
 import { getRecentFeedbackReports, type FeedbackReport } from '../firebase/firestore';
+import { getHumanReviewsForStudent } from '../firebase/teachers';
+import type { HumanReview } from '../types';
 import { ProgressSection } from '../components/ui/ProgressSection';
 import { doc, updateDoc } from 'firebase/firestore';
 import { db } from '../firebase/config';
+import { GraduationCap, Clock, Download } from 'lucide-react';
 
 gsap.registerPlugin(ScrollTrigger);
 
@@ -79,6 +82,8 @@ export function DashboardPage() {
   const [reports, setReports] = useState<FeedbackReport[]>([]);
   const [reportsLoading, setReportsLoading] = useState(true);
   const [notification, setNotification] = useState<string | null>(null);
+  const [humanReviews, setHumanReviews] = useState<HumanReview[]>([]);
+  const [humanReviewsLoading, setHumanReviewsLoading] = useState(true);
 
   useLayoutEffect(() => {
     // Wait for profile to load before animating — otherwise elements are hidden forever
@@ -126,6 +131,9 @@ export function DashboardPage() {
     getRecentFeedbackReports(user.uid, 5)
       .then(setReports)
       .finally(() => setReportsLoading(false));
+    getHumanReviewsForStudent(user.uid)
+      .then(setHumanReviews)
+      .finally(() => setHumanReviewsLoading(false));
   }, [user?.uid]);
 
   useEffect(() => {
@@ -367,6 +375,74 @@ export function DashboardPage() {
                           </span>
                         </div>
                       </Card>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Human Check */}
+          {isPro && (
+            <div className="gs-db-history mb-10">
+              <div className="flex items-center justify-between mb-4">
+                <h2 className="text-xl font-bold text-[var(--text-primary)] flex items-center gap-2">
+                  <GraduationCap className="w-5 h-5 text-emerald-600" />
+                  Human Check
+                </h2>
+                <span className="text-xs text-[var(--text-secondary)] font-medium">Teacher reviews</span>
+              </div>
+
+              {humanReviewsLoading ? (
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                  {[1, 2, 3].map((i) => (
+                    <div key={i} className="h-[140px] rounded-2xl bg-[var(--bg-card)] border border-[var(--border-color)] animate-pulse" />
+                  ))}
+                </div>
+              ) : humanReviews.length === 0 ? (
+                <Card className="px-8 py-10 text-center">
+                  <div className="text-3xl mb-3">🎓</div>
+                  <p className="font-semibold text-[var(--text-primary)] mb-1">No teacher reviews yet</p>
+                  <p className="text-sm text-[var(--text-secondary)]">Tap "Human Check" after submitting an essay to get real feedback from a teacher.</p>
+                </Card>
+              ) : (
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                  {humanReviews.map((r) => {
+                    const taskLabel = [r.task1 && 'Task 1', r.task2 && 'Task 2'].filter(Boolean).join(' & ');
+                    const isChecked = r.status === 'checked';
+                    return (
+                      <Link key={r.id} to={`/human-review/${r.id}`} className="no-underline">
+                        <Card className="group p-5 hover:shadow-[var(--shadow-md)] hover:-translate-y-0.5 transition-all duration-200 flex flex-col gap-4 h-full">
+                          <div className="flex items-start justify-between gap-2">
+                            <div className="flex-1 min-w-0">
+                              <Badge variant="purple" className="mb-2 text-[0.65rem] uppercase tracking-wider">
+                                {taskLabel || r.mode}
+                              </Badge>
+                              <p className="text-sm font-semibold text-[var(--text-primary)] truncate leading-tight">
+                                {r.teacherName}
+                              </p>
+                            </div>
+                            <Badge variant={isChecked ? 'success' : 'warning'} className="shrink-0 text-[0.65rem] uppercase tracking-wider">
+                              {isChecked ? 'Checked' : 'Unchecked'}
+                            </Badge>
+                          </div>
+
+                          <div className="flex items-center justify-between pt-1 border-t border-[var(--border-color)] mt-auto">
+                            <span className="text-[0.7rem] text-[var(--text-secondary)]">
+                              {timeAgo(r.requestedAt)}
+                            </span>
+                            {isChecked ? (
+                              <span className="flex items-center gap-1 text-[0.7rem] font-medium text-emerald-600 dark:text-emerald-400">
+                                <Download className="w-3 h-3" /> Feedback ready
+                              </span>
+                            ) : (
+                              <span className="flex items-center gap-1 text-[0.7rem] font-medium text-amber-600 dark:text-amber-400">
+                                <Clock className="w-3 h-3" /> Awaiting review
+                              </span>
+                            )}
+                          </div>
+                        </Card>
+                      </Link>
                     );
                   })}
                 </div>
