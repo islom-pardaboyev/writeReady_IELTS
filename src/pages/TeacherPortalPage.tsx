@@ -3,6 +3,7 @@ import { signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut } f
 import { adminAuth, adminDb } from "@/firebase/adminConfig";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/input";
+import { PasswordInput } from "@/components/ui/PasswordInput";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { GraduationCap, Download, Upload, LogOut } from "lucide-react";
@@ -73,7 +74,19 @@ export default function TeacherPortalPage() {
     setLoginError(null);
     setLoggingIn(true);
     try {
-      const teacher = await findTeacherByLogin(login.trim(), adminDb);
+      // The `teachers` collection is publicly readable (see Firestore rules), so
+      // we can verify the login here without anonymous auth. After the password
+      // check we sign in with the teacher's dedicated Firebase account, which
+      // gives us a real authenticated session for reading assigned reviews.
+      let teacher;
+      try {
+        teacher = await findTeacherByLogin(login.trim(), adminDb);
+      } catch (readErr) {
+        console.error("[TeacherPortal] reading teachers collection failed:", readErr);
+        setLoginError("Could not reach the server. Check your connection and try again.");
+        return;
+      }
+
       if (!teacher || teacher.password !== password) {
         setLoginError("Incorrect login or password.");
         return;
@@ -159,7 +172,7 @@ export default function TeacherPortalPage() {
             </div>
             <div>
               <Label htmlFor="tp-password">Password</Label>
-              <Input id="tp-password" type="password" className="mt-1.5" value={password} onChange={(e) => setPassword(e.target.value)} required />
+              <PasswordInput id="tp-password" className="mt-1.5" value={password} onChange={(e) => setPassword(e.target.value)} required />
             </div>
             {loginError && <p className="text-sm text-red-500">{loginError}</p>}
             <Button type="submit" disabled={loggingIn} className="w-full mt-2 bg-emerald-600 hover:bg-emerald-700 text-white">
