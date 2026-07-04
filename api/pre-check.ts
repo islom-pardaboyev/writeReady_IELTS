@@ -4,7 +4,8 @@ import { getAuth } from 'firebase-admin/auth';
 import { getFirestore, FieldValue } from 'firebase-admin/firestore';
 import { createHmac } from 'crypto';
 
-const CENTER_MONTHLY_LIMIT = 15;
+// Learning-center students get the premium allowance for free.
+const CENTER_MONTHLY_LIMIT = 30;
 
 type CreditErrorCode = 'USER_NOT_FOUND' | 'NOT_PRO' | 'LIMIT_REACHED';
 class CreditError extends Error {
@@ -56,41 +57,21 @@ async function consumeCredit(uid: string, monthKey: string): Promise<boolean> {
 
     const data = snap.data()!;
     const plan: string = data.plan ?? 'free';
+    const isCenterStudent = typeof data.centerId === 'string' && data.centerId.length > 0;
     const isPaidPlan = ['basic', 'standard', 'premium', 'forever'].includes(plan);
     const bonus = typeof data.bonusAnalyses === 'number' ? data.bonusAnalyses : 0;
-    if (bonus > 0 && !isPaidPlan) {
+    if (bonus > 0 && !isPaidPlan && !isCenterStudent) {
       tx.set(userRef, { bonusAnalyses: bonus - 1 }, { merge: true });
       isBonus = true;
       return;
     }
 
-    const userEmail: string = data.email ?? '';
-    if (userEmail) {
-      const centersSnap = await db.collection('learningCenters')
-        .where('status', '==', 'active')
-        .get();
-
-      for (const centerDoc of centersSnap.docs) {
-        const centerData = centerDoc.data();
-        if (centerData.expiresAt && new Date(centerData.expiresAt) < new Date()) continue;
-
-        const studentSnap = await centerDoc.ref.collection('students')
-          .where('email', '==', userEmail)
-          .limit(1)
-          .get();
-
-        if (!studentSnap.empty) {
-          const usage = data.usage ?? {};
-          const used = usage.monthKey === monthKey ? (usage.count ?? 0) : 0;
-          if (used >= CENTER_MONTHLY_LIMIT) throw new CreditError('LIMIT_REACHED');
-          tx.set(userRef, { usage: { monthKey, count: used + 1 } }, { merge: true });
-          return;
-        }
-      }
-    }
-
+    // Learning-center students always get the premium allowance (30/month),
+    // regardless of whether the center's own subscription is still active.
     const planLimits: Record<string, number> = { forever: 9999, premium: 30, standard: 12, basic: 5 };
-    const monthlyLimit = planLimits[data.plan as string];
+    const monthlyLimit = isCenterStudent
+      ? Math.max(CENTER_MONTHLY_LIMIT, planLimits[plan] ?? 0)
+      : planLimits[plan as string];
     if (!monthlyLimit) throw new CreditError('NOT_PRO');
 
     const usage = data.usage ?? {};

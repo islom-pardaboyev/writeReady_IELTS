@@ -26,6 +26,7 @@ export async function getUserProfile(uid: string): Promise<UserProfile | null> {
   if (!snap.exists()) return null;
   const d = snap.data();
   const subscription: string = d.subscription ?? '';
+  const centerId: string | undefined = typeof d.centerId === 'string' ? d.centerId : undefined;
 
   // Derive effective plan from plan field stored directly in Firestore
   let plan: Plan = 'free';
@@ -39,6 +40,13 @@ export async function getUserProfile(uid: string): Promise<UserProfile | null> {
     plan = 'basic';
   }
 
+  // Learning-center students always get premium access — even after the
+  // center's own subscription has expired — unless they already hold a
+  // higher (lifetime) plan.
+  if (centerId && plan !== 'forever') {
+    plan = 'premium';
+  }
+
   return {
     uid,
     email: d.email,
@@ -48,6 +56,7 @@ export async function getUserProfile(uid: string): Promise<UserProfile | null> {
     createdAt: toDate(d.createdAt),
     bonusAnalyses: typeof d.bonusAnalyses === 'number' ? d.bonusAnalyses : 0,
     notification: typeof d.notification === 'string' ? d.notification : '',
+    centerId,
     centerName: typeof d.centerName === 'string' ? d.centerName : undefined,
     studentLogin: typeof d.studentLogin === 'string' ? d.studentLogin : undefined,
     balanceUZS: typeof d.balanceUZS === 'number' ? d.balanceUZS : 0,
@@ -75,8 +84,10 @@ export async function getUsage(uid: string): Promise<UsageRecord | null> {
   const usage = snap.data()?.usage;
   const count = usage?.monthKey === yearMonth ? (usage?.count ?? 0) : 0;
   const plan: string = snap.data()?.plan ?? 'free';
+  const hasCenter = typeof snap.data()?.centerId === 'string' && snap.data()!.centerId.length > 0;
   const planLimits: Record<string, number> = { forever: 9999, premium: 30, standard: 12, basic: 5 };
-  const limit = planLimits[plan] ?? 0;
+  // Center students always get at least the premium (30) allowance.
+  const limit = Math.max(planLimits[plan] ?? 0, hasCenter ? 30 : 0);
   return { uid, yearMonth, count, limit, updatedAt: new Date() };
 }
 

@@ -7,7 +7,6 @@ import { Card } from '../components/ui/Card';
 import { Input } from '../components/ui/input';
 import { PasswordInput } from '../components/ui/PasswordInput';
 import { Label } from '../components/ui/label';
-import { db } from '../firebase/config';
 import { getAuth, signInWithEmailAndPassword } from 'firebase/auth';
 
 type Mode = 'login' | 'signup' | 'student';
@@ -70,39 +69,17 @@ export function AuthPage() {
     const fakeEmail = `${loginKey}@writeready.student`;
     const firebaseAuth = getAuth();
     try {
-      // Step 1: Sign in with Firebase Auth (password set by student during registration)
-      let uid: string;
+      // Sign in with Firebase Auth (password set when the student was created)
       try {
-        const cred = await signInWithEmailAndPassword(firebaseAuth, fakeEmail, studentPassword);
-        uid = cred.user.uid;
+        await signInWithEmailAndPassword(firebaseAuth, fakeEmail, studentPassword);
       } catch {
         setError('Incorrect login or password. Please check with your learning centre.');
         setLoading(false);
         return;
       }
 
-      // Step 2: Check center is still active
-      const userDoc = await import('firebase/firestore').then(({ getDoc, doc: fDoc }) =>
-        getDoc(fDoc(db, 'users', uid))
-      );
-      if (userDoc.exists()) {
-        const uData = userDoc.data();
-        if (uData.centerId) {
-          const { getDoc: gd, doc: fd } = await import('firebase/firestore');
-          const centerDoc = await gd(fd(db, 'learningCenters', uData.centerId));
-          if (centerDoc.exists()) {
-            const cData = centerDoc.data();
-            const isActive = cData.expiresAt ? new Date(cData.expiresAt) > new Date() : false;
-            if (!isActive) {
-              await firebaseAuth.signOut();
-              setError('Your learning centre subscription has expired. Please contact your administrator.');
-              setLoading(false);
-              return;
-            }
-          }
-        }
-      }
-
+      // Center students keep free premium access even after the center's
+      // own subscription expires, so there's no active-center gate here.
       await refreshProfile();
       navigate('/dashboard');
     } catch (err: unknown) {

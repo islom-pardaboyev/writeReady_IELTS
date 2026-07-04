@@ -53,6 +53,8 @@ interface Task2 {
 }
 
 function hasAccess(data: Record<string, unknown>): boolean {
+  // Learning-center students always have access (free premium).
+  if (typeof data.centerId === "string" && data.centerId.length > 0) return true;
   const plan = data.plan as string | undefined;
   if (plan === 'forever' || plan === 'premium' || plan === 'standard' || plan === 'basic') return true;
   const bonus = typeof data.bonusAnalyses === 'number' ? data.bonusAnalyses : 0;
