@@ -1017,6 +1017,18 @@ export default function Admin() {
     finally { setUserActionLoading(false); }
   };
 
+  const resetBalance = async (user: UserRow) => {
+    if (!confirm(`Reset ${user.email}'s balance to 0?`)) return;
+    setUserActionLoading(true); setUserError(""); setUserSuccess("");
+    try {
+      await updateDoc(doc(db, "users", user.id), { balanceUZS: 0 });
+      setAllUsers((p) => p.map((u) => u.id === user.id ? { ...u, balanceUZS: 0 } : u));
+      if (selectedUser?.id === user.id) setSelectedUser((p) => p ? { ...p, balanceUZS: 0 } : null);
+      setUserSuccess("Balance reset to 0.");
+    } catch { setUserError("Failed to reset balance."); }
+    finally { setUserActionLoading(false); }
+  };
+
   const signOut = () => {
     setIsLoggedIn(false);
     localStorage.removeItem("adminLoggedIn");
@@ -1443,6 +1455,13 @@ export default function Admin() {
                           className="bg-emerald-600 text-white border-none rounded-lg px-4 py-2 text-xs font-semibold cursor-pointer hover:bg-emerald-700 transition-colors disabled:opacity-50"
                         >
                           + Balance qo'shish
+                        </button>
+                        <button
+                          onClick={() => resetBalance(selectedUser)}
+                          disabled={userActionLoading || (selectedUser.balanceUZS ?? 0) === 0}
+                          className="bg-white text-red-500 border border-red-300 rounded-lg px-4 py-2 text-xs font-semibold cursor-pointer hover:bg-red-50 transition-colors disabled:opacity-50"
+                        >
+                          Nolga tushirish
                         </button>
                       </div>
                     </div>
