@@ -31,12 +31,19 @@ After completing any writing session, users can request AI feedback which includ
 ## Vocabulary & Grammar Practice
 After an AI feedback report, students get a "Practice" tab where they write their own sentence using each vocabulary word or grammar rule from their report, then tap "Check with AI" to get instant feedback on whether they used it correctly plus an improved band-7-level version of their sentence.
 
+## Human Check (real teacher review)
+Besides instant AI feedback, students can request a **Human Check** — a review of their essay by a real, certified IELTS teacher. After finishing an essay in any mode, tap the "Human Check" button (next to "Get AI feedback"), see the cost, confirm, then pick a teacher from the list (each shows their IELTS overall and writing band scores). The essay (and the Task 1 chart image, if any) is sent to that teacher. The teacher writes their feedback in a Word document and uploads it; the student gets a notification and can download it from their dashboard's "Human Check" section. Human Check is paid from the student's **account balance** (not the monthly AI quota) — the price is deducted when a teacher is chosen. Turnaround depends on the teacher.
+
+## Account Balance
+Students have an account balance (in UZS) used to pay for pay-per-use features like Human Check. The current balance is shown in the header account menu, on the Account page, and on the Pricing page. To top up: go to the Pricing page, enter an amount (minimum 50,000 UZS, any amount above that is allowed), transfer to the card shown, and send the receipt screenshot to @writeready_admin on Telegram — the balance is added within 24 hours. The balance is separate from the monthly AI-feedback quota.
+
 ## Pricing Plans
 - **Free plan**: Access to all 4 practice modes, PDF download, limited AI feedback (1 free analysis for new users).
 - **Pro / Premium plan**: ~25,000 UZS/month — unlimited AI feedback, full band score analysis, vocabulary and grammar sentence practice, priority support.
+- **Human Check**: pay-per-use from account balance (not a subscription) — see the Human Check and Account Balance sections above.
 - New users get 1 free AI feedback analysis to try the system.
 - Admins can grant bonus analyses to specific users.
-- To upgrade: visit the Pricing page on the site and choose a plan.
+- To upgrade a plan or top up balance: visit the Pricing page on the site.
 
 ## How to Register / Sign In
 - Click "Sign In" or "Create Free Account" on the homepage or any writing mode.
