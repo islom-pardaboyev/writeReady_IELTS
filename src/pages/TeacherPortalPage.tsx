@@ -187,6 +187,36 @@ export default function TeacherPortalPage() {
   const pendingCount = reviews.filter((r) => r.status === "pending").length;
   const checkedCount = reviews.filter((r) => r.status === "checked").length;
 
+  // Earnings broken down by the month each review was checked
+  const monthKey = (d: Date) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
+  const now = new Date();
+  const thisMonthKey = monthKey(now);
+  const lastMonthKey = monthKey(new Date(now.getFullYear(), now.getMonth() - 1, 1));
+
+  const earningsByMonth = new Map<string, { count: number; total: number }>();
+  reviews
+    .filter((r) => r.status === "checked" && r.checkedAt)
+    .forEach((r) => {
+      const key = monthKey(r.checkedAt!);
+      const entry = earningsByMonth.get(key) ?? { count: 0, total: 0 };
+      entry.count += 1;
+      entry.total += r.priceUZS ?? 0;
+      earningsByMonth.set(key, entry);
+    });
+
+  const earningsRows = Array.from(earningsByMonth.entries())
+    .map(([month, v]) => ({ month, ...v }))
+    .sort((a, b) => b.month.localeCompare(a.month));
+
+  const thisMonth = earningsByMonth.get(thisMonthKey) ?? { count: 0, total: 0 };
+  const lastMonth = earningsByMonth.get(lastMonthKey) ?? { count: 0, total: 0 };
+  const totalEarned = earningsRows.reduce((s, r) => s + r.total, 0);
+
+  const monthLabel = (key: string) => {
+    const [y, m] = key.split("-").map(Number);
+    return new Date(y, m - 1, 1).toLocaleDateString("en-US", { month: "long", year: "numeric" });
+  };
+
   return (
     <div className="min-h-screen bg-slate-50">
       <div className="bg-slate-900 border-b border-slate-800">
@@ -202,7 +232,7 @@ export default function TeacherPortalPage() {
       </div>
 
       <div className="max-w-4xl mx-auto px-5 py-8">
-        <div className="grid grid-cols-2 gap-4 mb-6">
+        <div className="grid grid-cols-2 gap-4 mb-4">
           <div className="bg-white rounded-2xl border border-slate-200 p-5">
             <div className="text-2xl font-bold text-amber-600">{pendingCount}</div>
             <div className="text-sm text-slate-500 mt-1">Unchecked reports</div>
@@ -212,6 +242,52 @@ export default function TeacherPortalPage() {
             <div className="text-sm text-slate-500 mt-1">Checked reports</div>
           </div>
         </div>
+
+        {/* Earnings summary */}
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
+          <div className="bg-white rounded-2xl border border-slate-200 p-5">
+            <div className="text-xs font-semibold text-slate-400 uppercase tracking-wide mb-1">This month</div>
+            <div className="text-2xl font-bold text-emerald-600 font-mono">{thisMonth.total.toLocaleString()} <span className="text-sm font-semibold">UZS</span></div>
+            <div className="text-xs text-slate-500 mt-1">{thisMonth.count} review{thisMonth.count === 1 ? "" : "s"} checked</div>
+          </div>
+          <div className="bg-white rounded-2xl border border-slate-200 p-5">
+            <div className="text-xs font-semibold text-slate-400 uppercase tracking-wide mb-1">Last month</div>
+            <div className="text-2xl font-bold text-slate-700 font-mono">{lastMonth.total.toLocaleString()} <span className="text-sm font-semibold">UZS</span></div>
+            <div className="text-xs text-slate-500 mt-1">{lastMonth.count} review{lastMonth.count === 1 ? "" : "s"} checked</div>
+          </div>
+          <div className="bg-white rounded-2xl border border-slate-200 p-5">
+            <div className="text-xs font-semibold text-slate-400 uppercase tracking-wide mb-1">All time</div>
+            <div className="text-2xl font-bold text-slate-700 font-mono">{totalEarned.toLocaleString()} <span className="text-sm font-semibold">UZS</span></div>
+            <div className="text-xs text-slate-500 mt-1">{checkedCount} review{checkedCount === 1 ? "" : "s"} total</div>
+          </div>
+        </div>
+
+        {/* Earnings by month */}
+        {earningsRows.length > 0 && (
+          <div className="bg-white rounded-2xl border border-slate-200 overflow-hidden mb-6">
+            <div className="px-5 py-3 border-b border-slate-100 text-sm font-semibold text-slate-700">Earnings by month</div>
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="bg-slate-50 border-b border-slate-100">
+                    <th className="px-5 py-2.5 text-left text-xs font-bold text-slate-500 uppercase tracking-wider">Month</th>
+                    <th className="px-5 py-2.5 text-center text-xs font-bold text-slate-500 uppercase tracking-wider">Reviews</th>
+                    <th className="px-5 py-2.5 text-right text-xs font-bold text-slate-500 uppercase tracking-wider">Earned</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100">
+                  {earningsRows.map((row) => (
+                    <tr key={row.month}>
+                      <td className="px-5 py-3 font-medium text-slate-800">{monthLabel(row.month)}</td>
+                      <td className="px-5 py-3 text-center text-slate-600">{row.count}</td>
+                      <td className="px-5 py-3 text-right font-mono font-semibold text-emerald-700">{row.total.toLocaleString()} UZS</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        )}
 
         {actionError && (
           <div className="bg-red-50 border border-red-200 text-red-600 text-sm rounded-lg px-4 py-2.5 mb-4">{actionError}</div>
