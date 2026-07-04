@@ -133,3 +133,43 @@ export interface EnhancedFeedbackResult {
   grammar: GrammarPoint[];
   limited?: boolean;
 }
+
+// ── Human Check (teacher review) ───────────────────────────────────────────
+
+export interface Teacher {
+  id: string;
+  name: string;
+  photoBase64?: string;
+  certificateBase64?: string;
+  ieltsOverall: number;
+  ieltsWriting: number;
+  login: string;
+  password: string;
+  active: boolean;
+  createdAt: Date;
+}
+
+export interface HumanReviewTaskPart {
+  questionText: string;
+  essayText: string;
+  imageBase64?: string;
+}
+
+export type HumanReviewStatus = 'pending' | 'checked';
+
+export interface HumanReview {
+  id: string;
+  uid: string;
+  studentName: string;
+  studentEmail: string;
+  teacherId: string;
+  teacherName: string;
+  mode: 'mock' | 'practice' | 'quick' | 'relax';
+  task1?: HumanReviewTaskPart;
+  task2?: HumanReviewTaskPart;
+  status: HumanReviewStatus;
+  feedbackDocBase64?: string;
+  feedbackFileName?: string;
+  requestedAt: Date;
+  checkedAt?: Date;
+}

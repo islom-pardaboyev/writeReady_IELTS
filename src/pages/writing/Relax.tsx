@@ -8,7 +8,10 @@ import { Button } from "@/components/ui/Button";
 import WritingTask2Preview from "@/components/writingTask2Preview/WritingTask2Preview";
 import WritingTask1Preview from "@/components/writingTask1Preview/WritingTask1Preview";
 import { encodeReport } from "@/lib/reportEncoding";
-import { CheckIcon, ChevronRightIcon, ClockIcon, UploadIcon } from "lucide-react";
+import { CheckIcon, ChevronRightIcon, ClockIcon, UploadIcon, Bot, GraduationCap } from "lucide-react";
+import { useHumanCheck } from "@/hooks/useHumanCheck";
+import { useFeatureFlag } from "@/hooks/useFeatureFlag";
+import { TeacherPickerModal } from "@/components/ui/TeacherPickerModal";
 
 function readFileAsDataUrl(file: File): Promise<string> {
   return new Promise((resolve, reject) => {
@@ -75,6 +78,8 @@ function Relax() {
   const [imageLoading, setImageLoading] = useState(false);
   const [showFeedbackModal, setShowFeedbackModal] = useState(false);
   const [checkingAccess, setCheckingAccess] = useState(false);
+  const humanCheck = useHumanCheck("relax");
+  const humanCheckEnabled = useFeatureFlag("humanCheck");
 
   const [splitRatio, setSplitRatio] = useState(0.46);
   const [timerRunning, setTimerRunning] = useState(false);
@@ -264,6 +269,15 @@ function Relax() {
       setCheckingAccess(false);
       setShowFeedbackModal(false);
     }
+  };
+
+  const handleHumanCheck = () => {
+    setShowFeedbackModal(false);
+    humanCheck.requestHumanCheck(
+      activeTask === 1
+        ? { task1: userText.trim() ? { questionText: prompt, essayText: userText, imageBase64: imageUrl ?? undefined } : undefined }
+        : { task2: userText.trim() ? { questionText: task2Prompt, essayText: userText } : undefined },
+    );
   };
 
   /* ── Step 1: select ── */
@@ -701,8 +715,19 @@ function Relax() {
                   disabled={checkingAccess}
                   className="w-full bg-blue-600 hover:bg-blue-700 text-white"
                 >
+                  <Bot className="w-4 h-4 mr-1.5" />
                   {checkingAccess ? "Checking…" : "Get AI feedback"}
                 </Button>
+                {humanCheckEnabled && (
+                  <Button
+                    onClick={handleHumanCheck}
+                    variant="outline"
+                    className="w-full"
+                  >
+                    <GraduationCap className="w-4 h-4 mr-1.5" />
+                    Human Check
+                  </Button>
+                )}
                 <Button
                   variant="secondary"
                   onClick={() => setShowFeedbackModal(false)}
@@ -714,6 +739,39 @@ function Relax() {
               </div>
             </div>
           </div>
+        </div>
+      )}
+
+      <TeacherPickerModal
+        open={humanCheck.showPicker}
+        onClose={humanCheck.closePicker}
+        onSelect={humanCheck.handleSelectTeacher}
+        submitting={humanCheck.submitting}
+      />
+
+      {humanCheck.success && (
+        <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-4 bg-black/40 backdrop-blur-sm">
+          <div className="w-full max-w-sm bg-white rounded-2xl shadow-2xl overflow-hidden">
+            <div className="h-1.5 bg-gradient-to-r from-emerald-500 to-teal-500" />
+            <div className="p-7 text-center">
+              <div className="flex items-center justify-center w-11 h-11 mx-auto rounded-full bg-emerald-50">
+                <CheckIcon className="w-5 h-5 text-emerald-600" />
+              </div>
+              <h2 className="mt-4 text-base font-semibold text-slate-900">Sent for human review</h2>
+              <p className="mt-2 text-sm leading-6 text-slate-500">
+                You'll get a notification once your teacher has reviewed your essay.
+              </p>
+              <Button onClick={() => humanCheck.setSuccess(false)} className="w-full mt-6 bg-blue-600 hover:bg-blue-700 text-white">
+                Done
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {humanCheck.error && (
+        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 bg-red-600 text-white text-sm px-4 py-2.5 rounded-lg shadow-lg">
+          {humanCheck.error}
         </div>
       )}
     </div>

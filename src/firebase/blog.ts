@@ -184,11 +184,12 @@ export async function getNotifications(userId: string): Promise<Notification[]> 
     const data = d.data() as Record<string, unknown>;
     return {
       id: d.id,
-      type: (data.type as 'like' | 'comment') ?? 'like',
+      type: (data.type as Notification['type']) ?? 'like',
       fromUserName: (data.fromUserName as string) ?? '',
       postId: (data.postId as string) ?? '',
       postSlug: (data.postSlug as string) ?? '',
       commentId: (data.commentId as string) ?? undefined,
+      reviewId: (data.reviewId as string) ?? undefined,
       preview: (data.preview as string) ?? '',
       read: (data.read as boolean) ?? false,
       createdAt: toDate(data.createdAt),

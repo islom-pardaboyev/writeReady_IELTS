@@ -30,11 +30,12 @@ export interface BlogComment {
 
 export interface Notification {
   id: string;
-  type: 'like' | 'comment';
+  type: 'like' | 'comment' | 'bonus' | 'new_post' | 'human_feedback';
   fromUserName: string;
-  postId: string;
-  postSlug: string;
+  postId?: string;
+  postSlug?: string;
   commentId?: string;
+  reviewId?: string;
   preview: string;
   read: boolean;
   createdAt: Date | null;

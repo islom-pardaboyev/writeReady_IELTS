@@ -15,6 +15,8 @@ import Quick from './pages/writing/Quick';
 import Admin from './pages/writing/AdminPage';
 import CenterAdminPage from './pages/CenterAdminPage';
 import JoinPage from './pages/JoinPage';
+import TeacherPortalPage from './pages/TeacherPortalPage';
+import { HumanReviewPage } from './pages/HumanReviewPage';
 
 const BlogIndexPage = lazy(() => import('./pages/blog/BlogIndexPage').then(m => ({ default: m.BlogIndexPage })));
 const BlogPostPage = lazy(() => import('./pages/blog/BlogPostPage').then(m => ({ default: m.BlogPostPage })));
@@ -39,6 +41,8 @@ export default function App() {
           <Route path="/account" element={<AccountPage />} />
           <Route path="/admin" element={<Admin />} />
           <Route path="/center-admin" element={<CenterAdminPage />} />
+          <Route path="/teacher-portal" element={<TeacherPortalPage />} />
+          <Route path="/human-review/:id" element={<HumanReviewPage />} />
           <Route path="/join/:token" element={<JoinPage />} />
           <Route path="/writing/mock" element={<Mock />} />
           <Route path="/writing/practice" element={<Practice />} />

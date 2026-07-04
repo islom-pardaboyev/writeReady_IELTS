@@ -17,6 +17,16 @@ import useUpload from "@/hooks/useUploadImage";
 import Logo from "/logo.png";
 import { getBlogPosts, saveBlogPost, updateBlogPost, deleteBlogPost } from "../../firebase/blog";
 import type { BlogPost } from "../../types/blog";
+import {
+  getTeachers,
+  createTeacher,
+  updateTeacher,
+  deleteTeacher as deleteTeacherDoc,
+  getHumanReviewsForTeacher,
+  compressImageToBase64,
+} from "../../firebase/teachers";
+import type { Teacher } from "../../types";
+import { getFeatureFlag, setFeatureFlag } from "../../hooks/useFeatureFlag";
 import { Badge } from "@/components/ui/badge";
 import { RichEditor } from "@/components/ui/RichEditor";
 import { Input } from "@/components/ui/input";
@@ -64,7 +74,7 @@ interface LeaderEntry {
   bonusAnalyses: number;
 }
 
-type NavSection = "dashboard" | "task1" | "task2" | "users" | "leaderboard" | "announcements" | "centers" | "blog";
+type NavSection = "dashboard" | "task1" | "task2" | "users" | "leaderboard" | "announcements" | "centers" | "teachers" | "blog";
 
 
 function planBadge(plan: string, subscription?: string) {
@@ -204,6 +214,7 @@ const NAV: { id: NavSection; label: string; icon: string }[] = [
   { id: "leaderboard",    label: "Leaderboard",      icon: "🏆" },
   { id: "announcements",  label: "Elonlar",          icon: "📢" },
   { id: "centers",        label: "Learning Centers", icon: "🏫" },
+  { id: "teachers",       label: "Teachers",         icon: "🎓" },
   { id: "blog",           label: "Blog",             icon: "📝" },
 ];
 
@@ -374,6 +385,15 @@ export default function Admin() {
   const [editCSLogin, setEditCSLogin] = useState('');
   const [editCSPass, setEditCSPass] = useState('');
   const [savingCS, setSavingCS] = useState(false);
+
+  // Teachers (Human Check)
+  const [teachers, setTeachers] = useState<Teacher[]>([]);
+  const [teachersLoading, setTeachersLoading] = useState(false);
+  const [teacherEditor, setTeacherEditor] = useState<Partial<Teacher> | null>(null);
+  const [teacherSaving, setTeacherSaving] = useState(false);
+  const [teacherReviewCounts, setTeacherReviewCounts] = useState<Record<string, { pending: number; checked: number }>>({});
+  const [humanCheckFlag, setHumanCheckFlag] = useState(false);
+  const [humanCheckFlagLoading, setHumanCheckFlagLoading] = useState(false);
 
   // Blog
   interface BlogPostRow { id: string; title: string; slug: string; status: string; category: string; viewCount: number; likeCount: number; commentCount: number; publishedAt?: string; }
@@ -654,6 +674,84 @@ export default function Admin() {
     setCenters((prev) => prev.filter((c) => c.id !== id));
   };
 
+  const loadTeachers = async () => {
+    setTeachersLoading(true);
+    try {
+      const rows = await getTeachers(db);
+      setTeachers(rows);
+      const counts: Record<string, { pending: number; checked: number }> = {};
+      await Promise.all(rows.map(async (t) => {
+        const reviews = await getHumanReviewsForTeacher(t.id, db);
+        counts[t.id] = {
+          pending: reviews.filter((r) => r.status === 'pending').length,
+          checked: reviews.filter((r) => r.status === 'checked').length,
+        };
+      }));
+      setTeacherReviewCounts(counts);
+    } catch (e) { console.error(e); }
+    setTeachersLoading(false);
+  };
+
+  const loadHumanCheckFlag = async () => {
+    setHumanCheckFlagLoading(true);
+    try {
+      setHumanCheckFlag(await getFeatureFlag('humanCheck'));
+    } catch (e) { console.error(e); }
+    setHumanCheckFlagLoading(false);
+  };
+
+  const toggleHumanCheckFlag = async () => {
+    const next = !humanCheckFlag;
+    setHumanCheckFlag(next);
+    try {
+      await setFeatureFlag('humanCheck', next);
+    } catch (e) {
+      console.error(e);
+      setHumanCheckFlag(!next);
+    }
+  };
+
+  const saveTeacher = async () => {
+    if (!teacherEditor) return;
+    if (!teacherEditor.name || !teacherEditor.login || !teacherEditor.password) {
+      alert('Please fill required fields: name, login, password');
+      return;
+    }
+    setTeacherSaving(true);
+    try {
+      const payload = {
+        name: teacherEditor.name ?? '',
+        photoBase64: teacherEditor.photoBase64,
+        certificateBase64: teacherEditor.certificateBase64,
+        ieltsOverall: Number(teacherEditor.ieltsOverall) || 0,
+        ieltsWriting: Number(teacherEditor.ieltsWriting) || 0,
+        login: teacherEditor.login ?? '',
+        password: teacherEditor.password ?? '',
+      };
+      if (teacherEditor.id) {
+        await updateTeacher(teacherEditor.id, payload, db);
+      } else {
+        await createTeacher(payload, db);
+      }
+      setTeacherEditor(null);
+      await loadTeachers();
+    } catch (e) { console.error(e); }
+    setTeacherSaving(false);
+  };
+
+  const deleteTeacher = async (id: string) => {
+    if (!confirm('Delete this teacher?')) return;
+    await deleteTeacherDoc(id, db);
+    setTeachers((prev) => prev.filter((t) => t.id !== id));
+  };
+
+  const handleTeacherPhotoUpload = async (file: File, field: 'photoBase64' | 'certificateBase64') => {
+    try {
+      const base64 = await compressImageToBase64(file);
+      setTeacherEditor((p) => ({ ...p, [field]: base64 }));
+    } catch (e) { console.error(e); }
+  };
+
   const addStudentToCenter = async () => {
     if (!viewCenter || !newStudentName.trim() || !newStudentLogin.trim() || !newStudentPassword.trim()) return;
     if ((viewCenter.studentCount ?? 0) >= viewCenter.studentLimit) {
@@ -687,6 +785,11 @@ export default function Admin() {
 
   useEffect(() => {
     if (isLoggedIn && section === 'centers' && centers.length === 0) loadCenters();
+  }, [isLoggedIn, section]);
+
+  useEffect(() => {
+    if (isLoggedIn && section === 'teachers' && teachers.length === 0) loadTeachers();
+    if (isLoggedIn && section === 'teachers') loadHumanCheckFlag();
   }, [isLoggedIn, section]);
 
   const addAnnouncement = async () => {
@@ -1795,6 +1898,183 @@ export default function Admin() {
                 </DialogContent>
               </Dialog>
             </div>
+            )}
+
+            {/* ── TEACHERS (Human Check) ── */}
+            {section === "teachers" && (
+              <div className="flex flex-col gap-6">
+                <div className="flex items-center justify-between flex-wrap gap-4">
+                  <div>
+                    <p className="text-[0.7rem] font-bold tracking-widest uppercase text-emerald-700 mb-1">Human Check</p>
+                    <h1 className="text-2xl font-bold text-slate-900 m-0">Teachers</h1>
+                  </div>
+                  <div className="flex gap-2">
+                    <button onClick={loadTeachers} disabled={teachersLoading}
+                      className="px-4 py-2 bg-white border border-slate-200 rounded-lg text-sm font-semibold text-slate-700 hover:bg-slate-50 cursor-pointer transition-colors">
+                      {teachersLoading ? 'Loading...' : '↻ Refresh'}
+                    </button>
+                    <button
+                      onClick={() => setTeacherEditor({ name: '', ieltsOverall: 8, ieltsWriting: 8, login: '', password: '' })}
+                      className="px-4 py-2 bg-emerald-600 text-white rounded-lg text-sm font-semibold hover:bg-emerald-700 transition-colors cursor-pointer">
+                      + Add Teacher
+                    </button>
+                  </div>
+                </div>
+
+                <div className="bg-white border border-slate-200 rounded-xl p-4 flex items-center justify-between gap-4 flex-wrap">
+                  <div>
+                    <p className="text-sm font-semibold text-slate-800">Human Check feature</p>
+                    <p className="text-xs text-slate-500 mt-0.5">
+                      Controls whether the "Human Check" button is visible to students on the site. Turn this on once you've added
+                      teachers and are ready to launch.
+                    </p>
+                  </div>
+                  <button
+                    onClick={toggleHumanCheckFlag}
+                    disabled={humanCheckFlagLoading}
+                    className={`shrink-0 relative w-12 h-7 rounded-full transition-colors cursor-pointer ${humanCheckFlag ? 'bg-emerald-600' : 'bg-slate-300'}`}
+                  >
+                    <span className={`absolute top-1 w-5 h-5 rounded-full bg-white transition-transform ${humanCheckFlag ? 'translate-x-6' : 'translate-x-1'}`} />
+                  </button>
+                </div>
+
+                {teachersLoading ? (
+                  <div className="flex items-center justify-center py-16 text-slate-400 text-sm gap-2">
+                    <Spinner color="#94a3b8" /> Loading...
+                  </div>
+                ) : teachers.length === 0 ? (
+                  <div className="bg-white rounded-xl border border-dashed border-slate-300 p-12 text-center">
+                    <p className="text-3xl mb-3">🎓</p>
+                    <p className="text-slate-600 font-semibold mb-1">No teachers yet</p>
+                    <p className="text-sm text-slate-400">Add your first teacher to enable Human Check.</p>
+                  </div>
+                ) : (
+                  <div className="bg-white rounded-xl border border-slate-200 overflow-hidden">
+                    <div className="overflow-x-auto">
+                      <table className="w-full text-sm">
+                        <thead>
+                          <tr className="border-b border-slate-100 bg-slate-50">
+                            <th className="px-4 py-3 text-left text-xs font-bold text-slate-500 uppercase tracking-wider">Teacher</th>
+                            <th className="px-4 py-3 text-center text-xs font-bold text-slate-500 uppercase tracking-wider">Overall</th>
+                            <th className="px-4 py-3 text-center text-xs font-bold text-slate-500 uppercase tracking-wider">Writing</th>
+                            <th className="px-4 py-3 text-center text-xs font-bold text-slate-500 uppercase tracking-wider">Unchecked</th>
+                            <th className="px-4 py-3 text-center text-xs font-bold text-slate-500 uppercase tracking-wider">Checked</th>
+                            <th className="px-4 py-3 text-center text-xs font-bold text-slate-500 uppercase tracking-wider">Status</th>
+                            <th className="px-4 py-3 text-right text-xs font-bold text-slate-500 uppercase tracking-wider">Actions</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-slate-100">
+                          {teachers.map((t) => (
+                            <tr key={t.id} className="hover:bg-slate-50 transition-colors">
+                              <td className="px-4 py-3">
+                                <div className="flex items-center gap-2.5">
+                                  {t.photoBase64 ? (
+                                    <img src={t.photoBase64} alt={t.name} className="w-8 h-8 rounded-full object-cover shrink-0" />
+                                  ) : (
+                                    <div className="w-8 h-8 rounded-full bg-emerald-100 text-emerald-700 text-xs font-bold flex items-center justify-center shrink-0">
+                                      {t.name.slice(0, 2).toUpperCase()}
+                                    </div>
+                                  )}
+                                  <div className="min-w-0">
+                                    <p className="font-semibold text-slate-800 truncate">{t.name}</p>
+                                    <p className="text-xs text-slate-400 font-mono truncate">{t.login}</p>
+                                  </div>
+                                </div>
+                              </td>
+                              <td className="px-4 py-3 text-center font-mono text-sm text-slate-700">{t.ieltsOverall.toFixed(1)}</td>
+                              <td className="px-4 py-3 text-center font-mono text-sm text-slate-700">{t.ieltsWriting.toFixed(1)}</td>
+                              <td className="px-4 py-3 text-center">
+                                <span className="font-mono text-sm font-bold text-amber-600">{teacherReviewCounts[t.id]?.pending ?? 0}</span>
+                              </td>
+                              <td className="px-4 py-3 text-center">
+                                <span className="font-mono text-sm font-bold text-emerald-600">{teacherReviewCounts[t.id]?.checked ?? 0}</span>
+                              </td>
+                              <td className="px-4 py-3 text-center">
+                                <Badge variant={t.active ? 'success' : 'destructive'} className="text-xs capitalize">
+                                  {t.active ? 'Active' : 'Inactive'}
+                                </Badge>
+                              </td>
+                              <td className="px-4 py-3 text-right">
+                                <div className="flex items-center justify-end gap-1">
+                                  <button onClick={() => setTeacherEditor(t)}
+                                    className="text-xs px-2.5 py-1 bg-slate-50 text-slate-700 border border-slate-200 rounded-lg hover:bg-slate-100 transition-colors cursor-pointer">Edit</button>
+                                  <button onClick={() => deleteTeacher(t.id)}
+                                    className="text-xs px-2.5 py-1 bg-red-50 text-red-600 border border-red-200 rounded-lg hover:bg-red-100 transition-colors cursor-pointer">Del</button>
+                                </div>
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                )}
+
+                {/* Add/Edit Teacher Dialog */}
+                <Dialog open={!!teacherEditor} onOpenChange={(open) => { if (!open) setTeacherEditor(null); }}>
+                  <DialogContent className="bg-white max-w-[520px] max-h-[90vh] overflow-y-auto">
+                    <DialogHeader>
+                      <DialogTitle className="text-slate-900">{teacherEditor?.id ? 'Edit Teacher' : 'Add Teacher'}</DialogTitle>
+                    </DialogHeader>
+                    {teacherEditor && (
+                      <div className="flex flex-col gap-4 mt-2">
+                        <div>
+                          <label className="text-xs font-semibold text-slate-600 mb-1 block uppercase tracking-wide">Name *</label>
+                          <Input className="border-slate-200 bg-white text-slate-900" value={teacherEditor.name ?? ''} onChange={(e) => setTeacherEditor((p) => ({ ...p, name: e.target.value }))} />
+                        </div>
+                        <div className="grid grid-cols-2 gap-3">
+                          <div>
+                            <label className="text-xs font-semibold text-slate-600 mb-1 block uppercase tracking-wide">IELTS Overall</label>
+                            <Input type="number" step="0.5" min="0" max="9" className="border-slate-200 bg-white text-slate-900" value={teacherEditor.ieltsOverall ?? 8} onChange={(e) => setTeacherEditor((p) => ({ ...p, ieltsOverall: Number(e.target.value) }))} />
+                          </div>
+                          <div>
+                            <label className="text-xs font-semibold text-slate-600 mb-1 block uppercase tracking-wide">IELTS Writing</label>
+                            <Input type="number" step="0.5" min="0" max="9" className="border-slate-200 bg-white text-slate-900" value={teacherEditor.ieltsWriting ?? 8} onChange={(e) => setTeacherEditor((p) => ({ ...p, ieltsWriting: Number(e.target.value) }))} />
+                          </div>
+                        </div>
+                        <div className="grid grid-cols-2 gap-3">
+                          <div>
+                            <label className="text-xs font-semibold text-slate-600 mb-1 block uppercase tracking-wide">Login *</label>
+                            <Input className="border-slate-200 bg-white text-slate-900" value={teacherEditor.login ?? ''} onChange={(e) => setTeacherEditor((p) => ({ ...p, login: e.target.value }))} />
+                          </div>
+                          <div>
+                            <label className="text-xs font-semibold text-slate-600 mb-1 block uppercase tracking-wide">Password *</label>
+                            <Input type="password" className="border-slate-200 bg-white text-slate-900" value={teacherEditor.password ?? ''} onChange={(e) => setTeacherEditor((p) => ({ ...p, password: e.target.value }))} />
+                          </div>
+                        </div>
+                        <div className="grid grid-cols-2 gap-3">
+                          <div>
+                            <label className="text-xs font-semibold text-slate-600 mb-1 block uppercase tracking-wide">Photo</label>
+                            {teacherEditor.photoBase64 && <img src={teacherEditor.photoBase64} alt="Photo" className="w-16 h-16 rounded-full object-cover mb-2" />}
+                            <input type="file" accept="image/*" onChange={(e) => { const f = e.target.files?.[0]; if (f) handleTeacherPhotoUpload(f, 'photoBase64'); }} className="text-xs" />
+                          </div>
+                          <div>
+                            <label className="text-xs font-semibold text-slate-600 mb-1 block uppercase tracking-wide">IELTS Certificate</label>
+                            {teacherEditor.certificateBase64 && <img src={teacherEditor.certificateBase64} alt="Certificate" className="w-16 h-16 rounded-lg object-cover mb-2" />}
+                            <input type="file" accept="image/*" onChange={(e) => { const f = e.target.files?.[0]; if (f) handleTeacherPhotoUpload(f, 'certificateBase64'); }} className="text-xs" />
+                          </div>
+                        </div>
+                        {teacherEditor.id && (
+                          <label className="flex items-center gap-2 text-sm text-slate-700">
+                            <input type="checkbox" checked={teacherEditor.active ?? true} onChange={(e) => setTeacherEditor((p) => ({ ...p, active: e.target.checked }))} />
+                            Active (visible to students)
+                          </label>
+                        )}
+                        <div className="flex gap-3 pt-2">
+                          <button disabled={teacherSaving} onClick={saveTeacher}
+                            className="flex-1 bg-emerald-600 text-white rounded-lg py-2.5 font-semibold text-sm cursor-pointer hover:bg-emerald-700 transition-colors disabled:opacity-50">
+                            {teacherSaving ? 'Saving...' : 'Save'}
+                          </button>
+                          <button onClick={() => setTeacherEditor(null)}
+                            className="flex-1 bg-white text-slate-700 border border-slate-200 rounded-lg py-2.5 font-semibold text-sm cursor-pointer hover:bg-slate-50 transition-colors">
+                            Cancel
+                          </button>
+                        </div>
+                      </div>
+                    )}
+                  </DialogContent>
+                </Dialog>
+              </div>
             )}
 
             {/* ── BLOG ── */}
