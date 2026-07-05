@@ -1276,8 +1276,8 @@ export function FeedbackPage() {
                       {ltError && <p className="px-5 pb-3 text-sm text-red-600">{ltError}</p>}
                     </div>
                   ) : (
-                    <div className="bg-[var(--bg-card)] rounded-2xl border border-[var(--border-color)] overflow-hidden shadow-sm">
-                      <div className="flex items-center justify-between px-5 py-3 border-b border-[var(--border-color)] bg-slate-50">
+                    <div className="bg-[var(--bg-card)] rounded-2xl border border-[var(--border-color)] shadow-sm">
+                      <div className="flex items-center justify-between px-5 py-3 border-b border-[var(--border-color)] bg-slate-50 rounded-t-2xl">
                         <span className={`text-sm font-semibold ${ltMatches.length === 0 ? 'text-green-700' : 'text-red-600'}`}>
                           {ltMatches.length === 0 ? '✓ No issues found' : `${ltMatches.length} issue${ltMatches.length !== 1 ? 's' : ''} found`}
                         </span>
@@ -1302,14 +1302,17 @@ export function FeedbackPage() {
                                 e.stopPropagation();
                                 const r = (e.target as HTMLElement).getBoundingClientRect();
                                 const cr = ltOverlayRef.current!.getBoundingClientRect();
-                                setLtPopover({ match: seg.match!, x: r.left - cr.left, y: r.bottom - cr.top + 6 });
+                                // Keep the popover inside the container so it isn't cut off at the edges
+                                const POP_W = 290;
+                                const x = Math.max(8, Math.min(r.left - cr.left, cr.width - POP_W));
+                                setLtPopover({ match: seg.match!, x, y: r.bottom - cr.top + 6 });
                               }}
                             >{seg.text}</mark>
                           ) : <span key={i}>{seg.text}</span>
                         )}
                         {ltPopover && (
                           <div
-                            className="absolute zoom-110 bg-[#0f172a] border border-[#1e3a5f] rounded-xl p-3.5 max-w-[280px] shadow-xl"
+                            className="absolute z-30 bg-[#0f172a] border border-[#1e3a5f] rounded-xl p-3.5 max-w-[280px] shadow-xl"
                             style={{ left: ltPopover.x, top: ltPopover.y }}
                             onClick={(e) => e.stopPropagation()}
                           >
