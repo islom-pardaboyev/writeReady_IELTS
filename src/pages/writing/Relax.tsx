@@ -85,6 +85,7 @@ function Relax() {
   const humanCheckEnabled = useFeatureFlag("humanCheck");
 
   const [splitRatio, setSplitRatio] = useState(0.46);
+  const [questionCollapsed, setQuestionCollapsed] = useState(false);
   const [timerRunning, setTimerRunning] = useState(false);
   const elapsed = useStopwatch(timerRunning);
   const splitContainerRef = useRef<HTMLDivElement>(null);
@@ -609,13 +610,26 @@ function Relax() {
         </p>
       </div>
 
+      {/* ── Mobile action bar (phones only) ── */}
+      <div className="md:hidden flex items-center gap-2 px-4 py-2 bg-slate-800 border-b border-slate-900 overflow-x-auto">
+        <button
+          onClick={() => setQuestionCollapsed((p) => !p)}
+          className="shrink-0 inline-flex items-center gap-1 px-3 py-1.5 text-xs font-medium text-white border border-white/25 rounded-md"
+        >
+          {questionCollapsed ? "📄 Show question" : "📄 Hide question"}
+        </button>
+        <button onClick={handleReset} className="shrink-0 inline-flex items-center px-3 py-1.5 text-xs text-white/85 border border-white/25 rounded-md">
+          Start over
+        </button>
+      </div>
+
       {/* Split panel */}
       <div
         ref={splitContainerRef}
         className="flex flex-col flex-1 overflow-hidden md:flex-row"
         style={{ "--split": splitRatio } as unknown as CSSProperties}
       >
-        <div className="w-full overflow-y-auto bg-white border-b border-slate-200 md:w-[calc(var(--split)*100%)] md:border-b-0 md:border-r max-h-[42vh] md:max-h-none">
+        <div className={`w-full overflow-y-auto bg-white border-b border-slate-200 md:w-[calc(var(--split)*100%)] md:border-b-0 md:border-r max-h-[42vh] md:max-h-none ${questionCollapsed ? "hidden md:block" : ""}`}>
           <div className="p-6 w-full">
             {activeTask === 2 && <WritingTask2Preview task2={task2Prompt} />}
             {activeTask === 1 && imageUrl && (
