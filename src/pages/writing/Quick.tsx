@@ -79,7 +79,6 @@ function Quick() {
   const [task2List, setTask2List] = useState<Task2[]>([]);
   const [loading, setLoading] = useState(true);
   const [showHeader, setShowHeader] = useState(true);
-  const [questionCollapsed, setQuestionCollapsed] = useState(false);
   const [showFeedbackModal, setShowFeedbackModal] = useState(false);
   const [checkingAccess, setCheckingAccess] = useState(false);
   const humanCheck = useHumanCheck("quick");
@@ -465,22 +464,6 @@ function Quick() {
         </div>
       )}
 
-      {/* ── Mobile action bar (phones only) ── */}
-      <div className="md:hidden flex items-center gap-2 px-4 py-2 bg-violet-800 border-b border-violet-900 overflow-x-auto">
-        <button
-          onClick={() => setQuestionCollapsed((p) => !p)}
-          className="shrink-0 inline-flex items-center gap-1 px-3 py-1.5 text-xs font-medium text-white border border-white/25 rounded-md"
-        >
-          {questionCollapsed ? "📄 Show question" : "📄 Hide question"}
-        </button>
-        <button onClick={handleGetAnother} className="shrink-0 inline-flex items-center px-3 py-1.5 text-xs text-white/85 border border-white/25 rounded-md">
-          New question
-        </button>
-        <button onClick={() => setSelectedTaskType(null)} className="shrink-0 inline-flex items-center px-3 py-1.5 text-xs text-white/85 border border-white/25 rounded-md">
-          Change task
-        </button>
-      </div>
-
       {/* ── Split panel ── */}
       <div
         ref={splitContainerRef}
@@ -488,7 +471,7 @@ function Quick() {
         style={{ "--split": splitRatio } as unknown as CSSProperties}
       >
         {/* Question panel */}
-        <div className={`w-full overflow-y-auto bg-white border-b border-slate-200 md:w-[calc(var(--split)*100%)] md:border-b-0 md:border-r max-h-[42vh] md:max-h-none ${questionCollapsed ? "hidden md:block" : ""}`}>
+        <div className="w-full overflow-y-auto bg-white border-b border-slate-200 md:w-[calc(var(--split)*100%)] md:border-b-0 md:border-r max-h-[42vh] md:max-h-none">
           <div className="p-6 w-full">
             {selectedTaskType === 1 && task1 ? (
               <WritingTask1Preview task1={task1} />

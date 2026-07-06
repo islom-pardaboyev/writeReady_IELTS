@@ -63,7 +63,6 @@ function Mock() {
   const [loading, setLoading] = useState(true);
   const [timeLeft, setTimeLeft] = useState(TIMER_SECONDS);
   const [showHeader, setShowHeader] = useState(true);
-  const [questionCollapsed, setQuestionCollapsed] = useState(false);
   const [showFeedbackModal, setShowFeedbackModal] = useState(false);
   const [checkingAccess, setCheckingAccess] = useState(false);
   const [autoSubmittedByTimer, setAutoSubmittedByTimer] = useState(false);
@@ -578,27 +577,6 @@ function Mock() {
         </div>
       )}
 
-      {/* ── Mobile action bar (phones only) ── */}
-      <div className="md:hidden flex items-center gap-2 px-4 py-2 bg-slate-800 border-b border-slate-900 overflow-x-auto">
-        <button
-          onClick={() => setQuestionCollapsed((p) => !p)}
-          className="shrink-0 inline-flex items-center gap-1 px-3 py-1.5 text-xs font-medium text-white border border-white/25 rounded-md"
-        >
-          {questionCollapsed ? "📄 Show question" : "📄 Hide question"}
-        </button>
-        <div className="shrink-0 flex items-center gap-1">
-          {([1, 2] as const).map((t) => (
-            <button
-              key={t}
-              onClick={() => setActiveTask(t)}
-              className={`px-3 py-1.5 text-xs font-medium rounded-md ${activeTask === t ? "bg-white text-slate-900" : "text-white/85 border border-white/25"}`}
-            >
-              Task {t}
-            </button>
-          ))}
-        </div>
-      </div>
-
       {/* ── Main split panel ── */}
       <div
         ref={splitContainerRef}
@@ -606,7 +584,7 @@ function Mock() {
         style={{ "--split": splitRatio } as unknown as CSSProperties}
       >
         {/* Question panel */}
-        <div className={`w-full overflow-y-auto bg-white border-b border-slate-200 md:w-[calc(var(--split)*100%)] md:border-b-0 md:border-r max-h-[42vh] md:max-h-none ${questionCollapsed ? "hidden md:block" : ""}`}>
+        <div className="w-full overflow-y-auto bg-white border-b border-slate-200 md:w-[calc(var(--split)*100%)] md:border-b-0 md:border-r max-h-[42vh] md:max-h-none">
           <div className="p-6 w-full">
             {activeTask === 1 && task1 ? (
               <WritingTask1Preview task1={task1} />
