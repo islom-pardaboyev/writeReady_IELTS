@@ -2,8 +2,10 @@ import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { initializeApp, getApps, cert } from 'firebase-admin/app';
 import { getAuth } from 'firebase-admin/auth';
 import { getFirestore } from 'firebase-admin/firestore';
+import Anthropic from '@anthropic-ai/sdk';
 
-const GEMINI_URL = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-latest:generateContent';
+const ALLOWED_MODEL = 'claude-sonnet-4-6';
+const MAX_TOKENS = 512;
 
 function initFirebase() {
   if (getApps().length) return;
@@ -60,30 +62,23 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     return res.status(400).json({ error: 'userSentence, targetItem, and targetType are required.' });
   }
 
-  const apiKey = process.env.GEMINI_API_KEY ?? process.env.GOOGLE_GEMINI_FLASH_API_KEY;
-  if (!apiKey) return res.status(500).json({ error: 'Gemini API key not configured.' });
+  const apiKey = process.env.ANTHROPIC_API_KEY;
+  if (!apiKey) return res.status(500).json({ error: 'Claude API key is not configured.' });
 
   const prompt = buildPrompt(userSentence as string, targetItem as string, targetType as string, example as string | undefined);
 
   try {
-    const geminiRes = await fetch(GEMINI_URL, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'X-goog-api-key': apiKey },
-      body: JSON.stringify({
-        contents: [{ parts: [{ text: prompt }] }],
-        generationConfig: { temperature: 0.3, maxOutputTokens: 512 },
-      }),
+    const anthropic = new Anthropic({ apiKey });
+    const message = await anthropic.messages.create({
+      model: ALLOWED_MODEL,
+      max_tokens: MAX_TOKENS,
+      messages: [{ role: 'user', content: prompt }],
     });
 
-    if (!geminiRes.ok) {
-      const body = await geminiRes.text();
-      throw new Error(`Gemini API returned ${geminiRes.status}: ${body.slice(0, 200)}`);
-    }
-
-    const data = await geminiRes.json() as {
-      candidates?: { content: { parts: { text: string }[] } }[];
-    };
-    const raw = data?.candidates?.[0]?.content?.parts?.[0]?.text ?? '';
+    const raw = message.content
+      .filter((block): block is Anthropic.TextBlock => block.type === 'text')
+      .map((block) => block.text)
+      .join('');
 
     const jsonMatch = raw.match(/\{[\s\S]*\}/);
     if (!jsonMatch) throw new Error(`No JSON found in response: ${raw.slice(0, 200)}`);
