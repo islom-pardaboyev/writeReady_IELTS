@@ -295,9 +295,10 @@ Return this EXACT JSON structure:
 }
 
 STRICT RULES:
-- sentenceAnalysis: cover EVERY sentence in the essay, in order
-- EXACTLY 15 vocabulary items
-- EXACTLY 10 grammar points
+- sentenceAnalysis: pick the sentences that most need improvement plus 2-3 strong ones as positive examples — up to 12 sentences total, in the order they appear. Do NOT analyse every single sentence.
+- EXACTLY 10 vocabulary items
+- EXACTLY 6 grammar points
+- Keep every feedback/strength/issue string to one concise sentence
 - Every category MUST have at least 1 strength
 - Every issue should reference the essay where possible
 - scores.* must be internally consistent with bandRationale.* — the score must reflect the best-fit band you described
