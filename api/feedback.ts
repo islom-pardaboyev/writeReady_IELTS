@@ -165,7 +165,7 @@ GRAMMATICAL RANGE & ACCURACY (both tasks):
 }
 
 function buildLimitedPrompt(essay: string, question: string, taskType: string, wordCount: number): string {
-  return `You are a certified IELTS examiner. Score strictly against the official IELTS Writing band descriptors below — do not use any other mental model of "good writing." Return ONLY valid JSON — no markdown, no backticks.
+  return `You are a certified, experienced IELTS examiner. Score this essay accurately using the official IELTS best-fit method and the band descriptors below. Be fair and calibrated — award high bands (8.0–9.0) to genuinely strong essays and low bands to weak ones. Return ONLY valid JSON — no markdown, no backticks.
 
 TASK TYPE: ${taskType}
 QUESTION: ${question}
@@ -175,7 +175,7 @@ ${essay}
 === BAND DESCRIPTORS (condensed) ===
 ${bandDescriptors(taskType)}
 
-For each criterion, find the highest band that is FULLY met by the essay — cite one concrete reason. If unsure between two bands, choose the lower one.
+For each criterion, choose the band whose descriptor BEST matches the essay overall (official IELTS best-fit) — cite one concrete reason. Do not demand perfection: the top bands allow minor slips, so a strong, fluent, well-organised essay with wide vocabulary and mostly error-free sentences is a genuine Band 8–9, not a 6. Use the full 4.0–9.0 range; if the essay sits between two bands, pick the closer fit rather than rounding down.
 
 Return ONLY this JSON structure:
 {
@@ -203,7 +203,7 @@ Return ONLY this JSON structure:
 }
 
 function buildPrompt(essay: string, question: string, taskType: string, wordCount: number): string {
-  return `You are a certified IELTS examiner. Score strictly against the official IELTS Writing band descriptors below — do not use any other mental model of "good writing," and do not default to a comfortable middle band. Return ONLY valid JSON — no markdown, no backticks, no extra text.
+  return `You are a certified, experienced IELTS examiner. Score this essay accurately using the official IELTS best-fit method and the band descriptors below — not your own idea of "good writing." Be fair and calibrated: award high bands (8.0–9.0) to genuinely strong essays and low bands to weak ones. Under-scoring a strong essay is just as wrong as over-scoring a weak one. Return ONLY valid JSON — no markdown, no backticks, no extra text.
 
 TASK TYPE: ${taskType}
 QUESTION: ${question}
@@ -213,8 +213,18 @@ ${essay}
 === OFFICIAL BAND DESCRIPTORS (condensed) ===
 ${bandDescriptors(taskType)}
 
-=== SCORING METHOD ===
-For EACH of the 4 criteria: start at band 5, check whether the essay meets that band's descriptor, and step up one band at a time until you reach a band it does NOT fully meet — the score is the last band it FULLY met (use half bands, e.g. 6.5, only when the essay clearly exceeds the lower whole band but doesn't fully reach the next one). Point to specific evidence from the essay for the band you land on. If in doubt between two adjacent bands, choose the LOWER one.
+=== SCORING METHOD (official IELTS best-fit) ===
+For EACH of the 4 criteria, choose the band whose descriptor BEST matches the essay's overall profile — exactly as a real IELTS examiner does. Best-fit means matching the closest overall description; NOT every feature of a band must be present, and one or two features sitting slightly higher or lower does not change the best-fit band.
+
+Do NOT demand perfection. The top bands explicitly tolerate minor errors: Band 9 allows "rare errors only, as slips"; Band 8 allows "occasional inaccuracies" that don't detract. So a fluent, well-organised essay with a wide, natural vocabulary and mostly error-free complex sentences is a genuine Band 8 or 9 — score it that way. A few small slips must NOT drag such an essay down to Band 5–6.
+
+Use the FULL range 4.0–9.0. Use half bands (e.g. 7.5) when the essay sits between two whole bands; if it does, pick the closer fit — do NOT reflexively round down.
+
+Calibration anchors:
+- Band 8.5–9.0: reads like a highly competent, near-native writer — precise, wide vocabulary; varied, virtually error-free complex sentences; fully developed, well-supported ideas; seamless cohesion and paragraphing.
+- Band 7.0–7.5: good control and range; some less-common vocabulary; frequent error-free complex sentences with only minor errors; clear, well-organised argument that addresses all parts.
+- Band 5.0–6.0: adequate but limited range; noticeable or frequent errors; ideas underdeveloped, mechanical, or repetitive.
+Point to specific evidence from the essay for the band you award.
 
 Return this EXACT JSON structure:
 {
@@ -290,8 +300,9 @@ STRICT RULES:
 - EXACTLY 10 grammar points
 - Every category MUST have at least 1 strength
 - Every issue should reference the essay where possible
-- scores.* must be internally consistent with bandRationale.* — do not state a band was not met and then award it anyway
-- Band 8.0+ only if fully supported by the descriptors with no contradicting evidence`;
+- scores.* must be internally consistent with bandRationale.* — the score must reflect the best-fit band you described
+- Award Band 8.0–9.0 whenever the essay's overall profile best matches those descriptors; do NOT withhold a high band just because a few minor slips exist — the top-band descriptors explicitly allow occasional slips
+- Do NOT compress scores toward the middle, and do NOT systematically under-award strong essays`;
 }
 
 type CategoryFeedback = { strengths: string[]; issues: string[] };
