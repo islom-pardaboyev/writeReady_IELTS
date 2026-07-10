@@ -315,7 +315,7 @@ Return this EXACT JSON structure:
     "<third most impactful fix>"
   ],
   "bandGapAnalysis": "<Specific measurable steps to the next band level>",
-  "sampleResponse": "<A high-band (band 7-9) model response for THIS exact question. STRICT REQUIREMENTS: (1) For Task 1: write a FULL essay of at least 180 words covering ALL key data points, trends, comparisons, and figures shown in the chart/graph/diagram — include an introduction paraphrasing the question, an overview paragraph highlighting 2-3 main trends, and 2 detailed body paragraphs with specific data and figures. Do NOT omit any significant data. (2) For Task 2: write a FULL essay of at least 280 words with introduction, 2-3 body paragraphs each with a main point, supporting explanation and example, and a conclusion. Use precise academic vocabulary, varied sentence structures, and effective cohesive devices. Do NOT add filler words — every sentence must carry meaning. Write as a band 7-9 IELTS candidate would.>",
+  "sampleResponse": "<A band-8/9 model answer for THIS exact question. Task 1: ~150 words — intro paraphrasing the question, an overview of the 2-3 main trends, and the key figures/comparisons. Task 2: ~200 words — intro, 2 body paragraphs (each one main point with a brief example), and a conclusion. Precise academic vocabulary, varied structures, no filler — every sentence carries meaning.>",
   "sentenceAnalysis": [
     {
       "sentence": "<copy the EXACT sentence from the student essay>",
@@ -342,12 +342,13 @@ Return this EXACT JSON structure:
 }
 
 STRICT RULES:
-- sentenceAnalysis: pick the sentences that most need improvement plus 2-3 strong ones as positive examples — up to 12 sentences total, in the order they appear. Do NOT analyse every single sentence.
-- EXACTLY 10 vocabulary items
-- EXACTLY 6 grammar points
+- sentenceAnalysis: pick the sentences that most need improvement plus 1-2 strong ones as positive examples — up to 8 sentences total, in the order they appear. Do NOT analyse every single sentence.
+- EXACTLY 8 vocabulary items
+- EXACTLY 5 grammar points
 - Keep every feedback/strength/issue string to one concise sentence
 - Every category MUST have at least 1 strength
 - Every issue should reference the essay where possible
+- Score each of the 4 criteria INDEPENDENTLY. It is uncommon for all four to land on the exact same band — most essays are stronger in some areas than others. Do NOT default to giving every criterion 7.0; give matching scores only when each criterion genuinely best-fits that band on its own.
 - scores.* must be internally consistent with bandRationale.* — the score must reflect the best-fit band you described
 - Award Band 8.0–9.0 whenever the essay's overall profile best matches those descriptors; do NOT withhold a high band just because a few minor slips exist — the top-band descriptors explicitly allow occasional slips
 - Do NOT compress scores toward the middle or cluster essays at Band 7 — differentiate genuinely strong essays (8.0–9.0) from merely competent ones (7.0), and do NOT systematically under-award strong essays`;
