@@ -12,7 +12,7 @@ export function useUsage(uid: string | null) {
     setLoading(true);
     const yearMonth = new Date().toISOString().slice(0, 7);
 
-    const planLimits: Record<string, number> = { forever: 9999, premium: 30, standard: 12, basic: 5 };
+    const planLimits: Record<string, number> = { forever: 9999, premium: 25, standard: 12, basic: 5 };
 
     const unsub = onSnapshot(doc(db, 'users', uid), (snap) => {
       setLoading(false);

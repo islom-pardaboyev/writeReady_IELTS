@@ -85,9 +85,9 @@ export async function getUsage(uid: string): Promise<UsageRecord | null> {
   const count = usage?.monthKey === yearMonth ? (usage?.count ?? 0) : 0;
   const plan: string = snap.data()?.plan ?? 'free';
   const hasCenter = typeof snap.data()?.centerId === 'string' && snap.data()!.centerId.length > 0;
-  const planLimits: Record<string, number> = { forever: 9999, premium: 30, standard: 12, basic: 5 };
-  // Center students always get at least the premium (30) allowance.
-  const limit = Math.max(planLimits[plan] ?? 0, hasCenter ? 30 : 0);
+  const planLimits: Record<string, number> = { forever: 9999, premium: 25, standard: 12, basic: 5 };
+  // Center students always get at least the premium (25) allowance.
+  const limit = Math.max(planLimits[plan] ?? 0, hasCenter ? 25 : 0);
   return { uid, yearMonth, count, limit, updatedAt: new Date() };
 }
 

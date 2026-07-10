@@ -5,7 +5,7 @@ import { getFirestore, FieldValue } from 'firebase-admin/firestore';
 import { createHmac } from 'crypto';
 
 // Learning-center students get the premium allowance for free.
-const CENTER_MONTHLY_LIMIT = 30;
+const CENTER_MONTHLY_LIMIT = 25;
 
 type CreditErrorCode = 'USER_NOT_FOUND' | 'NOT_PRO' | 'LIMIT_REACHED';
 class CreditError extends Error {
@@ -66,9 +66,9 @@ async function consumeCredit(uid: string, monthKey: string): Promise<boolean> {
       return;
     }
 
-    // Learning-center students always get the premium allowance (30/month),
+    // Learning-center students always get the premium allowance (25/month),
     // regardless of whether the center's own subscription is still active.
-    const planLimits: Record<string, number> = { forever: 9999, premium: 30, standard: 12, basic: 5 };
+    const planLimits: Record<string, number> = { forever: 9999, premium: 25, standard: 12, basic: 5 };
     const monthlyLimit = isCenterStudent
       ? Math.max(CENTER_MONTHLY_LIMIT, planLimits[plan] ?? 0)
       : planLimits[plan as string];

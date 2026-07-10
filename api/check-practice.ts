@@ -4,7 +4,7 @@ import { getAuth } from 'firebase-admin/auth';
 import { getFirestore } from 'firebase-admin/firestore';
 import Anthropic from '@anthropic-ai/sdk';
 
-const ALLOWED_MODEL = 'claude-sonnet-4-6';
+const ALLOWED_MODEL = 'claude-haiku-4-5';
 const MAX_TOKENS = 512;
 
 function initFirebase() {

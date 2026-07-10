@@ -5,7 +5,7 @@ import { createHmac } from 'crypto';
 import Anthropic from '@anthropic-ai/sdk';
 
 const ALLOWED_MODEL = 'claude-sonnet-4-6';
-const MAX_TOKENS = 8000;
+const MAX_TOKENS = 12000;
 const TOKEN_MAX_AGE_MS = 3 * 60 * 1000; // 3 minutes
 
 function verifyToken(raw: string): { uid: string; isBonus: boolean } {
@@ -326,7 +326,7 @@ Return this EXACT JSON structure:
   ],
   "vocabulary": [
     {
-      "word": "<word or phrase from the essay or relevant to the topic>",
+      "word": "<a high-level, topic-specific word or phrase relevant to THIS essay's topic (band 7+ vocabulary)>",
       "uzbek": "<Uzbek translation>",
       "english": "<clear English definition>",
       "exampleFromEssay": "<example sentence tailored to THIS essay topic>"
@@ -334,7 +334,7 @@ Return this EXACT JSON structure:
   ],
   "grammar": [
     {
-      "point": "<grammar rule name>",
+      "point": "<an advanced grammar structure useful for high-band IELTS writing>",
       "explanation": "<clear explanation in plain English>",
       "example": "<a correct example sentence>"
     }
@@ -342,9 +342,9 @@ Return this EXACT JSON structure:
 }
 
 STRICT RULES:
-- sentenceAnalysis: pick the sentences that most need improvement plus 1-2 strong ones as positive examples — up to 8 sentences total, in the order they appear. Do NOT analyse every single sentence.
-- EXACTLY 8 vocabulary items
-- EXACTLY 5 grammar points
+- sentenceAnalysis: cover EVERY sentence in the essay, in order
+- EXACTLY 15 vocabulary items
+- EXACTLY 10 grammar points
 - Keep every feedback/strength/issue string to one concise sentence
 - Every category MUST have at least 1 strength
 - Every issue should reference the essay where possible
