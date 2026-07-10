@@ -30,6 +30,37 @@ function initFirebase() {
   initializeApp({ credential: cert({ projectId, clientEmail, privateKey }) });
 }
 
+function currentMonthKey(): string {
+  const now = new Date();
+  return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+}
+
+// Reverse the credit that pre-check deducted, so a failed/truncated report
+// never costs the user a report from their monthly quota.
+async function refundCredit(uid: string, isBonus: boolean): Promise<void> {
+  try {
+    initFirebase();
+    if (!getApps().length) return;
+    const db = getFirestore();
+    const userRef = db.collection('users').doc(uid);
+    await db.runTransaction(async (tx) => {
+      const snap = await tx.get(userRef);
+      if (!snap.exists) return;
+      const data = snap.data()!;
+      if (isBonus) {
+        const bonus = typeof data.bonusAnalyses === 'number' ? data.bonusAnalyses : 0;
+        tx.set(userRef, { bonusAnalyses: bonus + 1 }, { merge: true });
+        return;
+      }
+      const monthKey = currentMonthKey();
+      const usage = data.usage ?? {};
+      if (usage.monthKey === monthKey && typeof usage.count === 'number' && usage.count > 0) {
+        tx.set(userRef, { usage: { monthKey, count: usage.count - 1 } }, { merge: true });
+      }
+    });
+  } catch { /* best-effort refund; never throw from here */ }
+}
+
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
@@ -88,6 +119,20 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     }
 
     res.end();
+
+    // If Claude hit the token cap the streamed JSON is truncated — the client
+    // can't parse it and shows "Feedback incomplete". Detect that (and any
+    // other unparseable output) and refund the credit so a failed report is
+    // never charged against the user's monthly quota.
+    let stopReason: string | null = null;
+    try { stopReason = (await stream.finalMessage()).stop_reason; } catch { /* ignore */ }
+    let clientCanParse = true;
+    try {
+      JSON.parse(raw.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim());
+    } catch { clientCanParse = false; }
+    if (stopReason === 'max_tokens' || !clientCanParse) {
+      await refundCredit(uid, isBonus);
+    }
 
     // Save report to Firestore (non-blocking, best-effort)
     try {
