@@ -149,6 +149,30 @@ function ScoreBadge({ score }: { score: number }) {
   );
 }
 
+// Ordered stages shown while the report streams in. The report JSON arrives in
+// this exact order, so we detect which section has appeared to show REAL
+// progress (not a fake timer).
+const ANALYSIS_STAGES = [
+  { key: 'read', label: 'Reading your essay', icon: '📖' },
+  { key: 'overview', label: 'Assessing band scores', icon: '🎯' },
+  { key: 'improve', label: 'Finding what to work on', icon: '🔍' },
+  { key: 'sample', label: 'Writing a model sample essay', icon: '✍️' },
+  { key: 'vocab', label: 'Building your vocabulary list', icon: '📚' },
+  { key: 'grammar', label: 'Preparing grammar points', icon: '🧠' },
+  { key: 'exercises', label: 'Preparing interactive exercises', icon: '🎮' },
+] as const;
+const LAST_STAGE = ANALYSIS_STAGES.length - 1;
+
+// Map the streamed-so-far JSON text to the furthest stage reached.
+function stageFromRaw(raw: string): number {
+  if (raw.includes('"grammar"')) return 5;
+  if (raw.includes('"vocabulary"')) return 4;
+  if (raw.includes('"sampleResponse"')) return 3;
+  if (raw.includes('"priorityFixes"') || raw.includes('"feedback"')) return 2;
+  if (raw.includes('"scores"') || raw.includes('"bandRationale"')) return 1;
+  return 0;
+}
+
 export function FeedbackPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
@@ -161,6 +185,7 @@ export function FeedbackPage() {
   const [hasBothTasks, setHasBothTasks] = useState(false);
 
   const [loadings, setLoadings] = useState<Record<string, boolean>>({});
+  const [analysisStage, setAnalysisStage] = useState<Record<string, number>>({});
   const [feedbacks, setFeedbacks] = useState<Record<string, EnhancedFeedbackResult>>({});
   const [feedbackErrors, setFeedbackErrors] = useState<Record<string, string>>({});
   const [activeTab, setActiveTab] = useState<Tab>('overview');
@@ -265,6 +290,7 @@ export function FeedbackPage() {
 
     const taskKey = selectedTask;
     setLoadings((p) => ({ ...p, [taskKey]: true }));
+    setAnalysisStage((p) => ({ ...p, [taskKey]: 0 }));
     setFeedbackErrors((p) => { const n = { ...p }; delete n[taskKey]; return n; });
 
     try {
@@ -307,16 +333,24 @@ export function FeedbackPage() {
       const reader = res.body?.getReader();
       const decoder = new TextDecoder();
       let raw = '';
+      let lastStage = 0;
       if (reader) {
         while (true) {
           const { done, value } = await reader.read();
           if (done) break;
           raw += decoder.decode(value, { stream: true });
+          const st = stageFromRaw(raw);
+          if (st > lastStage) {
+            lastStage = st;
+            setAnalysisStage((p) => ({ ...p, [taskKey]: st }));
+          }
         }
         raw += decoder.decode(); // flush
       } else {
         raw = await res.text();
       }
+      // Stream finished — final "preparing interactive exercises" beat.
+      setAnalysisStage((p) => ({ ...p, [taskKey]: LAST_STAGE }));
 
       let parsedFeedback: EnhancedFeedbackResult;
       try {
@@ -826,16 +860,67 @@ export function FeedbackPage() {
             </p>
           </div>
 
-          {/* ── Loading ── */}
-          {loading && (
-            <div className="rounded-2xl border border-[var(--border-color)] p-16 text-center bg-[var(--bg-card)]">
-              <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-blue-50 mb-5">
-                <div className="w-8 h-8 border-2 border-blue-500 border-t-transparent rounded-full animate-spin" />
+          {/* ── Loading (staged progress) ── */}
+          {loading && (() => {
+            const stage = analysisStage[selectedTask] ?? 0;
+            const pct = Math.round((stage / LAST_STAGE) * 100);
+            return (
+              <div className="rounded-2xl border border-[var(--border-color)] p-6 sm:p-8 bg-[var(--bg-card)]">
+                <div className="flex items-center gap-3 mb-5">
+                  <div className="inline-flex items-center justify-center w-11 h-11 rounded-full bg-blue-50 shrink-0">
+                    <div className="w-5 h-5 border-2 border-blue-500 border-t-transparent rounded-full animate-spin" />
+                  </div>
+                  <div className="min-w-0">
+                    <p className="font-semibold text-[var(--text-primary)] text-lg leading-tight">Analysing your essay…</p>
+                    <p className="text-sm text-[var(--text-secondary)]">{ANALYSIS_STAGES[stage].label} · {pct}%</p>
+                  </div>
+                </div>
+
+                {/* progress bar */}
+                <div className="h-1.5 w-full rounded-full bg-[var(--bg-subtle)] overflow-hidden mb-6">
+                  <div
+                    className="h-full bg-blue-500 rounded-full transition-all duration-700 ease-out"
+                    style={{ width: `${Math.max(pct, 6)}%` }}
+                  />
+                </div>
+
+                {/* stage checklist */}
+                <ul className="space-y-2.5">
+                  {ANALYSIS_STAGES.map((s, i) => {
+                    const done = i < stage;
+                    const active = i === stage;
+                    return (
+                      <li
+                        key={s.key}
+                        className={`flex items-center gap-3 transition-opacity duration-300 ${active ? 'opacity-100' : done ? 'opacity-80' : 'opacity-40'}`}
+                      >
+                        <span
+                          className={`flex items-center justify-center w-7 h-7 rounded-full text-[0.8rem] shrink-0 transition-colors ${
+                            done
+                              ? 'bg-green-100 text-green-600'
+                              : active
+                                ? 'bg-blue-100'
+                                : 'bg-[var(--bg-subtle)]'
+                          }`}
+                        >
+                          {done ? (
+                            '✓'
+                          ) : active ? (
+                            <span className="w-3 h-3 border-2 border-blue-500 border-t-transparent rounded-full animate-spin inline-block" />
+                          ) : (
+                            <span aria-hidden>{s.icon}</span>
+                          )}
+                        </span>
+                        <span className={`text-sm ${active ? 'font-semibold text-[var(--text-primary)]' : 'text-[var(--text-secondary)]'}`}>
+                          {s.label}
+                        </span>
+                      </li>
+                    );
+                  })}
+                </ul>
               </div>
-              <p className="font-semibold text-[var(--text-primary)] text-lg mb-1">Analysing your essay…</p>
-              <p className="text-sm text-[var(--text-secondary)]">This usually takes up to 1-5 minutes.</p>
-            </div>
-          )}
+            );
+          })()}
 
           {/* ── Error ── */}
           {feedbackError && (
