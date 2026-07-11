@@ -635,11 +635,11 @@ export function FeedbackPage() {
       feedback.sentenceAnalysis.forEach((s, i) => {
         const labelText = typeLabel[s.type] ?? s.type;
         const tc = typeColor2[s.type] ?? typeColor2.ok;
-        // estimate block height
-        const sentLines = (pdf.splitTextToSize(s.sentence, CW - 20) as string[]).length;
-        const fbLines  = s.feedback ? (pdf.splitTextToSize(s.feedback, CW - 22) as string[]).length : 0;
-        const impLines = (s.improved && s.type !== 'ok') ? (pdf.splitTextToSize(s.improved, CW - 22) as string[]).length : 0;
-        const blockH = (sentLines + fbLines + impLines) * 3.8 + 14;
+        // estimate block height (includes a header row for the number + type pill)
+        const sentLines = (pdf.splitTextToSize(s.sentence, CW - 6) as string[]).length;
+        const fbLines  = s.feedback ? (pdf.splitTextToSize(s.feedback, CW - 8) as string[]).length : 0;
+        const impLines = (s.improved && s.type !== 'ok') ? (pdf.splitTextToSize(s.improved, CW - 8) as string[]).length : 0;
+        const blockH = (sentLines + fbLines + impLines) * 4.5 + 20;
         guard(blockH);
 
         // card bg
@@ -650,12 +650,13 @@ export function FeedbackPage() {
         pdf.roundedRect(M, y, CW, blockH - 4, 2, 2, 'D');
         y += 4;
 
-        // number + pill
+        // header row: number + type pill on their own line, ABOVE the sentence
         pdf.setFontSize(8); pdf.setFont('helvetica', 'bold'); pdf.setTextColor(150, 150, 150);
         pdf.text(`${i + 1}`, M + 3, y + 1);
-        pill(labelText, M + 9, y + 1, tc.bg, tc.fg);
+        pill(labelText, M + 8, y + 1, tc.bg, tc.fg);
+        y += 6;
 
-        write(s.sentence, 9.5, { color: [44, 44, 44] });
+        write(s.sentence, 9.5, { color: [44, 44, 44], indent: 3 });
 
         if (s.feedback) {
           write(`Feedback: ${s.feedback}`, 8.5, { color: [80, 80, 80], indent: 4 });
