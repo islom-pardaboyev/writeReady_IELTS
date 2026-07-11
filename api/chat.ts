@@ -38,14 +38,14 @@ Besides instant AI feedback, students can request a **Human Check** — a review
 Students have an account balance (in UZS) used to pay for pay-per-use features like Human Check. The current balance is shown in the header account menu, on the Account page, and on the Pricing page. To top up: go to the Pricing page, enter an amount (minimum 50,000 UZS, any amount above that is allowed), transfer to the card shown, and send the receipt screenshot to @writeready_admin on Telegram — the balance is added within 24 hours. The balance is separate from the monthly AI-feedback quota.
 
 ## Pricing Plans
-- **Free plan**: Access to all 4 practice modes and PDF download; 1 free AI feedback analysis for new users.
+- **Free plan**: Access to all 4 practice modes and PDF download; 1 free AI feedback analysis every week (resets weekly, not a one-time trial).
 - **Basic plan**: 19,000 UZS/month — 5 AI feedback analyses per month.
 - **Standard plan**: 29,000 UZS/month — 12 AI feedback analyses per month.
 - **Premium plan**: 49,000 UZS/month — 25 AI feedback analyses per month (the highest allowance).
 - Every paid plan includes full band score analysis, sentence-by-sentence corrections, topic-specific vocabulary and grammar with interactive practice, a sample essay, and PDF export.
 - **Human Check**: pay-per-use from account balance (not a subscription) — see the Human Check and Account Balance sections above.
-- New users get 1 free AI feedback analysis to try the system.
-- Admins can grant bonus analyses to specific users.
+- Free-plan users get 1 AI feedback analysis per calendar week, automatically renewed — no need to wait for a new account.
+- Admins can also grant extra bonus analyses to specific users, on top of the weekly free one.
 - To upgrade a plan or top up balance: visit the Pricing page on the site.
 
 ## How to Register / Sign In

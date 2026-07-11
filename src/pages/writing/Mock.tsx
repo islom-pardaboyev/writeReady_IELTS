@@ -17,6 +17,7 @@ import { encodeReport } from "@/lib/reportEncoding";
 import { CheckIcon, ClockIcon, ChevronRightIcon, Bot, GraduationCap } from "lucide-react";
 import { useHumanCheck } from "@/hooks/useHumanCheck";
 import { FullscreenButton } from "@/components/ui/FullscreenButton";
+import { hasFreeReportThisWeek, type FreeUsage } from "@/lib/weeklyFree";
 import { useFeatureFlag } from "@/hooks/useFeatureFlag";
 import { TeacherPickerModal } from "@/components/ui/TeacherPickerModal";
 import { HumanCheckConfirmModal } from "@/components/ui/HumanCheckConfirmModal";
@@ -41,7 +42,8 @@ function hasAccess(data: Record<string, unknown>): boolean {
   )
     return true;
   const bonus = typeof data.bonusAnalyses === "number" ? data.bonusAnalyses : 0;
-  return bonus > 0;
+  if (bonus > 0) return true;
+  return hasFreeReportThisWeek(data.freeUsage as FreeUsage | undefined);
 }
 
 const TIMER_SECONDS = 3600;

@@ -21,6 +21,7 @@ import { useFeatureFlag } from "@/hooks/useFeatureFlag";
 import { TeacherPickerModal } from "@/components/ui/TeacherPickerModal";
 import { HumanCheckConfirmModal } from "@/components/ui/HumanCheckConfirmModal";
 import { FullscreenButton } from "@/components/ui/FullscreenButton";
+import { hasFreeReportThisWeek, type FreeUsage } from "@/lib/weeklyFree";
 
 async function loadImgBase64(src: string): Promise<{ b64: string; w: number; h: number } | null> {
   if (src.startsWith('data:application/pdf') || /\.pdf(\?|$)/i.test(src)) return null;
@@ -59,7 +60,8 @@ function hasAccess(data: Record<string, unknown>): boolean {
   const plan = data.plan as string | undefined;
   if (plan === 'forever' || plan === 'premium' || plan === 'standard' || plan === 'basic') return true;
   const bonus = typeof data.bonusAnalyses === 'number' ? data.bonusAnalyses : 0;
-  return bonus > 0;
+  if (bonus > 0) return true;
+  return hasFreeReportThisWeek(data.freeUsage as FreeUsage | undefined);
 }
 
 function Quick() {

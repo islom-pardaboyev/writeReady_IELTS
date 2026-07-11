@@ -35,8 +35,22 @@ function currentMonthKey(): string {
   return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
 }
 
+// Monday-start ISO week key, e.g. "2026-W28". Duplicated in api/pre-check.ts
+// and src/lib/weeklyFree.ts (separate builds — api/ and src/ can't share).
+function currentWeekKey(): string {
+  const now = new Date();
+  const d = new Date(Date.UTC(now.getFullYear(), now.getMonth(), now.getDate()));
+  const dayNum = (d.getUTCDay() + 6) % 7;
+  d.setUTCDate(d.getUTCDate() - dayNum + 3);
+  const firstThursday = new Date(Date.UTC(d.getUTCFullYear(), 0, 4));
+  const weekNum = 1 + Math.round(
+    ((d.getTime() - firstThursday.getTime()) / 86400000 - 3 + ((firstThursday.getUTCDay() + 6) % 7)) / 7
+  );
+  return `${d.getUTCFullYear()}-W${String(weekNum).padStart(2, '0')}`;
+}
+
 // Reverse the credit that pre-check deducted, so a failed/truncated report
-// never costs the user a report from their monthly quota.
+// never costs the user a report from their monthly/weekly quota.
 async function refundCredit(uid: string, isBonus: boolean): Promise<void> {
   try {
     initFirebase();
@@ -48,8 +62,17 @@ async function refundCredit(uid: string, isBonus: boolean): Promise<void> {
       if (!snap.exists) return;
       const data = snap.data()!;
       if (isBonus) {
-        const bonus = typeof data.bonusAnalyses === 'number' ? data.bonusAnalyses : 0;
-        tx.set(userRef, { bonusAnalyses: bonus + 1 }, { merge: true });
+        // Figure out which of the two free mechanisms was actually consumed:
+        // the weekly free allowance (the common case) or an admin-granted
+        // bonus (used only once the weekly allowance was already spent).
+        const weekKey = currentWeekKey();
+        const freeUsage = data.freeUsage;
+        if (freeUsage?.weekKey === weekKey && typeof freeUsage.count === 'number' && freeUsage.count > 0) {
+          tx.set(userRef, { freeUsage: { weekKey, count: freeUsage.count - 1 } }, { merge: true });
+        } else {
+          const bonus = typeof data.bonusAnalyses === 'number' ? data.bonusAnalyses : 0;
+          tx.set(userRef, { bonusAnalyses: bonus + 1 }, { merge: true });
+        }
         return;
       }
       const monthKey = currentMonthKey();

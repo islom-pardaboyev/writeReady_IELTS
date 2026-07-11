@@ -8,6 +8,7 @@ import { decodeReport } from '../lib/reportEncoding';
 import type { ReportData } from '../lib/reportEncoding';
 import { getFeedbackReportHistory } from '../firebase/firestore';
 import type { EnhancedFeedbackResult } from '../types';
+import { hasFreeReportThisWeek } from '../lib/weeklyFree';
 
 type Tab = 'overview' | 'priority' | 'detailed' | 'essay' | 'sample' | 'vocabulary' | 'grammar' | 'spelling' | 'quiz';
 
@@ -266,6 +267,12 @@ export function FeedbackPage() {
   }, [user, navigate]);
 
   const isPro = profile?.plan === 'basic' || profile?.plan === 'standard' || profile?.plan === 'premium' || profile?.plan === 'forever';
+  // Free-plan users get 1 AI feedback report per week (or an admin-granted
+  // bonus report) — they can request feedback just like paid users as long
+  // as they haven't used it yet. pre-check.ts is the source of truth for
+  // whether the attempt actually succeeds.
+  const hasFreeCredit = (profile?.bonusAnalyses ?? 0) > 0 || hasFreeReportThisWeek(profile?.freeUsage);
+  const canGetFeedback = isPro || hasFreeCredit;
 
   const loadFeedback = useCallback(async () => {
     if (!reportData || !user) return;
@@ -388,11 +395,11 @@ export function FeedbackPage() {
 
   // Auto-load feedback when ready (per task)
   useEffect(() => {
-    if (reportData && user && isPro && !feedback && !loading && !feedbackError) {
+    if (reportData && user && canGetFeedback && !feedback && !loading && !feedbackError) {
       loadFeedback();
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [reportData, user, isPro, selectedTask]);
+  }, [reportData, user, canGetFeedback, selectedTask]);
 
   const runSpellCheck = async (text: string) => {
     if (!text.trim()) return;
@@ -737,7 +744,7 @@ export function FeedbackPage() {
     );
   }
 
-  if (profile && !isPro) {
+  if (profile && !canGetFeedback && !feedback) {
     return (
       <Layout>
         <div className="bg-[var(--paper)] min-h-[calc(100vh-120px)] py-10">
@@ -745,11 +752,12 @@ export function FeedbackPage() {
             <div className="bg-[var(--ink-blue)] rounded-2xl p-10 text-center text-white">
               <div className="text-5xl mb-4">🔒</div>
               <h2 className="font-['Fraunces'] text-2xl font-bold mb-3">
-                AI Feedback Requires Pro
+                You've used your free report this week
               </h2>
               <p className="text-white/70 mb-7 leading-relaxed">
-                Your essay has been saved. Upgrade to Pro to unlock AI-powered feedback with band
-                scores, vocabulary flashcards, grammar analysis, and sentence practice.
+                Your essay has been saved. Free-plan users get 1 AI feedback report per week —
+                come back next week for another free check, or upgrade to Basic, Standard, or
+                Premium for unlimited access to band scores, corrections, vocabulary, and grammar.
               </p>
               <div className="flex gap-3 justify-center flex-wrap">
                 <Link to="/pricing">
@@ -925,28 +933,41 @@ export function FeedbackPage() {
           })()}
 
           {/* ── Error ── */}
-          {feedbackError && (
-            <div className="bg-red-50 border border-red-200 rounded-2xl px-6 py-5 mb-6">
-              <p className="font-semibold text-red-700 mb-1">Error: {feedbackError}</p>
-              <p className="text-sm text-red-600/80 mb-4">
-                If this keeps happening, contact us on Telegram and we'll sort it out quickly.
-              </p>
-              <div className="flex flex-wrap items-center gap-2.5">
-                <Button size="sm" onClick={loadFeedback}>Try again</Button>
-                <a
-                  href="https://t.me/writeready_admin"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="inline-flex items-center gap-1.5 px-4 py-2 text-sm font-semibold text-white bg-[#229ED9] hover:bg-[#1c8dc2] rounded-lg transition-colors no-underline"
-                >
-                  <svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor" aria-hidden>
-                    <path d="M9.78 18.65l.28-4.23 7.68-6.92c.34-.31-.07-.46-.52-.19L7.74 13.3 3.64 12c-.88-.25-.89-.86.2-1.3l15.97-6.16c.73-.33 1.43.18 1.15 1.3l-2.72 12.81c-.19.91-.74 1.13-1.5.71L12.6 16.3l-1.99 1.93c-.23.23-.42.42-.83.42z" />
-                  </svg>
-                  Contact @writeready_admin
-                </a>
+          {feedbackError && (() => {
+            const isQuotaError = /free essay check|analysis limit reached/i.test(feedbackError);
+            return (
+              <div className="bg-red-50 border border-red-200 rounded-2xl px-6 py-5 mb-6">
+                <p className="font-semibold text-red-700 mb-1">Error: {feedbackError}</p>
+                {!isQuotaError && (
+                  <p className="text-sm text-red-600/80 mb-4">
+                    If this keeps happening, contact us on Telegram and we'll sort it out quickly.
+                  </p>
+                )}
+                <div className="flex flex-wrap items-center gap-2.5 mt-1">
+                  {isQuotaError ? (
+                    <Link to="/pricing">
+                      <Button size="sm">Upgrade plan</Button>
+                    </Link>
+                  ) : (
+                    <>
+                      <Button size="sm" onClick={loadFeedback}>Try again</Button>
+                      <a
+                        href="https://t.me/writeready_admin"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="inline-flex items-center gap-1.5 px-4 py-2 text-sm font-semibold text-white bg-[#229ED9] hover:bg-[#1c8dc2] rounded-lg transition-colors no-underline"
+                      >
+                        <svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor" aria-hidden>
+                          <path d="M9.78 18.65l.28-4.23 7.68-6.92c.34-.31-.07-.46-.52-.19L7.74 13.3 3.64 12c-.88-.25-.89-.86.2-1.3l15.97-6.16c.73-.33 1.43.18 1.15 1.3l-2.72 12.81c-.19.91-.74 1.13-1.5.71L12.6 16.3l-1.99 1.93c-.23.23-.42.42-.83.42z" />
+                        </svg>
+                        Contact @writeready_admin
+                      </a>
+                    </>
+                  )}
+                </div>
               </div>
-            </div>
-          )}
+            );
+          })()}
 
           {/* ── Main feedback UI ── */}
           {feedback && (

@@ -55,6 +55,9 @@ export async function getUserProfile(uid: string): Promise<UserProfile | null> {
     subscriptionExpiresAt: d.subscriptionExpiresAt ? toDate(d.subscriptionExpiresAt) : null,
     createdAt: toDate(d.createdAt),
     bonusAnalyses: typeof d.bonusAnalyses === 'number' ? d.bonusAnalyses : 0,
+    freeUsage: d.freeUsage && typeof d.freeUsage === 'object'
+      ? { weekKey: d.freeUsage.weekKey, count: d.freeUsage.count }
+      : undefined,
     notification: typeof d.notification === 'string' ? d.notification : '',
     centerId,
     centerName: typeof d.centerName === 'string' ? d.centerName : undefined,
@@ -72,8 +75,7 @@ export async function createUserProfile(uid: string, email: string): Promise<voi
     plan: 'free',
     subscriptionExpiresAt: null,
     createdAt: serverTimestamp(),
-    bonusAnalyses: 1,
-    notification: '🎁 Xush kelibsiz! Sizga 1 ta bepul AI tahlil berildi. Sinab ko\'ring!',
+    notification: '🎁 Xush kelibsiz! Har hafta 1 marta bepul AI tahlil olishingiz mumkin. Sinab ko\'ring!',
   });
 }
 

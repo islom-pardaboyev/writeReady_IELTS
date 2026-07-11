@@ -269,7 +269,7 @@ export function PricingPage() {
                   <span className="text-green-500 font-bold shrink-0 mt-px">
                     ✓
                   </span>
-                  1 AI analysis (bonus)
+                  1 AI analysis per week
                 </li>
                 <li className="flex items-start gap-2.5 text-[var(--text-primary)]">
                   <span className="text-green-500 font-bold shrink-0 mt-px">

@@ -21,6 +21,7 @@ import { useFeatureFlag } from "@/hooks/useFeatureFlag";
 import { TeacherPickerModal } from "@/components/ui/TeacherPickerModal";
 import { HumanCheckConfirmModal } from "@/components/ui/HumanCheckConfirmModal";
 import { FullscreenButton } from "@/components/ui/FullscreenButton";
+import { hasFreeReportThisWeek, type FreeUsage } from "@/lib/weeklyFree";
 
 interface Task1 {
   image: string;
@@ -42,7 +43,8 @@ function hasAccess(data: Record<string, unknown>): boolean {
   )
     return true;
   const bonus = typeof data.bonusAnalyses === "number" ? data.bonusAnalyses : 0;
-  return bonus > 0;
+  if (bonus > 0) return true;
+  return hasFreeReportThisWeek(data.freeUsage as FreeUsage | undefined);
 }
 
 function Practice() {

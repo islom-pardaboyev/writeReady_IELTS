@@ -13,6 +13,7 @@ import { getHumanReviewsForStudent } from '../firebase/teachers';
 import type { HumanReview } from '../types';
 import { ProgressSection } from '../components/ui/ProgressSection';
 import { doc, updateDoc } from 'firebase/firestore';
+import { hasFreeReportThisWeek } from '../lib/weeklyFree';
 import { db } from '../firebase/config';
 import { GraduationCap, Clock, Download } from 'lucide-react';
 
@@ -157,6 +158,7 @@ export function DashboardPage() {
   const subscriptionExpiresAt = profileAny?.subscriptionExpiresAt as string | null | undefined;
   const isStudent = !!(centerId && centerName);
   const bonusAnalyses = profile?.bonusAnalyses ?? 0;
+  const freeReportAvailable = hasFreeReportThisWeek(profile?.freeUsage);
   const usedCount = usage?.count ?? 0;
   const usageLimit = usage?.limit ?? 0;
   const usagePct = usageLimit > 0 ? Math.min(100, (usedCount / usageLimit) * 100) : 0;
@@ -196,9 +198,11 @@ export function DashboardPage() {
               {isPro && !isStudent
                 ? `${planName} · ${remaining} analyses left this month${bonusAnalyses > 0 ? ` · +${bonusAnalyses} bonus` : ''}`
                 : !isStudent && bonusAnalyses > 0
-                ? `+${bonusAnalyses} free analyses available 🎁`
+                ? `+${bonusAnalyses} bonus analyses available 🎁`
+                : !isStudent && freeReportAvailable
+                ? 'Free plan — 1 free AI analysis available this week 🎁'
                 : !isStudent
-                ? 'Free plan — upgrade to unlock AI feedback'
+                ? "Free plan — you've used this week's free analysis. Resets Monday, or upgrade for more."
                 : `AI feedback — ${remaining} analyses left this month`}
             </p>
           </div>
@@ -237,11 +241,11 @@ export function DashboardPage() {
           )}
 
           {/* Quota bar */}
-          {(isPro || bonusAnalyses > 0) && (
+          {(isPro || bonusAnalyses > 0 || (!isStudent && !isPro)) && (
             <Card className="gs-db-quota px-6 py-5 mb-8">
               <div className="flex items-center justify-between mb-3 flex-wrap gap-2">
                 <span className="font-semibold text-[0.9375rem] text-[var(--text-primary)]">
-                  {isPro ? `${planName} · Monthly AI analyses` : 'Free analyses'}
+                  {isPro ? `${planName} · Monthly AI analyses` : 'Free weekly analysis'}
                 </span>
                 <div className="flex items-center gap-2">
                   {bonusAnalyses > 0 && (
@@ -251,6 +255,11 @@ export function DashboardPage() {
                     <span className={`font-mono text-[0.9375rem] font-medium ${usagePct >= 85 ? 'text-red-500' : 'text-blue-600 dark:text-blue-400'}`}>
                       {usedCount}/{usageLimit}
                     </span>
+                  )}
+                  {!isPro && !isStudent && (
+                    <Badge variant={freeReportAvailable ? 'success' : 'secondary'}>
+                      {freeReportAvailable ? 'Available' : 'Used — resets Monday'}
+                    </Badge>
                   )}
                 </div>
               </div>
@@ -266,6 +275,11 @@ export function DashboardPage() {
                     {usedCount} of {usageLimit} analyses used · {remaining} remaining
                   </p>
                 </>
+              )}
+              {!isPro && !isStudent && (
+                <p className="text-xs text-[var(--text-secondary)]">
+                  Free-plan users get 1 AI feedback report every week. Upgrade for a higher monthly allowance.
+                </p>
               )}
             </Card>
           )}

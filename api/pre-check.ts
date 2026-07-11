@@ -7,7 +7,11 @@ import { createHmac } from 'crypto';
 // Learning-center students get the premium allowance for free.
 const CENTER_MONTHLY_LIMIT = 25;
 
-type CreditErrorCode = 'USER_NOT_FOUND' | 'NOT_PRO' | 'LIMIT_REACHED';
+// Free-plan users (no subscription) get 1 AI feedback report per calendar
+// week instead of a single lifetime bonus report.
+const FREE_WEEKLY_LIMIT = 1;
+
+type CreditErrorCode = 'USER_NOT_FOUND' | 'NOT_PRO' | 'LIMIT_REACHED' | 'FREE_LIMIT_REACHED';
 class CreditError extends Error {
   constructor(public code: CreditErrorCode) { super(code); }
 }
@@ -26,6 +30,20 @@ function initFirebase() {
 function currentMonthKey(): string {
   const now = new Date();
   return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+}
+
+// Monday-start ISO week key, e.g. "2026-W28". Duplicated in api/feedback.ts
+// and src/lib/weeklyFree.ts (separate builds — api/ and src/ can't share).
+function currentWeekKey(): string {
+  const now = new Date();
+  const d = new Date(Date.UTC(now.getFullYear(), now.getMonth(), now.getDate()));
+  const dayNum = (d.getUTCDay() + 6) % 7;
+  d.setUTCDate(d.getUTCDate() - dayNum + 3);
+  const firstThursday = new Date(Date.UTC(d.getUTCFullYear(), 0, 4));
+  const weekNum = 1 + Math.round(
+    ((d.getTime() - firstThursday.getTime()) / 86400000 - 3 + ((firstThursday.getUTCDay() + 6) % 7)) / 7
+  );
+  return `${d.getUTCFullYear()}-W${String(weekNum).padStart(2, '0')}`;
 }
 
 async function getUid(req: VercelRequest): Promise<string> {
@@ -59,9 +77,23 @@ async function consumeCredit(uid: string, monthKey: string): Promise<boolean> {
     const plan: string = data.plan ?? 'free';
     const isCenterStudent = typeof data.centerId === 'string' && data.centerId.length > 0;
     const isPaidPlan = ['basic', 'standard', 'premium', 'forever'].includes(plan);
-    const bonus = typeof data.bonusAnalyses === 'number' ? data.bonusAnalyses : 0;
-    if (bonus > 0 && !isPaidPlan && !isCenterStudent) {
-      tx.set(userRef, { bonusAnalyses: bonus - 1 }, { merge: true });
+
+    if (!isPaidPlan && !isCenterStudent) {
+      // Admin-granted bonus reports are consumed first (separate from the
+      // automatic weekly free allowance).
+      const bonus = typeof data.bonusAnalyses === 'number' ? data.bonusAnalyses : 0;
+      if (bonus > 0) {
+        tx.set(userRef, { bonusAnalyses: bonus - 1 }, { merge: true });
+        isBonus = true;
+        return;
+      }
+
+      // Free plan: 1 AI feedback report per calendar week.
+      const weekKey = currentWeekKey();
+      const freeUsage = data.freeUsage ?? {};
+      const freeUsed = freeUsage.weekKey === weekKey ? (freeUsage.count ?? 0) : 0;
+      if (freeUsed >= FREE_WEEKLY_LIMIT) throw new CreditError('FREE_LIMIT_REACHED');
+      tx.set(userRef, { freeUsage: { weekKey, count: freeUsed + 1 } }, { merge: true });
       isBonus = true;
       return;
     }
@@ -110,6 +142,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     if (e instanceof CreditError) {
       if (e.code === 'NOT_PRO') return res.status(403).json({ error: 'AI feedback requires a paid plan (Basic, Standard, Premium, or Lifetime).' });
       if (e.code === 'LIMIT_REACHED') return res.status(429).json({ error: 'Monthly analysis limit reached. Quota resets next month.' });
+      if (e.code === 'FREE_LIMIT_REACHED') return res.status(429).json({ error: "You've used your free essay check for this week. Upgrade to Basic, Standard, or Premium for more reports, or come back next week." });
       if (e.code === 'USER_NOT_FOUND') return res.status(404).json({ error: 'User profile not found.' });
     }
     return res.status(500).json({ error: 'Usage tracking error. Please try again.' });

@@ -10,6 +10,7 @@ export interface UserProfile {
   subscriptionExpiresAt: Date | null;
   createdAt: Date;
   bonusAnalyses?: number;
+  freeUsage?: { weekKey?: string; count?: number };
   notification?: string;
   centerId?: string;
   centerName?: string;
