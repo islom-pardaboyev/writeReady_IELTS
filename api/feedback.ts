@@ -157,9 +157,15 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     } catch { /* ignore — report saving is non-critical */ }
 
   } catch (err) {
+    // Log the real error (e.g. Claude API unavailable / out of credits) for the
+    // admin, but never expose the raw provider message — it can leak billing
+    // details. The credit was deducted in pre-check, so refund it here.
+    console.error('feedback error:', err);
+    await refundCredit(uid, isBonus);
     if (!res.headersSent) {
-      return res.status(500).json({ error: (err as Error).message ?? 'AI analysis failed. Please try again.' });
+      return res.status(503).json({ error: 'AI feedback is temporarily unavailable. Please try again in a few minutes — you were not charged for this attempt.' });
     }
+    try { res.end(); } catch { /* stream already closed */ }
   }
 }
 
