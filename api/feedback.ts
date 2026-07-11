@@ -243,7 +243,11 @@ Return ONLY this JSON structure:
       "issues": ["<1 specific issue>"]
     }
   },
-  "priorityFixes": ["<most important fix>"]
+  "priorityFixes": [
+    "<most important fix — specific and actionable>",
+    "<second most important fix>",
+    "<third most important fix>"
+  ]
 }`;
 }
 
@@ -410,8 +414,8 @@ function parseLimitedResponse(raw: string, wordCount: number, taskType: string):
     return {
       taskType, topic: 'General', wordCount,
       scores: { taskAchievement: 5.5, coherenceCohesion: 5.5, lexicalResource: 5.5, grammaticalRangeAccuracy: 5.5, overall: 5.5 },
-      feedback: { taskAchievement: { strengths: ['Essay addresses the task'], issues: ['See full analysis by upgrading'] } },
-      priorityFixes: ['Upgrade to see detailed recommendations.'],
+      feedback: { taskAchievement: { strengths: ['Essay addresses the task'], issues: ['Could not analyse this attempt — please try again.'] } },
+      priorityFixes: ['We could not generate recommendations for this attempt. Please try again.'],
       limited: true,
     };
   }
