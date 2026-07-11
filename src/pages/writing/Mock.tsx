@@ -16,6 +16,7 @@ import WritingTask2Preview from "@/components/writingTask2Preview/WritingTask2Pr
 import { encodeReport } from "@/lib/reportEncoding";
 import { CheckIcon, ClockIcon, ChevronRightIcon, Bot, GraduationCap } from "lucide-react";
 import { useHumanCheck } from "@/hooks/useHumanCheck";
+import { FullscreenButton } from "@/components/ui/FullscreenButton";
 import { useFeatureFlag } from "@/hooks/useFeatureFlag";
 import { TeacherPickerModal } from "@/components/ui/TeacherPickerModal";
 import { HumanCheckConfirmModal } from "@/components/ui/HumanCheckConfirmModal";
@@ -444,6 +445,7 @@ function Mock() {
 
           {/* Right: actions */}
           <div className="flex items-center gap-2">
+            <FullscreenButton className="inline-flex items-center justify-center p-1.5 text-white/70 hover:text-white border border-white/20 hover:border-white/40 rounded-md transition-colors" />
             <button
               onClick={() => setShowHeader((p) => !p)}
               className="hidden sm:inline-flex items-center gap-1 px-3 py-1.5 text-xs text-white/70 hover:text-white border border-white/20 hover:border-white/40 rounded-md transition-colors"
