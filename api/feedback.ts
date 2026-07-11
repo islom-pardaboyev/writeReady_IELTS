@@ -220,7 +220,7 @@ ${essay}
 === BAND DESCRIPTORS (condensed) ===
 ${bandDescriptors(taskType)}
 
-For each criterion, choose the band whose descriptor BEST matches the essay overall (official IELTS best-fit) — cite one concrete reason. Do not demand perfection: the top bands allow minor slips, so a strong, fluent, well-organised essay with wide vocabulary and mostly error-free sentences is a genuine Band 8–9, not a 6. Use the full 4.0–9.0 range; if the essay sits between two bands, pick the closer fit rather than rounding down.
+For each criterion, choose the band whose descriptor BEST matches the essay overall (official IELTS best-fit) — cite one concrete reason. Do not demand perfection: the top bands allow minor slips, so a strong, fluent, well-organised essay with wide vocabulary and mostly error-free sentences is a genuine Band 8–9, not a 6. Use the full 4.0–9.0 range; if the essay sits between two bands, pick the closer fit rather than rounding down. Score each of the 4 criteria INDEPENDENTLY — it is uncommon for all four to be the identical band, so do NOT default every criterion to 7.0. These scores must be as accurate as a full paid report.
 
 Return ONLY this JSON structure:
 {

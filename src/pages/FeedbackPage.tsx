@@ -122,8 +122,9 @@ function UpgradePrompt() {
       <div className="text-5xl mb-4">🔒</div>
       <h3 className="text-xl font-bold text-[var(--text-primary)] mb-2">This section is locked</h3>
       <p className="text-[var(--text-secondary)] text-sm max-w-xs mb-6">
-        Upgrade to Basic, Standard, or Premium to unlock full analysis.
-        The free preview shows only the overall band score and Task Achievement.
+        Your free report shows the full estimated band scores. Upgrade to
+        Basic, Standard, or Premium to unlock the detailed analysis, corrections,
+        vocabulary, grammar, and a sample essay.
       </p>
       <a
         href="/pricing"
@@ -973,28 +974,24 @@ export function FeedbackPage() {
                   </p>
                   <div className="flex flex-col gap-3">
                     {([
-                      ['Task Achievement', 'TA', feedback.scores.taskAchievement, false],
-                      ['Coherence & Cohesion', 'CC', feedback.scores.coherenceCohesion, true],
-                      ['Lexical Resource', 'LR', feedback.scores.lexicalResource, true],
-                      ['Grammatical Range', 'GRA', feedback.scores.grammaticalRangeAccuracy, true],
-                    ] as [string, string, number, boolean][]).map(([, abbr, score, lockable]) => {
-                      const isLocked = feedback.limited && lockable;
+                      ['Task Achievement', 'TA', feedback.scores.taskAchievement],
+                      ['Coherence & Cohesion', 'CC', feedback.scores.coherenceCohesion],
+                      ['Lexical Resource', 'LR', feedback.scores.lexicalResource],
+                      ['Grammatical Range', 'GRA', feedback.scores.grammaticalRangeAccuracy],
+                    ] as [string, string, number][]).map(([, abbr, score]) => {
                       return (
                         <div key={abbr} className="flex items-center gap-3">
                           <span className="text-[0.7rem] text-[var(--text-secondary)] w-8 font-mono shrink-0">{abbr}</span>
                           <div className="flex-1 h-2 bg-[var(--bg-subtle,#f1f5f9)] rounded-full overflow-hidden">
-                            {isLocked
-                              ? <div className="h-full w-full bg-slate-200 rounded-full" />
-                              : <div
-                                  className={`h-full rounded-full transition-all duration-700 ${
-                                    score >= 7 ? 'bg-amber-400' : score >= 6 ? 'bg-[var(--ink-blue)]' : 'bg-amber-500'
-                                  }`}
-                                  style={{ width: `${Math.max(4, ((score - 4) / 5) * 100)}%` }}
-                                />
-                            }
+                            <div
+                              className={`h-full rounded-full transition-all duration-700 ${
+                                score >= 7 ? 'bg-amber-400' : score >= 6 ? 'bg-[var(--ink-blue)]' : 'bg-amber-500'
+                              }`}
+                              style={{ width: `${Math.max(4, ((score - 4) / 5) * 100)}%` }}
+                            />
                           </div>
                           <span className="text-[0.8125rem] font-bold text-[var(--text-primary)] font-mono min-w-[30px] text-right">
-                            {isLocked ? '🔒' : score.toFixed(1)}
+                            {score.toFixed(1)}
                           </span>
                         </div>
                       );
@@ -1051,28 +1048,24 @@ export function FeedbackPage() {
                 <div>
                   <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-6">
                     {([
-                      ['Task Achievement', feedback.scores.taskAchievement, false],
-                      ['Coherence & Cohesion', feedback.scores.coherenceCohesion, true],
-                      ['Lexical Resource', feedback.scores.lexicalResource, true],
-                      ['Grammatical Range', feedback.scores.grammaticalRangeAccuracy, true],
-                    ] as [string, number, boolean][]).map(([name, score, lockable]) => {
-                      const isLocked = feedback.limited && lockable;
+                      ['Task Achievement', feedback.scores.taskAchievement],
+                      ['Coherence & Cohesion', feedback.scores.coherenceCohesion],
+                      ['Lexical Resource', feedback.scores.lexicalResource],
+                      ['Grammatical Range', feedback.scores.grammaticalRangeAccuracy],
+                    ] as [string, number][]).map(([name, score]) => {
                       return (
-                        <div key={name} className={`bg-[var(--bg-card)] rounded-2xl p-5 border shadow-sm text-center ${isLocked ? 'border-slate-200 opacity-60' : 'border-[var(--border-color)]'}`}>
+                        <div key={name} className="bg-[var(--bg-card)] rounded-2xl p-5 border border-[var(--border-color)] shadow-sm text-center">
                           <p className="text-[0.65rem] font-bold text-[var(--text-secondary)] uppercase tracking-wider mb-3 leading-snug">
                             {name}
                           </p>
-                          {isLocked
-                            ? <div className="text-2xl mb-1">🔒</div>
-                            : <ScoreBadge score={score} />
-                          }
+                          <ScoreBadge score={score} />
                           <div className="h-1.5 bg-slate-100 rounded-full mt-3">
-                            {!isLocked && <div
+                            <div
                               className={`h-full rounded-full ${
                                 score >= 7 ? 'bg-amber-400' : score >= 6 ? 'bg-[var(--ink-blue)]' : 'bg-amber-500'
                               }`}
                               style={{ width: `${Math.max(4, ((score - 4) / 5) * 100)}%` }}
-                            />}
+                            />
                           </div>
                         </div>
                       );
