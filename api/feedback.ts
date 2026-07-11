@@ -163,7 +163,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     console.error('feedback error:', err);
     await refundCredit(uid, isBonus);
     if (!res.headersSent) {
-      return res.status(503).json({ error: 'AI feedback is temporarily unavailable. Please try again in a few minutes — you were not charged for this attempt.' });
+      return res.status(503).json({ error: 'AI feedback is temporarily unavailable right now — you were not charged. Please try again shortly, or contact @writeready_admin on Telegram if it keeps happening.' });
     }
     try { res.end(); } catch { /* stream already closed */ }
   }
