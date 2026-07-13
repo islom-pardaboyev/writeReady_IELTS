@@ -275,19 +275,13 @@ export function PricingPage() {
                   <span className="text-green-500 font-bold shrink-0 mt-px">
                     ✓
                   </span>
-                  All 4 writing modes (Mock, Practice, Quick, Relax)
+                  All 4 writing modes
                 </li>
                 <li className="flex items-start gap-2.5 text-[var(--text-primary)]">
                   <span className="text-green-500 font-bold shrink-0 mt-px">
                     ✓
                   </span>
-                  Question bank
-                </li>
-                <li className="flex items-start gap-2.5 text-[var(--text-primary)]">
-                  <span className="text-green-500 font-bold shrink-0 mt-px">
-                    ✓
-                  </span>
-                  PDF export
+                  Question bank + PDF export
                 </li>
               </ul>
               <Link
@@ -337,43 +331,19 @@ export function PricingPage() {
                   <span className="text-blue-500 font-bold shrink-0 mt-px">
                     ✓
                   </span>
-                  Detailed band score analysis
+                  Full band-score & sentence-level feedback
                 </li>
                 <li className="flex items-start gap-2.5 text-[var(--text-primary)]">
                   <span className="text-blue-500 font-bold shrink-0 mt-px">
                     ✓
                   </span>
-                  Vocabulary flashcards
+                  Vocabulary & grammar practice
                 </li>
                 <li className="flex items-start gap-2.5 text-[var(--text-primary)]">
                   <span className="text-blue-500 font-bold shrink-0 mt-px">
                     ✓
                   </span>
-                  Grammar analysis
-                </li>
-                <li className="flex items-start gap-2.5 text-[var(--text-primary)]">
-                  <span className="text-blue-500 font-bold shrink-0 mt-px">
-                    ✓
-                  </span>
-                  PDF export
-                </li>
-                <li className="flex items-start gap-2.5 text-[var(--text-primary)]">
-                  <span className="text-blue-500 font-bold shrink-0 mt-px">
-                    ✓
-                  </span>
-                  Sentence-level analysis
-                </li>
-                <li className="flex items-start gap-2.5 text-[var(--text-primary)]">
-                  <span className="text-blue-500 font-bold shrink-0 mt-px">
-                    ✓
-                  </span>
-                  Spelling checker
-                </li>
-                <li className="flex items-start gap-2.5 text-[var(--text-primary)]">
-                  <span className="text-blue-500 font-bold shrink-0 mt-px">
-                    ✓
-                  </span>
-                  Sample Response
+                  Sample essay + PDF export
                 </li>
               </ul>
               <Button
@@ -461,19 +431,13 @@ export function PricingPage() {
                   <span className="text-purple-300 font-bold shrink-0 mt-px">
                     ✓
                   </span>
-                  25 AI analyses / month
+                  25 AI analyses / month (highest)
                 </li>
                 <li className="flex items-start gap-2.5 text-white/85">
                   <span className="text-purple-300 font-bold shrink-0 mt-px">
                     ✓
                   </span>
-                  Everything in Basic
-                </li>
-                <li className="flex items-start gap-2.5 text-white/85">
-                  <span className="text-purple-300 font-bold shrink-0 mt-px">
-                    ✓
-                  </span>
-                  All features
+                  Everything in Basic & Standard
                 </li>
                 <li className="flex items-start gap-2.5 text-white/85">
                   <span className="text-purple-300 font-bold shrink-0 mt-px">
