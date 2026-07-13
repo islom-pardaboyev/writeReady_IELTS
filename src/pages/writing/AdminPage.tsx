@@ -1525,21 +1525,21 @@ export default function Admin() {
                           disabled={userActionLoading}
                           className="bg-blue-500 text-white border-none rounded-lg px-4 py-2 text-xs font-semibold cursor-pointer hover:bg-blue-600 transition-colors disabled:opacity-50"
                         >
-                          Basic (39,000)
+                          Basic (19,000)
                         </button>
                         <button
                           onClick={() => setSubscription(selectedUser, "standard")}
                           disabled={userActionLoading}
                           className="bg-blue-700 text-white border-none rounded-lg px-4 py-2 text-xs font-semibold cursor-pointer hover:bg-blue-800 transition-colors disabled:opacity-50"
                         >
-                          Standard (59,000)
+                          Standard (29,000)
                         </button>
                         <button
                           onClick={() => setSubscription(selectedUser, "premium")}
                           disabled={userActionLoading}
                           className="bg-purple-600 text-white border-none rounded-lg px-4 py-2 text-xs font-semibold cursor-pointer hover:bg-purple-700 transition-colors disabled:opacity-50"
                         >
-                          Premium (89,000)
+                          Premium (49,000)
                         </button>
                         <button
                           onClick={() => setSubscription(selectedUser, "forever")}
