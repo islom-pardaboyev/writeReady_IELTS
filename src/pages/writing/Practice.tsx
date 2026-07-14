@@ -22,6 +22,7 @@ import { TeacherPickerModal } from "@/components/ui/TeacherPickerModal";
 import { HumanCheckConfirmModal } from "@/components/ui/HumanCheckConfirmModal";
 import { FullscreenButton } from "@/components/ui/FullscreenButton";
 import { hasFreeReportThisWeek, type FreeUsage } from "@/lib/weeklyFree";
+import { ShuffleBag } from "@/lib/shuffleBag";
 
 interface Task1 {
   image: string;
@@ -74,6 +75,8 @@ function Practice() {
   const elapsed = useStopwatch(timerRunning);
   const splitContainerRef = useRef<HTMLDivElement>(null);
   const isDraggingSplit = useRef(false);
+  const task1BagRef = useRef(new ShuffleBag<Task1>());
+  const task2BagRef = useRef(new ShuffleBag<Task2>());
 
   useEffect(() => {
     if (!user) return;
@@ -83,14 +86,14 @@ function Practice() {
         const t1Snap = await getDocs(collection(db, "task1_reports"));
         const t1Docs = t1Snap.docs.map((d) => d.data() as Task1);
         setTask1List(t1Docs);
-        if (t1Docs.length > 0)
-          setTask1(t1Docs[Math.floor(Math.random() * t1Docs.length)]);
+        task1BagRef.current.setItems(t1Docs);
+        setTask1(task1BagRef.current.next());
 
         const t2Snap = await getDocs(collection(db, "task2_reports"));
         const t2Docs = t2Snap.docs.map((d) => d.data() as Task2);
         setTask2List(t2Docs);
-        if (t2Docs.length > 0)
-          setTask2(t2Docs[Math.floor(Math.random() * t2Docs.length)]);
+        task2BagRef.current.setItems(t2Docs);
+        setTask2(task2BagRef.current.next());
       } catch (err) {
         console.error(err);
       } finally {
@@ -130,27 +133,16 @@ function Practice() {
   );
   const currentProgress = activeTask === 1 ? taskProgress1 : taskProgress2;
 
-  const pickRandomItem = <T,>(items: T[]) =>
-    items[Math.floor(Math.random() * items.length)];
-
   const handleGetAnother = () => {
     if (activeTask === 1) {
       if (task1List.length === 0) return;
       setUserText1("");
-      const current = task1;
-      let next = pickRandomItem(task1List);
-      if (task1List.length > 1)
-        while (next === current) next = pickRandomItem(task1List);
-      setTask1(next);
+      setTask1(task1BagRef.current.next());
       return;
     }
     if (task2List.length === 0) return;
     setUserText2("");
-    const current = task2;
-    let next = pickRandomItem(task2List);
-    if (task2List.length > 1)
-      while (next === current) next = pickRandomItem(task2List);
-    setTask2(next);
+    setTask2(task2BagRef.current.next());
   };
 
   const handleSplitPointerDown = (e: PointerEvent<HTMLDivElement>) => {

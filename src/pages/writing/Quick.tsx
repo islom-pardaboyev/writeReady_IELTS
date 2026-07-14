@@ -22,6 +22,7 @@ import { TeacherPickerModal } from "@/components/ui/TeacherPickerModal";
 import { HumanCheckConfirmModal } from "@/components/ui/HumanCheckConfirmModal";
 import { FullscreenButton } from "@/components/ui/FullscreenButton";
 import { hasFreeReportThisWeek, type FreeUsage } from "@/lib/weeklyFree";
+import { ShuffleBag } from "@/lib/shuffleBag";
 
 async function loadImgBase64(src: string): Promise<{ b64: string; w: number; h: number } | null> {
   if (src.startsWith('data:application/pdf') || /\.pdf(\?|$)/i.test(src)) return null;
@@ -77,9 +78,7 @@ function Quick() {
   const [selectedTaskType, setSelectedTaskType] = useState<1 | 2 | null>(null);
   const [userText, setUserText] = useState("");
   const [task1, setTask1] = useState<Task1 | null>(null);
-  const [task1List, setTask1List] = useState<Task1[]>([]);
   const [task2, setTask2] = useState<Task2 | null>(null);
-  const [task2List, setTask2List] = useState<Task2[]>([]);
   const [loading, setLoading] = useState(true);
   const [showHeader, setShowHeader] = useState(true);
   const [showFeedbackModal, setShowFeedbackModal] = useState(false);
@@ -92,6 +91,8 @@ function Quick() {
   const elapsed = useStopwatch(timerRunning);
   const splitContainerRef = useRef<HTMLDivElement>(null);
   const isDraggingSplit = useRef(false);
+  const task1BagRef = useRef(new ShuffleBag<Task1>());
+  const task2BagRef = useRef(new ShuffleBag<Task2>());
 
   const minWords = selectedTaskType === 1 ? 150 : 250;
   const wordCount = userText.trim() === "" ? 0 : userText.trim().split(/\s+/).length;
@@ -110,10 +111,10 @@ function Quick() {
         ]);
         const t1Docs = t1Snap.docs.map((d) => d.data() as Task1);
         const t2Docs = t2Snap.docs.map((d) => d.data() as Task2);
-        setTask1List(t1Docs);
-        setTask2List(t2Docs);
-        if (t1Docs.length > 0) setTask1(t1Docs[Math.floor(Math.random() * t1Docs.length)]);
-        if (t2Docs.length > 0) setTask2(t2Docs[Math.floor(Math.random() * t2Docs.length)]);
+        task1BagRef.current.setItems(t1Docs);
+        task2BagRef.current.setItems(t2Docs);
+        setTask1(task1BagRef.current.next());
+        setTask2(task2BagRef.current.next());
       } catch (err) {
         console.error(err);
       } finally {
@@ -128,17 +129,10 @@ function Quick() {
     if (selectedTaskType !== null) setTimerRunning(true);
   }, [selectedTaskType]);
 
-  const pickRandom = <T,>(items: T[], current: T | null): T => {
-    if (items.length <= 1) return items[0];
-    let next = items[Math.floor(Math.random() * items.length)];
-    while (next === current) next = items[Math.floor(Math.random() * items.length)];
-    return next;
-  };
-
   const handleGetAnother = () => {
     setUserText("");
-    if (selectedTaskType === 1) setTask1(pickRandom(task1List, task1));
-    else if (selectedTaskType === 2) setTask2(pickRandom(task2List, task2));
+    if (selectedTaskType === 1) setTask1(task1BagRef.current.next());
+    else if (selectedTaskType === 2) setTask2(task2BagRef.current.next());
   };
 
   const handleSplitPointerDown = (e: PointerEvent<HTMLDivElement>) => {
