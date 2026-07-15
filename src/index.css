@@ -10,6 +10,11 @@
   --font-sans: 'Inter', sans-serif;
 }
 
+html,
+body {
+  overscroll-behavior-y: none;
+}
+
 /* ── Light theme ──────────────────────────────────────────────────────────── */
 :root {
   color-scheme: light;
