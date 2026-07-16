@@ -59,7 +59,7 @@ export function Header() {
   const navigate = useNavigate();
 
   // Admin accounts should not appear as regular users in the header
-  const isAdminAccount = user?.email?.endsWith('@writeready.internal') ?? false;
+  const isAdminAccount = user?.email?.endsWith("@writeready.internal") ?? false;
 
   const firstName = user?.displayName
     ? user.displayName.split(" ")[0]
@@ -76,7 +76,10 @@ export function Header() {
         <Link to="/" className="flex items-center gap-2 no-underline">
           <img src={Logo} width={70} alt="" />
           <span className="font-bold text-lg text-[var(--text-primary)]">
-            WriteReady <span className="text-[#c9900a] dark:text-amber-400">IELTS</span>
+            WriteReady{" "}
+            <span className="text-[var(--gold)] dark:text-amber-400">
+              IELTS
+            </span>
           </span>
         </Link>
 
@@ -138,15 +141,23 @@ export function Header() {
                 </Button>
               </DropdownMenuTrigger>
 
-              <DropdownMenuContent align="end" sideOffset={8} className="w-56 py-1 bg-[var(--bg-card)] border-[var(--border-color)]">
+              <DropdownMenuContent
+                align="end"
+                sideOffset={8}
+                className="w-56 py-1 bg-[var(--bg-card)] border-[var(--border-color)]"
+              >
                 <div className="px-3 py-2.5 border-b border-[var(--border-color)]">
                   <p className="text-sm font-semibold text-[var(--text-primary)] truncate">
                     {profile?.studentLogin ?? user.displayName ?? firstName}
                   </p>
                   {profile?.centerName ? (
-                    <p className="text-xs text-blue-600 font-medium truncate mt-0.5">🏫 {profile.centerName}</p>
+                    <p className="text-xs text-blue-600 font-medium truncate mt-0.5">
+                      🏫 {profile.centerName}
+                    </p>
                   ) : (
-                    <p className="text-xs text-[var(--text-secondary)] truncate">{user.email}</p>
+                    <p className="text-xs text-[var(--text-secondary)] truncate">
+                      {user.email}
+                    </p>
                   )}
                   <div className="mt-2">
                     <SubscriptionBadge
