@@ -9,7 +9,29 @@ function dataUrlToImage(dataUrl: string): { type: 'jpg' | 'png' | 'gif' | 'bmp';
   return { type, base64: match[2] };
 }
 
-function taskSection(label: string, part: HumanReviewTaskPart): (Paragraph)[] {
+// Task 1 images aren't always a data: URL — Quick/Mock/Practice mode store
+// them as remote ImgBB links, while Relax mode stores a true data: URL from
+// a local file upload. Fetch remote URLs and convert them so both work.
+async function resolveImage(src: string): Promise<{ type: 'jpg' | 'png' | 'gif' | 'bmp'; base64: string } | null> {
+  const direct = dataUrlToImage(src);
+  if (direct) return direct;
+  if (!/^https?:\/\//i.test(src)) return null;
+  try {
+    const res = await fetch(src);
+    const blob = await res.blob();
+    const dataUrl = await new Promise<string>((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onerror = () => reject(new Error('Could not read image.'));
+      reader.onload = () => resolve(reader.result as string);
+      reader.readAsDataURL(blob);
+    });
+    return dataUrlToImage(dataUrl);
+  } catch {
+    return null;
+  }
+}
+
+async function taskSection(label: string, part: HumanReviewTaskPart): Promise<Paragraph[]> {
   const children: Paragraph[] = [
     new Paragraph({ text: label, heading: HeadingLevel.HEADING_1, spacing: { before: 300, after: 150 } }),
     new Paragraph({ text: 'Question', heading: HeadingLevel.HEADING_2, spacing: { after: 100 } }),
@@ -17,7 +39,7 @@ function taskSection(label: string, part: HumanReviewTaskPart): (Paragraph)[] {
   ];
 
   if (part.imageBase64) {
-    const img = dataUrlToImage(part.imageBase64);
+    const img = await resolveImage(part.imageBase64);
     if (img) {
       children.push(
         new Paragraph({
@@ -57,8 +79,8 @@ export async function buildReviewDocx(review: HumanReview): Promise<Blob> {
     new Paragraph({ children: [new TextRun(`Mode: ${review.mode}`)], spacing: { after: 300 } }),
   ];
 
-  if (review.task1) children.push(...taskSection('Task 1', review.task1));
-  if (review.task2) children.push(...taskSection('Task 2', review.task2));
+  if (review.task1) children.push(...(await taskSection('Task 1', review.task1)));
+  if (review.task2) children.push(...(await taskSection('Task 2', review.task2)));
 
   const doc = new Document({ sections: [{ children }] });
   return Packer.toBlob(doc);

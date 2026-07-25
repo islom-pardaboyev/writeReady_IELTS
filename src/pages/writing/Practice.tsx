@@ -21,7 +21,6 @@ import { useFeatureFlag } from "@/hooks/useFeatureFlag";
 import { TeacherPickerModal } from "@/components/ui/TeacherPickerModal";
 import { HumanCheckConfirmModal } from "@/components/ui/HumanCheckConfirmModal";
 import { FullscreenButton } from "@/components/ui/FullscreenButton";
-import { hasFreeReportThisWeek, type FreeUsage } from "@/lib/weeklyFree";
 import { ShuffleBag } from "@/lib/shuffleBag";
 
 interface Task1 {
@@ -35,17 +34,15 @@ interface Task2 {
 function hasAccess(data: Record<string, unknown>): boolean {
   // Learning-center students always have access (free premium).
   if (typeof data.centerId === "string" && data.centerId.length > 0) return true;
+  // AI feedback for exercises requires an active paid plan — no free weekly
+  // report or bonus credits here (those still work in the other modes).
   const plan = data.plan as string | undefined;
-  if (
+  return (
     plan === "forever" ||
     plan === "premium" ||
     plan === "standard" ||
     plan === "basic"
-  )
-    return true;
-  const bonus = typeof data.bonusAnalyses === "number" ? data.bonusAnalyses : 0;
-  if (bonus > 0) return true;
-  return hasFreeReportThisWeek(data.freeUsage as FreeUsage | undefined);
+  );
 }
 
 function Practice() {
