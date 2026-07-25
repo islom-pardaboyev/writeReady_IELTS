@@ -38,7 +38,9 @@ export default function TeacherPortalPage() {
   const [reviews, setReviews] = useState<HumanReview[]>([]);
   const [reviewsLoading, setReviewsLoading] = useState(false);
   const [busyReviewId, setBusyReviewId] = useState<string | null>(null);
+  const [busyAction, setBusyAction] = useState<"download" | "upload" | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
+  const [actionSuccess, setActionSuccess] = useState<string | null>(null);
 
   useEffect(() => {
     const saved = localStorage.getItem("teacherLoggedIn");
@@ -129,7 +131,9 @@ export default function TeacherPortalPage() {
 
   const handleDownload = async (review: HumanReview) => {
     setActionError(null);
+    setActionSuccess(null);
     setBusyReviewId(review.id);
+    setBusyAction("download");
     try {
       const blob = await buildReviewDocx(review);
       downloadBlob(blob, `${review.studentName.replace(/\s+/g, "_")}_essay.docx`);
@@ -138,21 +142,26 @@ export default function TeacherPortalPage() {
       setActionError("Could not generate the Word file. Please try again.");
     } finally {
       setBusyReviewId(null);
+      setBusyAction(null);
     }
   };
 
   const handleUpload = async (review: HumanReview, file: File) => {
     setActionError(null);
+    setActionSuccess(null);
     setBusyReviewId(review.id);
+    setBusyAction("upload");
     try {
       const base64 = await fileToBase64(file);
       await uploadTeacherFeedback(review.id, base64, file.name, adminDb);
       await loadReviews(teacherId);
+      setActionSuccess(`Feedback uploaded for ${review.studentName} — ${file.name}`);
     } catch (err) {
       console.error(err);
       setActionError("Could not upload your feedback. Please try again.");
     } finally {
       setBusyReviewId(null);
+      setBusyAction(null);
     }
   };
 
@@ -293,6 +302,9 @@ export default function TeacherPortalPage() {
         {actionError && (
           <div className="bg-red-50 border border-red-200 text-red-600 text-sm rounded-lg px-4 py-2.5 mb-4">{actionError}</div>
         )}
+        {actionSuccess && (
+          <div className="bg-emerald-50 border border-emerald-200 text-emerald-700 text-sm rounded-lg px-4 py-2.5 mb-4">✓ {actionSuccess}</div>
+        )}
 
         {reviewsLoading ? (
           <div className="flex justify-center py-16">
@@ -323,11 +335,15 @@ export default function TeacherPortalPage() {
                     disabled={busyReviewId === r.id}
                     onClick={() => handleDownload(r)}
                   >
-                    <Download className="w-3.5 h-3.5 mr-1.5" />
-                    Download essay (.docx)
+                    {busyReviewId === r.id && busyAction === "download" ? (
+                      <span className="animate-spin w-3.5 h-3.5 mr-1.5 border-2 border-slate-400 border-t-transparent rounded-full" />
+                    ) : (
+                      <Download className="w-3.5 h-3.5 mr-1.5" />
+                    )}
+                    {busyReviewId === r.id && busyAction === "download" ? "Preparing…" : "Download essay (.docx)"}
                   </Button>
 
-                  <label className="inline-flex">
+                  <label className={`inline-flex ${busyReviewId === r.id ? "pointer-events-none" : ""}`}>
                     <input
                       type="file"
                       accept=".docx"
@@ -339,9 +355,21 @@ export default function TeacherPortalPage() {
                         e.target.value = "";
                       }}
                     />
-                    <span className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-md border border-slate-200 text-slate-700 hover:bg-slate-50 cursor-pointer">
-                      <Upload className="w-3.5 h-3.5" />
-                      {r.status === "checked" ? "Replace feedback" : "Upload feedback"}
+                    <span
+                      className={`inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-md border cursor-pointer ${
+                        busyReviewId === r.id && busyAction === "upload"
+                          ? "border-emerald-200 bg-emerald-50 text-emerald-700"
+                          : "border-slate-200 text-slate-700 hover:bg-slate-50"
+                      } ${busyReviewId === r.id ? "opacity-70 cursor-not-allowed" : ""}`}
+                    >
+                      {busyReviewId === r.id && busyAction === "upload" ? (
+                        <span className="animate-spin w-3.5 h-3.5 border-2 border-emerald-500 border-t-transparent rounded-full" />
+                      ) : (
+                        <Upload className="w-3.5 h-3.5" />
+                      )}
+                      {busyReviewId === r.id && busyAction === "upload"
+                        ? "Uploading…"
+                        : r.status === "checked" ? "Replace feedback" : "Upload feedback"}
                     </span>
                   </label>
                 </div>
