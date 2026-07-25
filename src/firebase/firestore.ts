@@ -2,6 +2,7 @@ import {
   doc,
   getDoc,
   setDoc,
+  deleteDoc,
   collection,
   getDocs,
   query,
@@ -11,6 +12,7 @@ import {
   addDoc,
   serverTimestamp,
   Timestamp,
+  type Firestore,
 } from 'firebase/firestore';
 import { db } from './config';
 import type { UserProfile, UsageRecord, Question, Submission, Plan } from '../types';
@@ -77,6 +79,26 @@ export async function createUserProfile(uid: string, email: string): Promise<voi
     createdAt: serverTimestamp(),
     notification: '🎁 Xush kelibsiz! Har hafta 1 marta bepul AI tahlil olishingiz mumkin. Sinab ko\'ring!',
   });
+}
+
+// Wipes every Firestore record tied to a user (profile, feedback reports,
+// submissions, human-check reviews, notifications). Does NOT remove the
+// Firebase Auth account itself — that needs a server-side Admin SDK call,
+// which this project doesn't have; the admin panel only has Firestore access.
+// Takes an optional Firestore instance so the admin panel (which runs under
+// its own isolated Firebase app/auth session, see teachers.ts) can pass its
+// own `adminDb` instead of the main site's `db`.
+export async function deleteUserAccount(uid: string, dbInstance: Firestore = db): Promise<void> {
+  const uidFilteredCollections = ['feedback_reports', 'submissions', 'humanReviews'];
+  for (const col of uidFilteredCollections) {
+    const snap = await getDocs(query(collection(dbInstance, col), where('uid', '==', uid)));
+    await Promise.all(snap.docs.map((d) => deleteDoc(d.ref)));
+  }
+
+  const notifSnap = await getDocs(collection(dbInstance, 'notifications', uid, 'items'));
+  await Promise.all(notifSnap.docs.map((d) => deleteDoc(d.ref)));
+
+  await deleteDoc(doc(dbInstance, 'users', uid));
 }
 
 export async function getUsage(uid: string): Promise<UsageRecord | null> {

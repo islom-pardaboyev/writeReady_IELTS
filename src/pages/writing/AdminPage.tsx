@@ -32,6 +32,7 @@ import {
 } from "../../firebase/teachers";
 import type { Teacher } from "../../types";
 import { getFeatureFlag, setFeatureFlag, getHumanCheckPrice, setHumanCheckPrice, getHumanCheckPlatformFee, setHumanCheckPlatformFee } from "../../hooks/useFeatureFlag";
+import { deleteUserAccount } from "../../firebase/firestore";
 import { Badge } from "@/components/ui/badge";
 import { RichEditor } from "@/components/ui/RichEditor";
 import { Input } from "@/components/ui/input";
@@ -367,6 +368,8 @@ export default function Admin() {
   const [userSuccess, setUserSuccess] = useState("");
   const [userError, setUserError] = useState("");
   const [balanceInput, setBalanceInput] = useState("");
+  const [showTodayOnly, setShowTodayOnly] = useState(false);
+  const [deletingUserId, setDeletingUserId] = useState<string | null>(null);
 
   // Image preview
   const [previewImage, setPreviewImage] = useState<string | null>(null);
@@ -1081,6 +1084,27 @@ export default function Admin() {
     finally { setUserActionLoading(false); }
   };
 
+  const deleteUser = async (user: UserRow) => {
+    if (
+      !confirm(
+        `${user.email} ni butunlay o'chirmoqchimisiz?\n\nUning profili, AI tahlil hisobotlari, human check so'rovlari va bildirishnomalari BAZADAN butunlay o'chib ketadi. Bu amalni orqaga qaytarib bo'lmaydi.\n\n(Eslatma: bu faqat Firestore ma'lumotlarini o'chiradi — foydalanuvchi hali ham eski login/parol bilan tizimga kira oladi, lekin hech qanday ma'lumot yoki pullik reja bo'lmaydi.)`
+      )
+    )
+      return;
+    setDeletingUserId(user.id);
+    setUserError(""); setUserSuccess("");
+    try {
+      await deleteUserAccount(user.id, db);
+      setAllUsers((p) => p.filter((u) => u.id !== user.id));
+      if (selectedUser?.id === user.id) setSelectedUser(null);
+      setUserSuccess(`${user.email} o'chirildi.`);
+    } catch {
+      setUserError("Foydalanuvchini o'chirishda xatolik yuz berdi.");
+    } finally {
+      setDeletingUserId(null);
+    }
+  };
+
   const signOut = () => {
     setIsLoggedIn(false);
     localStorage.removeItem("adminLoggedIn");
@@ -1091,13 +1115,13 @@ export default function Admin() {
 
   const filteredT1 = task1List.filter((t) => t.report.toLowerCase().includes(task1Search.toLowerCase()));
   const filteredT2 = task2List.filter((t) => t.report.toLowerCase().includes(task2Search.toLowerCase()));
-  const filteredUsers = allUsers.filter((u) =>
-    u.email.toLowerCase().includes(userSearch.toLowerCase())
-  );
-  const proCount = allUsers.filter((u) => u.plan === "basic" || u.plan === "standard" || u.plan === "premium" || u.plan === "forever").length;
-  const lifetimeCount = allUsers.filter((u) => u.subscription === "forever" || u.plan === "forever").length;
   const todayStr = new Date().toISOString().slice(0, 10);
   const todayCount = allUsers.filter((u) => u.createdAt?.slice(0, 10) === todayStr).length;
+  const filteredUsers = allUsers
+    .filter((u) => u.email.toLowerCase().includes(userSearch.toLowerCase()))
+    .filter((u) => !showTodayOnly || u.createdAt?.slice(0, 10) === todayStr);
+  const proCount = allUsers.filter((u) => u.plan === "basic" || u.plan === "standard" || u.plan === "premium" || u.plan === "forever").length;
+  const lifetimeCount = allUsers.filter((u) => u.subscription === "forever" || u.plan === "forever").length;
 
   const currentNav = NAV.find((n) => n.id === section);
 
@@ -1139,11 +1163,15 @@ export default function Admin() {
                     { label: "Task 1 prompts",      value: task1List.length,    color: "text-blue-700",    bg: "bg-blue-50",   border: "border-blue-100",   icon: "🖼️" },
                     { label: "Task 2 prompts",      value: task2List.length,    color: "text-green-700",   bg: "bg-green-50",  border: "border-green-100",  icon: "✍️" },
                     { label: "Jami foydalanuvchi",  value: allUsers.length || "—", color: "text-slate-700", bg: "bg-slate-50", border: "border-slate-200",  icon: "👥" },
-                    { label: "Bugun qo'shildi",     value: todayCount || "—",   color: "text-purple-700",  bg: "bg-purple-50", border: "border-purple-100", icon: "🆕" },
+                    { label: "Bugun qo'shildi",     value: todayCount || "—",   color: "text-purple-700",  bg: "bg-purple-50", border: "border-purple-100", icon: "🆕", onClick: () => { setShowTodayOnly(true); setSection("users"); } },
                     { label: "Pro obunachi",         value: proCount || "—",     color: "text-[#1C3A5E]",   bg: "bg-sky-50",   border: "border-sky-100",    icon: "⭐" },
                     { label: "Lifetime a'zo",        value: lifetimeCount || "—",color: "text-amber-700",   bg: "bg-amber-50",  border: "border-amber-100",  icon: "♾️" },
                   ].map((s) => (
-                    <div key={s.label} className={`${s.bg} border ${s.border} rounded-xl p-5`}>
+                    <div
+                      key={s.label}
+                      onClick={s.onClick}
+                      className={`${s.bg} border ${s.border} rounded-xl p-5 ${s.onClick ? "cursor-pointer hover:brightness-95 transition-all" : ""}`}
+                    >
                       <div className="flex items-center gap-2 mb-2">
                         <span className="text-lg">{s.icon}</span>
                         <p className={`text-xs font-semibold ${s.color}`}>{s.label}</p>
@@ -1391,9 +1419,10 @@ export default function Admin() {
                 </div>
 
                 {/* Stats row */}
-                <div className="grid grid-cols-3 gap-4">
+                <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
                   {[
                     { label: "Total users", value: allUsers.length, color: "text-slate-700", bg: "bg-white" },
+                    { label: "Bugun qo'shildi", value: todayCount, color: "text-purple-700", bg: "bg-purple-50" },
                     { label: "Pro / Lifetime", value: proCount, color: "text-blue-700", bg: "bg-blue-50" },
                     { label: "Lifetime only", value: lifetimeCount, color: "text-amber-700", bg: "bg-amber-50" },
                   ].map((s) => (
@@ -1407,13 +1436,25 @@ export default function Admin() {
                 {userSuccess && <div className="bg-green-50 border border-green-200 rounded-lg px-4 py-3 text-sm text-green-700">{userSuccess}</div>}
                 {userError && <div className="bg-red-50 border border-red-200 rounded-lg px-4 py-3 text-sm text-red-600">{userError}</div>}
 
-                {/* Search */}
-                <Input
-                  className="border-slate-200 bg-white text-slate-900 max-w-xs"
-                  placeholder="Email bo'yicha qidirish..."
-                  value={userSearch}
-                  onChange={(e) => setUserSearch(e.target.value)}
-                />
+                {/* Search + today filter */}
+                <div className="flex items-center gap-3 flex-wrap">
+                  <Input
+                    className="border-slate-200 bg-white text-slate-900 max-w-xs"
+                    placeholder="Email bo'yicha qidirish..."
+                    value={userSearch}
+                    onChange={(e) => setUserSearch(e.target.value)}
+                  />
+                  <button
+                    onClick={() => setShowTodayOnly((v) => !v)}
+                    className={`px-3.5 py-2 rounded-lg text-xs font-semibold border transition-colors cursor-pointer ${
+                      showTodayOnly
+                        ? "bg-purple-600 text-white border-purple-600"
+                        : "bg-white text-slate-600 border-slate-200 hover:bg-slate-50"
+                    }`}
+                  >
+                    🆕 Bugun qo'shilganlar {showTodayOnly ? `(${todayCount})` : ""}
+                  </button>
+                </div>
 
                 {/* Table */}
                 <div className="bg-white rounded-xl border border-slate-200 overflow-hidden">
@@ -1431,6 +1472,7 @@ export default function Admin() {
                             <th className="text-left px-4 py-3 text-xs font-bold text-slate-500 uppercase tracking-wider">Email</th>
                             <th className="text-left px-4 py-3 text-xs font-bold text-slate-500 uppercase tracking-wider">Plan</th>
                             <th className="text-right px-4 py-3 text-xs font-bold text-slate-500 uppercase tracking-wider">Balance</th>
+                            <th className="text-left px-4 py-3 text-xs font-bold text-slate-500 uppercase tracking-wider">Qo'shilgan</th>
                             <th className="text-left px-4 py-3 text-xs font-bold text-slate-500 uppercase tracking-wider">Subscription tugaydi</th>
                             <th className="text-right px-4 py-3 text-xs font-bold text-slate-500 uppercase tracking-wider">Amallar</th>
                           </tr>
@@ -1442,6 +1484,7 @@ export default function Admin() {
                             const isPaid = ["basic","standard","premium"].includes(u.plan);
                             const isExpired = isPaid && !!u.expiresAt && new Date(u.expiresAt) < new Date();
                             const expiry = isLifetime ? "Lifetime ♾️" : isPaid && u.expiresAt ? (isExpired ? `Expired ${u.expiresAt}` : u.expiresAt) : "—";
+                            const joinedToday = u.createdAt?.slice(0, 10) === todayStr;
                             return (
                               <tr
                                 key={u.id}
@@ -1453,9 +1496,25 @@ export default function Admin() {
                                   <Badge variant={b.label === 'Lifetime' ? 'warning' : b.label === 'Premium' ? 'purple' : b.label === 'Standard' || b.label === 'Basic' ? 'info' : 'secondary'} className="text-[0.65rem]">{b.label}</Badge>
                                 </td>
                                 <td className="px-4 py-3 text-right font-mono text-sm text-emerald-700">{(u.balanceUZS ?? 0).toLocaleString()}</td>
+                                <td className="px-4 py-3 text-sm text-slate-600">
+                                  {joinedToday ? (
+                                    <span className="inline-flex items-center gap-1 text-purple-700 font-semibold">🆕 Bugun</span>
+                                  ) : (
+                                    u.createdAt?.slice(0, 10) ?? "—"
+                                  )}
+                                </td>
                                 <td className={`px-4 py-3 text-sm ${isExpired ? "text-red-500" : "text-slate-600"}`}>{expiry}</td>
                                 <td className="px-4 py-3 text-right">
-                                  <span className="text-[0.7rem] text-slate-400">{selectedUser?.id === u.id ? "▲ yopish" : "▼ boshqarish"}</span>
+                                  <div className="flex items-center justify-end gap-3">
+                                    <span className="text-[0.7rem] text-slate-400">{selectedUser?.id === u.id ? "▲ yopish" : "▼ boshqarish"}</span>
+                                    <button
+                                      onClick={(e) => { e.stopPropagation(); deleteUser(u); }}
+                                      disabled={deletingUserId === u.id}
+                                      className="text-[0.7rem] font-semibold text-red-500 hover:text-red-700 disabled:opacity-50 cursor-pointer bg-transparent border-none"
+                                    >
+                                      {deletingUserId === u.id ? "O'chirilmoqda..." : "🗑 O'chirish"}
+                                    </button>
+                                  </div>
                                 </td>
                               </tr>
                             );
@@ -1556,6 +1615,16 @@ export default function Admin() {
                           Bepulga o'tish
                         </button>
                       </div>
+                    </div>
+                    <div className="pt-3 border-t border-slate-100">
+                      <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">Xavfli hudud</p>
+                      <button
+                        onClick={() => deleteUser(selectedUser)}
+                        disabled={deletingUserId === selectedUser.id}
+                        className="bg-red-600 text-white border-none rounded-lg px-4 py-2 text-xs font-semibold cursor-pointer hover:bg-red-700 transition-colors disabled:opacity-50"
+                      >
+                        {deletingUserId === selectedUser.id ? "O'chirilmoqda..." : "🗑 Foydalanuvchini butunlay o'chirish"}
+                      </button>
                     </div>
                   </div>
                 )}
