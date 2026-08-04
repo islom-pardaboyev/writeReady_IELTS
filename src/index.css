@@ -1,13 +1,13 @@
-@import url('https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,300;0,9..144,700;0,9..144,900;1,9..144,300&family=IBM+Plex+Mono:wght@400;500&family=Inter:wght@300;400;500;600;700&display=swap');
+@import url("https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,300;0,9..144,700;0,9..144,900;1,9..144,300&family=IBM+Plex+Mono:wght@400;500&family=Inter:wght@300;400;500;600;700&display=swap");
 @import "tailwindcss";
 
 /* Tailwind v4: class-based dark mode */
 @custom-variant dark (&:where(.dark, .dark *));
 
 @theme {
-  --font-fraunces: 'Fraunces', serif;
-  --font-mono: 'IBM Plex Mono', monospace;
-  --font-sans: 'Inter', sans-serif;
+  --font-fraunces: "Fraunces", serif;
+  --font-mono: "IBM Plex Mono", monospace;
+  --font-sans: "Inter", sans-serif;
 }
 
 html,
@@ -15,37 +15,41 @@ body {
   overscroll-behavior-y: none;
 }
 
+#right-actions button{
+@apply cursor-pointer
+}
+
 /* ── Light theme ──────────────────────────────────────────────────────────── */
 :root {
   color-scheme: light;
 
   /* Brand */
-  --ink-blue: #1C3A5E;
-  --ink-light: #2D527E;
-  --paper: #F6F3EC;
-  --slate: #1A2230;
-  --coral: #E0654B;
-  --gold: #FFC111;
-  --mist: #D7E2EA;
-  --paper-dark: #EDE9E0;
+  --ink-blue: #1c3a5e;
+  --ink-light: #2d527e;
+  --paper: #f6f3ec;
+  --slate: #1a2230;
+  --coral: #e0654b;
+  --gold: #ffc111;
+  --mist: #d7e2ea;
+  --paper-dark: #ede9e0;
   --border: oklch(0.922 0 0);
-  --text-muted: #6B7280;
-  --white: #FFFFFF;
+  --text-muted: #6b7280;
+  --white: #ffffff;
 
   /* Semantic surface tokens */
-  --bg-base: #F6F3EC;
-  --bg-card: #FFFFFF;
-  --bg-subtle: #F8FAFC;
-  --bg-input: #FFFFFF;
-  --text-primary: #0F172A;
+  --bg-base: #f6f3ec;
+  --bg-card: #ffffff;
+  --bg-subtle: #f8fafc;
+  --bg-input: #ffffff;
+  --text-primary: #0f172a;
   --text-secondary: #475569;
-  --border-color: #E2E8F0;
-  --border-strong: #CBD5E1;
+  --border-color: #e2e8f0;
+  --border-strong: #cbd5e1;
 
   /* Shadows */
-  --shadow-sm: 0 1px 3px rgba(28,58,94,0.08);
-  --shadow-md: 0 4px 16px rgba(28,58,94,0.12);
-  --shadow-lg: 0 8px 32px rgba(28,58,94,0.16);
+  --shadow-sm: 0 1px 3px rgba(28, 58, 94, 0.08);
+  --shadow-md: 0 4px 16px rgba(28, 58, 94, 0.12);
+  --shadow-lg: 0 8px 32px rgba(28, 58, 94, 0.16);
 
   --radius: 0.625rem;
   --radius-lg: 14px;
@@ -83,7 +87,7 @@ body {
 
 @theme inline {
   --font-heading: var(--font-sans);
-  --font-sans: 'Inter', sans-serif;
+  --font-sans: "Inter", sans-serif;
   --color-sidebar-ring: var(--sidebar-ring);
   --color-sidebar-border: var(--sidebar-border);
   --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
@@ -128,32 +132,32 @@ body {
   color-scheme: dark;
 
   /* Brand — adjusted for dark bg */
-  --ink-blue: #60A5FA;
-  --ink-light: #93C5FD;
-  --paper: #0F172A;
-  --slate: #E2E8F0;
-  --coral: #FB7185;
-  --gold: #FCD34D;
-  --mist: #1E3A5F;
-  --paper-dark: #1E293B;
+  --ink-blue: #60a5fa;
+  --ink-light: #93c5fd;
+  --paper: #0f172a;
+  --slate: #e2e8f0;
+  --coral: #fb7185;
+  --gold: #fcd34d;
+  --mist: #1e3a5f;
+  --paper-dark: #1e293b;
   --border: #334155;
-  --text-muted: #94A3B8;
-  --white: #1E293B;
+  --text-muted: #94a3b8;
+  --white: #1e293b;
 
   /* Semantic surface tokens */
-  --bg-base: #0F172A;
-  --bg-card: #1E293B;
-  --bg-subtle: #1E293B;
-  --bg-input: #0F172A;
-  --text-primary: #F1F5F9;
-  --text-secondary: #94A3B8;
+  --bg-base: #0f172a;
+  --bg-card: #1e293b;
+  --bg-subtle: #1e293b;
+  --bg-input: #0f172a;
+  --text-primary: #f1f5f9;
+  --text-secondary: #94a3b8;
   --border-color: #334155;
   --border-strong: #475569;
 
   /* Shadows */
-  --shadow-sm: 0 1px 3px rgba(0,0,0,0.3);
-  --shadow-md: 0 4px 16px rgba(0,0,0,0.4);
-  --shadow-lg: 0 8px 32px rgba(0,0,0,0.5);
+  --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.3);
+  --shadow-md: 0 4px 16px rgba(0, 0, 0, 0.4);
+  --shadow-lg: 0 8px 32px rgba(0, 0, 0, 0.5);
 
   /* shadcn oklch tokens */
   --background: oklch(0.145 0 0);
@@ -189,7 +193,9 @@ body {
     @apply border-border outline-ring/50;
   }
   html {
-    transition: background-color 0.2s ease, color 0.2s ease;
+    transition:
+      background-color 0.2s ease,
+      color 0.2s ease;
     @apply font-sans;
   }
   body {
@@ -197,6 +203,30 @@ body {
     color: var(--text-primary);
   }
   html.dark {
-    background-color: #0F172A;
+    background-color: #0f172a;
+  }
+}
+
+@layer utilities {
+  .mock-question-scroll {
+    scrollbar-width: thin;
+    scrollbar-color: #cbd5e1 #f8fafc;
+  }
+
+  .mock-question-scroll::-webkit-scrollbar {
+    width: 8px;
+  }
+
+  .mock-question-scroll::-webkit-scrollbar-track {
+    background: #f8fafc;
+  }
+
+  .mock-question-scroll::-webkit-scrollbar-thumb {
+    background: #cbd5e1;
+    border-radius: 999px;
+  }
+
+  .mock-question-scroll::-webkit-scrollbar-thumb:hover {
+    background: #94a3b8;
   }
 }

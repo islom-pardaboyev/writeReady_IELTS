@@ -14,7 +14,13 @@ import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/Button";
 import WritingTask2Preview from "@/components/writingTask2Preview/WritingTask2Preview";
 import { encodeReport } from "@/lib/reportEncoding";
-import { CheckIcon, ClockIcon, ChevronRightIcon, Bot, GraduationCap } from "lucide-react";
+import {
+  CheckIcon,
+  ClockIcon,
+  ChevronRightIcon,
+  Bot,
+  GraduationCap,
+} from "lucide-react";
 import { useHumanCheck } from "@/hooks/useHumanCheck";
 import { FullscreenButton } from "@/components/ui/FullscreenButton";
 import { hasFreeReportThisWeek, type FreeUsage } from "@/lib/weeklyFree";
@@ -33,7 +39,8 @@ interface Task2 {
 
 function hasAccess(data: Record<string, unknown>): boolean {
   // Learning-center students always have access (free premium).
-  if (typeof data.centerId === "string" && data.centerId.length > 0) return true;
+  if (typeof data.centerId === "string" && data.centerId.length > 0)
+    return true;
   const plan = data.plan as string | undefined;
   if (
     plan === "forever" ||
@@ -357,8 +364,18 @@ function Mock() {
   const handleHumanCheck = () => {
     setShowFeedbackModal(false);
     humanCheck.requestHumanCheck({
-      task1: task1 && userText1.trim() ? { questionText: task1.report, essayText: userText1, imageBase64: task1.image } : undefined,
-      task2: task2 && userText2.trim() ? { questionText: task2.report, essayText: userText2 } : undefined,
+      task1:
+        task1 && userText1.trim()
+          ? {
+              questionText: task1.report,
+              essayText: userText1,
+              imageBase64: task1.image,
+            }
+          : undefined,
+      task2:
+        task2 && userText2.trim()
+          ? { questionText: task2.report, essayText: userText2 }
+          : undefined,
     });
   };
 
@@ -397,7 +414,7 @@ function Mock() {
     >
       {/* ── Top bar ── */}
       <div
-        className={`sticky top-0 z-30 border-b transition-colors duration-500 ${
+        className={`sticky top-0 z-30 border-b bg-white transition-colors duration-500 ${
           isTimeUp
             ? "bg-red-600 border-red-700"
             : isLowTime
@@ -405,14 +422,14 @@ function Mock() {
               : "bg-slate-900 border-slate-800"
         }`}
       >
-        <div className="flex items-center justify-between gap-4 px-5 py-2.5">
+        <div className="flex items-center justify-between bg-white gap-4 px-5 py-2.5">
           {/* Left: branding + breadcrumb */}
           <div className="flex items-center gap-2 min-w-0">
-            <span className="hidden sm:block text-xs font-semibold text-white/50 tracking-widest uppercase">
+            <span className="hidden sm:block text-xs font-semibold text-black/50 tracking-widest uppercase">
               WriteReady
             </span>
-            <ChevronRightIcon className="hidden sm:block w-3 h-3 text-white/30" />
-            <span className="text-sm font-medium text-white truncate">
+            <ChevronRightIcon className="hidden sm:block w-3 h-3 text-black/30" />
+            <span className="text-sm font-medium text-black truncate">
               Mock Exam
             </span>
           </div>
@@ -420,15 +437,15 @@ function Mock() {
           {/* Centre: timer */}
           <div className="flex items-center gap-2">
             <ClockIcon
-              className={`w-3.5 h-3.5 ${isLowTime || isTimeUp ? "text-white" : "text-white/60"}`}
+              className={`w-3.5 h-3.5 ${isLowTime || isTimeUp ? "text-black" : "text-black/60"}`}
             />
             <span
               className={`text-sm font-mono font-semibold tabular-nums ${
                 isTimeUp
-                  ? "text-white"
+                  ? "text-black"
                   : isLowTime
-                    ? "text-white"
-                    : "text-white/90"
+                    ? "text-black"
+                    : "text-black/90"
               }`}
             >
               {isTimeUp ? "Time's up" : timerLabel}
@@ -436,17 +453,17 @@ function Mock() {
           </div>
 
           {/* Right: actions */}
-          <div className="flex items-center gap-2">
-            <FullscreenButton className="inline-flex items-center justify-center p-1.5 text-white/70 hover:text-white border border-white/20 hover:border-white/40 rounded-md transition-colors" />
+          <div id="right-actions" className="flex items-center gap-2">
+            <FullscreenButton className="inline-flex items-center justify-center p-1.5 text-black/70 hover:text-black border border-black/20 hover:border-black/40 rounded-md transition-colors" />
             <button
               onClick={() => setShowHeader((p) => !p)}
-              className="hidden sm:inline-flex items-center gap-1 px-3 py-1.5 text-xs text-white/70 hover:text-white border border-white/20 hover:border-white/40 rounded-md transition-colors"
+              className="hidden sm:inline-flex items-center gap-1 px-3 py-1.5 text-xs text-black/70 hover:text-black border border-black/20 hover:border-black/40 rounded-md transition-colors"
             >
               {showHeader ? "Hide panel" : "Show panel"}
             </button>
             <button
               onClick={handleGetAnother}
-              className="hidden sm:inline-flex items-center gap-1 px-3 py-1.5 text-xs text-white/70 hover:text-white border border-white/20 hover:border-white/40 rounded-md transition-colors"
+              className="hidden sm:inline-flex items-center gap-1 px-3 py-1.5 text-xs text-black/70 hover:text-black border border-black/20 hover:border-black/40 rounded-md transition-colors"
             >
               New question
             </button>
@@ -579,7 +596,7 @@ function Mock() {
       >
         {/* Question panel */}
         <div className="w-full overflow-y-auto bg-white border-b border-slate-200 md:w-[calc(var(--split)*100%)] md:border-b-0 md:border-r max-h-[42vh] md:max-h-none">
-          <div className="p-6 w-full">
+          <div className="mock-question-scroll p-6 w-full h-full overflow-y-auto min-h-0">
             {activeTask === 1 && task1 ? (
               <WritingTask1Preview task1={task1} />
             ) : activeTask === 2 && task2 ? (
@@ -756,11 +773,17 @@ function Mock() {
               <div className="flex items-center justify-center w-11 h-11 mx-auto rounded-full bg-emerald-50">
                 <CheckIcon className="w-5 h-5 text-emerald-600" />
               </div>
-              <h2 className="mt-4 text-base font-semibold text-slate-900">Sent for human review</h2>
+              <h2 className="mt-4 text-base font-semibold text-slate-900">
+                Sent for human review
+              </h2>
               <p className="mt-2 text-sm leading-6 text-slate-500">
-                You'll get a notification once your teacher has reviewed your essay.
+                You'll get a notification once your teacher has reviewed your
+                essay.
               </p>
-              <Button onClick={() => humanCheck.setSuccess(false)} className="w-full mt-6 bg-blue-600 hover:bg-blue-700 text-white">
+              <Button
+                onClick={() => humanCheck.setSuccess(false)}
+                className="w-full mt-6 bg-blue-600 hover:bg-blue-700 text-white"
+              >
                 Done
               </Button>
             </div>

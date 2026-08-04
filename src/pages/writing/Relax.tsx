@@ -1,4 +1,10 @@
-import { useState, useEffect, useRef, type PointerEvent, type CSSProperties } from "react";
+import {
+  useState,
+  useEffect,
+  useRef,
+  type PointerEvent,
+  type CSSProperties,
+} from "react";
 import { useStopwatch } from "@/hooks/useStopwatch";
 import jsPDF from "jspdf";
 import { NavLink, useNavigate } from "react-router-dom";
@@ -8,7 +14,14 @@ import { Button } from "@/components/ui/Button";
 import WritingTask2Preview from "@/components/writingTask2Preview/WritingTask2Preview";
 import WritingTask1Preview from "@/components/writingTask1Preview/WritingTask1Preview";
 import { encodeReport } from "@/lib/reportEncoding";
-import { CheckIcon, ChevronRightIcon, ClockIcon, UploadIcon, Bot, GraduationCap } from "lucide-react";
+import {
+  CheckIcon,
+  ChevronRightIcon,
+  ClockIcon,
+  UploadIcon,
+  Bot,
+  GraduationCap,
+} from "lucide-react";
 import { useHumanCheck } from "@/hooks/useHumanCheck";
 import { useFeatureFlag } from "@/hooks/useFeatureFlag";
 import { TeacherPickerModal } from "@/components/ui/TeacherPickerModal";
@@ -59,7 +72,8 @@ async function loadImgBase64(
 
 function hasAccess(data: Record<string, unknown>): boolean {
   // Learning-center students always have access (free premium).
-  if (typeof data.centerId === "string" && data.centerId.length > 0) return true;
+  if (typeof data.centerId === "string" && data.centerId.length > 0)
+    return true;
   const plan = data.plan as string | undefined;
   if (
     plan === "forever" ||
@@ -281,8 +295,20 @@ function Relax() {
     setShowFeedbackModal(false);
     humanCheck.requestHumanCheck(
       activeTask === 1
-        ? { task1: userText.trim() ? { questionText: prompt, essayText: userText, imageBase64: imageUrl ?? undefined } : undefined }
-        : { task2: userText.trim() ? { questionText: task2Prompt, essayText: userText } : undefined },
+        ? {
+            task1: userText.trim()
+              ? {
+                  questionText: prompt,
+                  essayText: userText,
+                  imageBase64: imageUrl ?? undefined,
+                }
+              : undefined,
+          }
+        : {
+            task2: userText.trim()
+              ? { questionText: task2Prompt, essayText: userText }
+              : undefined,
+          },
     );
   };
 
@@ -293,37 +319,37 @@ function Relax() {
         data-theme="light"
         className="flex flex-col min-h-screen bg-slate-50 font-sans"
       >
-        <div className="sticky top-0 z-30 bg-slate-900 border-b border-slate-800">
+        <div className="sticky top-0 z-30 bg-white border-b border-slate-200">
           <div className="flex items-center justify-between gap-4 px-5 py-2.5">
             <div className="flex items-center gap-2">
-              <span className="hidden sm:block text-xs font-semibold text-white/50 tracking-widest uppercase">
+              <span className="hidden sm:block text-xs font-semibold text-black/50 tracking-widest uppercase">
                 WriteReady
               </span>
-              <ChevronRightIcon className="hidden sm:block w-3 h-3 text-white/30" />
-              <span className="text-sm font-medium text-white">Relax Mode</span>
+              <ChevronRightIcon className="hidden sm:block w-3 h-3 text-black/30" />
+              <span className="text-sm font-medium text-black">Relax Mode</span>
             </div>
             <nav className="flex items-center gap-1">
               <NavLink
                 to="/"
-                className="px-3 py-1.5 text-xs text-white/60 hover:text-white border border-white/20 hover:border-white/40 rounded-md transition-colors"
+                className="px-3 py-1.5 text-xs text-black/60 hover:text-black border border-black/20 hover:border-black/40 rounded-md transition-colors"
               >
                 Home
               </NavLink>
               <NavLink
                 to="/writing/mock"
-                className="px-3 py-1.5 text-xs text-white/60 hover:text-white border border-white/20 hover:border-white/40 rounded-md transition-colors"
+                className="px-3 py-1.5 text-xs text-black/60 hover:text-black border border-black/20 hover:border-black/40 rounded-md transition-colors"
               >
                 Mock
               </NavLink>
               <NavLink
                 to="/writing/practice"
-                className="px-3 py-1.5 text-xs text-white/60 hover:text-white border border-white/20 hover:border-white/40 rounded-md transition-colors"
+                className="px-3 py-1.5 text-xs text-black/60 hover:text-black border border-black/20 hover:border-black/40 rounded-md transition-colors"
               >
                 Practice
               </NavLink>
               <NavLink
                 to="/writing/quick"
-                className="px-3 py-1.5 text-xs text-white/60 hover:text-white border border-white/20 hover:border-white/40 rounded-md transition-colors"
+                className="px-3 py-1.5 text-xs text-black/60 hover:text-black border border-black/20 hover:border-black/40 rounded-md transition-colors"
               >
                 Quick Write
               </NavLink>
@@ -381,22 +407,22 @@ function Relax() {
         data-theme="light"
         className="flex flex-col min-h-screen bg-slate-50 font-sans"
       >
-        <div className="sticky top-0 z-30 bg-slate-900 border-b border-slate-800">
+        <div className="sticky top-0 z-30 bg-white border-b border-slate-200">
           <div className="flex items-center justify-between gap-4 px-5 py-2.5">
             <div className="flex items-center gap-2">
-              <span className="hidden sm:block text-xs font-semibold text-white/50 tracking-widest uppercase">
+              <span className="hidden sm:block text-xs font-semibold text-black/50 tracking-widest uppercase">
                 WriteReady
               </span>
-              <ChevronRightIcon className="hidden sm:block w-3 h-3 text-white/30" />
-              <span className="text-sm font-medium text-white">Relax Mode</span>
-              <ChevronRightIcon className="w-3 h-3 text-white/30" />
-              <span className="text-sm text-white/60">
+              <ChevronRightIcon className="hidden sm:block w-3 h-3 text-black/30" />
+              <span className="text-sm font-medium text-black">Relax Mode</span>
+              <ChevronRightIcon className="w-3 h-3 text-black/30" />
+              <span className="text-sm text-black/60">
                 Task {activeTask} setup
               </span>
             </div>
             <button
               onClick={handleReset}
-              className="px-3 py-1.5 text-xs text-white/60 hover:text-white border border-white/20 hover:border-white/40 rounded-md transition-colors"
+              className="px-3 py-1.5 text-xs text-black/60 hover:text-black border border-black/20 hover:border-black/40 rounded-md transition-colors"
             >
               ← Back
             </button>
@@ -530,63 +556,63 @@ function Relax() {
       className="flex flex-col min-h-screen bg-slate-50 font-sans"
     >
       {/* Top bar */}
-      <div className="sticky top-0 z-30 bg-slate-900 border-b border-slate-800">
+      <div className="sticky top-0 z-30 bg-white border-b border-slate-200">
         <div className="flex items-center justify-between gap-4 px-5 py-2.5">
           <div className="flex items-center gap-2 min-w-0">
-            <span className="hidden sm:block text-xs font-semibold text-white/50 tracking-widest uppercase">
+            <span className="hidden sm:block text-xs font-semibold text-black/50 tracking-widest uppercase">
               WriteReady
             </span>
-            <ChevronRightIcon className="hidden sm:block w-3 h-3 text-white/30" />
-            <span className="text-sm font-medium text-white truncate">
+            <ChevronRightIcon className="hidden sm:block w-3 h-3 text-black/30" />
+            <span className="text-sm font-medium text-black truncate">
               Relax Mode
             </span>
           </div>
 
           {/* Centre: timer */}
           <div className="flex items-center gap-2">
-            <ClockIcon className="w-3.5 h-3.5 text-white/60" />
-            <span className="text-sm font-mono font-semibold tabular-nums text-white/90">
+            <ClockIcon className="w-3.5 h-3.5 text-black/60" />
+            <span className="text-sm font-mono font-semibold tabular-nums text-black/90">
               {elapsed}
             </span>
           </div>
 
           <div className="flex items-center gap-2">
-            <FullscreenButton className="inline-flex items-center justify-center p-1.5 text-white/70 hover:text-white border border-white/20 hover:border-white/40 rounded-md transition-colors" />
+            <FullscreenButton className="inline-flex items-center justify-center p-1.5 text-black/70 hover:text-black border border-black/20 hover:border-black/40 rounded-md transition-colors" />
             <button
               onClick={handleReset}
-              className="hidden sm:inline-flex px-3 py-1.5 text-xs text-white/70 hover:text-white border border-white/20 hover:border-white/40 rounded-md transition-colors"
+              className="hidden sm:inline-flex px-3 py-1.5 text-xs text-black/70 hover:text-black border border-black/20 hover:border-black/40 rounded-md transition-colors"
             >
               Start over
             </button>
             <nav className="hidden sm:flex items-center gap-1">
               <NavLink
                 to="/"
-                className="px-3 py-1.5 text-xs text-white/60 hover:text-white border border-white/20 hover:border-white/40 rounded-md transition-colors"
+                className="px-3 py-1.5 text-xs text-black/60 hover:text-black border border-black/20 hover:border-black/40 rounded-md transition-colors"
               >
                 Home
               </NavLink>
               <NavLink
                 to="/writing/mock"
-                className="px-3 py-1.5 text-xs text-white/60 hover:text-white border border-white/20 hover:border-white/40 rounded-md transition-colors"
+                className="px-3 py-1.5 text-xs text-black/60 hover:text-black border border-black/20 hover:border-black/40 rounded-md transition-colors"
               >
                 Mock
               </NavLink>
               <NavLink
                 to="/writing/practice"
-                className="px-3 py-1.5 text-xs text-white/60 hover:text-white border border-white/20 hover:border-white/40 rounded-md transition-colors"
+                className="px-3 py-1.5 text-xs text-black/60 hover:text-black border border-black/20 hover:border-black/40 rounded-md transition-colors"
               >
                 Practice
               </NavLink>
               <NavLink
                 to="/writing/quick"
-                className="px-3 py-1.5 text-xs text-white/60 hover:text-white border border-white/20 hover:border-white/40 rounded-md transition-colors"
+                className="px-3 py-1.5 text-xs text-black/60 hover:text-black border border-black/20 hover:border-black/40 rounded-md transition-colors"
               >
                 Quick Write
               </NavLink>
             </nav>
             <button
               onClick={handleDownloadPDF}
-              className="flex items-center gap-1.5 px-4 py-1.5 text-xs font-semibold text-slate-900 bg-white hover:bg-slate-100 rounded-md transition-colors"
+              className="flex items-center gap-1.5 px-4 py-1.5 text-xs font-semibold text-white bg-slate-900 hover:bg-slate-800 rounded-md transition-colors"
             >
               Save PDF
             </button>
@@ -594,9 +620,9 @@ function Relax() {
         </div>
 
         {/* Progress bar */}
-        <div className="h-0.5 bg-white/10">
+        <div className="h-0.5 bg-black/10">
           <div
-            className="h-full bg-white/60 transition-all duration-500"
+            className="h-full bg-black/40 transition-all duration-500"
             style={{ width: `${currentProgress}%` }}
           />
         </div>
@@ -774,11 +800,17 @@ function Relax() {
               <div className="flex items-center justify-center w-11 h-11 mx-auto rounded-full bg-emerald-50">
                 <CheckIcon className="w-5 h-5 text-emerald-600" />
               </div>
-              <h2 className="mt-4 text-base font-semibold text-slate-900">Sent for human review</h2>
+              <h2 className="mt-4 text-base font-semibold text-slate-900">
+                Sent for human review
+              </h2>
               <p className="mt-2 text-sm leading-6 text-slate-500">
-                You'll get a notification once your teacher has reviewed your essay.
+                You'll get a notification once your teacher has reviewed your
+                essay.
               </p>
-              <Button onClick={() => humanCheck.setSuccess(false)} className="w-full mt-6 bg-blue-600 hover:bg-blue-700 text-white">
+              <Button
+                onClick={() => humanCheck.setSuccess(false)}
+                className="w-full mt-6 bg-blue-600 hover:bg-blue-700 text-white"
+              >
                 Done
               </Button>
             </div>

@@ -357,43 +357,43 @@ function Practice() {
       className="flex flex-col min-h-screen bg-slate-50 font-sans"
     >
       {/* ── Top bar ── */}
-      <div className="sticky top-0 z-30 bg-slate-900 border-b border-slate-800">
+      <div className="sticky top-0 z-30 bg-white border-b border-slate-800">
         <div className="flex items-center justify-between gap-4 px-5 py-2.5">
           <div className="flex items-center gap-2 min-w-0">
-            <span className="hidden sm:block text-xs font-semibold text-white/50 tracking-widest uppercase">
+            <span className="hidden sm:block text-xs font-semibold text-black/50 tracking-widest uppercase">
               WriteReady
             </span>
-            <ChevronRightIcon className="hidden sm:block w-3 h-3 text-white/30" />
-            <span className="text-sm font-medium text-white truncate">
+            <ChevronRightIcon className="hidden sm:block w-3 h-3 text-black/30" />
+            <span className="text-sm font-medium text-black truncate">
               Practice Mode
             </span>
           </div>
 
           {/* Centre: timer */}
           <div className="flex items-center gap-2">
-            <ClockIcon className="w-3.5 h-3.5 text-white/60" />
-            <span className="text-sm font-mono font-semibold tabular-nums text-white/90">
+            <ClockIcon className="w-3.5 h-3.5 text-black/60" />
+            <span className="text-sm font-mono font-semibold tabular-nums text-black/90">
               {elapsed}
             </span>
           </div>
 
-          <div className="flex items-center gap-2">
-            <FullscreenButton className="inline-flex items-center justify-center p-1.5 text-white/70 hover:text-white border border-white/20 hover:border-white/40 rounded-md transition-colors" />
+          <div id="right-actions" className="flex items-center gap-2">
+            <FullscreenButton className="inline-flex items-center justify-center p-1.5 text-black/70 hover:text-black border border-black/20 hover:border-black/40 rounded-md transition-colors" />
             <button
               onClick={() => setShowHeader((p) => !p)}
-              className="hidden sm:inline-flex items-center gap-1 px-3 py-1.5 text-xs text-white/70 hover:text-white border border-white/20 hover:border-white/40 rounded-md transition-colors"
+              className="hidden sm:inline-flex items-center gap-1 px-3 py-1.5 text-xs text-black/70 hover:text-black border border-black/20 hover:border-black/40 rounded-md transition-colors"
             >
               {showHeader ? "Hide panel" : "Show panel"}
             </button>
             <button
               onClick={handleGetAnother}
-              className="hidden sm:inline-flex items-center gap-1 px-3 py-1.5 text-xs text-white/70 hover:text-white border border-white/20 hover:border-white/40 rounded-md transition-colors"
+              className="hidden sm:inline-flex items-center gap-1 px-3 py-1.5 text-xs text-black/70 hover:text-black border border-black/20 hover:border-black/40 rounded-md transition-colors"
             >
               New question
             </button>
             <button
               onClick={handleDownloadPDF}
-              className="flex items-center gap-1.5 px-4 py-1.5 text-xs font-semibold text-slate-900 bg-white hover:bg-slate-100 rounded-md transition-colors"
+              className="flex items-center gap-1.5 px-4 py-1.5 text-xs font-semibold text-slate-900 bg-white   hover:bg-slate-100 rounded-md transition-colors"
             >
               Save PDF
             </button>
@@ -401,9 +401,9 @@ function Practice() {
         </div>
 
         {/* Progress bar */}
-        <div className="h-0.5 bg-white/10">
+        <div className="h-0.5 bg-black/10">
           <div
-            className="h-full bg-white/60 transition-all duration-500"
+            className="h-full bg-black/60 transition-all duration-500"
             style={{ width: `${currentProgress}%` }}
           />
         </div>
