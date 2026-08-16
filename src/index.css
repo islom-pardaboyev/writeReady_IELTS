@@ -15,6 +15,10 @@ body {
   overscroll-behavior-y: none;
 }
 
+button{
+  cursor: pointer !important;
+}
+
 #right-actions button{
 @apply cursor-pointer
 }
