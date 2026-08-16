@@ -192,50 +192,59 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   }
 }
 
+// Source: official IELTS Writing Band Descriptors PDF (updated May 2023).
+// Task Achievement/Response and length-penalty wording is task-specific
+// (Task 1 uses Academic/GT bullet-point language; Task 2 uses prompt/position
+// language). Coherence & Cohesion, Lexical Resource, and Grammatical Range &
+// Accuracy differ only slightly in phrasing between the two tasks in the
+// official doc, so those three are shared here to keep the prompt compact.
 function bandDescriptors(taskType: string): string {
   const isTask1 = taskType === 'Task 1';
   const minWords = isTask1 ? 150 : 250;
 
-  const taskCriterion = isTask1 ? `TASK ACHIEVEMENT (Task 1 — describing data/process/map):
-- Band 9: fully satisfies all requirements; fully developed, accurate overview
-- Band 8: covers requirements sufficiently; key features/trends clearly highlighted and appropriately illustrated with data
-- Band 7: covers requirements; key features highlighted but not fully extended; overview present
-- Band 6: addresses requirements; overview attempted but may be partial/imprecise; some data irrelevant, inaccurate, or missing
-- Band 5: task only generally addressed; format may be wrong; NO clear overview; data presented mechanically/as a list
-- Band 4: fails to cover key features; no overview; may misidentify the task type` : `TASK RESPONSE (Task 2 — essay):
-- Band 9: fully addresses all parts of the prompt; fully extended, well-supported position throughout
-- Band 8: sufficiently addresses all parts; well-developed position with relevant, extended, well-supported ideas
-- Band 7: addresses all parts; clear position throughout; main ideas extended and supported but may lack full focus in places
-- Band 6: addresses all parts (some more than others); position is relevant but conclusions may be unclear/repetitive; main ideas relevant but some underdeveloped
-- Band 5: only partially addresses the task; position unclear or inconsistent; ideas limited, repetitive, or hard to identify
-- Band 4: responds only minimally or tangentially; position unclear; ideas are few, undeveloped, or largely irrelevant`;
+  const taskCriterion = isTask1
+    ? `TASK ACHIEVEMENT (Task 1 — describing data/process/map/letter):
+- Band 9: All requirements fully and appropriately satisfied; extremely rare lapses in content.
+- Band 8: Covers requirements appropriately, relevantly, sufficiently. (Academic) Key features skilfully selected, clearly presented/highlighted/illustrated. (GT) All bullet points clearly presented, appropriately illustrated/extended. Occasional omissions/lapses only.
+- Band 7: Covers requirements; content relevant/accurate, appropriate format, a few omissions/lapses possible. (Academic) Key features covered and clearly highlighted but could be fuller; clear overview, data appropriately categorised, main trends/differences identified. (GT) All bullet points covered and clearly highlighted but could be fuller; clear purpose; consistent tone; minimal lapses.
+- Band 6: Focuses on requirements, appropriate format. (Academic) Key features covered and adequately highlighted; relevant overview attempted; info supported with data. (GT) All bullet points covered and adequately highlighted; purpose generally clear; minor tone inconsistencies. Some irrelevant/inaccurate info in details; some details missing/excessive.
+- Band 5: Only generally addresses requirements; format may be wrong in places. (Academic) Key features not adequately covered; recounting mechanical; may have NO data to support the description. (GT) Bullet points presented but one+ not adequately covered; purpose unclear at times; tone variable/inappropriate. Tends to focus on details without the bigger picture; irrelevant/inaccurate material in key areas.
+- Band 4: An attempt to address the task. (Academic) Few key features selected. (GT) Not all bullet points presented; purpose of letter unclear/confused; tone may be inappropriate. Format may be inappropriate; key features/bullet points may be irrelevant, repetitive, inaccurate.`
+    : `TASK RESPONSE (Task 2 — essay):
+- Band 9: Prompt appropriately addressed and explored in depth; clear, fully developed position directly answering the question(s); ideas relevant, fully extended, well supported; lapses extremely rare.
+- Band 8: Prompt appropriately and sufficiently addressed; clear, well-developed position; ideas relevant, well extended and supported; occasional omissions/lapses only.
+- Band 7: Main parts of the prompt appropriately addressed; clear, developed position; main ideas extended/supported but may over-generalise or lack focus/precision in places.
+- Band 6: Main parts addressed (some more fully than others), appropriate format; position directly relevant but conclusions may be unclear/unjustified/repetitive; main ideas relevant but some insufficiently developed or lacking clarity; some supporting evidence less relevant/adequate.
+- Band 5: Main parts incompletely addressed; format may be wrong in places; position expressed but development not always clear; some main ideas limited/underdeveloped, possible irrelevant detail, some repetition.
+- Band 4: Prompt tackled minimally or tangentially (possible misunderstanding); format may be inappropriate; position discernible but reader must search for it; main ideas hard to identify or lack relevance/clarity/support; large parts may be repetitive.`;
 
   return `${taskCriterion}
-PENALTY: word count below ${minWords} → cap Task Achievement/Response at 6.0 if within 15% under, cap at 5.0 if 15-40% under, cap at 4.0 if more than 40% under.
+
+LENGTH (official rules, not a soft guideline): minimum ${minWords} words for ${taskType}. Responses of 20 words or fewer are automatically Band 1 on ALL four criteria. Significantly underlength responses can be capped around Band 3 on Lexical Resource / Grammatical Range & Accuracy since the resource/structures used can't be judged. For a moderately underlength response, treat it as a genuine weakness in Task Achievement/Response (main ideas or key features will usually be underdeveloped) rather than applying an arbitrary numeric cap.
 
 COHERENCE & COHESION (both tasks):
-- Band 9: cohesion used seamlessly; paragraphing skillfully managed
-- Band 8: sequences info/ideas logically; cohesion managed well; paragraphing sufficient and appropriate
-- Band 7: logical organisation with clear progression; cohesive devices used effectively though may be slightly over/under-used; clear central topic per paragraph
-- Band 6: coherent arrangement with overall progression; cohesive devices used but sometimes faulty/mechanical; referencing not always clear; paragraphing present but not always logical
-- Band 5: some organisation but no clear overall progression; cohesive devices limited/inaccurate/repetitive; paragraphing absent or inadequate
-- Band 4: no clear progression; very basic/repetitive cohesive devices; minimal or no paragraphing
+- Band 9: Message followed effortlessly; cohesion rarely draws attention; lapses minimal; paragraphing skilfully managed.
+- Band 8: Followed with ease; info/ideas logically sequenced, cohesion well managed; occasional lapses; paragraphing sufficient and appropriate.
+- Band 7: Logically organised, clear progression (a few minor lapses possible); cohesive devices incl. reference/substitution used flexibly but with some inaccuracies or over/under use; paragraphing generally effective.
+- Band 6: Generally arranged coherently, clear overall progression; cohesive devices used to good effect but may be faulty/mechanical (misuse, overuse, omission); reference/substitution may lack flexibility, causing some repetition/error; paragraphing not always logical.
+- Band 5: Organisation evident but not wholly logical, lacking overall progression, though a sense of underlying coherence exists; ideas' relationship can be followed but sentences aren't fluently linked; limited/overused cohesive devices with inaccuracy; may be repetitive; paragraphing may be inadequate or missing.
+- Band 4: Info/ideas evident but not coherently arranged; no clear progression; relationships between ideas unclear/inadequately marked; basic cohesive devices only, may be inaccurate/repetitive; inaccurate use or lack of substitution/referencing; little or no paragraphing.
 
 LEXICAL RESOURCE (both tasks):
-- Band 9: wide, precise, natural vocabulary range; rare errors only as slips
-- Band 8: wide range used fluently and flexibly; occasional inaccuracies in word choice/collocation don't detract
-- Band 7: sufficient range for flexibility/precision; some less-common vocabulary attempted; occasional errors in word choice/spelling that don't impede communication
-- Band 6: adequate range for the task; attempts less-common vocabulary with some inaccuracy; spelling/word-formation errors that don't impede communication
-- Band 5: limited but minimally adequate range; noticeable errors that may cause some difficulty for the reader
-- Band 4: limited/inadequate range; frequent errors in word choice may distort meaning
+- Band 9: Full flexibility and precise use; wide vocabulary used accurately, naturally, sophisticated control; minor spelling/word-formation errors extremely rare, minimal impact.
+- Band 8: Wide resource fluently/flexibly used for precise meaning; skilful use of uncommon/idiomatic items despite occasional inaccuracies in word choice/collocation; occasional spelling/word-formation errors, minimal impact.
+- Band 7: Resource sufficient for some flexibility/precision; some ability to use less common/idiomatic items; awareness of style/collocation evident though inappropriacies occur; only a few spelling/word-formation errors, not detracting from clarity.
+- Band 6: Resource generally adequate; meaning generally clear despite restricted range/lack of precision; a risk-taker shows wider vocabulary but more inaccuracy; some spelling/word-formation errors that don't impede communication.
+- Band 5: Resource limited but minimally adequate; simple vocabulary may be accurate but range doesn't permit variation; frequent lapses in word-choice appropriacy, frequent simplification/repetition; noticeable spelling/word-formation errors causing some difficulty.
+- Band 4: Resource limited/inadequate for, or unrelated to, the task; vocabulary basic, repetitive; inappropriate use of memorised/formulaic chunks or input-material language; word choice/formation/spelling errors may impede meaning.
 
 GRAMMATICAL RANGE & ACCURACY (both tasks):
-- Band 9: wide range, full flexibility and accuracy; rare errors only as slips
-- Band 8: wide range of structures; the great majority of sentences are error-free
-- Band 7: a variety of complex structures; frequent error-free sentences; good control, though some errors persist
-- Band 6: a mix of simple and complex sentence forms; some grammar/punctuation errors but they rarely impede communication
-- Band 5: limited range of structures; complex sentences attempted but less accurately; frequent errors, punctuation may be faulty
-- Band 4: very limited range; subordinate structures are rare; errors predominate and may distort meaning`;
+- Band 9: Wide range used with full flexibility/control; punctuation and grammar appropriate throughout; minor errors extremely rare, minimal impact.
+- Band 8: Wide range flexibly/accurately used; majority of sentences error-free; punctuation well managed; occasional non-systematic errors, minimal impact.
+- Band 7: Variety of complex structures with some flexibility/accuracy; grammar/punctuation generally well controlled; error-free sentences frequent; a few errors may persist but don't impede communication.
+- Band 6: Mix of simple/complex sentence forms but limited flexibility; complex structures less accurate than simple ones; grammar/punctuation errors occur but rarely impede communication.
+- Band 5: Range limited and rather repetitive; complex sentences attempted but tend to be faulty, greatest accuracy on simple sentences; grammatical errors may be frequent, causing some difficulty; punctuation may be faulty.
+- Band 4: Very limited range; subordinate clauses rare, simple sentences predominate; some structures accurate but grammatical errors frequent and may impede meaning; punctuation often faulty/inadequate.`;
 }
 
 function buildLimitedPrompt(essay: string, question: string, taskType: string, wordCount: number): string {
