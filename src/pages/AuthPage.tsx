@@ -7,7 +7,8 @@ import { Card } from '../components/ui/Card';
 import { Input } from '../components/ui/input';
 import { PasswordInput } from '../components/ui/PasswordInput';
 import { Label } from '../components/ui/label';
-import { getAuth, signInWithEmailAndPassword } from 'firebase/auth';
+import { getAuth, signInWithEmailAndPassword,getAdditionalUserInfo } from 'firebase/auth';
+import { notifyNewAccount } from '@/lib/notifySignup';
 
 type Mode = 'login' | 'signup' | 'student';
 
@@ -49,6 +50,7 @@ export function AuthPage() {
     try {
       if (mode === 'signup') {
         await signUp(email, password);
+        notifyNewAccount(email, 'email')
       } else {
         await signIn(email, password);
       }
@@ -90,19 +92,23 @@ export function AuthPage() {
     }
   };
 
-  const handleGoogle = async () => {
-    setError('');
-    setLoading(true);
-    try {
-      await signInWithGoogle();
-      navigate('/dashboard');
-    } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : 'Google sign-in failed';
-      setError(msg);
-    } finally {
-      setLoading(false);
+const handleGoogle = async () => {
+  setError('');
+  setLoading(true);
+  try {
+    const result = await signInWithGoogle() as any;
+    const isNewUser = getAdditionalUserInfo(result)?.isNewUser;
+    if (isNewUser && result.user.email) {
+      notifyNewAccount(result.user.email, 'google');
     }
-  };
+    navigate('/dashboard');
+  } catch (err: unknown) {
+    const msg = err instanceof Error ? err.message : 'Google sign-in failed';
+    setError(msg);
+  } finally {
+    setLoading(false);
+  }
+};
 
   return (
     <div
