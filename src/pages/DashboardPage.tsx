@@ -106,8 +106,8 @@ export function DashboardPage() {
         });
       }
 
-      gsap.from('.gs-db-history', {
-        scrollTrigger: { trigger: '.gs-db-history', start: 'top 88%' },
+      gsap.from('#gs-db-history', {
+        scrollTrigger: { trigger: '#gs-db-history', start: 'top 88%' },
         y: 36, opacity: 0, duration: 0.65, ease: 'power3.out',
       });
     }, rootRef);
@@ -400,7 +400,7 @@ export function DashboardPage() {
 
           {/* Human Check */}
           {isPro && (
-            <div className="gs-db-history mb-10">
+            <div id="gs-db-history" className=" mb-10">
               <div className="flex items-center justify-between mb-4">
                 <h2 className="text-xl font-bold text-[var(--text-primary)] flex items-center gap-2">
                   <GraduationCap className="w-5 h-5 text-emerald-600" />
