@@ -4,7 +4,7 @@ import gsap from 'gsap';
 import { ScrollTrigger } from 'gsap/ScrollTrigger';
 import { useAuth } from '../hooks/useAuth';
 import { useUsage } from '../hooks/useUsage';
-import { Layout } from '../components/layout/Layout';
+import { AppShell } from '../components/layout/AppShell';
 import { Button } from '../components/ui/Button';
 import { Card } from '../components/ui/Card';
 import { Badge } from '../components/ui/badge';
@@ -33,16 +33,18 @@ function overallBand(scores: Record<string, number>): string {
   return (Math.round(avg * 2) / 2).toFixed(1);
 }
 
+const relativeTimeFormat = new Intl.RelativeTimeFormat(navigator.language, { numeric: 'auto' });
+
 function timeAgo(date: Date | null): string {
   if (!date) return '';
   const diff = Date.now() - date.getTime();
   const mins = Math.floor(diff / 60000);
-  if (mins < 60) return `${mins}m ago`;
+  if (mins < 60) return relativeTimeFormat.format(-mins, 'minute');
   const hrs = Math.floor(mins / 60);
-  if (hrs < 24) return `${hrs}h ago`;
+  if (hrs < 24) return relativeTimeFormat.format(-hrs, 'hour');
   const days = Math.floor(hrs / 24);
-  if (days < 7) return `${days}d ago`;
-  return date.toLocaleDateString('en-GB', { day: 'numeric', month: 'short' });
+  if (days < 7) return relativeTimeFormat.format(-days, 'day');
+  return new Intl.DateTimeFormat(navigator.language, { day: 'numeric', month: 'short' }).format(date);
 }
 
 function bandColor(band: string): string {
@@ -137,7 +139,10 @@ export function DashboardPage() {
       .then(setHumanReviews)
       .catch((e) => console.error('Failed to load human reviews:', e))
       .finally(() => setHumanReviewsLoading(false));
-  }, [user?.uid]);
+  // refreshProfile isn't memoized in AuthContext; including it would re-run
+  // this effect (and re-fetch reports) on every auth re-render.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user?.uid, user?.email, navigate]);
 
   useEffect(() => {
     if (profile?.notification) setNotification(profile.notification as string);
@@ -172,14 +177,14 @@ export function DashboardPage() {
   const planName = planDisplayName(profile?.plan ?? 'free');
 
   return (
-    <Layout>
+    <AppShell>
       <div className="py-10">
         <div className="max-w-[1160px] mx-auto px-6" ref={rootRef}>
 
           {/* Bonus notification banner — hide for paid users */}
           {notification && !isPaidPlan && (
-            <div className="mb-6 flex items-start gap-3 bg-gradient-to-r from-amber-50 to-yellow-50 border border-amber-200 rounded-2xl px-5 py-4">
-              <span className="text-2xl shrink-0">🎁</span>
+            <div role="status" aria-live="polite" className="mb-6 flex items-start gap-3 bg-gradient-to-r from-amber-50 to-yellow-50 border border-amber-200 rounded-2xl px-5 py-4">
+              <span className="text-2xl shrink-0" aria-hidden="true">🎁</span>
               <p className="text-sm text-amber-800 font-medium flex-1 leading-relaxed">{notification}</p>
               <button
                 onClick={dismissNotification}
@@ -191,7 +196,7 @@ export function DashboardPage() {
 
           {/* Welcome header */}
           <div className="gs-db-welcome mb-8">
-            <h1 className="font-fraunces text-4xl font-extrabold text-[var(--text-primary)] mb-1.5">
+            <h1 className="font-sans font-bold text-4xl font-extrabold text-[var(--text-primary)] mb-1.5 text-balance">
               Welcome back{user?.email ? `, ${user.email.split('@')[0]}` : ''}
             </h1>
             <p className="text-[var(--text-secondary)]">
@@ -214,14 +219,14 @@ export function DashboardPage() {
                 <div className="w-11 h-11 rounded-full bg-emerald-600 flex items-center justify-center text-2xl shrink-0">🏫</div>
                 <div className="flex-1 min-w-0">
                   <p className="text-xs font-bold tracking-widest uppercase text-emerald-600 dark:text-emerald-400 mb-0.5">Learning Center Student</p>
-                  <p className="font-fraunces text-lg font-bold text-[var(--text-primary)] leading-tight">{centerName}</p>
+                  <p className="font-sans font-bold text-lg text-[var(--text-primary)] leading-tight">{centerName}</p>
                   <div className="flex items-center gap-3 mt-1 flex-wrap">
                     <span className="text-sm text-[var(--text-secondary)]">
                       <span className="font-medium text-[var(--text-primary)]">{remaining}</span> AI analyses remaining this month
                     </span>
                     {subscriptionExpiresAt && (
                       <span className="text-xs text-[var(--text-secondary)] bg-white/60 dark:bg-white/10 px-2 py-0.5 rounded-full">
-                        Access until {new Date(subscriptionExpiresAt).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}
+                        Access until {new Date(subscriptionExpiresAt).toLocaleDateString(navigator.language, { day: 'numeric', month: 'short', year: 'numeric' })}
                       </span>
                     )}
                   </div>
@@ -290,9 +295,9 @@ export function DashboardPage() {
             {modes.map((m) => (
               <button
                 key={m.id}
-                className={`gs-db-mode-card rounded-[14px] p-6 text-left cursor-pointer transition-[transform,box-shadow] duration-150 shadow-[var(--shadow-sm)] border-[1.5px] ${
+                className={`gs-db-mode-card rounded-[14px] p-6 text-left cursor-pointer transition-[transform,box-shadow] duration-150 shadow-[var(--shadow-sm)] hover:-translate-y-0.5 hover:shadow-[0_6px_20px_rgba(0,0,0,0.15)] focus-visible:-translate-y-0.5 focus-visible:shadow-[0_6px_20px_rgba(0,0,0,0.15)] motion-reduce:hover:translate-y-0 border-[1.5px] ${
                   m.id === 'mock'
-                    ? 'bg-blue-700 border-transparent dark:bg-blue-800'
+                    ? 'bg-[var(--ink-blue)] border-transparent'
                     : m.id === 'quick'
                     ? 'bg-violet-50 border-violet-200 dark:bg-violet-900/20 dark:border-violet-800'
                     : m.id === 'relax'
@@ -300,17 +305,9 @@ export function DashboardPage() {
                     : 'bg-[var(--bg-card)] border-[var(--border-color)]'
                 }`}
                 onClick={() => navigate(`/writing/${m.id}`)}
-                onMouseEnter={(e) => {
-                  (e.currentTarget as HTMLButtonElement).style.transform = 'translateY(-2px)';
-                  (e.currentTarget as HTMLButtonElement).style.boxShadow = '0 6px 20px rgba(0,0,0,0.15)';
-                }}
-                onMouseLeave={(e) => {
-                  (e.currentTarget as HTMLButtonElement).style.transform = '';
-                  (e.currentTarget as HTMLButtonElement).style.boxShadow = '';
-                }}
               >
                 <div className="text-[1.75rem] mb-2">{m.emoji}</div>
-                <div className={`font-fraunces text-lg font-bold mb-1 ${m.id === 'mock' ? 'text-white' : m.id === 'quick' ? 'text-violet-800 dark:text-violet-200' : 'text-[var(--text-primary)]'}`}>
+                <div className={`font-sans font-bold text-lg mb-1 ${m.id === 'mock' ? 'text-white' : m.id === 'quick' ? 'text-violet-800 dark:text-violet-200' : 'text-[var(--text-primary)]'}`}>
                   {m.title}
                 </div>
                 <div className={`text-[0.8125rem] ${m.id === 'mock' ? 'text-white/75' : m.id === 'quick' ? 'text-violet-600 dark:text-violet-300' : 'text-[var(--text-secondary)]'}`}>
@@ -364,7 +361,7 @@ export function DashboardPage() {
                             </p>
                           </div>
                           <div className="text-right shrink-0">
-                            <div className={`font-fraunces text-2xl font-extrabold leading-none ${bandColor(band)}`}>
+                            <div className={`font-sans font-bold text-2xl font-extrabold leading-none ${bandColor(band)}`}>
                               {band}
                             </div>
                             <div className="text-[0.6rem] text-[var(--text-secondary)] mt-0.5">Overall</div>
@@ -467,9 +464,9 @@ export function DashboardPage() {
           )}
 
           {!isPro && (
-            <div className="gs-db-upsell mt-4 bg-gradient-to-br from-slate-900 to-[#1e3a5f] rounded-2xl p-8 flex items-center justify-between gap-4 flex-wrap">
+            <div className="gs-db-upsell mt-4 bg-gradient-to-br from-slate-900 to-[#312E81] rounded-2xl p-8 flex items-center justify-between gap-4 flex-wrap">
               <div>
-                <h3 className="font-fraunces text-white mb-1.5 text-xl">
+                <h3 className="font-sans font-bold text-white mb-1.5 text-xl">
                   Unlock AI Feedback
                 </h3>
                 <p className="text-white/65 text-[0.9375rem] m-0">
@@ -477,7 +474,7 @@ export function DashboardPage() {
                 </p>
               </div>
               <Link to="/pricing">
-                <Button className="bg-[#c9900a] shrink-0 hover:bg-[#b8820a]">
+                <Button className="bg-[#F59E0B] shrink-0 hover:bg-[#D97706]">
                   Upgrade Plan
                 </Button>
               </Link>
@@ -487,6 +484,6 @@ export function DashboardPage() {
         </div>
       </div>
 
-    </Layout>
+    </AppShell>
   );
 }

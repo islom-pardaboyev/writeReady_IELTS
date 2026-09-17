@@ -14,6 +14,9 @@ export function LandingPage() {
   const rootRef = useRef<HTMLDivElement>(null);
 
   useLayoutEffect(() => {
+    const prefersReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    if (prefersReducedMotion) return;
+
     const ctx = gsap.context(() => {
       gsap.set('.gs-hero-badge', { y: -16, opacity: 0 });
       gsap.set('.gs-hero-title', { y: 40, opacity: 0 });
@@ -75,14 +78,14 @@ export function LandingPage() {
       <section className="max-w-[1160px] mx-auto px-6 pt-20 pb-16 grid grid-cols-2 gap-16 items-center max-[768px]:grid-cols-1">
         {/* Left */}
         <div>
-          <div className="gs-hero-badge inline-flex items-center gap-2 bg-blue-50 border border-blue-200 text-blue-700 text-[0.75rem] font-bold tracking-[0.06em] uppercase px-[0.875rem] py-[0.35rem] rounded-[20px] mb-7 dark:bg-blue-900/30 dark:border-blue-700 dark:text-blue-300">
+          <div className="gs-hero-badge inline-flex items-center gap-2 bg-indigo-50 border border-indigo-200 text-indigo-700 text-[0.75rem] font-bold tracking-[0.06em] uppercase px-[0.875rem] py-[0.35rem] rounded-[20px] mb-7 dark:bg-indigo-900/30 dark:border-indigo-700 dark:text-indigo-300">
             <span className="w-[6px] h-[6px] rounded-full bg-green-500 inline-block" />
             AI-Powered · Uzbek & English
           </div>
 
           <h1 className="gs-hero-title text-[clamp(2.25rem,4.5vw,3.25rem)] font-black leading-[1.1] text-[var(--text-primary)] mb-5 tracking-[-0.02em]">
             IELTS Writing{' '}
-            <span className="text-blue-600 dark:text-blue-400">Feedback.</span>
+            <span className="text-indigo-600 dark:text-indigo-400">Feedback.</span>
             <br />
             Delivered instantly
             <br />
@@ -155,7 +158,7 @@ export function LandingPage() {
             {[['Task Achievement', '7.0'], ['Coherence', '7.5'], ['Lexical Resource', '6.5'], ['Grammar', '7.0']].map(([k, v]) => (
               <div key={k} className="flex justify-between gap-4 text-[0.8rem] text-[var(--text-secondary)] py-[0.125rem]">
                 <span>{k}</span>
-                <span className="font-bold text-blue-600 dark:text-blue-400">{v}</span>
+                <span className="font-bold text-indigo-600 dark:text-indigo-400">{v}</span>
               </div>
             ))}
           </div>
@@ -183,7 +186,7 @@ export function LandingPage() {
       {/* ── How it works ── */}
       <section className="gs-how max-w-[1160px] mx-auto px-6 py-20">
         <div className="gs-how-header mb-12">
-          <p className="text-[0.8125rem] font-bold uppercase tracking-[0.08em] text-blue-600 dark:text-blue-400 mb-2">Simple process</p>
+          <p className="text-[0.8125rem] font-bold uppercase tracking-[0.08em] text-indigo-600 dark:text-indigo-400 mb-2">Simple process</p>
           <h2 className="text-[clamp(1.75rem,3vw,2.25rem)] font-black text-[var(--text-primary)] tracking-[-0.02em]">Three steps to a higher band</h2>
         </div>
         <div className="grid grid-cols-[repeat(auto-fit,minmax(260px,1fr))] gap-6">
@@ -205,7 +208,7 @@ export function LandingPage() {
       <section className="gs-modes bg-[var(--bg-card)] border-t border-[var(--border-color)]">
         <div className="max-w-[1160px] mx-auto px-6 py-20">
           <div className="gs-modes-header mb-12">
-            <p className="text-[0.8125rem] font-bold uppercase tracking-[0.08em] text-blue-600 dark:text-blue-400 mb-2">Practice modes</p>
+            <p className="text-[0.8125rem] font-bold uppercase tracking-[0.08em] text-indigo-600 dark:text-indigo-400 mb-2">Practice modes</p>
             <h2 className="text-[clamp(1.75rem,3vw,2.25rem)] font-black text-[var(--text-primary)] tracking-[-0.02em]">One goal, four ways to train</h2>
           </div>
           <div className="grid grid-cols-[repeat(auto-fit,minmax(260px,1fr))] gap-5">
@@ -215,17 +218,15 @@ export function LandingPage() {
               { emoji: '⚡', title: 'Quick Write', tag: 'Speed training', desc: 'One random task, no timer, instant submission. Great for daily warm-up and building writing habits.', dark: false, tinted: false, href: '/writing/quick' },
               { emoji: '☕', title: 'Relax Mode', tag: 'Free writing', desc: 'Use your own custom prompt. Enter any question you like, optionally upload a chart, and write freely.', dark: false, tinted: true, href: '/writing/relax' },
             ].map((m) => (
-              <Link key={m.title} to={m.href} className="no-underline">
+              <Link key={m.title} to={m.href} className="no-underline group focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:ring-offset-2 rounded-xl block">
                 <div
-                  className={`gs-mode-card rounded-xl p-8 h-full block cursor-pointer transition-[transform,box-shadow] duration-150 border ${
+                  className={`gs-mode-card rounded-xl p-8 h-full block cursor-pointer transition-[transform,box-shadow] duration-150 border group-hover:-translate-y-0.5 group-hover:shadow-[0_8px_24px_rgba(0,0,0,0.1)] group-focus-visible:-translate-y-0.5 group-focus-visible:shadow-[0_8px_24px_rgba(0,0,0,0.1)] ${
                     m.dark
-                      ? 'bg-[#1e3a5f] border-transparent dark:bg-blue-900'
+                      ? 'bg-[#312E81] border-transparent dark:bg-indigo-900'
                       : m.tinted
-                      ? 'bg-blue-50 border-blue-100 dark:bg-blue-900/20 dark:border-blue-800'
+                      ? 'bg-indigo-50 border-indigo-100 dark:bg-indigo-900/20 dark:border-indigo-800'
                       : 'bg-[var(--bg-base)] border-[var(--border-color)]'
                   }`}
-                  onMouseEnter={(e) => { (e.currentTarget as HTMLDivElement).style.transform = 'translateY(-2px)'; (e.currentTarget as HTMLDivElement).style.boxShadow = '0 8px 24px rgba(0,0,0,0.1)'; }}
-                  onMouseLeave={(e) => { (e.currentTarget as HTMLDivElement).style.transform = ''; (e.currentTarget as HTMLDivElement).style.boxShadow = ''; }}
                 >
                   <span className="block text-[1.75rem] mb-4" aria-hidden="true">{m.emoji}</span>
                   <p className={`text-[0.7rem] font-bold uppercase tracking-[0.08em] mb-[0.375rem] m-0 ${m.dark ? 'text-white/50' : 'text-[var(--text-secondary)]'}`}>{m.tag}</p>
@@ -247,7 +248,7 @@ export function LandingPage() {
           <p className="text-white/55 text-base mb-8 leading-[1.7]">
             Free to start. Upgrade for unlimited AI feedback in Uzbek and English.
           </p>
-          <Link to="/auth?mode=signup" className="inline-flex items-center gap-2 bg-[#c9900a] text-white font-bold text-base px-8 py-[0.875rem] rounded-[50px] no-underline hover:opacity-90 transition-opacity">
+          <Link to="/auth?mode=signup" className="inline-flex items-center gap-2 bg-[var(--ink-blue)] text-white font-bold text-base px-8 py-[0.875rem] rounded-[50px] no-underline hover:opacity-90 transition-opacity">
             Create Free Account →
           </Link>
         </div>

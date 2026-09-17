@@ -136,8 +136,8 @@ export function ChatBot() {
       <button
         type="button"
         onClick={() => setOpen((o) => !o)}
-        className="fixed bottom-6 right-6 z-[200] w-14 h-14 rounded-full bg-blue-700 text-white shadow-lg flex items-center justify-center hover:bg-blue-800 transition-colors"
-        aria-label="Open IELTS assistant"
+        className="fixed bottom-6 right-6 z-[200] w-14 h-14 rounded-full bg-[var(--ink-blue)] text-white shadow-lg flex items-center justify-center hover:opacity-90 transition-colors"
+        aria-label={open ? 'Close IELTS assistant' : 'Open IELTS assistant'}
       >
         {open ? <CloseIcon /> : <BotIcon />}
       </button>
@@ -148,7 +148,7 @@ export function ChatBot() {
           style={{ height: '480px' }}
         >
           {/* Header */}
-          <div className="flex items-center gap-3 px-4 py-3 border-b border-[var(--border-color)] bg-blue-700 shrink-0">
+          <div className="flex items-center gap-3 px-4 py-3 border-b border-[var(--border-color)] bg-[var(--ink-blue)] shrink-0">
             <div className="w-8 h-8 rounded-full bg-white/20 flex items-center justify-center text-white">
               <BotIcon />
             </div>
@@ -156,17 +156,17 @@ export function ChatBot() {
               <p className="text-sm font-bold text-white leading-tight">IELTS Assistant</p>
               <p className="text-[0.65rem] text-white/70">Powered by AI · Ask me anything</p>
             </div>
-            <button type="button" onClick={() => setOpen(false)} className="text-white/70 hover:text-white transition-colors bg-transparent border-0 cursor-pointer p-1">
+            <button type="button" onClick={() => setOpen(false)} className="text-white/70 hover:text-white transition-colors bg-transparent border-0 cursor-pointer p-1" aria-label="Close IELTS assistant">
               <CloseIcon />
             </button>
           </div>
 
           {/* Messages */}
-          <div className="flex-1 overflow-y-auto px-4 py-4 flex flex-col gap-3">
+          <div className="flex-1 overflow-y-auto px-4 py-4 flex flex-col gap-3" aria-live="polite">
             {messages.length === 0 ? (
               <div className="flex flex-col gap-3">
                 <div className="flex gap-2.5">
-                  <div className="w-7 h-7 rounded-full bg-blue-100 dark:bg-blue-900/40 text-blue-700 dark:text-blue-300 flex items-center justify-center shrink-0 mt-0.5">
+                  <div className="w-7 h-7 rounded-full bg-indigo-100 dark:bg-indigo-900/40 text-[var(--ink-blue)] dark:text-indigo-300 flex items-center justify-center shrink-0 mt-0.5">
                     <BotIcon />
                   </div>
                   <div className="bg-[var(--bg-subtle)] rounded-2xl rounded-tl-sm px-4 py-3 text-sm text-[var(--text-primary)] max-w-[85%]">
@@ -180,7 +180,7 @@ export function ChatBot() {
                       key={s}
                       type="button"
                       onClick={() => send(s)}
-                      className="text-left text-xs text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-blue-800 rounded-xl px-3 py-2 bg-blue-50 dark:bg-blue-900/20 hover:bg-blue-100 dark:hover:bg-blue-900/40 transition-colors cursor-pointer"
+                      className="text-left text-xs text-[var(--ink-blue)] dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800 rounded-xl px-3 py-2 bg-indigo-50 dark:bg-indigo-900/20 hover:bg-indigo-100 dark:hover:bg-indigo-900/40 transition-colors cursor-pointer"
                     >
                       {s}
                     </button>
@@ -191,13 +191,13 @@ export function ChatBot() {
               messages.map((m, i) => (
                 <div key={i} className={`flex gap-2.5 ${m.role === 'user' ? 'flex-row-reverse' : ''}`}>
                   {m.role === 'assistant' && (
-                    <div className="w-7 h-7 rounded-full bg-blue-100 dark:bg-blue-900/40 text-blue-700 dark:text-blue-300 flex items-center justify-center shrink-0 mt-0.5">
+                    <div className="w-7 h-7 rounded-full bg-indigo-100 dark:bg-indigo-900/40 text-[var(--ink-blue)] dark:text-indigo-300 flex items-center justify-center shrink-0 mt-0.5">
                       <BotIcon />
                     </div>
                   )}
                   <div className={`px-4 py-2.5 rounded-2xl text-sm max-w-[85%] leading-relaxed ${
                     m.role === 'user'
-                      ? 'bg-blue-700 text-white rounded-tr-sm'
+                      ? 'bg-[var(--ink-blue)] text-white rounded-tr-sm'
                       : 'bg-[var(--bg-subtle)] text-[var(--text-primary)] rounded-tl-sm'
                   }`}>
                     {m.role === 'assistant' ? renderMarkdown(m.content) : m.content}
@@ -208,7 +208,7 @@ export function ChatBot() {
 
             {loading && (
               <div className="flex gap-2.5">
-                <div className="w-7 h-7 rounded-full bg-blue-100 dark:bg-blue-900/40 text-blue-700 dark:text-blue-300 flex items-center justify-center shrink-0">
+                <div className="w-7 h-7 rounded-full bg-indigo-100 dark:bg-indigo-900/40 text-[var(--ink-blue)] dark:text-indigo-300 flex items-center justify-center shrink-0">
                   <BotIcon />
                 </div>
                 <div className="bg-[var(--bg-subtle)] rounded-2xl rounded-tl-sm px-4 py-3 flex items-center gap-1">
@@ -235,6 +235,7 @@ export function ChatBot() {
                 }}
                 onKeyDown={handleKeyDown}
                 placeholder="Ask about IELTS Writing…"
+                aria-label="Message to IELTS assistant"
                 className="flex-1 bg-transparent text-sm text-[var(--text-primary)] placeholder:text-[var(--text-secondary)] outline-none resize-none leading-relaxed overflow-hidden"
                 style={{ minHeight: '24px', maxHeight: '96px' }}
               />
@@ -242,7 +243,8 @@ export function ChatBot() {
                 type="button"
                 onClick={() => send(input)}
                 disabled={!input.trim() || loading}
-                className="w-8 h-8 rounded-lg bg-blue-700 text-white flex items-center justify-center shrink-0 hover:bg-blue-800 transition-colors disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer border-0"
+                aria-label="Send message"
+                className="w-8 h-8 rounded-lg bg-[var(--ink-blue)] text-white flex items-center justify-center shrink-0 hover:opacity-90 transition-colors disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer border-0"
               >
                 <SendIcon />
               </button>

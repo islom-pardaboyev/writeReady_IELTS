@@ -6,7 +6,7 @@ import { Input } from "@/components/ui/input";
 import { PasswordInput } from "@/components/ui/PasswordInput";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
-import { GraduationCap, Download, Upload, LogOut } from "lucide-react";
+import { GraduationCap, Download, Upload, LogOut, LayoutDashboard } from "lucide-react";
 import {
   findTeacherByLogin,
   getHumanReviewsForTeacher,
@@ -15,6 +15,21 @@ import {
 } from "@/firebase/teachers";
 import { buildReviewDocx, downloadBlob, fileToBase64 } from "@/lib/reviewDocx";
 import type { HumanReview } from "@/types";
+import Logo from "/logo.png";
+import {
+  SidebarProvider,
+  Sidebar,
+  SidebarHeader,
+  SidebarContent,
+  SidebarFooter,
+  SidebarGroup,
+  SidebarMenu,
+  SidebarMenuItem,
+  SidebarMenuButton,
+  SidebarTrigger,
+  SidebarInset,
+} from "@/components/ui/sidebar";
+import { useSidebar } from "@/components/ui/sidebar-context";
 
 const TEACHER_FB_PREFIX = "teacher_";
 
@@ -23,6 +38,58 @@ function teacherCredentials(teacherId: string) {
     email: `${TEACHER_FB_PREFIX}${teacherId}@writeready.internal`,
     password: `TEACHER_${teacherId}_internal`,
   };
+}
+
+function TeacherSidebar({
+  teacherName,
+  signOut,
+}: {
+  teacherName: string;
+  signOut: () => void;
+}) {
+  const { open } = useSidebar();
+
+  return (
+    <Sidebar>
+      <SidebarHeader>
+        <div className={open ? "px-2" : "flex justify-center"}>
+          {open ? (
+            <>
+              <img src={Logo} alt="WriteReady" className="h-7 object-contain" />
+              <p className="text-[0.6rem] font-bold tracking-widest text-white/30 uppercase mt-2">Teacher Portal</p>
+              <p className="text-sm font-semibold text-white truncate mt-0.5">{teacherName}</p>
+            </>
+          ) : (
+            <img src={Logo} alt="WriteReady" className="h-7 w-7 object-contain" />
+          )}
+        </div>
+      </SidebarHeader>
+
+      <SidebarContent>
+        <SidebarGroup>
+          <SidebarMenu>
+            <SidebarMenuItem>
+              <SidebarMenuButton isActive tooltip="Reviews">
+                <LayoutDashboard size={18} className="shrink-0" />
+                {open && <span>Reviews</span>}
+              </SidebarMenuButton>
+            </SidebarMenuItem>
+          </SidebarMenu>
+        </SidebarGroup>
+      </SidebarContent>
+
+      <SidebarFooter>
+        <button
+          onClick={signOut}
+          title={!open ? "Sign out" : undefined}
+          className={`w-full text-left flex items-center gap-2.5 px-3.5 py-2 rounded-lg text-sm font-medium text-red-400 hover:bg-red-500/10 hover:text-red-300 transition-colors border-none cursor-pointer bg-transparent ${!open ? "justify-center" : ""}`}
+        >
+          <LogOut size={16} className="shrink-0" />
+          {open && "Sign out"}
+        </button>
+      </SidebarFooter>
+    </Sidebar>
+  );
 }
 
 export default function TeacherPortalPage() {
@@ -178,11 +245,11 @@ export default function TeacherPortalPage() {
           <form onSubmit={handleLogin} className="flex flex-col gap-3">
             <div>
               <Label htmlFor="tp-login">Login</Label>
-              <Input id="tp-login" className="mt-1.5" value={login} onChange={(e) => setLogin(e.target.value)} required />
+              <Input id="tp-login" autoComplete="username" className="mt-1.5" value={login} onChange={(e) => setLogin(e.target.value)} required />
             </div>
             <div>
               <Label htmlFor="tp-password">Password</Label>
-              <PasswordInput id="tp-password" className="mt-1.5" value={password} onChange={(e) => setPassword(e.target.value)} required />
+              <PasswordInput id="tp-password" autoComplete="current-password" className="mt-1.5" value={password} onChange={(e) => setPassword(e.target.value)} required />
             </div>
             {loginError && <p className="text-sm text-red-500">{loginError}</p>}
             <Button type="submit" disabled={loggingIn} className="w-full mt-2 bg-emerald-600 hover:bg-emerald-700 text-white">
@@ -228,20 +295,21 @@ export default function TeacherPortalPage() {
   };
 
   return (
-    <div className="min-h-screen bg-slate-50">
-      <div className="bg-slate-900 border-b border-slate-800">
-        <div className="max-w-4xl mx-auto px-5 py-4 flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <GraduationCap className="w-5 h-5 text-emerald-400" />
-            <span className="text-sm font-semibold text-white">{teacherName} — Teacher Portal</span>
-          </div>
-          <button onClick={handleLogout} className="flex items-center gap-1.5 text-xs text-white/70 hover:text-white transition-colors">
-            <LogOut className="w-3.5 h-3.5" /> Sign out
-          </button>
-        </div>
-      </div>
+    <SidebarProvider>
+      <div className="flex min-h-screen bg-slate-50 font-sans">
+        <TeacherSidebar teacherName={teacherName} signOut={handleLogout} />
 
-      <div className="max-w-4xl mx-auto px-5 py-8">
+        <SidebarInset>
+          <header className="sticky top-0 z-10 flex items-center gap-3 px-6 py-3 bg-white border-b border-slate-200 shrink-0">
+            <SidebarTrigger />
+            <div className="h-5 w-px bg-slate-200" />
+            <div className="flex items-center gap-2">
+              <GraduationCap className="w-4 h-4 text-emerald-600" />
+              <p className="text-sm font-semibold text-slate-800 leading-tight">Reviews</p>
+            </div>
+          </header>
+
+          <main className="max-w-4xl mx-auto px-5 py-8 w-full">
         <div className="grid grid-cols-2 gap-4 mb-4">
           <div className="bg-white rounded-2xl border border-slate-200 p-5">
             <div className="text-2xl font-bold text-amber-600">{pendingCount}</div>
@@ -300,10 +368,10 @@ export default function TeacherPortalPage() {
         )}
 
         {actionError && (
-          <div className="bg-red-50 border border-red-200 text-red-600 text-sm rounded-lg px-4 py-2.5 mb-4">{actionError}</div>
+          <div className="bg-red-50 border border-red-200 text-red-600 text-sm rounded-lg px-4 py-2.5 mb-4" role="alert" aria-live="polite">{actionError}</div>
         )}
         {actionSuccess && (
-          <div className="bg-emerald-50 border border-emerald-200 text-emerald-700 text-sm rounded-lg px-4 py-2.5 mb-4">✓ {actionSuccess}</div>
+          <div className="bg-emerald-50 border border-emerald-200 text-emerald-700 text-sm rounded-lg px-4 py-2.5 mb-4" aria-live="polite">✓ {actionSuccess}</div>
         )}
 
         {reviewsLoading ? (
@@ -347,7 +415,7 @@ export default function TeacherPortalPage() {
                     <input
                       type="file"
                       accept=".docx"
-                      className="hidden"
+                      className="sr-only peer"
                       disabled={busyReviewId === r.id}
                       onChange={(e) => {
                         const file = e.target.files?.[0];
@@ -356,7 +424,7 @@ export default function TeacherPortalPage() {
                       }}
                     />
                     <span
-                      className={`inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-md border cursor-pointer ${
+                      className={`inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-md border cursor-pointer peer-focus-visible:outline-none peer-focus-visible:ring-2 peer-focus-visible:ring-emerald-500 peer-focus-visible:ring-offset-1 ${
                         busyReviewId === r.id && busyAction === "upload"
                           ? "border-emerald-200 bg-emerald-50 text-emerald-700"
                           : "border-slate-200 text-slate-700 hover:bg-slate-50"
@@ -377,7 +445,9 @@ export default function TeacherPortalPage() {
             ))}
           </div>
         )}
+          </main>
+        </SidebarInset>
       </div>
-    </div>
+    </SidebarProvider>
   );
 }

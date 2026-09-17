@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import jsPDF from 'jspdf';
 import { useAuth } from '../hooks/useAuth';
-import { Layout } from '../components/layout/Layout';
+import { AppShell } from '../components/layout/AppShell';
 import { Button } from '../components/ui/Button';
 import { decodeReport } from '../lib/reportEncoding';
 import type { ReportData } from '../lib/reportEncoding';
@@ -35,7 +35,7 @@ interface LTMatch {
 function ltColor(issueType: string) {
   if (issueType === 'misspelling') return '#ef4444';
   if (issueType === 'grammar') return '#f59e0b';
-  return '#3b82f6';
+  return '#4F46E5';
 }
 function buildSegments(text: string, matches: LTMatch[]) {
   const sorted = [...matches].sort((a, b) => a.offset - b.offset);
@@ -108,7 +108,7 @@ function PracticeResult({ result, accentClass }: {
           <p className={`text-[0.65rem] font-bold uppercase tracking-widest mb-1 ${accentClass ?? 'text-[var(--ink-blue)]'}`}>
             ✨ Improved version
           </p>
-          <p className={`font-['Georgia'] text-sm leading-relaxed m-0 italic ${accentClass?.replace('text-', 'text-') ?? 'text-[var(--ink-blue)]'}`}>
+          <p className={`text-sm leading-relaxed m-0 italic ${accentClass?.replace('text-', 'text-') ?? 'text-[var(--ink-blue)]'}`}>
             {improved}
           </p>
         </div>
@@ -211,7 +211,11 @@ export function FeedbackPage() {
   const toggleSentence = (i: number) =>
     setOpenSentences((prev) => {
       const next = new Set(prev);
-      next.has(i) ? next.delete(i) : next.add(i);
+      if (next.has(i)) {
+        next.delete(i);
+      } else {
+        next.add(i);
+      }
       return next;
     });
 
@@ -391,6 +395,9 @@ export function FeedbackPage() {
     } finally {
       setLoadings((p) => ({ ...p, [taskKey]: false }));
     }
+  // refreshProfile isn't memoized in AuthContext; including it would recreate
+  // this callback (and re-trigger the auto-load effect below) on every auth re-render.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [reportData, selectedTask, user, id]);
 
   // Auto-load feedback when ready (per task)
@@ -725,34 +732,34 @@ export function FeedbackPage() {
 
   if (decodeError) {
     return (
-      <Layout>
+      <AppShell>
         <div className="flex flex-col items-center justify-center py-24 gap-4">
           <p className="text-[var(--text-muted)]">Invalid feedback link.</p>
           <Link to="/dashboard"><Button>Back to Dashboard</Button></Link>
         </div>
-      </Layout>
+      </AppShell>
     );
   }
 
   if (!reportData) {
     return (
-      <Layout>
+      <AppShell>
         <div className="flex items-center justify-center py-24 text-[var(--text-muted)]">
           Loading…
         </div>
-      </Layout>
+      </AppShell>
     );
   }
 
   if (profile && !canGetFeedback && !feedback) {
     return (
-      <Layout>
+      <AppShell>
         <div className="bg-[var(--paper)] min-h-[calc(100vh-120px)] py-10">
           <div className="container mx-auto max-w-xl px-4">
             <div className="bg-[var(--ink-blue)] rounded-2xl p-10 text-center text-white">
               <div className="text-5xl mb-4">🔒</div>
-              <h2 className="font-['Fraunces'] text-2xl font-bold mb-3">
-                You've used your free report this week
+              <h2 className="text-2xl font-bold mb-3">
+                You&rsquo;ve used your free report this week
               </h2>
               <p className="text-white/70 mb-7 leading-relaxed">
                 Your essay has been saved. Free-plan users get 1 AI feedback report per week —
@@ -770,14 +777,14 @@ export function FeedbackPage() {
             </div>
           </div>
         </div>
-      </Layout>
+      </AppShell>
     );
   }
 
   // ── Main render ────────────────────────────────────────────────────────────
 
   return (
-    <Layout>
+    <AppShell>
       <style>{`
         .fp-flip-card { perspective: 1000px; cursor: pointer; }
         .fp-flip-inner { position: relative; width: 100%; height: 100%; transition: transform 0.55s cubic-bezier(.4,0,.2,1); transform-style: preserve-3d; }
@@ -801,7 +808,7 @@ export function FeedbackPage() {
                 </svg>
                 Dashboard
               </Link>
-              <h1 className="font-['Fraunces'] text-3xl font-extrabold text-[var(--text-primary)] mt-1">
+              <h1 className="text-3xl font-extrabold text-[var(--text-primary)] mt-1">
                 AI Feedback Report
               </h1>
             </div>
@@ -860,12 +867,14 @@ export function FeedbackPage() {
                   <img
                     src={src}
                     alt="Task 1 chart"
+                    width={1200}
+                    height={800}
                     className="w-full max-h-72 object-contain rounded-lg border border-[var(--border)] mb-3"
                   />
                 );
               })()
             )}
-            <p className="font-['Georgia'] leading-relaxed text-gray-800 text-[0.9375rem] m-0">
+            <p className="leading-relaxed text-gray-800 text-[0.9375rem] m-0">
               {selectedTask === 'task1' ? reportData.task1?.report : reportData.task2?.report}
             </p>
           </div>
@@ -877,8 +886,8 @@ export function FeedbackPage() {
             return (
               <div className="rounded-2xl border border-[var(--border-color)] p-6 sm:p-8 bg-[var(--bg-card)]">
                 <div className="flex items-center gap-3 mb-5">
-                  <div className="inline-flex items-center justify-center w-11 h-11 rounded-full bg-blue-50 shrink-0">
-                    <div className="w-5 h-5 border-2 border-blue-500 border-t-transparent rounded-full animate-spin" />
+                  <div className="inline-flex items-center justify-center w-11 h-11 rounded-full bg-indigo-50 shrink-0">
+                    <div className="w-5 h-5 border-2 border-indigo-500 border-t-transparent rounded-full animate-spin" />
                   </div>
                   <div className="min-w-0">
                     <p className="font-semibold text-[var(--text-primary)] text-lg leading-tight">Analysing your essay…</p>
@@ -889,7 +898,7 @@ export function FeedbackPage() {
                 {/* progress bar */}
                 <div className="h-1.5 w-full rounded-full bg-[var(--bg-subtle)] overflow-hidden mb-6">
                   <div
-                    className="h-full bg-blue-500 rounded-full transition-all duration-700 ease-out"
+                    className="h-full bg-indigo-500 rounded-full transition-all duration-700 ease-out"
                     style={{ width: `${Math.max(pct, 6)}%` }}
                   />
                 </div>
@@ -909,14 +918,14 @@ export function FeedbackPage() {
                             done
                               ? 'bg-green-100 text-green-600'
                               : active
-                                ? 'bg-blue-100'
+                                ? 'bg-indigo-100'
                                 : 'bg-[var(--bg-subtle)]'
                           }`}
                         >
                           {done ? (
                             '✓'
                           ) : active ? (
-                            <span className="w-3 h-3 border-2 border-blue-500 border-t-transparent rounded-full animate-spin inline-block" />
+                            <span className="w-3 h-3 border-2 border-indigo-500 border-t-transparent rounded-full animate-spin inline-block" />
                           ) : (
                             <span aria-hidden>{s.icon}</span>
                           )}
@@ -936,7 +945,7 @@ export function FeedbackPage() {
           {feedbackError && (() => {
             const isQuotaError = /free essay check|analysis limit reached/i.test(feedbackError);
             return (
-              <div className="bg-red-50 border border-red-200 rounded-2xl px-6 py-5 mb-6">
+              <div className="bg-red-50 border border-red-200 rounded-2xl px-6 py-5 mb-6" role="alert" aria-live="polite">
                 <p className="font-semibold text-red-700 mb-1">Error: {feedbackError}</p>
                 {!isQuotaError && (
                   <p className="text-sm text-red-600/80 mb-4">
@@ -1115,7 +1124,7 @@ export function FeedbackPage() {
                   ) : (
                     <div className="bg-[var(--bg-card)] rounded-2xl p-6 border border-[var(--border-color)] border-l-4 border-l-[var(--gold)] shadow-sm">
                       <p className="font-bold text-[var(--text-primary)] mb-3">📈 Band Gap Analysis</p>
-                      <p className="font-['Georgia'] leading-relaxed text-[var(--text-primary)] text-[0.9375rem] m-0">
+                      <p className="leading-relaxed text-[var(--text-primary)] text-[0.9375rem] m-0">
                         {feedback.bandGapAnalysis}
                       </p>
                     </div>
@@ -1127,7 +1136,7 @@ export function FeedbackPage() {
               {activeTab === 'priority' && (
                 <div className="flex flex-col gap-4">
                   {feedback.priorityFixes.map((fix, i) => {
-                    const accent = i === 0 ? '#b91c1c' : i === 1 ? '#c9900a' : '#166534';
+                    const accent = i === 0 ? '#b91c1c' : i === 1 ? '#D97706' : '#16A34A';
                     const label = i === 0 ? 'High priority' : i === 1 ? 'Medium priority' : 'Also consider';
                     const labelColor = i === 0 ? 'text-red-700' : i === 1 ? 'text-amber-800' : 'text-green-700';
                     const bgGradient = i === 0 ? 'from-red-50 to-transparent' : i === 1 ? 'from-amber-50 to-transparent' : 'from-green-50 to-transparent';
@@ -1214,9 +1223,10 @@ export function FeedbackPage() {
                   </p>
                   <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
                     {feedback.vocabulary.map((v, i) => (
-                      <div
+                      <button
                         key={i}
-                        className="fp-flip-card h-[185px]"
+                        type="button"
+                        className="fp-flip-card h-[185px] text-left bg-transparent border-0 p-0 cursor-pointer"
                         onClick={() => setFlipped((prev) => ({ ...prev, [i]: !prev[i] }))}
                       >
                         <div className={`fp-flip-inner h-full${flipped[i] ? ' is-flipped' : ''}`}>
@@ -1226,7 +1236,7 @@ export function FeedbackPage() {
                             <p className="text-[0.65rem] font-bold tracking-widest uppercase text-white/40 mb-3">
                               Word {i + 1} of {feedback.vocabulary.length}
                             </p>
-                            <p className="font-['Georgia'] text-xl font-bold text-white leading-snug">
+                            <p className="text-xl font-bold text-white leading-snug">
                               {v.word}
                             </p>
                             <p className="text-[0.7rem] text-white/35 mt-auto">tap to flip ↩</p>
@@ -1240,13 +1250,13 @@ export function FeedbackPage() {
                               </span>
                               <p className="text-[0.9rem] font-bold text-gray-800 mb-1">{v.uzbek}</p>
                               <p className="text-[0.75rem] text-[var(--text-muted)] mb-2 leading-snug">{v.english}</p>
-                              <p className="font-['Georgia'] text-[0.75rem] text-[var(--ink-blue)] italic leading-snug">
+                              <p className="text-[0.75rem] text-[var(--ink-blue)] italic leading-snug">
                                 "{v.exampleFromEssay}"
                               </p>
                             </div>
                           </div>
                         </div>
-                      </div>
+                      </button>
                     ))}
                   </div>
                 </div>
@@ -1265,7 +1275,7 @@ export function FeedbackPage() {
                           <p className="font-bold text-[var(--text-primary)] mb-1.5 text-[0.9375rem]">{g.point}</p>
                           <p className="text-sm text-[var(--text-secondary)] leading-relaxed mb-2.5">{g.explanation}</p>
                           <div className="bg-[var(--gold)]/10 border border-[var(--gold)]/30 rounded-lg px-3.5 py-2.5">
-                            <p className="text-[0.8125rem] text-amber-900 italic font-['Georgia'] m-0">
+                            <p className="text-[0.8125rem] text-amber-900 italic m-0">
                               Example: "{g.example}"
                             </p>
                           </div>
@@ -1282,7 +1292,7 @@ export function FeedbackPage() {
                 const typeColor: Record<string, { bg: string; border: string; label: string; dot: string }> = {
                   word_choice: { bg: 'bg-purple-50', border: 'border-purple-200', label: 'Word Choice', dot: 'bg-purple-500' },
                   grammar:     { bg: 'bg-amber-50',  border: 'border-amber-200',  label: 'Grammar',     dot: 'bg-amber-500'  },
-                  coherence:   { bg: 'bg-blue-50',   border: 'border-blue-200',   label: 'Coherence',   dot: 'bg-blue-500'   },
+                  coherence:   { bg: 'bg-indigo-50',   border: 'border-indigo-200',   label: 'Coherence',   dot: 'bg-indigo-500'   },
                   structure:   { bg: 'bg-red-50',    border: 'border-red-200',    label: 'Structure',   dot: 'bg-red-500'    },
                   ok:          { bg: 'bg-green-50',  border: 'border-green-200',  label: 'Good',        dot: 'bg-green-500'  },
                 };
@@ -1304,15 +1314,17 @@ export function FeedbackPage() {
                           const style = typeColor[s.type] ?? typeColor.ok;
                           const isOpen = openSentences.has(i);
                           return (
-                            <div
+                            <button
                               key={i}
-                              className={`rounded-xl border px-5 py-3.5 cursor-pointer transition-all ${style.bg} ${style.border}`}
+                              type="button"
+                              className={`w-full text-left block rounded-xl border px-5 py-3.5 cursor-pointer transition-all ${style.bg} ${style.border}`}
                               onClick={() => toggleSentence(i)}
+                              aria-expanded={isOpen}
                             >
                               <div className="flex items-start gap-3">
                                 <span className={`mt-1.5 w-2 h-2 rounded-full shrink-0 ${style.dot}`} />
                                 <div className="flex-1 min-w-0">
-                                  <p className="text-[0.9375rem] font-['Georgia'] text-gray-800 leading-relaxed m-0">
+                                  <p className="text-[0.9375rem] text-gray-800 leading-relaxed m-0">
                                     {s.sentence}
                                   </p>
                                   {isOpen && (
@@ -1328,7 +1340,7 @@ export function FeedbackPage() {
                                           <p className="text-[0.65rem] font-bold uppercase tracking-widest text-[var(--ink-blue)] mb-1">
                                             ✨ Improved version
                                           </p>
-                                          <p className="font-['Georgia'] text-sm text-[var(--ink-blue)] leading-relaxed m-0 italic">
+                                          <p className="text-sm text-[var(--ink-blue)] leading-relaxed m-0 italic">
                                             {s.improved}
                                           </p>
                                         </div>
@@ -1338,7 +1350,7 @@ export function FeedbackPage() {
                                 </div>
                                 <span className="text-[var(--text-muted)] text-xs shrink-0 mt-1">{isOpen ? '▲' : '▼'}</span>
                               </div>
-                            </div>
+                            </button>
                           );
                         })}
                       </div>
@@ -1353,7 +1365,7 @@ export function FeedbackPage() {
                   <p className="text-xs font-bold tracking-widest uppercase text-[var(--gold)] mb-4">
                     ✍️ Band 7–8 Sample Response
                   </p>
-                  <p className="font-['Georgia'] text-[var(--text-primary)] leading-[1.9] text-[0.9375rem] whitespace-pre-wrap">
+                  <p className="text-[var(--text-primary)] leading-[1.9] text-[0.9375rem] whitespace-pre-wrap">
                     {feedback.sampleResponse ?? 'Sample response not available for this analysis.'}
                   </p>
                 </div>
@@ -1386,7 +1398,7 @@ export function FeedbackPage() {
                           {ltLoading ? 'Checking…' : 'Check my essay'}
                         </Button>
                       </div>
-                      <div className="px-5 py-4 text-[0.9375rem] leading-relaxed text-gray-500 whitespace-pre-wrap min-h-[200px] font-['Georgia']">
+                      <div className="px-5 py-4 text-[0.9375rem] leading-relaxed text-gray-500 whitespace-pre-wrap min-h-[200px]">
                         {essayText || <span className="italic">No essay text available.</span>}
                       </div>
                       {ltError && <p className="px-5 pb-3 text-sm text-red-600">{ltError}</p>}
@@ -1409,26 +1421,40 @@ export function FeedbackPage() {
                         ref={ltOverlayRef}
                         onClick={() => setLtPopover(null)}
                       >
-                        {buildSegments(ltCorrected, ltMatches).map((seg, i) =>
-                          seg.match ? (
+                        {buildSegments(ltCorrected, ltMatches).map((seg, i) => {
+                          if (!seg.match) return <span key={i}>{seg.text}</span>;
+                          const openPopover = (target: HTMLElement) => {
+                            const r = target.getBoundingClientRect();
+                            const cr = ltOverlayRef.current!.getBoundingClientRect();
+                            // Keep the popover inside the container so it isn't cut off at the edges
+                            const POP_W = 290;
+                            const x = Math.max(8, Math.min(r.left - cr.left, cr.width - POP_W));
+                            setLtPopover({ match: seg.match!, x, y: r.bottom - cr.top + 6 });
+                          };
+                          return (
                             <mark
                               key={i}
+                              tabIndex={0}
+                              role="button"
+                              aria-label={`Spelling/grammar issue: ${seg.text}`}
                               style={{ background: 'transparent', borderBottom: `2px solid ${ltColor(seg.match.rule.issueType)}`, cursor: 'pointer' }}
                               onClick={(e) => {
                                 e.stopPropagation();
-                                const r = (e.target as HTMLElement).getBoundingClientRect();
-                                const cr = ltOverlayRef.current!.getBoundingClientRect();
-                                // Keep the popover inside the container so it isn't cut off at the edges
-                                const POP_W = 290;
-                                const x = Math.max(8, Math.min(r.left - cr.left, cr.width - POP_W));
-                                setLtPopover({ match: seg.match!, x, y: r.bottom - cr.top + 6 });
+                                openPopover(e.target as HTMLElement);
+                              }}
+                              onKeyDown={(e) => {
+                                if (e.key === 'Enter' || e.key === ' ') {
+                                  e.preventDefault();
+                                  e.stopPropagation();
+                                  openPopover(e.target as HTMLElement);
+                                }
                               }}
                             >{seg.text}</mark>
-                          ) : <span key={i}>{seg.text}</span>
-                        )}
+                          );
+                        })}
                         {ltPopover && (
                           <div
-                            className="absolute z-30 bg-[#0f172a] border border-[#1e3a5f] rounded-xl p-3.5 max-w-[280px] shadow-xl"
+                            className="absolute z-30 bg-[#0f172a] border border-[#1E293B] rounded-xl p-3.5 max-w-[280px] shadow-xl"
                             style={{ left: ltPopover.x, top: ltPopover.y }}
                             onClick={(e) => e.stopPropagation()}
                           >
@@ -1439,7 +1465,7 @@ export function FeedbackPage() {
                                   <button
                                     key={i}
                                     onClick={() => applyLtFix(ltPopover.match, r.value)}
-                                    className="px-2.5 py-1 bg-blue-600 hover:bg-blue-500 text-white text-xs font-semibold rounded cursor-pointer border-none"
+                                    className="px-2.5 py-1 bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-semibold rounded cursor-pointer border-none"
                                   >{r.value}</button>
                                 ))}
                               </div>
@@ -1466,7 +1492,7 @@ export function FeedbackPage() {
                           {m.replacements.length > 0 && (
                             <button
                               onClick={() => applyLtFix(m, m.replacements[0].value)}
-                              className="px-3 py-1 bg-blue-600 text-white text-xs font-semibold rounded cursor-pointer border-none shrink-0"
+                              className="px-3 py-1 bg-indigo-600 text-white text-xs font-semibold rounded cursor-pointer border-none shrink-0"
                             >{m.replacements[0].value}</button>
                           )}
                         </div>
@@ -1490,7 +1516,7 @@ export function FeedbackPage() {
                         <div key={key} className="bg-[var(--bg-card)] rounded-2xl px-5 py-4 border border-[var(--border-color)] shadow-sm">
                           <div className="flex items-center gap-3 mb-3">
                             <span className="bg-[var(--ink-blue)]/10 text-[var(--ink-blue)] text-xs font-bold px-2 py-0.5 rounded-full uppercase tracking-wide">Vocab</span>
-                            <span className="font-['Georgia'] font-bold text-[var(--ink-blue)] text-base">{v.word}</span>
+                            <span className="font-bold text-[var(--ink-blue)] text-base">{v.word}</span>
                             <span className="text-xs text-[var(--text-muted)]">— {v.uzbek}</span>
                           </div>
                           <textarea
@@ -1519,7 +1545,7 @@ export function FeedbackPage() {
                             <PracticeResult result={practiceChecked[key]} accentClass="text-[var(--ink-blue)]" />
                           )}
                           {practiceRevealed[key] && (
-                            <p className="mt-2 font-['Georgia'] text-sm text-[var(--ink-blue)] italic bg-[var(--ink-blue)]/5 rounded-lg px-3 py-2">
+                            <p className="mt-2 text-sm text-[var(--ink-blue)] italic bg-[var(--ink-blue)]/5 rounded-lg px-3 py-2">
                               "{v.exampleFromEssay}"
                             </p>
                           )}
@@ -1561,7 +1587,7 @@ export function FeedbackPage() {
                             <PracticeResult result={practiceChecked[key]} accentClass="text-amber-800" />
                           )}
                           {practiceRevealed[key] && (
-                            <p className="mt-2 font-['Georgia'] text-sm text-amber-900 italic bg-amber-50 rounded-lg px-3 py-2">
+                            <p className="mt-2 text-sm text-amber-900 italic bg-amber-50 rounded-lg px-3 py-2">
                               "{g.example}"
                             </p>
                           )}
@@ -1582,6 +1608,6 @@ export function FeedbackPage() {
         </div>
       </div>
 
-    </Layout>
+    </AppShell>
   );
 }

@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import {
   collection,
   getDocs,
@@ -22,6 +22,20 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import {
+  SidebarProvider,
+  Sidebar,
+  SidebarHeader,
+  SidebarContent,
+  SidebarFooter,
+  SidebarGroup,
+  SidebarMenu,
+  SidebarMenuItem,
+  SidebarMenuButton,
+  SidebarTrigger,
+  SidebarInset,
+} from "@/components/ui/sidebar";
+import { useSidebar } from "@/components/ui/sidebar-context";
 import Logo from "/logo.png";
 
 interface CenterData {
@@ -69,16 +83,19 @@ function formatDate(iso?: string | null): string {
   if (!iso) return "—";
   const d = new Date(iso);
   if (isNaN(d.getTime())) return "—";
-  return d.toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" });
+  return d.toLocaleDateString(navigator.language, { day: "2-digit", month: "short", year: "numeric" });
 }
 
 function Spinner() {
   return (
-    <span style={{
-      display: "inline-block", width: 14, height: 14,
-      border: "2px solid #94a3b8", borderTopColor: "transparent",
-      borderRadius: "50%", animation: "ca-spin 0.7s linear infinite", flexShrink: 0,
-    }} />
+    <span
+      className="motion-reduce:animate-none"
+      style={{
+        display: "inline-block", width: 14, height: 14,
+        border: "2px solid #94a3b8", borderTopColor: "transparent",
+        borderRadius: "50%", animation: "ca-spin 0.7s linear infinite", flexShrink: 0,
+      }}
+    />
   );
 }
 
@@ -134,8 +151,11 @@ function CenterLoginScreen({ onLogin }: { onLogin: (id: string, name: string) =>
         </div>
         <div className="bg-white rounded-b-2xl border border-t-0 border-slate-200 shadow-sm p-7 flex flex-col gap-4">
           <div>
-            <label className="text-xs font-semibold text-slate-600 mb-1.5 block uppercase tracking-wide">Username</label>
+            <label htmlFor="center-username" className="text-xs font-semibold text-slate-600 mb-1.5 block uppercase tracking-wide">Username</label>
             <Input
+              id="center-username"
+              name="username"
+              autoComplete="username"
               className="border-slate-200 bg-white text-slate-900"
               placeholder="Center username"
               value={username}
@@ -144,9 +164,12 @@ function CenterLoginScreen({ onLogin }: { onLogin: (id: string, name: string) =>
             />
           </div>
           <div>
-            <label className="text-xs font-semibold text-slate-600 mb-1.5 block uppercase tracking-wide">Password</label>
+            <label htmlFor="center-password" className="text-xs font-semibold text-slate-600 mb-1.5 block uppercase tracking-wide">Password</label>
             <Input
+              id="center-password"
+              name="password"
               type="password"
+              autoComplete="current-password"
               className="border-slate-200 bg-white text-slate-900"
               placeholder="Password"
               value={password}
@@ -154,17 +177,86 @@ function CenterLoginScreen({ onLogin }: { onLogin: (id: string, name: string) =>
               onKeyDown={(e) => e.key === "Enter" && handle()}
             />
           </div>
-          {error && <div className="bg-red-50 border border-red-200 rounded-lg px-3.5 py-2.5 text-sm text-red-600">{error}</div>}
+          {error && <div role="alert" aria-live="polite" className="bg-red-50 border border-red-200 rounded-lg px-3.5 py-2.5 text-sm text-red-600">{error}</div>}
           <button
-            className="w-full bg-[#1C3A5E] text-white rounded-lg py-2.5 font-semibold text-sm cursor-pointer hover:bg-[#2d5a8e] transition-colors disabled:opacity-50 border-none"
+            className="w-full bg-[#4F46E5] text-white rounded-lg py-2.5 font-semibold text-sm cursor-pointer hover:bg-[#4338CA] transition-colors disabled:opacity-50 border-none"
             onClick={handle}
             disabled={loading}
           >
-            {loading ? "Checking..." : "Sign In"}
+            {loading ? "Checking…" : "Sign In"}
           </button>
         </div>
       </div>
     </div>
+  );
+}
+
+const CENTER_NAV: { id: Section; label: string; icon: string }[] = [
+  { id: "dashboard", label: "Dashboard", icon: "📊" },
+  { id: "students", label: "Students", icon: "👥" },
+  { id: "analytics", label: "Analytics", icon: "📈" },
+];
+
+function CenterSidebar({
+  section,
+  setSection,
+  centerName,
+  signOut,
+}: {
+  section: Section;
+  setSection: (s: Section) => void;
+  centerName: string;
+  signOut: () => void;
+}) {
+  const { open } = useSidebar();
+
+  return (
+    <Sidebar>
+      <SidebarHeader>
+        <div className={open ? "px-2" : "flex justify-center"}>
+          {open ? (
+            <>
+              <img src={Logo} alt="WriteReady" className="h-7 object-contain" />
+              <p className="text-[0.6rem] font-bold tracking-widest text-white/30 uppercase mt-2">Center Portal</p>
+              <p className="text-sm font-semibold text-white truncate mt-0.5">{centerName}</p>
+            </>
+          ) : (
+            <img src={Logo} alt="WriteReady" className="h-7 w-7 object-contain" />
+          )}
+        </div>
+      </SidebarHeader>
+
+      <SidebarContent>
+        <SidebarGroup>
+          <SidebarMenu>
+            {CENTER_NAV.map((item) => (
+              <SidebarMenuItem key={item.id}>
+                <SidebarMenuButton
+                  isActive={section === item.id}
+                  onClick={() => setSection(item.id)}
+                  tooltip={item.label}
+                >
+                  <span className="text-base leading-none shrink-0">{item.icon}</span>
+                  {open && <span>{item.label}</span>}
+                </SidebarMenuButton>
+              </SidebarMenuItem>
+            ))}
+          </SidebarMenu>
+        </SidebarGroup>
+      </SidebarContent>
+
+      <SidebarFooter>
+        <button
+          onClick={signOut}
+          title={!open ? "Sign out" : undefined}
+          aria-label={!open ? "Sign out" : undefined}
+          className={`w-full text-left flex items-center gap-2.5 px-3.5 py-2 rounded-lg text-sm font-medium text-red-400 hover:bg-red-500/10 hover:text-red-300 transition-colors border-none cursor-pointer bg-transparent ${!open ? "justify-center" : ""}`}
+        >
+          <span aria-hidden="true">↩</span>
+          {open && "Sign out"}
+        </button>
+      </SidebarFooter>
+    </Sidebar>
   );
 }
 
@@ -186,6 +278,7 @@ export default function CenterAdminPage() {
   const [newLogin, setNewLogin] = useState("");
   const [newPass, setNewPass] = useState("");
   const [addingStudent, setAddingStudent] = useState(false);
+  const [addStudentError, setAddStudentError] = useState("");
 
   // Edit student
   const [editStudent, setEditStudent] = useState<Student | null>(null);
@@ -193,6 +286,7 @@ export default function CenterAdminPage() {
   const [editLogin, setEditLogin] = useState("");
   const [editPass, setEditPass] = useState("");
   const [savingEdit, setSavingEdit] = useState(false);
+  const [editStudentError, setEditStudentError] = useState("");
 
   // Analytics
   const [analytics, setAnalytics] = useState<StudentAnalytics[]>([]);
@@ -284,13 +378,7 @@ export default function CenterAdminPage() {
     }
   }, [students]);
 
-  useEffect(() => {
-    if (isLoggedIn && section === "analytics" && centerId) {
-      loadAnalytics();
-    }
-  }, [isLoggedIn, section, centerId]);
-
-  const loadAnalytics = async () => {
+  const loadAnalytics = useCallback(async () => {
     setAnalyticsLoading(true);
     try {
       const studSnap = await getDocs(collection(db, "learningCenters", centerId, "students"));
@@ -312,7 +400,8 @@ export default function CenterAdminPage() {
       const reportsSnap = await getDocs(collection(db, "feedback_reports"));
 
       const now = new Date();
-      const monthKey = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
+      const monthKeyFormat = new Intl.DateTimeFormat("en-CA", { year: "numeric", month: "2-digit" });
+      const monthKey = monthKeyFormat.format(now);
 
       const result: StudentAnalytics[] = studs.map((s) => {
         const uid = loginToUid[s.login];
@@ -329,7 +418,7 @@ export default function CenterAdminPage() {
           const ts = data.createdAt?.toDate?.() as Date | undefined;
           if (ts) {
             if (!lastTs || ts > lastTs) lastTs = ts;
-            const rKey = `${ts.getFullYear()}-${String(ts.getMonth() + 1).padStart(2, "0")}`;
+            const rKey = monthKeyFormat.format(ts);
             if (rKey === monthKey) monthlyCount++;
           }
         });
@@ -347,13 +436,20 @@ export default function CenterAdminPage() {
       setAnalytics(result);
     } catch (e) { console.error(e); }
     setAnalyticsLoading(false);
-  };
+  }, [centerId]);
+
+  useEffect(() => {
+    if (isLoggedIn && section === "analytics" && centerId) {
+      loadAnalytics();
+    }
+  }, [isLoggedIn, section, centerId, loadAnalytics]);
 
   const addStudent = async () => {
     if (!newName.trim() || !newLogin.trim() || !newPass.trim()) return;
-    if (newPass.trim().length < 6) { alert("Parol kamida 6 ta belgidan iborat bo'lishi kerak."); return; }
+    setAddStudentError("");
+    if (newPass.trim().length < 6) { setAddStudentError("Parol kamida 6 ta belgidan iborat bo'lishi kerak."); return; }
     if (students.length >= (centerData?.studentLimit ?? 30)) {
-      alert("Student limit reached.");
+      setAddStudentError("Student limit reached.");
       return;
     }
     setAddingStudent(true);
@@ -361,7 +457,7 @@ export default function CenterAdminPage() {
       const loginKey = newLogin.trim().toLowerCase();
       // Check login uniqueness
       const existing = await getDocs(query(collection(db, "learningCenters", centerId, "students"), where("login", "==", loginKey)));
-      if (!existing.empty) { alert("Bu login allaqachon mavjud."); setAddingStudent(false); return; }
+      if (!existing.empty) { setAddStudentError("Bu login allaqachon mavjud."); setAddingStudent(false); return; }
 
       // Create the student's Firebase Auth account so they can actually sign in.
       const fakeEmail = `${loginKey}@writeready.student`;
@@ -370,7 +466,7 @@ export default function CenterAdminPage() {
         uid = await createStudentAuthAccount(fakeEmail, newPass.trim());
       } catch (err) {
         const code = (err as { code?: string })?.code;
-        alert(code === "auth/email-already-in-use" ? "Bu login allaqachon band." : "Xatolik yuz berdi. Qaytadan urinib ko'ring.");
+        setAddStudentError(code === "auth/email-already-in-use" ? "Bu login allaqachon band." : "Xatolik yuz berdi. Qaytadan urinib ko'ring.");
         setAddingStudent(false);
         return;
       }
@@ -399,7 +495,7 @@ export default function CenterAdminPage() {
 
       setNewName(""); setNewLogin(""); setNewPass(""); setAddDialog(false);
       await loadStudents(centerId);
-    } catch (e) { console.error(e); alert("Xatolik yuz berdi. Qaytadan urinib ko'ring."); }
+    } catch (e) { console.error(e); setAddStudentError("Xatolik yuz berdi. Qaytadan urinib ko'ring."); }
     setAddingStudent(false);
   };
 
@@ -410,16 +506,17 @@ export default function CenterAdminPage() {
   };
 
   const openEditStudent = (s: Student) => {
-    setEditStudent(s); setEditName(s.fullName); setEditLogin(s.login); setEditPass("");
+    setEditStudent(s); setEditName(s.fullName); setEditLogin(s.login); setEditPass(""); setEditStudentError("");
   };
 
   const saveEditStudent = async () => {
     if (!editStudent || !editName.trim() || !editLogin.trim()) return;
+    setEditStudentError("");
     setSavingEdit(true);
     try {
       if (editLogin.trim() !== editStudent.login) {
         const existing = await getDocs(query(collection(db, "learningCenters", centerId, "students"), where("login", "==", editLogin.trim())));
-        if (!existing.empty) { alert("Bu login allaqachon mavjud."); setSavingEdit(false); return; }
+        if (!existing.empty) { setEditStudentError("Bu login allaqachon mavjud."); setSavingEdit(false); return; }
       }
       const updates: Record<string, string> = { fullName: editName.trim(), login: editLogin.trim() };
       if (editPass.trim()) updates.password = editPass.trim();
@@ -443,59 +540,29 @@ export default function CenterAdminPage() {
 
   if (!isLoggedIn) return <CenterLoginScreen onLogin={onLogin} />;
 
-  const NAV: { id: Section; label: string; icon: string }[] = [
-    { id: "dashboard", label: "Dashboard", icon: "📊" },
-    { id: "students", label: "Students", icon: "👥" },
-    { id: "analytics", label: "Analytics", icon: "📈" },
-  ];
-
   return (
-    <div className="min-h-screen bg-slate-50 flex font-sans">
-      <style>{`@keyframes ca-spin { to { transform: rotate(360deg); } }`}</style>
+    <SidebarProvider>
+      <div className="flex min-h-screen bg-slate-50 font-sans">
+        <style>{`@keyframes ca-spin { to { transform: rotate(360deg); } }`}</style>
 
-      {/* Sidebar */}
-      <aside className="w-56 bg-[#0f172a] flex flex-col shrink-0 min-h-screen">
-        <div className="px-5 py-6 border-b border-white/10">
-          <img src={Logo} alt="WriteReady" className="h-7 object-contain mb-3" />
-          <p className="text-[0.6rem] font-bold tracking-widest text-white/30 uppercase">Center Portal</p>
-          <p className="text-sm font-semibold text-white truncate mt-0.5">{centerName}</p>
-        </div>
+        <CenterSidebar
+          section={section}
+          setSection={setSection}
+          centerName={centerName}
+          signOut={signOut}
+        />
 
-        <nav className="flex-1 px-3 py-4 flex flex-col gap-1">
-          {NAV.map((item) => (
-            <button
-              key={item.id}
-              onClick={() => setSection(item.id)}
-              className={`w-full text-left flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors border-none cursor-pointer
-                ${section === item.id
-                  ? "bg-white/15 text-white"
-                  : "text-white/60 hover:bg-white/8 hover:text-white bg-transparent"}`}
-            >
-              <span>{item.icon}</span>
-              <span>{item.label}</span>
-            </button>
-          ))}
-        </nav>
+        <SidebarInset>
+          <header className="sticky top-0 z-10 flex items-center gap-3 px-6 py-3 bg-white border-b border-slate-200 shrink-0">
+            <SidebarTrigger />
+            <div className="h-5 w-px bg-slate-200" />
+            <div>
+              <p className="text-xs font-bold tracking-widest uppercase text-slate-400">{centerName}</p>
+              <p className="text-sm font-semibold text-slate-800 leading-tight">{CENTER_NAV.find(n => n.id === section)?.label}</p>
+            </div>
+          </header>
 
-        <div className="px-3 pb-4">
-          <button
-            onClick={signOut}
-            className="w-full text-left flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm font-medium text-red-400 hover:bg-red-500/10 hover:text-red-300 transition-colors border-none cursor-pointer bg-transparent"
-          >
-            <span>↩</span>
-            Sign out
-          </button>
-        </div>
-      </aside>
-
-      {/* Main */}
-      <div className="flex-1 flex flex-col min-h-screen">
-        <header className="bg-white border-b border-slate-200 px-6 py-4">
-          <p className="text-xs font-bold tracking-widest uppercase text-slate-400">{centerName}</p>
-          <p className="text-lg font-bold text-slate-800 leading-tight">{NAV.find(n => n.id === section)?.label}</p>
-        </header>
-
-        <main className="flex-1 p-6 overflow-y-auto">
+          <main className="flex-1 p-6 overflow-y-auto">
 
           {/* ── DASHBOARD ── */}
           {section === "dashboard" && (
@@ -543,7 +610,7 @@ export default function CenterAdminPage() {
               </div>
 
               {studentsLoading ? (
-                <div className="flex items-center justify-center py-12 gap-2 text-slate-400 text-sm"><Spinner /> Loading...</div>
+                <div className="flex items-center justify-center py-12 gap-2 text-slate-400 text-sm"><Spinner /> Loading…</div>
               ) : students.length === 0 ? (
                 <div className="bg-white rounded-xl border border-dashed border-slate-300 p-12 text-center">
                   <p className="text-3xl mb-2">👥</p>
@@ -602,21 +669,22 @@ export default function CenterAdminPage() {
                   </DialogHeader>
                   <div className="flex flex-col gap-4 mt-2">
                     <div>
-                      <label className="text-xs font-semibold text-slate-600 mb-1 block uppercase tracking-wide">Ism Familiya</label>
-                      <Input className="border-slate-200 bg-white text-slate-900" value={editName} onChange={(e) => setEditName(e.target.value)} />
+                      <label htmlFor="edit-student-name" className="text-xs font-semibold text-slate-600 mb-1 block uppercase tracking-wide">Ism Familiya</label>
+                      <Input id="edit-student-name" name="fullName" autoComplete="off" className="border-slate-200 bg-white text-slate-900" value={editName} onChange={(e) => setEditName(e.target.value)} />
                     </div>
                     <div>
-                      <label className="text-xs font-semibold text-slate-600 mb-1 block uppercase tracking-wide">Login</label>
-                      <Input className="border-slate-200 bg-white text-slate-900" value={editLogin} onChange={(e) => setEditLogin(e.target.value)} />
+                      <label htmlFor="edit-student-login" className="text-xs font-semibold text-slate-600 mb-1 block uppercase tracking-wide">Login</label>
+                      <Input id="edit-student-login" name="username" autoComplete="off" className="border-slate-200 bg-white text-slate-900" value={editLogin} onChange={(e) => setEditLogin(e.target.value)} />
                     </div>
                     <div>
-                      <label className="text-xs font-semibold text-slate-600 mb-1 block uppercase tracking-wide">Yangi Parol (ixtiyoriy)</label>
-                      <Input type="password" placeholder="Bo'sh qoldirsa o'zgarmaydi" className="border-slate-200 bg-white text-slate-900" value={editPass} onChange={(e) => setEditPass(e.target.value)} />
+                      <label htmlFor="edit-student-pass" className="text-xs font-semibold text-slate-600 mb-1 block uppercase tracking-wide">Yangi Parol (ixtiyoriy)</label>
+                      <Input id="edit-student-pass" name="new-password" type="password" autoComplete="new-password" placeholder="Bo'sh qoldirsa o'zgarmaydi" className="border-slate-200 bg-white text-slate-900" value={editPass} onChange={(e) => setEditPass(e.target.value)} />
                     </div>
+                    {editStudentError && <p role="alert" aria-live="polite" className="text-sm text-red-600">{editStudentError}</p>}
                     <div className="flex gap-3">
                       <button disabled={savingEdit || !editName.trim() || !editLogin.trim()} onClick={saveEditStudent}
                         className="flex-1 bg-blue-600 text-white rounded-lg py-2.5 font-semibold text-sm cursor-pointer hover:bg-blue-700 transition-colors disabled:opacity-50 border-none">
-                        {savingEdit ? "Saqlanmoqda..." : "Saqlash"}
+                        {savingEdit ? "Saqlanmoqda…" : "Saqlash"}
                       </button>
                       <button onClick={() => setEditStudent(null)}
                         className="flex-1 bg-white text-slate-700 border border-slate-200 rounded-lg py-2.5 font-semibold text-sm cursor-pointer hover:bg-slate-50 transition-colors">
@@ -628,31 +696,32 @@ export default function CenterAdminPage() {
               </Dialog>
 
               {/* Add student dialog */}
-              <Dialog open={addDialog} onOpenChange={(open) => { if (!open) { setAddDialog(false); setNewName(""); setNewLogin(""); setNewPass(""); } }}>
+              <Dialog open={addDialog} onOpenChange={(open) => { if (!open) { setAddDialog(false); setNewName(""); setNewLogin(""); setNewPass(""); setAddStudentError(""); } }}>
                 <DialogContent className="bg-white max-w-[440px]">
                   <DialogHeader>
                     <DialogTitle className="text-slate-900">O'quvchi qo'shish</DialogTitle>
                   </DialogHeader>
                   <div className="flex flex-col gap-4 mt-2">
                     <div>
-                      <label className="text-xs font-semibold text-slate-600 mb-1 block uppercase tracking-wide">Ism Familiya</label>
-                      <Input className="border-slate-200 bg-white text-slate-900" placeholder="Ali Valiyev" value={newName} onChange={(e) => setNewName(e.target.value)} />
+                      <label htmlFor="add-student-name" className="text-xs font-semibold text-slate-600 mb-1 block uppercase tracking-wide">Ism Familiya</label>
+                      <Input id="add-student-name" name="fullName" autoComplete="off" className="border-slate-200 bg-white text-slate-900" placeholder="Ali Valiyev" value={newName} onChange={(e) => setNewName(e.target.value)} />
                     </div>
                     <div>
-                      <label className="text-xs font-semibold text-slate-600 mb-1 block uppercase tracking-wide">Login</label>
-                      <Input className="border-slate-200 bg-white text-slate-900" placeholder="ali_valiyev" value={newLogin} onChange={(e) => setNewLogin(e.target.value)} />
+                      <label htmlFor="add-student-login" className="text-xs font-semibold text-slate-600 mb-1 block uppercase tracking-wide">Login</label>
+                      <Input id="add-student-login" name="username" autoComplete="off" className="border-slate-200 bg-white text-slate-900" placeholder="ali_valiyev" value={newLogin} onChange={(e) => setNewLogin(e.target.value)} />
                     </div>
                     <div>
-                      <label className="text-xs font-semibold text-slate-600 mb-1 block uppercase tracking-wide">Parol</label>
-                      <Input className="border-slate-200 bg-white text-slate-900" placeholder="Kamida 6 ta belgi" value={newPass} onChange={(e) => setNewPass(e.target.value)} />
+                      <label htmlFor="add-student-pass" className="text-xs font-semibold text-slate-600 mb-1 block uppercase tracking-wide">Parol</label>
+                      <Input id="add-student-pass" name="new-password" type="password" autoComplete="new-password" placeholder="Kamida 6 ta belgi" className="border-slate-200 bg-white text-slate-900" value={newPass} onChange={(e) => setNewPass(e.target.value)} />
                     </div>
                     <p className="text-xs text-slate-400">Bu login va parolni o'quvchi saytga kirish uchun ishlatadi.</p>
+                    {addStudentError && <p role="alert" aria-live="polite" className="text-sm text-red-600">{addStudentError}</p>}
                     <div className="flex gap-3">
                       <button
                         disabled={addingStudent || !newName.trim() || !newLogin.trim() || !newPass.trim()}
                         onClick={addStudent}
                         className="flex-1 bg-teal-600 text-white rounded-lg py-2.5 font-semibold text-sm cursor-pointer hover:bg-teal-700 transition-colors disabled:opacity-50 border-none">
-                        {addingStudent ? "Qo'shilmoqda..." : "Qo'shish"}
+                        {addingStudent ? "Qo'shilmoqda…" : "Qo'shish"}
                       </button>
                       <button onClick={() => setAddDialog(false)}
                         className="flex-1 bg-white text-slate-700 border border-slate-200 rounded-lg py-2.5 font-semibold text-sm cursor-pointer hover:bg-slate-50 transition-colors">
@@ -672,12 +741,12 @@ export default function CenterAdminPage() {
                 <p className="text-sm text-slate-600">Performance overview for all students</p>
                 <button onClick={loadAnalytics} disabled={analyticsLoading}
                   className="px-4 py-2 bg-white border border-slate-200 rounded-lg text-sm font-semibold text-slate-700 hover:bg-slate-50 cursor-pointer transition-colors border border-slate-200">
-                  {analyticsLoading ? "Loading..." : "↻ Refresh"}
+                  {analyticsLoading ? "Loading…" : "↻ Refresh"}
                 </button>
               </div>
 
               {analyticsLoading ? (
-                <div className="flex items-center justify-center py-16 gap-2 text-slate-400 text-sm"><Spinner /> Analyzing...</div>
+                <div className="flex items-center justify-center py-16 gap-2 text-slate-400 text-sm"><Spinner /> Analyzing…</div>
               ) : analytics.length === 0 ? (
                 <div className="bg-white rounded-xl border border-dashed border-slate-300 p-12 text-center">
                   <p className="text-3xl mb-2">📈</p>
@@ -777,8 +846,9 @@ export default function CenterAdminPage() {
             </div>
           )}
 
-        </main>
+          </main>
+        </SidebarInset>
       </div>
-    </div>
+    </SidebarProvider>
   );
 }

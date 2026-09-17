@@ -16,7 +16,7 @@ function relativeTime(d: Date | null): string {
   if (hrs < 24) return `${hrs}h ago`;
   const days = Math.floor(hrs / 24);
   if (days < 30) return `${days}d ago`;
-  return d.toLocaleDateString('en-GB', { day: 'numeric', month: 'short' });
+  return new Intl.DateTimeFormat(undefined, { day: 'numeric', month: 'short' }).format(d);
 }
 
 function initials(name: string): string {
@@ -106,7 +106,7 @@ export function CommentSection({ postId }: Props) {
         />
         {!user ? (
           <p className="text-xs text-[var(--text-secondary)] mt-1">
-            <a href="/auth?mode=login" className="text-blue-600 hover:underline">Sign in</a> to leave a comment.
+            <a href="/auth?mode=login" className="text-indigo-600 hover:underline">Sign in</a> to leave a comment.
           </p>
         ) : (
           <Button
@@ -123,7 +123,7 @@ export function CommentSection({ postId }: Props) {
       {/* Comments list */}
       {loading ? (
         <div className="flex justify-center py-8">
-          <div className="animate-spin w-6 h-6 border-2 border-blue-600 border-t-transparent rounded-full" />
+          <div className="animate-spin w-6 h-6 border-2 border-indigo-600 border-t-transparent rounded-full" />
         </div>
       ) : comments.length === 0 ? (
         <p className="text-sm text-[var(--text-secondary)] text-center py-6">No comments yet. Be the first!</p>
@@ -137,18 +137,19 @@ export function CommentSection({ postId }: Props) {
                   <AvatarFallback className="text-xs">{initials(c.displayName)}</AvatarFallback>
                 </Avatar>
               </div>
-              <div className="flex-1">
+              <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-2 mb-1">
                   <span className="text-sm font-semibold text-[var(--text-primary)]">{c.displayName}</span>
                   <span className="text-xs text-[var(--text-secondary)]">{relativeTime(c.createdAt)}</span>
                 </div>
-                <p className="text-sm text-[var(--text-primary)] leading-6">{c.text}</p>
+                <p className="text-sm text-[var(--text-primary)] leading-6 break-words">{c.text}</p>
                 <button
                   onClick={() => handleCommentLike(c)}
                   className="mt-1.5 flex items-center gap-1 text-xs text-[var(--text-secondary)] hover:text-red-500 transition-colors"
                   disabled={!user}
+                  aria-label={c.likeCount > 0 ? `Like comment (${c.likeCount} likes)` : 'Like comment'}
                 >
-                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
                     <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/>
                   </svg>
                   {c.likeCount > 0 && <span>{c.likeCount}</span>}

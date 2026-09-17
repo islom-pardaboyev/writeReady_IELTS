@@ -1,4 +1,4 @@
-import { useRef, useLayoutEffect, useState } from "react";
+import { useRef, useLayoutEffect, useEffect, useState } from "react";
 import gsap from "gsap";
 import { ScrollTrigger } from "gsap/ScrollTrigger";
 import { Link } from "react-router-dom";
@@ -14,7 +14,6 @@ const CARDHOLDER = "PI";
 const TELEGRAM_USERNAME = "writeready_admin";
 const MIN_TOPUP_UZS = 50000;
 
-const FONT_SERIF = "[font-family:'Fraunces',serif]";
 const FONT_MONO = "[font-family:'IBM_Plex_Mono',monospace]";
 
 type PlanId = "basic" | "standard" | "premium";
@@ -168,6 +167,15 @@ export function PricingPage() {
   const [copied, setCopied] = useState(false);
   const [topUpAmount, setTopUpAmount] = useState("");
 
+  useEffect(() => {
+    if (!paymentTarget) return;
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setPaymentTarget(null);
+    };
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [paymentTarget]);
+
   const currentPlan = profile?.plan ?? "free";
   const balance = profile?.balanceUZS ?? 0;
 
@@ -229,16 +237,16 @@ export function PricingPage() {
         <div className="container mx-auto px-6">
           {/* Header */}
           <div className="gs-pricing-header text-center mb-14">
-            <div className="inline-block bg-blue-50 text-blue-700 text-xs font-bold tracking-[0.08em] uppercase px-4 py-1.5 rounded-[20px] mb-5 dark:bg-blue-900/30 dark:text-blue-300">
+            <div className="inline-block bg-indigo-50 text-indigo-700 text-xs font-bold tracking-[0.08em] uppercase px-4 py-1.5 rounded-[20px] mb-5 dark:bg-indigo-900/30 dark:text-indigo-300">
               Pricing
             </div>
             <h1
-              className={`${FONT_SERIF} text-[clamp(2rem,5vw,2.75rem)] font-extrabold text-[var(--text-primary)] mb-3 leading-[1.15]`}
+              className={`text-[clamp(2rem,5vw,2.75rem)] font-extrabold text-[var(--text-primary)] mb-3 leading-[1.15]`}
             >
               Simple, transparent pricing
             </h1>
             <p className="text-[var(--text-secondary)] text-[1.0625rem] max-w-[480px] mx-auto">
-              Start for free. When you're ready for AI feedback, choose the plan
+              Start for free. When you&rsquo;re ready for AI feedback, choose the plan
               that fits you.
             </p>
           </div>
@@ -249,7 +257,7 @@ export function PricingPage() {
             <Card className="gs-plan-card hover:-translate-y-1 hover:shadow-xl transition-all duration-200 p-7 flex flex-col">
               <div className="mb-5">
                 <div
-                  className={`${FONT_SERIF} text-[1.25rem] font-bold text-[var(--text-primary)] mb-1`}
+                  className={`text-[1.25rem] font-bold text-[var(--text-primary)] mb-1`}
                 >
                   Free
                 </div>
@@ -302,7 +310,7 @@ export function PricingPage() {
             <Card className="gs-plan-card hover:-translate-y-1 hover:shadow-xl transition-all duration-200 p-7 flex flex-col">
               <div className="mb-5">
                 <div
-                  className={`${FONT_SERIF} text-[1.25rem] font-bold text-[var(--text-primary)] mb-1`}
+                  className={`text-[1.25rem] font-bold text-[var(--text-primary)] mb-1`}
                 >
                   Basic
                 </div>
@@ -322,25 +330,25 @@ export function PricingPage() {
               </div>
               <ul className="flex flex-col gap-2.5 mb-7 flex-1 text-[0.875rem]">
                 <li className="flex items-start gap-2.5 text-[var(--text-primary)]">
-                  <span className="text-blue-500 font-bold shrink-0 mt-px">
+                  <span className="text-indigo-500 font-bold shrink-0 mt-px">
                     ✓
                   </span>
                   5 AI analyses / month
                 </li>
                 <li className="flex items-start gap-2.5 text-[var(--text-primary)]">
-                  <span className="text-blue-500 font-bold shrink-0 mt-px">
+                  <span className="text-indigo-500 font-bold shrink-0 mt-px">
                     ✓
                   </span>
                   Full band-score & sentence-level feedback
                 </li>
                 <li className="flex items-start gap-2.5 text-[var(--text-primary)]">
-                  <span className="text-blue-500 font-bold shrink-0 mt-px">
+                  <span className="text-indigo-500 font-bold shrink-0 mt-px">
                     ✓
                   </span>
                   Vocabulary & grammar practice
                 </li>
                 <li className="flex items-start gap-2.5 text-[var(--text-primary)]">
-                  <span className="text-blue-500 font-bold shrink-0 mt-px">
+                  <span className="text-indigo-500 font-bold shrink-0 mt-px">
                     ✓
                   </span>
                   Sample essay + PDF export
@@ -349,7 +357,7 @@ export function PricingPage() {
               <Button
                 onClick={() => openPaymentModal(PLANS[0])}
                 variant="secondary"
-                className={`w-full border-blue-300 hover:border-blue-400 ${currentPlan === "basic" ? "opacity-60" : ""}`}
+                className={`w-full border-indigo-300 hover:border-indigo-400 ${currentPlan === "basic" ? "opacity-60" : ""}`}
                 disabled={currentPlan === "basic"}
               >
                 {currentPlan === "basic" ? "Current plan" : "Get Basic →"}
@@ -357,13 +365,13 @@ export function PricingPage() {
             </Card>
 
             {/* Standard — Popular */}
-            <Card className="gs-plan-card hover:-translate-y-1 transition-all duration-200 p-7 flex flex-col relative border-2 border-blue-500 shadow-[0_8px_32px_rgba(59,130,246,0.18)]">
-              <div className="absolute -top-[13px] left-1/2 -translate-x-1/2 bg-blue-600 text-white text-[0.6875rem] font-bold tracking-[0.08em] uppercase px-4 py-[0.3rem] rounded-[20px] whitespace-nowrap">
+            <Card className="gs-plan-card hover:-translate-y-1 transition-all duration-200 p-7 flex flex-col relative border-2 border-[var(--ink-blue)] shadow-[0_8px_32px_rgba(79,70,229,0.18)]">
+              <div className="absolute -top-[13px] left-1/2 -translate-x-1/2 bg-[var(--ink-blue)] text-white text-[0.6875rem] font-bold tracking-[0.08em] uppercase px-4 py-[0.3rem] rounded-[20px] whitespace-nowrap">
                 ⭐ Most popular
               </div>
               <div className="mb-5">
                 <div
-                  className={`${FONT_SERIF} text-[1.25rem] font-bold text-[var(--text-primary)] mb-1`}
+                  className={`text-[1.25rem] font-bold text-[var(--text-primary)] mb-1`}
                 >
                   Standard
                 </div>
@@ -373,7 +381,7 @@ export function PricingPage() {
               </div>
               <div className="mb-7">
                 <span
-                  className={`${FONT_MONO} text-3xl font-semibold text-blue-600`}
+                  className={`${FONT_MONO} text-3xl font-semibold text-[var(--ink-blue)]`}
                 >
                   29,000
                 </span>
@@ -383,13 +391,13 @@ export function PricingPage() {
               </div>
               <ul className="flex flex-col gap-2.5 mb-7 flex-1 text-[0.875rem]">
                 <li className="flex items-start gap-2.5 text-[var(--text-primary)]">
-                  <span className="text-blue-500 font-bold shrink-0 mt-px">
+                  <span className="text-indigo-500 font-bold shrink-0 mt-px">
                     ✓
                   </span>
                   12 AI analyses / month
                 </li>
                 <li className="flex items-start gap-2.5 text-[var(--text-primary)]">
-                  <span className="text-blue-500 font-bold shrink-0 mt-px">
+                  <span className="text-indigo-500 font-bold shrink-0 mt-px">
                     ✓
                   </span>
                   Everything in Basic
@@ -397,7 +405,7 @@ export function PricingPage() {
               </ul>
               <Button
                 onClick={() => openPaymentModal(PLANS[1])}
-                className={`w-full bg-blue-600 border-0 hover:bg-blue-700 ${currentPlan === "standard" ? "opacity-60" : ""}`}
+                className={`w-full bg-[var(--ink-blue)] border-0 hover:opacity-90 ${currentPlan === "standard" ? "opacity-60" : ""}`}
                 disabled={currentPlan === "standard"}
               >
                 {currentPlan === "standard" ? "Current plan" : "Get Standard →"}
@@ -405,10 +413,10 @@ export function PricingPage() {
             </Card>
 
             {/* Premium */}
-            <Card className="gs-plan-card hover:-translate-y-1 hover:shadow-xl transition-all duration-200 p-7 flex flex-col bg-gradient-to-br from-slate-900 to-[#2d1b69] border-purple-700">
+            <Card className="gs-plan-card hover:-translate-y-1 hover:shadow-xl transition-all duration-200 p-7 flex flex-col bg-gradient-to-br from-slate-900 to-[#312E81] border-indigo-800">
               <div className="mb-5">
                 <div
-                  className={`${FONT_SERIF} text-[1.25rem] font-bold text-white mb-1`}
+                  className={`text-[1.25rem] font-bold text-white mb-1`}
                 >
                   Premium
                 </div>
@@ -428,19 +436,19 @@ export function PricingPage() {
               </div>
               <ul className="flex flex-col gap-2.5 mb-7 flex-1 text-[0.875rem]">
                 <li className="flex items-start gap-2.5 text-white/85">
-                  <span className="text-purple-300 font-bold shrink-0 mt-px">
+                  <span className="text-indigo-300 font-bold shrink-0 mt-px">
                     ✓
                   </span>
                   25 AI analyses / month (highest)
                 </li>
                 <li className="flex items-start gap-2.5 text-white/85">
-                  <span className="text-purple-300 font-bold shrink-0 mt-px">
+                  <span className="text-indigo-300 font-bold shrink-0 mt-px">
                     ✓
                   </span>
                   Everything in Basic & Standard
                 </li>
                 <li className="flex items-start gap-2.5 text-white/85">
-                  <span className="text-purple-300 font-bold shrink-0 mt-px">
+                  <span className="text-indigo-300 font-bold shrink-0 mt-px">
                     ✓
                   </span>
                   Priority support
@@ -448,7 +456,7 @@ export function PricingPage() {
               </ul>
               <Button
                 onClick={() => openPaymentModal(PLANS[2])}
-                className={`w-full bg-purple-600 border-0 hover:bg-purple-700 ${currentPlan === "premium" ? "opacity-60" : ""}`}
+                className={`w-full bg-[var(--ink-blue)] border-0 hover:opacity-90 ${currentPlan === "premium" ? "opacity-60" : ""}`}
                 disabled={currentPlan === "premium"}
               >
                 {currentPlan === "premium" ? "Current plan" : "Get Premium →"}
@@ -461,7 +469,7 @@ export function PricingPage() {
             <div className="gs-plan-card max-w-[560px] mx-auto mt-10 bg-[var(--bg-card)] border border-[var(--border-color)] rounded-2xl p-7">
               <div className="flex items-center justify-between gap-4 mb-4 flex-wrap">
                 <div>
-                  <div className={`${FONT_SERIF} text-lg font-bold text-[var(--text-primary)]`}>
+                  <div className={`text-lg font-bold text-[var(--text-primary)]`}>
                     Account Balance
                   </div>
                   <div className="text-sm text-[var(--text-secondary)]">
@@ -477,10 +485,11 @@ export function PricingPage() {
                   type="number"
                   min={MIN_TOPUP_UZS}
                   step="1000"
+                  aria-label={`Top-up amount in UZS, minimum ${MIN_TOPUP_UZS.toLocaleString()}`}
                   placeholder={`Amount (min ${MIN_TOPUP_UZS.toLocaleString()} UZS)`}
                   value={topUpAmount}
                   onChange={(e) => setTopUpAmount(e.target.value)}
-                  className={`flex-1 min-w-[160px] h-11 px-4 rounded-xl border bg-[var(--bg-base)] text-[var(--text-primary)] text-sm outline-none focus:border-blue-500 ${topUpTooLow ? "border-red-400" : "border-[var(--border-color)]"}`}
+                  className={`flex-1 min-w-[160px] h-11 px-4 rounded-xl border bg-[var(--bg-base)] text-[var(--text-primary)] text-sm outline-none focus:border-[var(--ink-blue)] ${topUpTooLow ? "border-red-400" : "border-[var(--border-color)]"}`}
                 />
                 <Button
                   onClick={openBalanceTopUp}
@@ -507,11 +516,12 @@ export function PricingPage() {
           <div
             onClick={(e) => e.stopPropagation()}
             className="bg-[var(--bg-card)] rounded-3xl max-w-[480px] w-full max-h-[90vh] overflow-y-auto shadow-[var(--shadow-lg)] p-8"
+            style={{ overscrollBehavior: "contain" }}
           >
             <div className="flex justify-between items-start mb-6">
               <div>
                 <h2
-                  className={`${FONT_SERIF} text-2xl font-extrabold text-[var(--text-primary)] mb-1`}
+                  className={`text-2xl font-extrabold text-[var(--text-primary)] mb-1`}
                 >
                   Complete payment
                 </h2>
@@ -536,7 +546,7 @@ export function PricingPage() {
             <div className="bg-[var(--bg-subtle)] rounded-2xl p-5 mb-7 border border-[var(--border-color)]">
               <div className="flex items-center justify-between gap-4">
                 <div className="flex items-center gap-3">
-                  <span className="w-10 h-10 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center shrink-0 dark:bg-blue-900/30 dark:text-blue-400">
+                  <span className="w-10 h-10 rounded-xl bg-indigo-50 text-[var(--ink-blue)] flex items-center justify-center shrink-0 dark:bg-indigo-900/30 dark:text-indigo-400">
                     <PlanGlyphIcon />
                   </span>
                   <div>
@@ -570,7 +580,7 @@ export function PricingPage() {
 
             {/* Step 1 */}
             <div className="flex items-center gap-3 mb-4">
-              <span className="w-7 h-7 rounded-full bg-blue-600 text-white flex items-center justify-center font-bold text-sm shrink-0">
+              <span className="w-7 h-7 rounded-full bg-[var(--ink-blue)] text-white flex items-center justify-center font-bold text-sm shrink-0">
                 1
               </span>
               <h3 className="text-[1.05rem] font-bold text-[var(--text-primary)]">
@@ -606,7 +616,7 @@ export function PricingPage() {
             </div>
 
             <div className="flex items-center gap-3 mb-4">
-              <span className="w-7 h-7 rounded-full bg-blue-600 text-white flex items-center justify-center font-bold text-sm shrink-0">
+              <span className="w-7 h-7 rounded-full bg-[var(--ink-blue)] text-white flex items-center justify-center font-bold text-sm shrink-0">
                 2
               </span>
               <h3 className="text-[1.05rem] font-bold text-[var(--text-primary)]">
@@ -629,7 +639,7 @@ export function PricingPage() {
               href={`https://t.me/${TELEGRAM_USERNAME}`}
               target="_blank"
               rel="noopener noreferrer"
-              className="flex items-center justify-center gap-2 bg-blue-600 text-white rounded-[14px] p-3.5 font-bold text-base no-underline mb-5 hover:bg-blue-700 transition-colors"
+              className="flex items-center justify-center gap-2 bg-[var(--ink-blue)] text-white rounded-[14px] p-3.5 font-bold text-base no-underline mb-5 hover:opacity-90 transition-colors"
             >
               <SendIcon />
               Open Telegram

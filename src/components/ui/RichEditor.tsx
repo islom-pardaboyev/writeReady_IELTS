@@ -26,8 +26,8 @@ function ToolbarBtn({ onClick, active, title, children }: {
       title={title}
       className={`px-2 py-1 rounded text-sm font-medium transition-colors cursor-pointer border-none ${
         active
-          ? 'bg-slate-800 text-white'
-          : 'bg-transparent text-slate-700 hover:bg-slate-100'
+          ? 'bg-[var(--ink-blue)] text-white'
+          : 'bg-transparent text-[var(--text-primary)] hover:bg-[var(--bg-subtle)]'
       }`}
     >
       {children}
@@ -58,7 +58,7 @@ export function RichEditor({ value, onChange }: Props) {
     if (editor.getHTML() !== value) {
       editor.commands.setContent(value || '');
     }
-  }, [value]);
+  }, [value, editor]);
 
   if (!editor) return null;
 
@@ -67,12 +67,13 @@ export function RichEditor({ value, onChange }: Props) {
   };
 
   return (
-    <div className="border border-slate-200 rounded-lg overflow-hidden bg-white">
+    <div className="border border-[var(--border-color)] rounded-lg overflow-hidden bg-[var(--bg-card)]">
       {/* Toolbar */}
-      <div className="flex flex-wrap items-center gap-0.5 px-2 py-1.5 border-b border-slate-200 bg-slate-50">
+      <div className="flex flex-wrap items-center gap-0.5 px-2 py-1.5 border-b border-[var(--border-color)] bg-[var(--bg-subtle)]">
         {/* Headings */}
         <select
-          className="text-xs border border-slate-200 rounded px-1.5 py-1 bg-white text-slate-700 cursor-pointer mr-1"
+          aria-label="Text style"
+          className="text-xs border border-[var(--border-color)] rounded px-1.5 py-1 bg-[var(--bg-card)] text-[var(--text-primary)] cursor-pointer mr-1"
           value={
             editor.isActive('heading', { level: 1 }) ? '1' :
             editor.isActive('heading', { level: 2 }) ? '2' :
@@ -90,7 +91,7 @@ export function RichEditor({ value, onChange }: Props) {
           <option value="3">Heading 3</option>
         </select>
 
-        <div className="w-px h-5 bg-slate-200 mx-1" />
+        <div className="w-px h-5 bg-[var(--border-color)] mx-1" />
 
         <ToolbarBtn onClick={() => editor.chain().focus().toggleBold().run()} active={editor.isActive('bold')} title="Bold (Ctrl+B)">
           <strong>B</strong>
@@ -108,7 +109,7 @@ export function RichEditor({ value, onChange }: Props) {
           {'<>'}
         </ToolbarBtn>
 
-        <div className="w-px h-5 bg-slate-200 mx-1" />
+        <div className="w-px h-5 bg-[var(--border-color)] mx-1" />
 
         <ToolbarBtn onClick={() => editor.chain().focus().toggleBulletList().run()} active={editor.isActive('bulletList')} title="Bullet list">
           • List
@@ -120,7 +121,7 @@ export function RichEditor({ value, onChange }: Props) {
           " "
         </ToolbarBtn>
 
-        <div className="w-px h-5 bg-slate-200 mx-1" />
+        <div className="w-px h-5 bg-[var(--border-color)] mx-1" />
 
         <ToolbarBtn onClick={() => editor.chain().focus().setTextAlign('left').run()} active={editor.isActive({ textAlign: 'left' })} title="Align left">
           ≡L
@@ -132,7 +133,7 @@ export function RichEditor({ value, onChange }: Props) {
           ≡R
         </ToolbarBtn>
 
-        <div className="w-px h-5 bg-slate-200 mx-1" />
+        <div className="w-px h-5 bg-[var(--border-color)] mx-1" />
 
         <ToolbarBtn onClick={insertTable} title="Insert table">
           ⊞ Table
@@ -141,7 +142,7 @@ export function RichEditor({ value, onChange }: Props) {
           — HR
         </ToolbarBtn>
 
-        <div className="w-px h-5 bg-slate-200 mx-1" />
+        <div className="w-px h-5 bg-[var(--border-color)] mx-1" />
 
         <ToolbarBtn onClick={() => editor.chain().focus().undo().run()} title="Undo">↩ Undo</ToolbarBtn>
         <ToolbarBtn onClick={() => editor.chain().focus().redo().run()} title="Redo">↪ Redo</ToolbarBtn>
@@ -150,7 +151,7 @@ export function RichEditor({ value, onChange }: Props) {
       {/* Editor area */}
       <EditorContent
         editor={editor}
-        className="min-h-[280px] px-4 py-3 prose prose-slate max-w-none text-sm [&_.ProseMirror]:outline-none [&_.ProseMirror]:min-h-[260px] [&_table]:border-collapse [&_table]:w-full [&_td]:border [&_td]:border-slate-300 [&_td]:px-2 [&_td]:py-1 [&_th]:border [&_th]:border-slate-300 [&_th]:px-2 [&_th]:py-1 [&_th]:bg-slate-100 [&_th]:font-semibold"
+        className="min-h-[280px] px-4 py-3 prose prose-slate dark:prose-invert max-w-none text-sm [&_.ProseMirror]:outline-none [&_.ProseMirror]:min-h-[260px] [&_table]:border-collapse [&_table]:w-full [&_td]:border [&_td]:border-[var(--border-color)] [&_td]:px-2 [&_td]:py-1 [&_th]:border [&_th]:border-[var(--border-color)] [&_th]:px-2 [&_th]:py-1 [&_th]:bg-[var(--bg-subtle)] [&_th]:font-semibold"
       />
     </div>
   );

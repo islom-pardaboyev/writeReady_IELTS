@@ -14,13 +14,13 @@ function renderMarkdown(content: string) {
   return blocks.map((block, i) => {
     const trimmed = block.trim();
     if (trimmed.startsWith('### ')) {
-      return <h3 key={i} className="text-lg font-bold mt-6 mb-2 text-[var(--text-primary)]">{trimmed.slice(4)}</h3>;
+      return <h4 key={i} className="text-lg font-bold mt-6 mb-2 text-[var(--text-primary)]">{trimmed.slice(4)}</h4>;
     }
     if (trimmed.startsWith('## ')) {
-      return <h2 key={i} className="text-xl font-bold mt-8 mb-3 text-[var(--text-primary)]">{trimmed.slice(3)}</h2>;
+      return <h3 key={i} className="text-xl font-bold mt-8 mb-3 text-[var(--text-primary)]">{trimmed.slice(3)}</h3>;
     }
     if (trimmed.startsWith('# ')) {
-      return <h1 key={i} className="text-2xl font-bold mt-8 mb-3 text-[var(--text-primary)]">{trimmed.slice(2)}</h1>;
+      return <h2 key={i} className="text-2xl font-bold mt-8 mb-3 text-[var(--text-primary)]">{trimmed.slice(2)}</h2>;
     }
     if (trimmed.startsWith('- ') || trimmed.startsWith('* ')) {
       const items = trimmed.split('\n').filter((l) => l.startsWith('- ') || l.startsWith('* '));
@@ -90,7 +90,7 @@ export function BlogPostPage() {
     return (
       <Layout>
         <div className="flex justify-center py-20">
-          <div className="animate-spin w-8 h-8 border-2 border-blue-600 border-t-transparent rounded-full" />
+          <div className="animate-spin w-8 h-8 border-2 border-indigo-600 border-t-transparent rounded-full" />
         </div>
       </Layout>
     );
@@ -101,7 +101,7 @@ export function BlogPostPage() {
       <Layout>
         <div className="text-center py-20">
           <p className="text-xl font-bold">Post not found</p>
-          <Link to="/blog" className="text-blue-600 mt-4 inline-block">← Back to blog</Link>
+          <Link to="/blog" className="text-indigo-600 mt-4 inline-block">← Back to blog</Link>
         </div>
       </Layout>
     );
@@ -126,7 +126,7 @@ export function BlogPostPage() {
       <div className="max-w-[680px] mx-auto px-4 py-10">
         {/* Breadcrumb */}
         <div className="text-sm text-[var(--text-secondary)] mb-6">
-          <Link to="/blog" className="hover:text-blue-600 no-underline">Blog</Link>
+          <Link to="/blog" className="hover:text-indigo-600 no-underline">Blog</Link>
           <span className="mx-2">›</span>
           <span>{post.category}</span>
         </div>
@@ -142,6 +142,8 @@ export function BlogPostPage() {
           <img
             src={post.featuredImage}
             alt={post.title}
+            width={680}
+            height={320}
             className="w-full rounded-xl mb-8 object-cover max-h-80"
           />
         )}
@@ -150,14 +152,14 @@ export function BlogPostPage() {
         {isHtml ? renderContent(beforeCTA) : <div className="prose max-w-none">{renderMarkdown(beforeCTA)}</div>}
 
         {/* CTA block */}
-        <Card className="my-8 p-6 text-center bg-blue-50 dark:bg-blue-900/20 border-blue-200 dark:border-blue-800">
+        <Card className="my-8 p-6 text-center bg-indigo-50 dark:bg-indigo-900/20 border-indigo-200 dark:border-indigo-800">
           <CardContent className="p-0">
             <p className="font-semibold text-[var(--text-primary)] mb-3">
               {post.ctaText || 'Want feedback like this on your own essay? Try WriteReady free.'}
             </p>
             <Link
               to={post.ctaLink || '/auth?mode=signup'}
-              className="inline-block bg-blue-600 text-white font-semibold px-6 py-2.5 rounded-lg no-underline hover:bg-blue-700 transition-colors"
+              className="inline-block bg-indigo-600 text-white font-semibold px-6 py-2.5 rounded-lg no-underline hover:bg-indigo-700 transition-colors"
             >
               Get Started Free
             </Link>
@@ -175,7 +177,7 @@ export function BlogPostPage() {
             disabled={!user || likeLoading}
             className={liked ? 'bg-red-50 border-red-300 text-red-600 dark:bg-red-900/20 dark:border-red-700 hover:bg-red-50' : ''}
           >
-            <svg width="18" height="18" viewBox="0 0 24 24" fill={liked ? 'currentColor' : 'none'} stroke="currentColor" strokeWidth="2">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill={liked ? 'currentColor' : 'none'} stroke="currentColor" strokeWidth="2" aria-hidden="true">
               <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/>
             </svg>
             {likeCount > 0 && <span>{likeCount}</span>}
@@ -201,12 +203,19 @@ export function BlogPostPage() {
                   className="no-underline flex gap-4 group"
                 >
                   {r.featuredImage ? (
-                    <img src={r.featuredImage} alt={r.title} className="w-20 h-16 object-cover rounded-lg shrink-0" />
+                    <img
+                      src={r.featuredImage}
+                      alt={r.title}
+                      width={80}
+                      height={64}
+                      loading="lazy"
+                      className="w-20 h-16 object-cover rounded-lg shrink-0"
+                    />
                   ) : (
                     <div className="w-20 h-16 bg-slate-100 dark:bg-slate-800 rounded-lg shrink-0 flex items-center justify-center text-2xl">📝</div>
                   )}
                   <div>
-                    <p className="text-sm font-semibold text-[var(--text-primary)] group-hover:text-blue-600 transition-colors line-clamp-2">{r.title}</p>
+                    <p className="text-sm font-semibold text-[var(--text-primary)] group-hover:text-indigo-600 transition-colors line-clamp-2">{r.title}</p>
                     <p className="text-xs text-[var(--text-secondary)] mt-1">{r.author}</p>
                   </div>
                 </Link>

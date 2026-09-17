@@ -1,23 +1,7 @@
-import { createContext, useContext, useState } from "react"
-import { ChevronLeft, Menu } from "lucide-react"
+import { useState, useEffect } from "react"
+import { ChevronLeft, Menu, X } from "lucide-react"
 import { cn } from "@/lib/utils"
-
-// ── Context ──────────────────────────────────────────────────────────
-interface SidebarContextValue {
-  open: boolean
-  setOpen: (v: boolean) => void
-  toggle: () => void
-}
-
-const SidebarContext = createContext<SidebarContextValue>({
-  open: true,
-  setOpen: () => {},
-  toggle: () => {},
-})
-
-export function useSidebar() {
-  return useContext(SidebarContext)
-}
+import { SidebarContext, useSidebar } from "./sidebar-context"
 
 export function SidebarProvider({
   children,
@@ -27,9 +11,22 @@ export function SidebarProvider({
   defaultOpen?: boolean
 }) {
   const [open, setOpen] = useState(defaultOpen)
+  const [isMobile, setIsMobile] = useState(false)
+  const [mobileOpen, setMobileOpen] = useState(false)
   const toggle = () => setOpen((v) => !v)
+
+  useEffect(() => {
+    const mq = window.matchMedia("(max-width: 767px)")
+    setIsMobile(mq.matches)
+    const handler = (e: MediaQueryListEvent) => setIsMobile(e.matches)
+    mq.addEventListener("change", handler)
+    return () => mq.removeEventListener("change", handler)
+  }, [])
+
   return (
-    <SidebarContext.Provider value={{ open, setOpen, toggle }}>
+    <SidebarContext.Provider
+      value={{ open, setOpen, toggle, isMobile, mobileOpen, setMobileOpen }}
+    >
       {children}
     </SidebarContext.Provider>
   )
@@ -39,15 +36,64 @@ export function SidebarProvider({
 export function Sidebar({
   children,
   className,
+  variant = "dark",
 }: {
   children: React.ReactNode
   className?: string
+  variant?: "dark" | "light"
 }) {
-  const { open } = useSidebar()
+  const { open, isMobile, mobileOpen, setMobileOpen } = useSidebar()
+
+  const colors =
+    variant === "dark"
+      ? "bg-[var(--sidebar-bg-dark,#0f172a)]"
+      : "bg-[var(--sidebar)] border-r border-[var(--sidebar-border)]"
+  const hairlineStyle = {
+    "--sidebar-hairline": variant === "dark" ? "rgba(255,255,255,0.1)" : "var(--sidebar-border)",
+  } as React.CSSProperties
+
+  if (isMobile) {
+    return (
+      <>
+        {mobileOpen && (
+          <button
+            type="button"
+            aria-label="Close sidebar"
+            className="fixed inset-0 bg-black/40 z-30 border-none cursor-default"
+            onClick={() => setMobileOpen(false)}
+          />
+        )}
+        <aside
+          style={hairlineStyle}
+          className={cn(
+            "flex flex-col fixed inset-y-0 left-0 z-40 h-screen w-[260px] shrink-0 overflow-hidden overscroll-contain transition-transform duration-300 ease-in-out motion-reduce:transition-none",
+            colors,
+            mobileOpen ? "translate-x-0" : "-translate-x-full",
+            className
+          )}
+        >
+          <button
+            onClick={() => setMobileOpen(false)}
+            aria-label="Close sidebar"
+            className={cn(
+              "absolute top-4 right-3 inline-flex items-center justify-center w-8 h-8 rounded-lg border-none cursor-pointer bg-transparent",
+              variant === "dark" ? "text-white/60 hover:bg-white/10" : "text-[var(--text-secondary)] hover:bg-[var(--bg-subtle)]"
+            )}
+          >
+            <X size={18} />
+          </button>
+          {children}
+        </aside>
+      </>
+    )
+  }
+
   return (
     <aside
+      style={hairlineStyle}
       className={cn(
-        "flex flex-col min-h-screen sticky top-0 h-screen shrink-0 overflow-hidden transition-all duration-300 ease-in-out bg-[#0f172a]",
+        "flex flex-col min-h-screen sticky top-0 h-screen shrink-0 overflow-hidden transition-[width] duration-300 ease-in-out motion-reduce:transition-none",
+        colors,
         open ? "w-[220px]" : "w-16",
         className
       )}
@@ -66,7 +112,7 @@ export function SidebarHeader({
   className?: string
 }) {
   return (
-    <div className={cn("px-3 py-5 border-b border-white/10 shrink-0", className)}>
+    <div className={cn("px-3 py-5 border-b border-[var(--sidebar-hairline)] shrink-0", className)}>
       {children}
     </div>
   )
@@ -96,7 +142,7 @@ export function SidebarFooter({
   className?: string
 }) {
   return (
-    <div className={cn("px-3 py-4 border-t border-white/10 shrink-0", className)}>
+    <div className={cn("px-3 py-4 border-t border-[var(--sidebar-hairline)] shrink-0", className)}>
       {children}
     </div>
   )
@@ -125,8 +171,8 @@ export function SidebarGroupLabel({
   children: React.ReactNode
   className?: string
 }) {
-  const { open } = useSidebar()
-  if (!open) return null
+  const { open, isMobile } = useSidebar()
+  if (!open && !isMobile) return null
   return (
     <p
       className={cn(
@@ -174,6 +220,7 @@ interface SidebarMenuButtonProps
   extends React.ButtonHTMLAttributes<HTMLButtonElement> {
   isActive?: boolean
   tooltip?: string
+  variant?: "dark" | "light"
 }
 
 export function SidebarMenuButton({
@@ -181,18 +228,24 @@ export function SidebarMenuButton({
   isActive,
   className,
   tooltip,
+  variant = "dark",
   ...props
 }: SidebarMenuButtonProps) {
-  const { open } = useSidebar()
+  const { open, isMobile } = useSidebar()
+  const collapsed = !open && !isMobile
   return (
     <button
-      title={!open && tooltip ? tooltip : undefined}
+      title={collapsed && tooltip ? tooltip : undefined}
       className={cn(
         "group w-full text-left flex items-center gap-3 px-3.5 py-2.5 rounded-lg text-sm font-medium transition-colors border-none cursor-pointer",
-        !open && "justify-center px-2",
-        isActive
-          ? "bg-white/10 text-white"
-          : "text-white/55 hover:text-white hover:bg-white/5",
+        collapsed && "justify-center px-2",
+        variant === "dark"
+          ? isActive
+            ? "bg-white/10 text-white border-l-2 border-indigo-400"
+            : "text-white/55 hover:text-white hover:bg-white/5 border-l-2 border-transparent"
+          : isActive
+            ? "bg-[var(--sidebar-accent)] text-[var(--sidebar-primary)] font-semibold"
+            : "text-[var(--sidebar-foreground)]/70 hover:text-[var(--sidebar-foreground)] hover:bg-[var(--sidebar-accent)]/60",
         className
       )}
       {...props}
@@ -204,7 +257,23 @@ export function SidebarMenuButton({
 
 // ── SidebarTrigger ────────────────────────────────────────────────────
 export function SidebarTrigger({ className }: { className?: string }) {
-  const { open, toggle } = useSidebar()
+  const { open, toggle, isMobile, mobileOpen, setMobileOpen } = useSidebar()
+
+  if (isMobile) {
+    return (
+      <button
+        onClick={() => setMobileOpen(!mobileOpen)}
+        className={cn(
+          "inline-flex items-center justify-center w-8 h-8 rounded-lg text-slate-600 hover:bg-slate-100 transition-colors border-none cursor-pointer bg-transparent",
+          className
+        )}
+        aria-label={mobileOpen ? "Close sidebar" : "Open sidebar"}
+      >
+        <Menu size={18} />
+      </button>
+    )
+  }
+
   return (
     <button
       onClick={toggle}

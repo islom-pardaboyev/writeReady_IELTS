@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useParams, Link, useNavigate } from "react-router-dom";
-import { Layout } from "../components/layout/Layout";
+import { AppShell } from "../components/layout/AppShell";
 import { Button } from "../components/ui/Button";
 import { Card } from "../components/ui/Card";
 import { useAuth } from "../hooks/useAuth";
@@ -38,27 +38,27 @@ export function HumanReviewPage() {
 
   if (review === undefined) {
     return (
-      <Layout>
+      <AppShell>
         <div className="flex items-center justify-center min-h-[60vh]">
           <div className="animate-spin w-8 h-8 border-2 border-blue-600 border-t-transparent rounded-full" />
         </div>
-      </Layout>
+      </AppShell>
     );
   }
 
   if (review === null) {
     return (
-      <Layout>
+      <AppShell>
         <div className="py-16 text-center">
           <p className="text-[var(--text-secondary)]">This review could not be found.</p>
           <Link to="/dashboard" className="text-blue-600 text-sm font-medium">Back to dashboard</Link>
         </div>
-      </Layout>
+      </AppShell>
     );
   }
 
   return (
-    <Layout>
+    <AppShell>
       <div className="py-12 min-h-[calc(100vh-120px)] bg-[var(--bg-base)]">
         <div className="container mx-auto max-w-[560px] px-6">
           <Card className="p-8 text-center">
@@ -73,7 +73,7 @@ export function HumanReviewPage() {
             {review.status === "pending" ? (
               <div className="flex items-center justify-center gap-2 text-amber-600 bg-amber-50 rounded-lg py-3 px-4 text-sm font-medium">
                 <Clock className="w-4 h-4" />
-                Your teacher hasn't reviewed this yet.
+                Your teacher hasn&rsquo;t reviewed this yet.
               </div>
             ) : (
               <Button onClick={handleDownload} className="w-full bg-blue-600 hover:bg-blue-700 text-white">
@@ -84,6 +84,6 @@ export function HumanReviewPage() {
           </Card>
         </div>
       </div>
-    </Layout>
+    </AppShell>
   );
 }

@@ -1,8 +1,8 @@
-import { useState, useEffect, useRef, useCallback } from 'react';
+import { useState, useEffect, useRef, useCallback, type MouseEvent } from 'react';
 import { useParams, useSearchParams, useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
 import { getQuestion, saveSubmission } from '../firebase/firestore';
-import { Layout } from '../components/layout/Layout';
+import { AppShell } from '../components/layout/AppShell';
 import { Button } from '../components/ui/Button';
 import { Card } from '../components/ui/Card';
 import type { Question, PracticeMode } from '../types';
@@ -34,7 +34,7 @@ export function WorkspacePage() {
       setLoading(false);
     });
     return () => { if (intervalRef.current) clearInterval(intervalRef.current); };
-  }, [id, user]);
+  }, [id, user, navigate]);
 
   const startTimer = useCallback(() => {
     setStarted(true);
@@ -54,6 +54,24 @@ export function WorkspacePage() {
   useEffect(() => {
     if (mode !== 'mock') { setStarted(true); return; }
   }, [mode]);
+
+  const hasUnsavedWork = essay.trim().length > 0 && !submitting;
+
+  useEffect(() => {
+    const handler = (e: BeforeUnloadEvent) => {
+      if (!hasUnsavedWork) return;
+      e.preventDefault();
+      e.returnValue = '';
+    };
+    window.addEventListener('beforeunload', handler);
+    return () => window.removeEventListener('beforeunload', handler);
+  }, [hasUnsavedWork]);
+
+  const confirmLeave = (e: MouseEvent) => {
+    if (hasUnsavedWork && !window.confirm('You have unsaved essay text that hasn’t been submitted. Leave this page?')) {
+      e.preventDefault();
+    }
+  };
 
   const isPro = profile?.plan === 'basic' || profile?.plan === 'standard' || profile?.plan === 'premium' || profile?.plan === 'forever';
   const wordCount = essay.trim() ? essay.trim().split(/\s+/).length : 0;
@@ -95,27 +113,27 @@ export function WorkspacePage() {
 
   if (loading) {
     return (
-      <Layout>
+      <AppShell>
         <div className="py-16 text-center text-[var(--text-muted)]">
           Loading question…
         </div>
-      </Layout>
+      </AppShell>
     );
   }
 
   if (!question) {
     return (
-      <Layout>
+      <AppShell>
         <div className="py-16 text-center">
           <p className="text-[var(--text-muted)] mb-4">Question not found.</p>
-          <Link to="/dashboard"><Button>Back to Dashboard</Button></Link>
+          <Link to="/dashboard" onClick={confirmLeave}><Button>Back to Dashboard</Button></Link>
         </div>
-      </Layout>
+      </AppShell>
     );
   }
 
   return (
-    <Layout>
+    <AppShell>
       <div
         className="min-h-[calc(100vh-120px)] py-8"
         style={{ background: bgColor }}
@@ -124,7 +142,7 @@ export function WorkspacePage() {
           {/* Top bar */}
           <div className="flex items-center justify-between mb-6 flex-wrap gap-3">
             <div className="flex items-center gap-3">
-              <Link to="/dashboard" className="text-[var(--text-muted)] text-sm">
+              <Link to="/dashboard" onClick={confirmLeave} className="text-[var(--text-muted)] text-sm">
                 ← Dashboard
               </Link>
               <ModeBadge mode={mode} />
@@ -139,8 +157,8 @@ export function WorkspacePage() {
                 <span
                   className={`font-mono text-xl font-medium px-3 py-1 rounded-[var(--radius)] border ${
                     timerUrgent
-                      ? 'text-[var(--coral)] bg-[rgba(224,101,75,0.08)] border-[rgba(224,101,75,0.3)]'
-                      : 'text-[var(--ink-blue)] bg-[rgba(28,58,94,0.06)] border-[rgba(28,58,94,0.15)]'
+                      ? 'text-[var(--coral)] bg-[rgba(239,68,68,0.08)] border-[rgba(239,68,68,0.3)]'
+                      : 'text-[var(--ink-blue)] bg-[rgba(79,70,229,0.06)] border-[rgba(79,70,229,0.15)]'
                   }`}
                 >
                   {timerStr}
@@ -171,7 +189,7 @@ export function WorkspacePage() {
                   <span className={tagClassName}>
                     {question.taskType === 'task2' ? 'Task 2' : 'Task 1'}
                   </span>
-                  <span className={`${tagClassName} !bg-[rgba(217,164,65,0.1)] !text-[var(--gold)]`}>
+                  <span className={`${tagClassName} !bg-[rgba(245,158,11,0.1)] !text-[var(--gold)]`}>
                     {question.category}
                   </span>
                 </div>
@@ -188,6 +206,7 @@ export function WorkspacePage() {
               {/* Text editor */}
               <div>
                 <textarea
+                  aria-label="Your essay response"
                   value={essay}
                   onChange={(e) => setEssay(e.target.value)}
                   placeholder={
@@ -214,7 +233,7 @@ export function WorkspacePage() {
                     {error && (
                       <span className="text-sm text-[var(--coral)]">{error}</span>
                     )}
-                    <Link to="/dashboard">
+                    <Link to="/dashboard" onClick={confirmLeave}>
                       <Button variant="secondary" size="sm">Cancel</Button>
                     </Link>
                     <Button
@@ -230,7 +249,7 @@ export function WorkspacePage() {
 
               {/* Timer expired warning for mock */}
               {mode === 'mock' && timeLeft === 0 && (
-                <div className="bg-[rgba(224,101,75,0.08)] border-[1.5px] border-[var(--coral)] rounded-[var(--radius-lg)] p-5 text-center">
+                <div className="bg-[rgba(239,68,68,0.08)] border-[1.5px] border-[var(--coral)] rounded-[var(--radius-lg)] p-5 text-center">
                   <strong className="text-[var(--coral)]">Time's up!</strong>{' '}
                   <span className="text-[var(--slate)]">Your 40 minutes have ended. Please submit your essay now.</span>
                 </div>
@@ -238,7 +257,7 @@ export function WorkspacePage() {
 
               {/* Mode tips */}
               {mode === 'relax' && (
-                <Card className="bg-[rgba(215,226,234,0.5)] border border-[rgba(28,58,94,0.1)]">
+                <Card className="bg-[rgba(241,245,249,0.5)] border border-[rgba(79,70,229,0.1)]">
                   <p className="text-sm text-[var(--ink-blue)] font-medium">
                     ☕ Relax mode: No timer, no pressure. Use this space to brainstorm, explore vocabulary, or draft ideas before a real attempt.
                   </p>
@@ -248,7 +267,7 @@ export function WorkspacePage() {
           )}
         </div>
       </div>
-    </Layout>
+    </AppShell>
   );
 }
 
@@ -268,4 +287,4 @@ function ModeBadge({ mode }: { mode: PracticeMode }) {
   );
 }
 
-const tagClassName = 'inline-block px-2 py-[0.1875rem] bg-[rgba(28,58,94,0.07)] text-[var(--ink-blue)] rounded-full text-[0.6875rem] font-bold uppercase tracking-[0.05em]';
+const tagClassName = 'inline-block px-2 py-[0.1875rem] bg-[rgba(79,70,229,0.07)] text-[var(--ink-blue)] rounded-full text-[0.6875rem] font-bold uppercase tracking-[0.05em]';

@@ -12,7 +12,7 @@ import { ThemeToggle } from "@/components/ui/ThemeToggle";
 import { Button } from "../ui/Button";
 import { NotificationBell } from "../ui/NotificationBell";
 
-function SubscriptionBadge({
+export function SubscriptionBadge({
   plan,
   subscription,
 }: {
@@ -22,28 +22,28 @@ function SubscriptionBadge({
   if (plan === "forever" || subscription === "forever") {
     return (
       <span className="inline-flex items-center gap-1 text-[0.65rem] font-bold uppercase tracking-wider bg-amber-100 text-amber-700 border border-amber-200 rounded-full px-2 py-0.5 dark:bg-amber-900/30 dark:text-amber-300 dark:border-amber-700">
-        ♾️ LIFETIME
+        <span aria-hidden="true">♾️</span> LIFETIME
       </span>
     );
   }
   if (plan === "premium") {
     return (
-      <span className="inline-flex items-center gap-1 text-[0.65rem] font-bold uppercase tracking-wider bg-purple-50 text-purple-700 border border-purple-200 rounded-full px-2 py-0.5 dark:bg-purple-900/30 dark:text-purple-300 dark:border-purple-700">
-        ✓ PREMIUM
+      <span className="inline-flex items-center gap-1 text-[0.65rem] font-bold uppercase tracking-wider bg-indigo-50 text-indigo-700 border border-indigo-200 rounded-full px-2 py-0.5 dark:bg-indigo-900/30 dark:text-indigo-300 dark:border-indigo-700">
+        <span aria-hidden="true">✓</span> PREMIUM
       </span>
     );
   }
   if (plan === "standard") {
     return (
-      <span className="inline-flex items-center gap-1 text-[0.65rem] font-bold uppercase tracking-wider bg-blue-50 text-blue-700 border border-blue-200 rounded-full px-2 py-0.5 dark:bg-blue-900/30 dark:text-blue-300 dark:border-blue-700">
-        ⭐ STANDARD
+      <span className="inline-flex items-center gap-1 text-[0.65rem] font-bold uppercase tracking-wider bg-indigo-50 text-indigo-700 border border-indigo-200 rounded-full px-2 py-0.5 dark:bg-indigo-900/30 dark:text-indigo-300 dark:border-indigo-700">
+        <span aria-hidden="true">⭐</span> STANDARD
       </span>
     );
   }
   if (plan === "basic") {
     return (
-      <span className="inline-flex items-center gap-1 text-[0.65rem] font-bold uppercase tracking-wider bg-blue-50 text-blue-700 border border-blue-200 rounded-full px-2 py-0.5 dark:bg-blue-900/30 dark:text-blue-300 dark:border-blue-700">
-        ✓ BASIC
+      <span className="inline-flex items-center gap-1 text-[0.65rem] font-bold uppercase tracking-wider bg-indigo-50 text-indigo-600 border border-indigo-200 rounded-full px-2 py-0.5 dark:bg-indigo-900/30 dark:text-indigo-300 dark:border-indigo-700">
+        <span aria-hidden="true">✓</span> BASIC
       </span>
     );
   }
@@ -115,6 +115,7 @@ export function Header() {
                       src={user.photoURL}
                       alt={firstName}
                       width={30}
+                      height={30}
                       className="rounded-full object-cover shrink-0"
                     />
                   ) : (
@@ -129,6 +130,7 @@ export function Header() {
                     viewBox="0 0 12 12"
                     fill="none"
                     className="opacity-60 shrink-0"
+                    aria-hidden="true"
                   >
                     <path
                       d="M2 4l4 4 4-4"
@@ -152,7 +154,7 @@ export function Header() {
                   </p>
                   {profile?.centerName ? (
                     <p className="text-xs text-blue-600 font-medium truncate mt-0.5">
-                      🏫 {profile.centerName}
+                      <span aria-hidden="true">🏫</span> {profile.centerName}
                     </p>
                   ) : (
                     <p className="text-xs text-[var(--text-secondary)] truncate">
@@ -172,7 +174,7 @@ export function Header() {
                   className="flex items-center justify-between gap-2 px-3 py-2.5 mx-1 mt-1 rounded-md no-underline cursor-pointer hover:bg-[var(--bg-subtle)] transition-colors"
                 >
                   <span className="flex items-center gap-2.5 text-sm text-[var(--text-primary)]">
-                    <span>💰</span> Balance
+                    <span aria-hidden="true">💰</span> Balance
                   </span>
                   <span className="text-sm font-bold font-mono text-emerald-600">
                     {(profile?.balanceUZS ?? 0).toLocaleString()} UZS
@@ -184,7 +186,7 @@ export function Header() {
                     to="/dashboard"
                     className="flex items-center gap-2.5 px-3 py-2 text-sm text-[var(--text-primary)] no-underline cursor-pointer hover:bg-[var(--bg-subtle)] rounded-md mx-1"
                   >
-                    <span>🏠</span> Dashboard
+                    <span aria-hidden="true">🏠</span> Dashboard
                   </Link>
                 </DropdownMenuItem>
 
@@ -193,7 +195,7 @@ export function Header() {
                     to="/account"
                     className="flex items-center gap-2.5 px-3 py-2 text-sm text-[var(--text-primary)] no-underline cursor-pointer hover:bg-[var(--bg-subtle)] rounded-md mx-1"
                   >
-                    <span>👤</span> My Account
+                    <span aria-hidden="true">👤</span> My Account
                   </Link>
                 </DropdownMenuItem>
 
@@ -203,7 +205,7 @@ export function Header() {
                       to="/pricing"
                       className="flex items-center gap-2.5 px-3 py-2 text-sm text-amber-700 font-semibold no-underline cursor-pointer hover:bg-amber-50 rounded-md mx-1 dark:text-amber-400 dark:hover:bg-amber-900/20"
                     >
-                      <span>⭐</span> Rejani yangilash
+                      <span aria-hidden="true">⭐</span> Rejani yangilash
                     </Link>
                   </DropdownMenuItem>
                 )}
@@ -214,7 +216,7 @@ export function Header() {
                   onSelect={handleLogout}
                   className="flex items-center gap-2.5 px-3 py-2 text-sm text-red-600 cursor-pointer hover:bg-red-50 rounded-md mx-1 dark:text-red-400 dark:hover:bg-red-900/20"
                 >
-                  <span>↩</span> Log out
+                  <span aria-hidden="true">↩</span> Log out
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
@@ -228,7 +230,7 @@ export function Header() {
               </Link>
               <Link
                 to="/auth?mode=signup"
-                className="ml-1 bg-[var(--ink-blue)] text-white text-sm font-semibold px-5 py-2 rounded-lg no-underline hover:opacity-90 transition-opacity dark:bg-blue-600"
+                className="ml-1 bg-[var(--ink-blue)] text-white text-sm font-semibold px-5 py-2 rounded-lg no-underline hover:opacity-90 transition-opacity dark:bg-indigo-600"
               >
                 Start Free
               </Link>

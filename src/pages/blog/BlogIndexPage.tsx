@@ -48,8 +48,8 @@ export function BlogIndexPage() {
               onClick={() => setActiveCategory(cat)}
               className={`px-4 py-1.5 rounded-full text-sm font-medium border transition-colors ${
                 activeCategory === cat
-                  ? 'bg-blue-600 text-white border-blue-600'
-                  : 'bg-[var(--bg-card)] text-[var(--text-secondary)] border-[var(--border-color)] hover:border-blue-400'
+                  ? 'bg-indigo-600 text-white border-indigo-600'
+                  : 'bg-[var(--bg-card)] text-[var(--text-secondary)] border-[var(--border-color)] hover:border-indigo-400'
               }`}
             >
               {cat}
@@ -59,7 +59,7 @@ export function BlogIndexPage() {
 
         {loading ? (
           <div className="flex justify-center py-20">
-            <div className="animate-spin w-8 h-8 border-2 border-blue-600 border-t-transparent rounded-full" />
+            <div className="animate-spin w-8 h-8 border-2 border-indigo-600 border-t-transparent rounded-full" />
           </div>
         ) : filtered.length === 0 ? (
           <div className="text-center py-20 text-[var(--text-secondary)]">
@@ -69,7 +69,7 @@ export function BlogIndexPage() {
           </div>
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-            {filtered.map((post) => (
+            {filtered.map((post, index) => (
               <Link
                 key={post.id}
                 to={`/blog/${post.slug}`}
@@ -80,6 +80,9 @@ export function BlogIndexPage() {
                     <img
                       src={post.featuredImage}
                       alt={post.title}
+                      width={400}
+                      height={192}
+                      loading={index < 3 ? undefined : 'lazy'}
                       className="w-full h-48 object-cover"
                     />
                   ) : (
@@ -91,7 +94,7 @@ export function BlogIndexPage() {
                     <Badge variant="info" className="mb-2 text-[0.7rem] uppercase tracking-wide">
                       {post.category}
                     </Badge>
-                    <h2 className="text-base font-bold text-[var(--text-primary)] group-hover:text-blue-600 transition-colors mb-1 line-clamp-2">
+                    <h2 className="text-base font-bold text-[var(--text-primary)] group-hover:text-indigo-600 transition-colors mb-1 line-clamp-2">
                       {post.title}
                     </h2>
                     <p className="text-sm text-[var(--text-secondary)] line-clamp-2 mb-3">{post.excerpt}</p>

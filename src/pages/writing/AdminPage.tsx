@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
+import { useConfirm } from "@/hooks/useConfirm";
 import {
   collection,
   addDoc,
@@ -57,8 +58,8 @@ import {
   SidebarMenuButton,
   SidebarTrigger,
   SidebarInset,
-  useSidebar,
 } from "@/components/ui/sidebar";
+import { useSidebar } from "@/components/ui/sidebar-context";
 
 interface Task1 { id: string; image: string; report: string; }
 interface Task2 { id: string; report: string; }
@@ -179,32 +180,38 @@ function LoginScreen({ onLogin }: { onLogin: (user: string) => void }) {
         </div>
         <div className="bg-white rounded-b-2xl border border-t-0 border-slate-200 shadow-sm p-7 flex flex-col gap-4">
           <div>
-            <label className="text-xs font-semibold text-slate-600 mb-1.5 block uppercase tracking-wide">Login</label>
+            <label htmlFor="admin-login" className="text-xs font-semibold text-slate-600 mb-1.5 block uppercase tracking-wide">Login</label>
             <Input
+              id="admin-login"
+              name="username"
+              autoComplete="username"
               className="border-slate-200 bg-white text-slate-900"
-              placeholder="Login kiriting"
+              placeholder="Login kiriting…"
               value={login}
               onChange={(e) => setLogin(e.target.value)}
               onKeyDown={(e) => e.key === "Enter" && handle()}
             />
           </div>
           <div>
-            <label className="text-xs font-semibold text-slate-600 mb-1.5 block uppercase tracking-wide">Parol</label>
+            <label htmlFor="admin-password" className="text-xs font-semibold text-slate-600 mb-1.5 block uppercase tracking-wide">Parol</label>
             <PasswordInput
+              id="admin-password"
+              name="password"
+              autoComplete="current-password"
               className="border-slate-200 bg-white text-slate-900"
-              placeholder="Parol kiriting"
+              placeholder="Parol kiriting…"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               onKeyDown={(e) => e.key === "Enter" && handle()}
             />
           </div>
-          {error && <div className="bg-red-50 border border-red-200 rounded-lg px-3.5 py-2.5 text-sm text-red-600">{error}</div>}
+          {error && <div role="alert" aria-live="polite" className="bg-red-50 border border-red-200 rounded-lg px-3.5 py-2.5 text-sm text-red-600">{error}</div>}
           <button
             disabled={loading}
-            className="w-full bg-[#1C3A5E] text-white rounded-lg py-2.5 font-semibold text-sm cursor-pointer hover:bg-[#2d5a8e] transition-colors disabled:opacity-60"
+            className="w-full bg-[#4F46E5] text-white rounded-lg py-2.5 font-semibold text-sm cursor-pointer hover:bg-[#4338CA] transition-colors disabled:opacity-60"
             onClick={handle}
           >
-            {loading ? "Tekshirilmoqda..." : "Kirish"}
+            {loading ? "Tekshirilmoqda…" : "Kirish"}
           </button>
 
           <div className="flex items-center gap-3 pt-1">
@@ -310,7 +317,7 @@ function AdminSidebar({
         {open && (
           <div className="flex items-center gap-2.5 px-2 mb-3">
             <Avatar className="w-8 h-8 shrink-0 border border-white/20">
-              <AvatarFallback className="bg-[#1C3A5E] text-white text-[0.7rem]">
+              <AvatarFallback className="bg-[#4F46E5] text-white text-[0.7rem]">
                 {adminUser.slice(0, 2).toUpperCase()}
               </AvatarFallback>
             </Avatar>
@@ -323,9 +330,10 @@ function AdminSidebar({
         <button
           onClick={signOut}
           title={!open ? "Sign out" : undefined}
+          aria-label={!open ? "Sign out" : undefined}
           className={`w-full text-left flex items-center gap-2.5 px-3.5 py-2 rounded-lg text-sm font-medium text-red-400 hover:bg-red-500/10 hover:text-red-300 transition-colors border-none cursor-pointer bg-transparent ${!open ? "justify-center" : ""}`}
         >
-          <span>↩</span>
+          <span aria-hidden="true">↩</span>
           {open && "Sign out"}
         </button>
       </SidebarFooter>
@@ -335,6 +343,7 @@ function AdminSidebar({
 
 // ── Main ─────────────────────────────────────────────────────────
 export default function Admin() {
+  const { confirm, dialog: confirmDialog } = useConfirm();
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [adminUser, setAdminUser] = useState("Admin");
   const [section, setSection] = useState<NavSection>("dashboard");
@@ -417,12 +426,16 @@ export default function Admin() {
   const [editCSLogin, setEditCSLogin] = useState('');
   const [editCSPass, setEditCSPass] = useState('');
   const [savingCS, setSavingCS] = useState(false);
+  const [centerFormError, setCenterFormError] = useState('');
+  const [editCSError, setEditCSError] = useState('');
+  const [studentFormError, setStudentFormError] = useState('');
 
   // Teachers (Human Check)
   const [teachers, setTeachers] = useState<Teacher[]>([]);
   const [teachersLoading, setTeachersLoading] = useState(false);
   const [teacherEditor, setTeacherEditor] = useState<Partial<Teacher> | null>(null);
   const [teacherSaving, setTeacherSaving] = useState(false);
+  const [teacherFormError, setTeacherFormError] = useState('');
   const [teacherReviewCounts, setTeacherReviewCounts] = useState<Record<string, { pending: number; checked: number }>>({});
   const [humanCheckFlag, setHumanCheckFlag] = useState(false);
   const [humanCheckFlagLoading, setHumanCheckFlagLoading] = useState(false);
@@ -503,7 +516,7 @@ export default function Admin() {
 
   useEffect(() => {
     if (isLoggedIn && allUsers.length === 0) loadUsers();
-  }, [isLoggedIn, section]);
+  }, [isLoggedIn, section, allUsers.length]);
 
   const loadBlogPosts = async () => {
     setBlogLoading(true);
@@ -659,32 +672,34 @@ export default function Admin() {
   };
 
   const openEditCenterStudent = (s: CenterStudent) => {
-    setEditCenterStudent(s); setEditCSName(s.fullName); setEditCSLogin(s.login); setEditCSPass('');
+    setEditCenterStudent(s); setEditCSName(s.fullName); setEditCSLogin(s.login); setEditCSPass(''); setEditCSError('');
   };
 
   const saveEditCenterStudent = async () => {
     if (!editCenterStudent || !viewCenter || !editCSName.trim() || !editCSLogin.trim()) return;
     setSavingCS(true);
+    setEditCSError('');
     try {
       if (editCSLogin.trim() !== editCenterStudent.login) {
         const ex = await getDocs(query(collection(db, 'learningCenters', viewCenter.id, 'students'), where('login', '==', editCSLogin.trim())));
-        if (!ex.empty) { alert('Bu login allaqachon mavjud.'); setSavingCS(false); return; }
+        if (!ex.empty) { setEditCSError('Bu login allaqachon mavjud.'); setSavingCS(false); return; }
       }
       const updates: Record<string, string> = { fullName: editCSName.trim(), login: editCSLogin.trim() };
       if (editCSPass.trim()) updates.password = editCSPass.trim();
       await updateDoc(doc(db, 'learningCenters', viewCenter.id, 'students', editCenterStudent.id), updates);
       setCenterStudents((p) => p.map((s) => s.id === editCenterStudent.id ? { ...s, fullName: editCSName.trim(), login: editCSLogin.trim() } : s));
       setEditCenterStudent(null);
-    } catch (e) { console.error(e); }
+    } catch (e) { console.error(e); setEditCSError("Xatolik yuz berdi."); }
     setSavingCS(false);
   };
 
   const saveCenter = async () => {
     if (!centerEditor) return;
     if (!centerEditor.name || !centerEditor.login || !centerEditor.password || !centerEditor.expiresAt) {
-      alert('Please fill required fields: name, login, password, expires at');
+      setCenterFormError('Please fill required fields: name, login, password, expires at');
       return;
     }
+    setCenterFormError('');
     setCenterSaving(true);
     try {
       const payload = {
@@ -706,12 +721,12 @@ export default function Admin() {
       }
       setCenterEditor(null);
       await loadCenters();
-    } catch (e) { console.error(e); }
+    } catch (e) { console.error(e); setCenterFormError('Failed to save center.'); }
     setCenterSaving(false);
   };
 
   const deleteCenter = async (id: string) => {
-    if (!confirm('Bu o\'quv markazini o\'chirishni xohlaysizmi?')) return;
+    if (!(await confirm("Bu o'quv markazini o'chirishni xohlaysizmi?", { destructive: true, confirmLabel: "Delete" }))) return;
     await deleteDoc(doc(db, 'learningCenters', id));
     setCenters((prev) => prev.filter((c) => c.id !== id));
   };
@@ -788,9 +803,10 @@ export default function Admin() {
   const saveTeacher = async () => {
     if (!teacherEditor) return;
     if (!teacherEditor.name || !teacherEditor.login || !teacherEditor.password) {
-      alert('Please fill required fields: name, login, password');
+      setTeacherFormError('Please fill required fields: name, login, password');
       return;
     }
+    setTeacherFormError('');
     setTeacherSaving(true);
     try {
       const payload = {
@@ -809,12 +825,12 @@ export default function Admin() {
       }
       setTeacherEditor(null);
       await loadTeachers();
-    } catch (e) { console.error(e); }
+    } catch (e) { console.error(e); setTeacherFormError('Failed to save teacher.'); }
     setTeacherSaving(false);
   };
 
   const deleteTeacher = async (id: string) => {
-    if (!confirm('Delete this teacher?')) return;
+    if (!(await confirm('Delete this teacher?', { destructive: true, confirmLabel: 'Delete' }))) return;
     await deleteTeacherDoc(id, db);
     setTeachers((prev) => prev.filter((t) => t.id !== id));
   };
@@ -854,9 +870,10 @@ export default function Admin() {
 
   const addStudentToCenter = async () => {
     if (!viewCenter || !newStudentName.trim() || !newStudentLogin.trim() || !newStudentPassword.trim()) return;
-    if (newStudentPassword.trim().length < 6) { alert("Parol kamida 6 ta belgidan iborat bo'lishi kerak."); return; }
+    setStudentFormError('');
+    if (newStudentPassword.trim().length < 6) { setStudentFormError("Parol kamida 6 ta belgidan iborat bo'lishi kerak."); return; }
     if ((viewCenter.studentCount ?? 0) >= viewCenter.studentLimit) {
-      alert('Student limit reached for this center.');
+      setStudentFormError('Student limit reached for this center.');
       return;
     }
     setStudentAdding(true);
@@ -864,7 +881,7 @@ export default function Admin() {
       const loginKey = newStudentLogin.trim().toLowerCase();
       // Check login uniqueness within center
       const existing = await getDocs(query(collection(db, 'learningCenters', viewCenter.id, 'students'), where('login', '==', loginKey)));
-      if (!existing.empty) { alert('Bu login allaqachon mavjud.'); setStudentAdding(false); return; }
+      if (!existing.empty) { setStudentFormError('Bu login allaqachon mavjud.'); setStudentAdding(false); return; }
 
       // Create the student's Firebase Auth account so they can actually sign in.
       const fakeEmail = `${loginKey}@writeready.student`;
@@ -873,7 +890,7 @@ export default function Admin() {
         uid = await createStudentAuthAccount(fakeEmail, newStudentPassword.trim());
       } catch (err) {
         const code = (err as { code?: string })?.code;
-        alert(code === 'auth/email-already-in-use' ? 'Bu login allaqachon band.' : "Xatolik yuz berdi. Qaytadan urinib ko'ring.");
+        setStudentFormError(code === 'auth/email-already-in-use' ? 'Bu login allaqachon band.' : "Xatolik yuz berdi. Qaytadan urinib ko'ring.");
         setStudentAdding(false);
         return;
       }
@@ -901,12 +918,12 @@ export default function Admin() {
       setNewStudentName(''); setNewStudentLogin(''); setNewStudentPassword('');
       await loadCenterStudents(viewCenter.id);
       setViewCenter((prev) => prev ? { ...prev, studentCount: (prev.studentCount ?? 0) + 1 } : prev);
-    } catch (e) { console.error(e); alert("Xatolik yuz berdi. Qaytadan urinib ko'ring."); }
+    } catch (e) { console.error(e); setStudentFormError("Xatolik yuz berdi. Qaytadan urinib ko'ring."); }
     setStudentAdding(false);
   };
 
   const removeStudentFromCenter = async (centerId: string, studentId: string) => {
-    if (!confirm('Bu o\'quvchini o\'chirishni xohlaysizmi?')) return;
+    if (!(await confirm("Bu o'quvchini o'chirishni xohlaysizmi?", { destructive: true, confirmLabel: 'Delete' }))) return;
     await deleteDoc(doc(db, 'learningCenters', centerId, 'students', studentId));
     setCenterStudents((prev) => prev.filter((s) => s.id !== studentId));
     setViewCenter((prev) => prev ? { ...prev, studentCount: Math.max(0, (prev.studentCount ?? 1) - 1) } : prev);
@@ -914,12 +931,12 @@ export default function Admin() {
 
   useEffect(() => {
     if (isLoggedIn && section === 'centers' && centers.length === 0) loadCenters();
-  }, [isLoggedIn, section]);
+  }, [isLoggedIn, section, centers.length]);
 
   useEffect(() => {
     if (isLoggedIn && section === 'teachers' && teachers.length === 0) loadTeachers();
     if (isLoggedIn && section === 'teachers') loadHumanCheckFlag();
-  }, [isLoggedIn, section]);
+  }, [isLoggedIn, section, teachers.length]);
 
   const addAnnouncement = async () => {
     if (!annTitle.trim() || !annText.trim()) return;
@@ -991,7 +1008,7 @@ export default function Admin() {
   };
 
   const deleteTask1 = async (id: string) => {
-    if (!confirm("Bu Task 1 ni o'chirishni xohlaysizmi?")) return;
+    if (!(await confirm("Bu Task 1 ni o'chirishni xohlaysizmi?", { destructive: true, confirmLabel: 'Delete' }))) return;
     await deleteDoc(doc(db, "task1_reports", id));
     setTask1List((p) => p.filter((t) => t.id !== id));
   };
@@ -1018,7 +1035,7 @@ export default function Admin() {
   };
 
   const deleteTask2 = async (id: string) => {
-    if (!confirm("Bu Task 2 ni o'chirishni xohlaysizmi?")) return;
+    if (!(await confirm("Bu Task 2 ni o'chirishni xohlaysizmi?", { destructive: true, confirmLabel: 'Delete' }))) return;
     await deleteDoc(doc(db, "task2_reports", id));
     setTask2List((p) => p.filter((t) => t.id !== id));
   };
@@ -1073,7 +1090,7 @@ export default function Admin() {
   };
 
   const resetBalance = async (user: UserRow) => {
-    if (!confirm(`Reset ${user.email}'s balance to 0?`)) return;
+    if (!(await confirm(`Reset ${user.email}'s balance to 0?`, { confirmLabel: 'Reset' }))) return;
     setUserActionLoading(true); setUserError(""); setUserSuccess("");
     try {
       await updateDoc(doc(db, "users", user.id), { balanceUZS: 0 });
@@ -1086,9 +1103,10 @@ export default function Admin() {
 
   const deleteUser = async (user: UserRow) => {
     if (
-      !confirm(
-        `${user.email} ni butunlay o'chirmoqchimisiz?\n\nUning profili, AI tahlil hisobotlari, human check so'rovlari va bildirishnomalari BAZADAN butunlay o'chib ketadi. Bu amalni orqaga qaytarib bo'lmaydi.\n\n(Eslatma: bu faqat Firestore ma'lumotlarini o'chiradi — foydalanuvchi hali ham eski login/parol bilan tizimga kira oladi, lekin hech qanday ma'lumot yoki pullik reja bo'lmaydi.)`
-      )
+      !(await confirm(
+        `${user.email} ni butunlay o'chirmoqchimisiz?\n\nUning profili, AI tahlil hisobotlari, human check so'rovlari va bildirishnomalari BAZADAN butunlay o'chib ketadi. Bu amalni orqaga qaytarib bo'lmaydi.\n\n(Eslatma: bu faqat Firestore ma'lumotlarini o'chiradi — foydalanuvchi hali ham eski login/parol bilan tizimga kira oladi, lekin hech qanday ma'lumot yoki pullik reja bo'lmaydi.)`,
+        { destructive: true, confirmLabel: 'Delete' }
+      ))
     )
       return;
     setDeletingUserId(user.id);
@@ -1154,7 +1172,7 @@ export default function Admin() {
             {section === "dashboard" && (
               <div className="flex flex-col gap-6">
                 <div>
-                  <p className="text-[0.7rem] font-bold tracking-widest uppercase text-[#1C3A5E] mb-1">Overview</p>
+                  <p className="text-[0.7rem] font-bold tracking-widest uppercase text-[#4F46E5] mb-1">Overview</p>
                   <h1 className="text-2xl font-bold text-slate-900 m-0">Dashboard</h1>
                 </div>
 
@@ -1164,21 +1182,24 @@ export default function Admin() {
                     { label: "Task 2 prompts",      value: task2List.length,    color: "text-green-700",   bg: "bg-green-50",  border: "border-green-100",  icon: "✍️" },
                     { label: "Jami foydalanuvchi",  value: allUsers.length || "—", color: "text-slate-700", bg: "bg-slate-50", border: "border-slate-200",  icon: "👥" },
                     { label: "Bugun qo'shildi",     value: todayCount || "—",   color: "text-purple-700",  bg: "bg-purple-50", border: "border-purple-100", icon: "🆕", onClick: () => { setShowTodayOnly(true); setSection("users"); } },
-                    { label: "Pro obunachi",         value: proCount || "—",     color: "text-[#1C3A5E]",   bg: "bg-sky-50",   border: "border-sky-100",    icon: "⭐" },
+                    { label: "Pro obunachi",         value: proCount || "—",     color: "text-[#4F46E5]",   bg: "bg-indigo-50",   border: "border-indigo-100",    icon: "⭐" },
                     { label: "Lifetime a'zo",        value: lifetimeCount || "—",color: "text-amber-700",   bg: "bg-amber-50",  border: "border-amber-100",  icon: "♾️" },
-                  ].map((s) => (
-                    <div
-                      key={s.label}
-                      onClick={s.onClick}
-                      className={`${s.bg} border ${s.border} rounded-xl p-5 ${s.onClick ? "cursor-pointer hover:brightness-95 transition-all" : ""}`}
-                    >
-                      <div className="flex items-center gap-2 mb-2">
-                        <span className="text-lg">{s.icon}</span>
-                        <p className={`text-xs font-semibold ${s.color}`}>{s.label}</p>
-                      </div>
-                      <p className={`font-mono text-3xl font-bold ${s.color}`}>{s.value}</p>
-                    </div>
-                  ))}
+                  ].map((s) => {
+                    const Tag = s.onClick ? "button" : "div";
+                    return (
+                      <Tag
+                        key={s.label}
+                        onClick={s.onClick}
+                        className={`text-left ${s.bg} border ${s.border} rounded-xl p-5 ${s.onClick ? "cursor-pointer hover:brightness-95 transition-all" : ""}`}
+                      >
+                        <div className="flex items-center gap-2 mb-2">
+                          <span className="text-lg" aria-hidden="true">{s.icon}</span>
+                          <p className={`text-xs font-semibold ${s.color}`}>{s.label}</p>
+                        </div>
+                        <p className={`font-mono text-3xl font-bold ${s.color}`}>{s.value}</p>
+                      </Tag>
+                    );
+                  })}
                 </div>
 
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
@@ -1234,8 +1255,9 @@ export default function Admin() {
                 <div className="bg-white rounded-xl border border-slate-200 p-6 flex flex-col gap-4">
                   <p className="text-sm font-bold text-slate-700">Yangi Task 1 qo'shish</p>
                   <div>
-                    <label className="text-xs font-semibold text-slate-600 mb-1.5 block uppercase tracking-wide">Rasm yuklash</label>
+                    <label htmlFor="t1-image-upload" className="text-xs font-semibold text-slate-600 mb-1.5 block uppercase tracking-wide">Rasm yuklash</label>
                     <input
+                      id="t1-image-upload"
                       type="file"
                       accept="image/*,application/pdf"
                       onChange={async (e) => {
@@ -1247,7 +1269,7 @@ export default function Admin() {
                   </div>
                   {uploading && (
                     <div className="bg-blue-50 border border-blue-200 rounded-lg px-3.5 py-2.5 text-sm text-blue-700 flex items-center gap-2">
-                      <Spinner color="#1d4ed8" /> Yuklanmoqda...
+                      <Spinner color="#1d4ed8" /> Yuklanmoqda…
                     </div>
                   )}
                   {t1Image && (
@@ -1256,22 +1278,23 @@ export default function Admin() {
                     </div>
                   )}
                   <div>
-                    <label className="text-xs font-semibold text-slate-600 mb-1.5 block uppercase tracking-wide">Savol matni</label>
+                    <label htmlFor="t1-report" className="text-xs font-semibold text-slate-600 mb-1.5 block uppercase tracking-wide">Savol matni</label>
                     <Textarea
+                      id="t1-report"
                       className="border-slate-200 bg-white text-slate-900 min-h-[100px]"
-                      placeholder="Task 1 savol matnini kiriting..."
+                      placeholder="Task 1 savol matnini kiriting…"
                       value={t1Report}
                       onChange={(e) => setT1Report(e.target.value)}
                       rows={4}
                     />
                   </div>
-                  {t1Error && <div className="bg-red-50 border border-red-200 rounded-lg px-3.5 py-2.5 text-sm text-red-600">{t1Error}</div>}
+                  {t1Error && <div role="alert" aria-live="polite" className="bg-red-50 border border-red-200 rounded-lg px-3.5 py-2.5 text-sm text-red-600">{t1Error}</div>}
                   <button
                     className={`${t1Loading || uploading ? "bg-slate-400" : "bg-blue-700 hover:bg-blue-800"} text-white border-none rounded-lg py-2.5 font-semibold text-sm cursor-pointer flex items-center justify-center gap-2 transition-colors`}
                     onClick={addTask1}
                     disabled={t1Loading || uploading}
                   >
-                    {t1Loading ? <><Spinner color="white" /> Saqlanmoqda...</> : "+ Qo'shish"}
+                    {t1Loading ? <><Spinner color="white" /> Saqlanmoqda…</> : "+ Qo'shish"}
                   </button>
                 </div>
 
@@ -1314,6 +1337,7 @@ export default function Admin() {
                               className="w-8 h-7 bg-white text-slate-500 border border-slate-200 rounded-lg text-xs flex items-center justify-center cursor-pointer hover:bg-slate-100 transition-colors shrink-0"
                               onClick={() => setPreviewImage(t.image)}
                               title="Preview"
+                              aria-label="Preview image"
                             >
                               <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                                 <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/>
@@ -1347,22 +1371,23 @@ export default function Admin() {
                 <div className="bg-white rounded-xl border border-slate-200 p-6 flex flex-col gap-4">
                   <p className="text-sm font-bold text-slate-700">Yangi Task 2 qo'shish</p>
                   <div>
-                    <label className="text-xs font-semibold text-slate-600 mb-1.5 block uppercase tracking-wide">Savol matni</label>
+                    <label htmlFor="t2-report" className="text-xs font-semibold text-slate-600 mb-1.5 block uppercase tracking-wide">Savol matni</label>
                     <Textarea
+                      id="t2-report"
                       className="border-slate-200 bg-white text-slate-900 min-h-[120px]"
-                      placeholder="Task 2 savol matnini kiriting..."
+                      placeholder="Task 2 savol matnini kiriting…"
                       value={t2Report}
                       onChange={(e) => setT2Report(e.target.value)}
                       rows={5}
                     />
                   </div>
-                  {t2Error && <div className="bg-red-50 border border-red-200 rounded-lg px-3.5 py-2.5 text-sm text-red-600">{t2Error}</div>}
+                  {t2Error && <div role="alert" aria-live="polite" className="bg-red-50 border border-red-200 rounded-lg px-3.5 py-2.5 text-sm text-red-600">{t2Error}</div>}
                   <button
                     className={`${t2Loading ? "bg-slate-400" : "bg-green-700 hover:bg-green-800"} text-white border-none rounded-lg py-2.5 font-semibold text-sm cursor-pointer flex items-center justify-center gap-2 transition-colors`}
                     onClick={addTask2}
                     disabled={t2Loading}
                   >
-                    {t2Loading ? <><Spinner color="white" /> Saqlanmoqda...</> : "+ Qo'shish"}
+                    {t2Loading ? <><Spinner color="white" /> Saqlanmoqda…</> : "+ Qo'shish"}
                   </button>
                 </div>
 
@@ -1488,8 +1513,19 @@ export default function Admin() {
                             return (
                               <tr
                                 key={u.id}
-                                className={`hover:bg-slate-50 cursor-pointer transition-colors ${selectedUser?.id === u.id ? "bg-purple-50" : ""}`}
+                                role="button"
+                                tabIndex={0}
+                                aria-expanded={selectedUser?.id === u.id}
+                                className={`hover:bg-slate-50 cursor-pointer transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-purple-500 ${selectedUser?.id === u.id ? "bg-purple-50" : ""}`}
                                 onClick={() => { setSelectedUser(selectedUser?.id === u.id ? null : u); setUserSuccess(""); setUserError(""); }}
+                                onKeyDown={(e) => {
+                                  if (e.key === "Enter" || e.key === " ") {
+                                    e.preventDefault();
+                                    setSelectedUser(selectedUser?.id === u.id ? null : u);
+                                    setUserSuccess("");
+                                    setUserError("");
+                                  }
+                                }}
                               >
                                 <td className="px-4 py-3 font-medium text-slate-800">{u.email}</td>
                                 <td className="px-4 py-3">
@@ -1745,6 +1781,7 @@ export default function Admin() {
                                   <input
                                     type="checkbox"
                                     checked={checked}
+                                    aria-label={`Tanlash: ${entry.email}`}
                                     onChange={() => {
                                       setSelectedUids((prev) => {
                                         const next = new Set(prev);
@@ -1833,7 +1870,7 @@ export default function Admin() {
                     onClick={addAnnouncement}
                     className="self-start px-4 py-2 text-sm font-semibold bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 transition-colors"
                   >
-                    {annSaving ? "Saqlanmoqda..." : "Elon qo'shish"}
+                    {annSaving ? "Saqlanmoqda…" : "Elon qo'shish"}
                   </button>
                 </div>
 
@@ -1905,7 +1942,7 @@ export default function Admin() {
                       {centersLoading ? 'Yuklanmoqda...' : '↻ Refresh'}
                     </button>
                     <button
-                      onClick={() => setCenterEditor({ name: '', contactPerson: '', phone: '', contractNumber: '', paymentAmount: 0, studentLimit: 30, login: '', password: '', expiresAt: '', status: 'pending' })}
+                      onClick={() => { setCenterFormError(''); setCenterEditor({ name: '', contactPerson: '', phone: '', contractNumber: '', paymentAmount: 0, studentLimit: 30, login: '', password: '', expiresAt: '', status: 'pending' }); }}
                       className="px-4 py-2 bg-teal-600 text-white rounded-lg text-sm font-semibold hover:bg-teal-700 transition-colors cursor-pointer">
                       + Add Center
                     </button>
@@ -1971,7 +2008,7 @@ export default function Admin() {
                                 <div className="flex items-center justify-end gap-1">
                                   <button onClick={() => { setViewCenter(c); loadCenterStudents(c.id); }}
                                     className="text-xs px-2.5 py-1 bg-blue-50 text-blue-700 border border-blue-200 rounded-lg hover:bg-blue-100 transition-colors cursor-pointer">Students</button>
-                                  <button onClick={() => setCenterEditor(c)}
+                                  <button onClick={() => { setCenterFormError(''); setCenterEditor(c); }}
                                     className="text-xs px-2.5 py-1 bg-slate-50 text-slate-700 border border-slate-200 rounded-lg hover:bg-slate-100 transition-colors cursor-pointer">Edit</button>
                                   <button onClick={() => deleteCenter(c.id)}
                                     className="text-xs px-2.5 py-1 bg-red-50 text-red-600 border border-red-200 rounded-lg hover:bg-red-100 transition-colors cursor-pointer">Del</button>
@@ -1992,6 +2029,11 @@ export default function Admin() {
                     </DialogHeader>
                     {centerEditor && (
                       <div className="flex flex-col gap-4 mt-2">
+                        {centerFormError && (
+                          <p role="alert" aria-live="polite" className="text-sm text-red-600 bg-red-50 border border-red-200 rounded-lg px-3 py-2">
+                            {centerFormError}
+                          </p>
+                        )}
                         <div className="grid grid-cols-2 gap-3">
                           <div className="col-span-2">
                             <label className="text-xs font-semibold text-slate-600 mb-1 block uppercase tracking-wide">Center Name *</label>
@@ -2043,7 +2085,7 @@ export default function Admin() {
                         <div className="flex gap-3 pt-2">
                           <button disabled={centerSaving} onClick={saveCenter}
                             className="flex-1 bg-teal-600 text-white rounded-lg py-2.5 font-semibold text-sm cursor-pointer hover:bg-teal-700 transition-colors disabled:opacity-50">
-                            {centerSaving ? 'Saqlanmoqda...' : 'Save'}
+                            {centerSaving ? 'Saqlanmoqda…' : 'Save'}
                           </button>
                           <button onClick={() => setCenterEditor(null)}
                             className="flex-1 bg-white text-slate-700 border border-slate-200 rounded-lg py-2.5 font-semibold text-sm cursor-pointer hover:bg-slate-50 transition-colors">
@@ -2064,6 +2106,11 @@ export default function Admin() {
                       <div className="flex flex-col gap-4 mt-2">
                         <div className="bg-slate-50 border border-slate-200 rounded-xl p-4 flex flex-col gap-3">
                           <p className="text-xs font-semibold text-slate-600 uppercase tracking-wide">O'quvchi qo'shish</p>
+                          {studentFormError && (
+                            <p role="alert" aria-live="polite" className="text-sm text-red-600 bg-red-50 border border-red-200 rounded-lg px-3 py-2">
+                              {studentFormError}
+                            </p>
+                          )}
                           <div className="grid grid-cols-3 gap-2">
                             <Input placeholder="Ism familiya" className="border-slate-200 bg-white text-slate-900" value={newStudentName} onChange={(e) => setNewStudentName(e.target.value)} />
                             <Input placeholder="Login" className="border-slate-200 bg-white text-slate-900" value={newStudentLogin} onChange={(e) => setNewStudentLogin(e.target.value)} />
@@ -2071,7 +2118,7 @@ export default function Admin() {
                           </div>
                           <button disabled={studentAdding || !newStudentName.trim() || !newStudentLogin.trim() || !newStudentPassword.trim()} onClick={addStudentToCenter}
                             className="self-start px-4 py-2 bg-teal-600 text-white rounded-lg text-sm font-semibold hover:bg-teal-700 transition-colors disabled:opacity-50 cursor-pointer">
-                            {studentAdding ? "Qo'shilmoqda..." : '+ Add Student'}
+                            {studentAdding ? "Qo'shilmoqda…" : '+ Add Student'}
                           </button>
                         </div>
                         <p className="text-xs text-slate-500">{centerStudents.length} / {viewCenter.studentLimit} students used</p>
@@ -2123,6 +2170,11 @@ export default function Admin() {
                     <DialogTitle className="text-slate-900">O'quvchini tahrirlash</DialogTitle>
                   </DialogHeader>
                   <div className="flex flex-col gap-4 mt-2">
+                    {editCSError && (
+                      <p role="alert" aria-live="polite" className="text-sm text-red-600 bg-red-50 border border-red-200 rounded-lg px-3 py-2">
+                        {editCSError}
+                      </p>
+                    )}
                     <div>
                       <label className="text-xs font-semibold text-slate-600 mb-1 block uppercase tracking-wide">Ism Familiya</label>
                       <Input className="border-slate-200 bg-white text-slate-900" value={editCSName} onChange={(e) => setEditCSName(e.target.value)} />
@@ -2138,7 +2190,7 @@ export default function Admin() {
                     <div className="flex gap-3">
                       <button disabled={savingCS || !editCSName.trim() || !editCSLogin.trim()} onClick={saveEditCenterStudent}
                         className="flex-1 bg-blue-600 text-white rounded-lg py-2.5 font-semibold text-sm cursor-pointer hover:bg-blue-700 transition-colors disabled:opacity-50 border-none">
-                        {savingCS ? "Saqlanmoqda..." : "Saqlash"}
+                        {savingCS ? "Saqlanmoqda…" : "Saqlash"}
                       </button>
                       <button onClick={() => setEditCenterStudent(null)}
                         className="flex-1 bg-white text-slate-700 border border-slate-200 rounded-lg py-2.5 font-semibold text-sm cursor-pointer hover:bg-slate-50 transition-colors">
@@ -2162,10 +2214,10 @@ export default function Admin() {
                   <div className="flex gap-2">
                     <button onClick={loadTeachers} disabled={teachersLoading}
                       className="px-4 py-2 bg-white border border-slate-200 rounded-lg text-sm font-semibold text-slate-700 hover:bg-slate-50 cursor-pointer transition-colors">
-                      {teachersLoading ? 'Loading...' : '↻ Refresh'}
+                      {teachersLoading ? 'Loading…' : '↻ Refresh'}
                     </button>
                     <button
-                      onClick={() => setTeacherEditor({ name: '', ieltsOverall: 8, ieltsWriting: 8, login: '', password: '' })}
+                      onClick={() => { setTeacherFormError(''); setTeacherEditor({ name: '', ieltsOverall: 8, ieltsWriting: 8, login: '', password: '' }); }}
                       className="px-4 py-2 bg-emerald-600 text-white rounded-lg text-sm font-semibold hover:bg-emerald-700 transition-colors cursor-pointer">
                       + Add Teacher
                     </button>
@@ -2209,7 +2261,7 @@ export default function Admin() {
                       disabled={humanCheckPriceSaving || !humanCheckPriceInput}
                       className="px-3 py-2 bg-emerald-600 text-white rounded-lg text-xs font-semibold hover:bg-emerald-700 transition-colors disabled:opacity-50 cursor-pointer"
                     >
-                      {humanCheckPriceSaving ? 'Saving...' : 'Save'}
+                      {humanCheckPriceSaving ? 'Saving…' : 'Save'}
                     </button>
                     {humanCheckPriceMsg && <span className="text-xs text-emerald-600">{humanCheckPriceMsg}</span>}
                   </div>
@@ -2236,7 +2288,7 @@ export default function Admin() {
                       disabled={platformFeeSaving || platformFeeInput === ''}
                       className="px-3 py-2 bg-emerald-600 text-white rounded-lg text-xs font-semibold hover:bg-emerald-700 transition-colors disabled:opacity-50 cursor-pointer"
                     >
-                      {platformFeeSaving ? 'Saving...' : 'Save'}
+                      {platformFeeSaving ? 'Saving…' : 'Save'}
                     </button>
                     {platformFeeMsg && <span className="text-xs text-emerald-600">{platformFeeMsg}</span>}
                   </div>
@@ -2244,7 +2296,7 @@ export default function Admin() {
 
                 {teachersLoading ? (
                   <div className="flex items-center justify-center py-16 text-slate-400 text-sm gap-2">
-                    <Spinner color="#94a3b8" /> Loading...
+                    <Spinner color="#94a3b8" /> Loading…
                   </div>
                 ) : teachers.length === 0 ? (
                   <div className="bg-white rounded-xl border border-dashed border-slate-300 p-12 text-center">
@@ -2302,7 +2354,7 @@ export default function Admin() {
                                 <div className="flex items-center justify-end gap-1">
                                   <button onClick={() => loadTeacherEarnings(t)}
                                     className="text-xs px-2.5 py-1 bg-emerald-50 text-emerald-700 border border-emerald-200 rounded-lg hover:bg-emerald-100 transition-colors cursor-pointer">Earnings</button>
-                                  <button onClick={() => setTeacherEditor(t)}
+                                  <button onClick={() => { setTeacherFormError(''); setTeacherEditor(t); }}
                                     className="text-xs px-2.5 py-1 bg-slate-50 text-slate-700 border border-slate-200 rounded-lg hover:bg-slate-100 transition-colors cursor-pointer">Edit</button>
                                   <button onClick={() => deleteTeacher(t.id)}
                                     className="text-xs px-2.5 py-1 bg-red-50 text-red-600 border border-red-200 rounded-lg hover:bg-red-100 transition-colors cursor-pointer">Del</button>
@@ -2324,6 +2376,11 @@ export default function Admin() {
                     </DialogHeader>
                     {teacherEditor && (
                       <div className="flex flex-col gap-4 mt-2">
+                        {teacherFormError && (
+                          <p role="alert" aria-live="polite" className="text-sm text-red-600 bg-red-50 border border-red-200 rounded-lg px-3 py-2">
+                            {teacherFormError}
+                          </p>
+                        )}
                         <div>
                           <label className="text-xs font-semibold text-slate-600 mb-1 block uppercase tracking-wide">Name *</label>
                           <Input className="border-slate-200 bg-white text-slate-900" value={teacherEditor.name ?? ''} onChange={(e) => setTeacherEditor((p) => ({ ...p, name: e.target.value }))} />
@@ -2369,7 +2426,7 @@ export default function Admin() {
                         <div className="flex gap-3 pt-2">
                           <button disabled={teacherSaving} onClick={saveTeacher}
                             className="flex-1 bg-emerald-600 text-white rounded-lg py-2.5 font-semibold text-sm cursor-pointer hover:bg-emerald-700 transition-colors disabled:opacity-50">
-                            {teacherSaving ? 'Saving...' : 'Save'}
+                            {teacherSaving ? 'Saving…' : 'Save'}
                           </button>
                           <button onClick={() => setTeacherEditor(null)}
                             className="flex-1 bg-white text-slate-700 border border-slate-200 rounded-lg py-2.5 font-semibold text-sm cursor-pointer hover:bg-slate-50 transition-colors">
@@ -2389,7 +2446,7 @@ export default function Admin() {
                     </DialogHeader>
                     {teacherEarningsLoading ? (
                       <div className="flex items-center justify-center py-12 text-slate-400 text-sm gap-2">
-                        <Spinner color="#94a3b8" /> Loading...
+                        <Spinner color="#94a3b8" /> Loading…
                       </div>
                     ) : teacherEarnings.length === 0 ? (
                       <p className="text-sm text-slate-500 text-center py-8">No checked reviews yet.</p>
@@ -2555,7 +2612,7 @@ export default function Admin() {
                       <div>
                         <label className="text-xs font-semibold text-slate-600 mb-1 block uppercase tracking-wide">Category</label>
                         <select
-                          className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm outline-none focus:border-blue-500 bg-white"
+                          className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm outline-none focus:border-blue-500 bg-white text-slate-900"
                           value={blogEditor.category ?? 'Writing tips'}
                           onChange={(e) => setBlogEditor((p) => ({ ...p, category: e.target.value as BlogPost['category'] }))}
                         >
@@ -2567,7 +2624,7 @@ export default function Admin() {
                       <div>
                         <label className="text-xs font-semibold text-slate-600 mb-1 block uppercase tracking-wide">Status</label>
                         <select
-                          className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm outline-none focus:border-blue-500 bg-white"
+                          className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm outline-none focus:border-blue-500 bg-white text-slate-900"
                           value={blogEditor.status ?? 'draft'}
                           onChange={(e) => setBlogEditor((p) => ({ ...p, status: e.target.value as BlogPost['status'] }))}
                         >
@@ -2742,7 +2799,7 @@ export default function Admin() {
                                 <button
                                   className="text-xs px-3 py-1 border border-red-200 rounded-lg hover:bg-red-50 text-red-600 transition-colors"
                                   onClick={async () => {
-                                    if (!confirm('Delete this post?')) return;
+                                    if (!(await confirm('Delete this post?', { destructive: true, confirmLabel: 'Delete' }))) return;
                                     await deleteBlogPost(p.id);
                                     await loadBlogPosts();
                                   }}
@@ -2771,6 +2828,7 @@ export default function Admin() {
             <div className="relative max-w-5xl w-full" onClick={(e) => e.stopPropagation()}>
               <button
                 onClick={() => setPreviewImage(null)}
+                aria-label="Close preview"
                 className="absolute -top-10 right-0 text-white/70 hover:text-white text-3xl font-light bg-transparent border-none cursor-pointer leading-none"
               >×</button>
               <img
@@ -2849,6 +2907,7 @@ export default function Admin() {
 
         <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
       </div>
+      {confirmDialog}
     </SidebarProvider>
   );
 }

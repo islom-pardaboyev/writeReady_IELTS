@@ -9,14 +9,16 @@ const CATEGORY_LABELS: Record<string, string> = {
   grammaticalRangeAccuracy: 'Grammar & Accuracy',
 };
 
+const numberFormatter = new Intl.NumberFormat(undefined, { minimumFractionDigits: 1, maximumFractionDigits: 1 });
+
 function formatDate(d: Date | null): string {
   if (!d) return '';
-  return d.toLocaleDateString('en-GB', { day: 'numeric', month: 'short' });
+  return new Intl.DateTimeFormat(undefined, { day: 'numeric', month: 'short' }).format(d);
 }
 
 function bandColor(val: number): string {
   if (val >= 7) return '#10b981';
-  if (val >= 6) return '#3b82f6';
+  if (val >= 6) return '#4F46E5';
   if (val >= 5) return '#f59e0b';
   return '#ef4444';
 }
@@ -64,11 +66,11 @@ function TrendChart({ reports }: TrendChartProps) {
         <h3 className="font-semibold text-[var(--text-primary)] text-sm">Band Score Trend</h3>
         {points.length > 1 && (
           <span className={`text-xs font-bold px-2 py-0.5 rounded-full ${trend >= 0 ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300' : 'bg-red-100 text-red-600 dark:bg-red-900/30 dark:text-red-400'}`}>
-            {trend >= 0 ? '▲' : '▼'} {Math.abs(trend).toFixed(1)}
+            {trend >= 0 ? '▲' : '▼'} {numberFormatter.format(Math.abs(trend))}
           </span>
         )}
       </div>
-      <svg viewBox={`0 0 ${W} ${H}`} className="w-full" style={{ height: 140 }}>
+      <svg viewBox={`0 0 ${W} ${H}`} className="w-full" style={{ height: 140 }} role="img" aria-label="Band score trend over time">
         {[5, 6, 7, 8].map((band) => {
           if (band < min || band > max) return null;
           const y = toY(band);
@@ -82,14 +84,14 @@ function TrendChart({ reports }: TrendChartProps) {
         {areaD && (
           <defs>
             <linearGradient id="areaGrad" x1="0" y1="0" x2="0" y2="1">
-              <stop offset="0%" stopColor="#3b82f6" stopOpacity="0.18" />
-              <stop offset="100%" stopColor="#3b82f6" stopOpacity="0" />
+              <stop offset="0%" stopColor="#4F46E5" stopOpacity="0.18" />
+              <stop offset="100%" stopColor="#4F46E5" stopOpacity="0" />
             </linearGradient>
           </defs>
         )}
         {areaD && <path d={areaD} fill="url(#areaGrad)" />}
         {points.length > 1 && (
-          <path d={pathD} fill="none" stroke="#3b82f6" strokeWidth="2" strokeLinejoin="round" strokeLinecap="round" />
+          <path d={pathD} fill="none" stroke="#4F46E5" strokeWidth="2" strokeLinejoin="round" strokeLinecap="round" />
         )}
         {points.map((v, i) => (
           <circle key={i} cx={toX(i)} cy={toY(v)} r="3.5" fill={bandColor(v)} stroke="var(--bg-card)" strokeWidth="1.5" />
@@ -136,7 +138,7 @@ function CategoryBars({ reports }: CategoryBarsProps) {
                 <span className="text-xs text-[var(--text-primary)] font-medium">{CATEGORY_LABELS[cat]}</span>
                 <div className="flex items-center gap-1.5">
                   {isWeak && <span className="text-[0.6rem] font-bold text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-900/20 px-1.5 py-0.5 rounded-full">Weak zone</span>}
-                  <span className="text-xs font-mono font-semibold text-[var(--text-secondary)]">{val > 0 ? val.toFixed(1) : '—'}</span>
+                  <span className="text-xs font-mono font-semibold text-[var(--text-secondary)]">{val > 0 ? numberFormatter.format(val) : '—'}</span>
                 </div>
               </div>
               <div className="h-2 bg-[var(--bg-subtle)] rounded-full overflow-hidden">

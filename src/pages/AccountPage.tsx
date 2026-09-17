@@ -3,7 +3,7 @@ import { useNavigate, Link } from 'react-router-dom';
 import gsap from 'gsap';
 import { useAuth } from '../hooks/useAuth';
 import { useUsage } from '../hooks/useUsage';
-import { Layout } from '../components/layout/Layout';
+import { AppShell } from '../components/layout/AppShell';
 import { Button } from '../components/ui/Button';
 import { Card } from '../components/ui/Card';
 import { Badge } from '../components/ui/badge';
@@ -48,7 +48,7 @@ export function AccountPage() {
 
   useEffect(() => {
     if (!user) navigate('/auth');
-  }, [user]);
+  }, [user, navigate]);
 
   useEffect(() => {
     if (user) setNameInput(user.displayName ?? '');
@@ -136,7 +136,7 @@ export function AccountPage() {
   };
 
   return (
-    <Layout>
+    <AppShell>
       <div ref={rootRef} className="py-12 min-h-[calc(100vh-120px)] bg-[var(--bg-base)]">
         <div className="container mx-auto max-w-[560px] px-6">
 
@@ -144,7 +144,7 @@ export function AccountPage() {
           <Card className="gs-profile-card p-6 flex items-center gap-[1.125rem] mb-4">
             <Avatar className="w-14 h-14 shrink-0">
               {user.photoURL && <AvatarImage src={user.photoURL} alt={displayName} />}
-              <AvatarFallback className="bg-blue-700 text-white font-fraunces text-xl font-bold">
+              <AvatarFallback className="bg-[var(--ink-blue)] text-white font-sans text-xl font-bold">
                 {initials}
               </AvatarFallback>
             </Avatar>
@@ -179,18 +179,18 @@ export function AccountPage() {
 
           {/* Plan card */}
           {isPro ? (
-            <Card className="gs-plan-card bg-gradient-to-br from-slate-900 to-[#1e3a5f] p-8 mb-4 text-white border-0">
-              <div className="inline-flex items-center gap-1.5 bg-[rgba(201,144,10,0.2)] border border-[rgba(201,144,10,0.5)] text-yellow-400 text-[0.7rem] font-bold tracking-[0.1em] uppercase px-3 py-1.5 rounded-full mb-4">
+            <Card className="gs-plan-card bg-gradient-to-br from-slate-900 to-[#312E81] p-8 mb-4 text-white border-0">
+              <div className="inline-flex items-center gap-1.5 bg-[rgba(245,158,11,0.2)] border border-[rgba(245,158,11,0.5)] text-amber-400 text-[0.7rem] font-bold tracking-[0.1em] uppercase px-3 py-1.5 rounded-full mb-4">
                 <span>⚡</span> {isForever ? 'LIFETIME' : 'PRO'}
               </div>
-              <div className="font-fraunces text-2xl font-extrabold mb-1">
+              <div className="font-sans text-2xl font-extrabold mb-1">
                 {isForever ? 'Lifetime Access' : 'Pro Plan'}
               </div>
               <div className="text-sm text-white/50 mb-7">
                 {isForever
                   ? 'Never expires — full access forever'
                   : profile.subscription
-                    ? `Active until ${new Date(profile.subscription).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}`
+                    ? `Active until ${new Date(profile.subscription).toLocaleDateString(navigator.language, { month: 'long', day: 'numeric', year: 'numeric' })}`
                     : 'Active subscription'}
               </div>
               <div className="mb-7">
@@ -200,7 +200,7 @@ export function AccountPage() {
                 </div>
                 <div className="h-1.5 bg-white/10 rounded-full overflow-hidden">
                   <div
-                    className={`h-full rounded-full transition-[width] duration-[400ms] ${usagePct >= 85 ? 'bg-red-400' : 'bg-blue-400'}`}
+                    className={`h-full rounded-full transition-[width] duration-[400ms] ${usagePct >= 85 ? 'bg-red-400' : 'bg-indigo-400'}`}
                     style={{ width: `${usagePct}%` }}
                   />
                 </div>
@@ -208,8 +208,8 @@ export function AccountPage() {
               <div className="flex flex-col gap-2.5">
                 {PRO_FEATURES.map((f) => (
                   <div key={f} className="flex items-center gap-2.5">
-                    <div className="w-[18px] h-[18px] rounded-full bg-blue-400/20 border border-blue-400/40 flex items-center justify-center shrink-0">
-                      <span className="text-blue-300 text-[0.6rem] font-bold">✓</span>
+                    <div className="w-[18px] h-[18px] rounded-full bg-indigo-400/20 border border-indigo-400/40 flex items-center justify-center shrink-0">
+                      <span className="text-indigo-300 text-[0.6rem] font-bold">✓</span>
                     </div>
                     <span className="text-sm text-white/80">{f}</span>
                   </div>
@@ -218,19 +218,19 @@ export function AccountPage() {
             </Card>
           ) : (
             <Card className="gs-plan-card p-8 mb-4">
-              <div className="font-fraunces text-xl text-[var(--text-primary)] mb-1.5">Free Plan</div>
+              <div className="font-sans font-bold text-xl text-[var(--text-primary)] mb-1.5">Free Plan</div>
               <p className="text-sm text-[var(--text-secondary)] mb-6 leading-relaxed">
                 You're on the free plan. Upgrade to Pro to unlock AI feedback, band score estimates, and vocabulary upgrades.
               </p>
               <Link to="/pricing">
-                <Button className="bg-blue-700">Upgrade to Pro</Button>
+                <Button>Upgrade to Pro</Button>
               </Link>
             </Card>
           )}
 
           {/* Edit profile */}
           <Card className="gs-edit-card p-6 mb-4">
-            <div className="font-fraunces text-lg text-[var(--text-primary)] mb-4">Edit Profile</div>
+            <div className="font-sans font-bold text-lg text-[var(--text-primary)] mb-4">Edit Profile</div>
 
             <form onSubmit={handleSaveName} className="mb-6">
               <Label htmlFor="displayName">Display name</Label>
@@ -245,8 +245,10 @@ export function AccountPage() {
                   {savingName ? 'Saving…' : 'Save'}
                 </Button>
               </div>
-              {nameError && <p className="text-sm text-red-500 mt-2">{nameError}</p>}
-              {nameSuccess && <p className="text-sm text-emerald-600 mt-2">Name updated.</p>}
+              <div aria-live="polite">
+                {nameError && <p className="text-sm text-red-500 mt-2">{nameError}</p>}
+                {nameSuccess && <p className="text-sm text-emerald-600 mt-2">Name updated.</p>}
+              </div>
             </form>
 
             {hasPasswordProvider ? (
@@ -284,8 +286,10 @@ export function AccountPage() {
                     />
                   </div>
                 </div>
-                {passwordError && <p className="text-sm text-red-500 mt-3">{passwordError}</p>}
-                {passwordSuccess && <p className="text-sm text-emerald-600 mt-3">Password updated.</p>}
+                <div aria-live="polite">
+                  {passwordError && <p className="text-sm text-red-500 mt-3">{passwordError}</p>}
+                  {passwordSuccess && <p className="text-sm text-emerald-600 mt-3">Password updated.</p>}
+                </div>
                 <Button type="submit" size="sm" className="mt-4" disabled={savingPassword || !currentPassword || !newPassword || !confirmPassword}>
                   {savingPassword ? 'Updating…' : 'Update password'}
                 </Button>
@@ -314,6 +318,6 @@ export function AccountPage() {
 
         </div>
       </div>
-    </Layout>
+    </AppShell>
   );
 }
