@@ -1,6 +1,11 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import jsPDF from 'jspdf';
+import {
+  ArrowLeft, Download, ChevronLeft, ChevronRight, Loader2, Lock, AlertTriangle,
+  LayoutGrid, Target, ListChecks, FileText, PenLine, BookOpen, SpellCheck2, SearchCheck, Brain,
+  TrendingUp, Repeat2, CheckCircle2, XCircle, ChevronDown, ChevronUp, Sparkles, Link2,
+} from 'lucide-react';
 import { useAuth } from '../hooks/useAuth';
 import { AppShell } from '../components/layout/AppShell';
 import { Button } from '../components/ui/Button';
@@ -12,17 +17,44 @@ import { hasFreeReportThisWeek } from '../lib/weeklyFree';
 
 type Tab = 'overview' | 'priority' | 'detailed' | 'essay' | 'sample' | 'vocabulary' | 'grammar' | 'spelling' | 'quiz';
 
-const TABS: { id: Tab; label: string; icon: string }[] = [
-  { id: 'overview', label: 'Overview', icon: '📊' },
-  { id: 'priority', label: 'Priority', icon: '🎯' },
-  { id: 'detailed', label: 'Detailed', icon: '📝' },
-  { id: 'essay', label: 'Essay', icon: '🖊️' },
-  { id: 'sample', label: 'Sample', icon: '✍️' },
-  { id: 'vocabulary', label: 'Vocab', icon: '📚' },
-  { id: 'grammar', label: 'Grammar', icon: '✏️' },
-  { id: 'spelling', label: 'Spell', icon: '🔍' },
-  { id: 'quiz', label: 'Practice', icon: '🧠' },
+const TABS: { id: Tab; label: string; icon: typeof LayoutGrid }[] = [
+  { id: 'overview', label: 'Overview', icon: LayoutGrid },
+  { id: 'priority', label: 'Priority', icon: Target },
+  { id: 'detailed', label: 'Detailed', icon: ListChecks },
+  { id: 'essay', label: 'Essay', icon: FileText },
+  { id: 'sample', label: 'Sample', icon: PenLine },
+  { id: 'vocabulary', label: 'Vocab', icon: BookOpen },
+  { id: 'grammar', label: 'Grammar', icon: SpellCheck2 },
+  { id: 'spelling', label: 'Spelling', icon: SearchCheck },
+  { id: 'quiz', label: 'Practice', icon: Brain },
 ];
+
+// Official IELTS band-score descriptors
+function bandLabel(score: number): string {
+  if (score >= 8.5) return 'Expert user';
+  if (score >= 7.5) return 'Very good user';
+  if (score >= 6.5) return 'Good user';
+  if (score >= 5.5) return 'Competent user';
+  if (score >= 4.5) return 'Modest user';
+  return 'Limited user';
+}
+
+// A single consistent color identity per scoring category, reused across the
+// hero, overview cards and detailed accordion so the whole page reads as one system.
+type CategoryColor = 'teal' | 'indigo' | 'purple' | 'amber';
+const CATEGORY_META: { key: string; shortLabel: string; icon: typeof Target; color: CategoryColor }[] = [
+  { key: 'taskAchievement', shortLabel: 'Task Achievement', icon: Target, color: 'teal' },
+  { key: 'coherenceCohesion', shortLabel: 'Coherence & Cohesion', icon: Link2, color: 'indigo' },
+  { key: 'lexicalResource', shortLabel: 'Lexical Resource', icon: BookOpen, color: 'purple' },
+  { key: 'grammaticalRangeAccuracy', shortLabel: 'Grammatical Range', icon: SpellCheck2, color: 'amber' },
+];
+const CATEGORY_COLOR_CLASSES: Record<CategoryColor, { icon: string; iconBg: string }> = {
+  teal: { icon: 'text-teal-600 dark:text-teal-400', iconBg: 'bg-teal-500/10' },
+  indigo: { icon: 'text-indigo-600 dark:text-indigo-400', iconBg: 'bg-indigo-500/10' },
+  purple: { icon: 'text-purple-600 dark:text-purple-400', iconBg: 'bg-purple-500/10' },
+  amber: { icon: 'text-amber-600 dark:text-amber-400', iconBg: 'bg-amber-500/10' },
+};
+const CATEGORY_BY_KEY = Object.fromEntries(CATEGORY_META.map((c) => [c.key, c]));
 
 // ── LanguageTool spelling checker ──────────────────────────────────────────
 interface LTMatch {
@@ -84,29 +116,38 @@ function PracticeResult({ result, accentClass }: {
 
   if (isSystemError) {
     return (
-      <div className="mt-2 rounded-lg px-3 py-2.5 border bg-amber-50 border-amber-200">
-        <p className="text-xs font-bold text-amber-700 mb-1">⚠️ Could not check</p>
-        <p className="text-xs text-amber-800 m-0">{result.feedback}</p>
+      <div className="mt-3 rounded-xl px-3.5 py-3 border bg-amber-50 border-amber-200 dark:bg-amber-900/20 dark:border-amber-800 flex gap-2.5 items-start">
+        <AlertTriangle className="w-4 h-4 text-amber-600 dark:text-amber-400 mt-0.5 shrink-0" />
+        <div>
+          <p className="text-xs font-bold text-amber-700 dark:text-amber-300 mb-1">Could not check</p>
+          <p className="text-xs text-amber-800 dark:text-amber-200 m-0">{result.feedback}</p>
+        </div>
       </div>
     );
   }
 
   const improved = result.improved?.trim();
   return (
-    <div className={`mt-2 rounded-lg px-3 py-2.5 border ${result.correct ? 'bg-green-50 border-green-200' : 'bg-red-50 border-red-200'}`}>
+    <div className={`mt-3 rounded-xl px-3.5 py-3 border ${result.correct ? 'bg-green-50 border-green-200 dark:bg-green-900/20 dark:border-green-800' : 'bg-red-50 border-red-200 dark:bg-red-900/20 dark:border-red-800'}`}>
       <div className="flex items-center gap-2 mb-2">
-        <span className={`text-xs font-bold ${result.correct ? 'text-green-700' : 'text-red-700'}`}>
-          {result.correct ? '✓ Correct' : '✗ Error found'}
-        </span>
-        <span className="ml-auto text-xs font-mono font-bold text-gray-500">{result.score}/100</span>
+        {result.correct ? (
+          <span className="inline-flex items-center gap-1.5 text-xs font-bold text-green-700 dark:text-green-400">
+            <CheckCircle2 className="w-3.5 h-3.5" /> Correct
+          </span>
+        ) : (
+          <span className="inline-flex items-center gap-1.5 text-xs font-bold text-red-700 dark:text-red-400">
+            <XCircle className="w-3.5 h-3.5" /> Error found
+          </span>
+        )}
+        <span className="ml-auto text-xs font-mono font-bold text-gray-500 dark:text-gray-400">{result.score}/100</span>
       </div>
       {result.feedback && (
-        <p className="text-sm text-gray-800 leading-relaxed m-0 mb-2">{result.feedback}</p>
+        <p className="text-sm text-gray-800 dark:text-gray-200 leading-relaxed m-0 mb-2">{result.feedback}</p>
       )}
       {improved && (
-        <div className={`bg-white/80 rounded-lg px-3 py-2.5 border ${result.correct ? 'border-green-200' : 'border-red-200'}`}>
-          <p className={`text-[0.65rem] font-bold uppercase tracking-widest mb-1 ${accentClass ?? 'text-[var(--ink-blue)]'}`}>
-            ✨ Improved version
+        <div className={`bg-white/80 dark:bg-black/20 rounded-lg px-3 py-2.5 border ${result.correct ? 'border-green-200 dark:border-green-800' : 'border-red-200 dark:border-red-800'}`}>
+          <p className={`flex items-center gap-1.5 text-[0.65rem] font-bold uppercase tracking-widest mb-1 ${accentClass ?? 'text-[var(--ink-blue)]'}`}>
+            <Sparkles className="w-3 h-3" /> Improved version
           </p>
           <p className={`text-sm leading-relaxed m-0 italic ${accentClass?.replace('text-', 'text-') ?? 'text-[var(--ink-blue)]'}`}>
             {improved}
@@ -119,33 +160,42 @@ function PracticeResult({ result, accentClass }: {
 
 function UpgradePrompt() {
   return (
-    <div className="flex flex-col items-center justify-center py-16 px-6 text-center">
-      <div className="text-5xl mb-4">🔒</div>
+    <div className="flex flex-col items-center justify-center py-20 px-6 text-center">
+      <div className="w-16 h-16 rounded-2xl bg-[var(--ink-blue)]/10 flex items-center justify-center mb-5">
+        <Lock className="w-7 h-7 text-[var(--ink-blue)]" />
+      </div>
       <h3 className="text-xl font-bold text-[var(--text-primary)] mb-2">This section is locked</h3>
-      <p className="text-[var(--text-secondary)] text-sm max-w-xs mb-6">
+      <p className="text-[var(--text-secondary)] text-sm max-w-xs mb-6 leading-relaxed">
         Your free report shows the full estimated band scores. Upgrade to
         Basic, Standard, or Premium to unlock the detailed analysis, corrections,
         vocabulary, grammar, and a sample essay.
       </p>
       <a
         href="/pricing"
-        className="inline-block bg-[var(--ink-blue)] text-white px-6 py-3 rounded-xl font-bold text-sm hover:opacity-90 transition-opacity"
+        className="inline-flex items-center gap-1.5 bg-[var(--ink-blue)] text-white px-6 py-3 rounded-xl font-bold text-sm hover:opacity-90 transition-opacity no-underline"
       >
-        View plans →
+        View plans <ChevronRight className="w-4 h-4" />
       </a>
     </div>
   );
 }
 
+// Three clearly distinct tiers — gold never doubles as both "great" and "needs work".
+function scoreColor(score: number) {
+  return score >= 7 ? 'text-amber-500' : score >= 6 ? 'text-[var(--ink-blue)]' : 'text-rose-500';
+}
+
+function scoreBarColor(score: number) {
+  return score >= 7 ? 'bg-amber-400' : score >= 6 ? 'bg-[var(--ink-blue)]' : 'bg-rose-500';
+}
+
+function scoreStroke(score: number) {
+  return score >= 7 ? '#f59e0b' : score >= 6 ? 'var(--ink-blue)' : '#f43f5e';
+}
+
 function ScoreBadge({ score }: { score: number }) {
-  const color =
-    score >= 7
-      ? 'text-green-700'
-      : score >= 6
-      ? 'text-[var(--ink-blue)]'
-      : 'text-amber-700';
   return (
-    <span className={`font-mono font-bold text-4xl leading-none ${color}`}>
+    <span className={`font-mono font-bold text-4xl leading-none ${scoreColor(score)}`}>
       {score.toFixed(1)}
     </span>
   );
@@ -197,7 +247,18 @@ export function FeedbackPage() {
   const feedbackError = feedbackErrors[selectedTask] ?? null;
 
   const [flipped, setFlipped] = useState<Record<number, boolean>>({});
-  const [expandedCat, setExpandedCat] = useState<string | null>('taskAchievement');
+  // Each category accordion opens/closes independently — opening one must never close another.
+  const [expandedCats, setExpandedCats] = useState<Set<string>>(new Set(['taskAchievement']));
+  const toggleCat = (key: string) =>
+    setExpandedCats((prev) => {
+      const next = new Set(prev);
+      if (next.has(key)) {
+        next.delete(key);
+      } else {
+        next.add(key);
+      }
+      return next;
+    });
 
 
   // Writing practice quiz
@@ -732,7 +793,7 @@ export function FeedbackPage() {
 
   if (decodeError) {
     return (
-      <AppShell>
+      <AppShell minimal>
         <div className="flex flex-col items-center justify-center py-24 gap-4">
           <p className="text-[var(--text-muted)]">Invalid feedback link.</p>
           <Link to="/dashboard"><Button>Back to Dashboard</Button></Link>
@@ -743,9 +804,9 @@ export function FeedbackPage() {
 
   if (!reportData) {
     return (
-      <AppShell>
-        <div className="flex items-center justify-center py-24 text-[var(--text-muted)]">
-          Loading…
+      <AppShell minimal>
+        <div className="flex items-center justify-center py-24 text-[var(--text-muted)] gap-2.5">
+          <Loader2 className="w-4 h-4 animate-spin" /> Loading…
         </div>
       </AppShell>
     );
@@ -753,11 +814,13 @@ export function FeedbackPage() {
 
   if (profile && !canGetFeedback && !feedback) {
     return (
-      <AppShell>
-        <div className="bg-[var(--paper)] min-h-[calc(100vh-120px)] py-10">
+      <AppShell minimal>
+        <div className="bg-[var(--bg-base)] min-h-[calc(100vh-56px)] py-10 flex items-center">
           <div className="container mx-auto max-w-xl px-4">
             <div className="bg-[var(--ink-blue)] rounded-2xl p-10 text-center text-white">
-              <div className="text-5xl mb-4">🔒</div>
+              <div className="w-14 h-14 rounded-2xl bg-white/15 flex items-center justify-center mx-auto mb-5">
+                <Lock className="w-6 h-6" />
+              </div>
               <h2 className="text-2xl font-bold mb-3">
                 You&rsquo;ve used your free report this week
               </h2>
@@ -784,69 +847,77 @@ export function FeedbackPage() {
   // ── Main render ────────────────────────────────────────────────────────────
 
   return (
-    <AppShell>
+    <AppShell minimal>
       <style>{`
         .fp-flip-card { perspective: 1000px; cursor: pointer; }
         .fp-flip-inner { position: relative; width: 100%; height: 100%; transition: transform 0.55s cubic-bezier(.4,0,.2,1); transform-style: preserve-3d; }
         .fp-flip-inner.is-flipped { transform: rotateY(180deg); }
         .fp-flip-face { position: absolute; top: 0; left: 0; width: 100%; height: 100%; backface-visibility: hidden; -webkit-backface-visibility: hidden; border-radius: 12px; display: flex; flex-direction: column; justify-content: center; align-items: center; padding: 1.25rem; box-sizing: border-box; text-align: center; }
         .fp-flip-back { transform: rotateY(180deg); }
+        @keyframes fpFadeIn { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
+        .fp-tab-panel { animation: fpFadeIn 0.35s ease; }
+        @media (prefers-reduced-motion: reduce) {
+          .fp-tab-panel { animation: none; }
+          .fp-flip-inner { transition: none; }
+        }
       `}</style>
 
-      <div className="bg-[var(--bg-base)] min-h-[calc(100vh-120px)] py-10">
-        <div className="container mx-auto max-w-4xl px-4">
-
-          {/* ── Top bar ── */}
-          <div className="flex items-center justify-between mb-6 flex-wrap gap-3">
-            <div>
-              <Link
-                to="/dashboard"
-                className="inline-flex items-center gap-1.5 text-sm text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition-colors group"
-              >
-                <svg className="w-4 h-4 transition-transform group-hover:-translate-x-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" />
-                </svg>
-                Dashboard
-              </Link>
-              <h1 className="text-3xl font-extrabold text-[var(--text-primary)] mt-1">
-                AI Feedback Report
-              </h1>
+      <div className="bg-[var(--bg-base)] min-h-[calc(100vh-56px)] pb-16">
+        {/* ── Page header ── */}
+        <div className="border-b border-[var(--border-color)] bg-[var(--bg-card)]">
+          <div className="container mx-auto max-w-5xl px-4 sm:px-6 py-5">
+            <div className="flex items-center justify-between flex-wrap gap-3">
+              <div>
+                <Link
+                  to="/dashboard"
+                  className="inline-flex items-center gap-1.5 text-sm text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition-colors group no-underline"
+                >
+                  <ArrowLeft className="w-3.5 h-3.5 transition-transform group-hover:-translate-x-0.5" />
+                  Dashboard
+                </Link>
+                <h1 className="text-2xl sm:text-3xl font-extrabold text-[var(--text-primary)] mt-1 tracking-tight">
+                  AI Feedback Report
+                </h1>
+              </div>
+              {feedback && (
+                <Button onClick={exportPDF} loading={exporting} variant="secondary" size="sm">
+                  <Download className="w-3.5 h-3.5" /> Download PDF
+                </Button>
+              )}
             </div>
-            {feedback && (
-              <Button onClick={exportPDF} loading={exporting} variant="secondary" size="sm">
-                ⬇ Download PDF
-              </Button>
+
+            {/* ── Task selector ── */}
+            {hasBothTasks && (
+              <div className="flex gap-2 mt-5">
+                {(['task1', 'task2'] as const).map((t) => {
+                  const hasFb = !!feedbacks[t];
+                  const isLoading = loadings[t];
+                  return (
+                    <button
+                      key={t}
+                      onClick={() => { setSelectedTask(t); setActiveTab('overview'); }}
+                      className={`px-5 py-1.5 rounded-full border-2 font-semibold text-sm transition-colors cursor-pointer flex items-center gap-2 ${
+                        selectedTask === t
+                          ? 'border-[var(--ink-blue)] bg-[var(--ink-blue)] text-white'
+                          : 'border-[var(--border-color)] bg-[var(--bg-card)] text-[var(--text-secondary)] hover:border-[var(--ink-blue)]'
+                      }`}
+                    >
+                      {t === 'task1' ? 'Task 1' : 'Task 2'}
+                      {isLoading ? <Loader2 className="w-3 h-3 animate-spin opacity-70" /> : hasFb ? <CheckCircle2 className="w-3 h-3 opacity-80" /> : null}
+                    </button>
+                  );
+                })}
+              </div>
             )}
           </div>
+        </div>
 
-          {/* ── Task selector ── */}
-          {hasBothTasks && (
-            <div className="flex gap-2 mb-5">
-              {(['task1', 'task2'] as const).map((t) => {
-                const hasFb = !!feedbacks[t];
-                const isLoading = loadings[t];
-                return (
-                  <button
-                    key={t}
-                    onClick={() => { setSelectedTask(t); setActiveTab('overview'); }}
-                    className={`px-5 py-1.5 rounded-full border-2 font-semibold text-sm transition-colors cursor-pointer flex items-center gap-2 ${
-                      selectedTask === t
-                        ? 'border-[var(--ink-blue)] bg-[var(--ink-blue)] text-white'
-                        : 'border-[var(--border)] bg-white text-gray-700 hover:border-[var(--ink-blue)]'
-                    }`}
-                  >
-                    {t === 'task1' ? 'Task 1' : 'Task 2'}
-                    {isLoading ? <span className="text-xs opacity-60">⏳</span> : hasFb ? <span className="text-xs opacity-80">✓</span> : null}
-                  </button>
-                );
-              })}
-            </div>
-          )}
+        <div className="container mx-auto max-w-5xl px-4 sm:px-6 pt-6">
 
           {/* ── Word count warning ── */}
           {wordCountWarning && (
-            <div className="bg-orange-50 border border-orange-200 rounded-2xl px-4 py-3 mb-5 text-sm text-orange-800">
-              ⚠️ {wordCountWarning}
+            <div className="flex items-start gap-2.5 bg-orange-50 border border-orange-200 dark:bg-orange-900/20 dark:border-orange-800 rounded-2xl px-4 py-3 mb-5 text-sm text-orange-800 dark:text-orange-300">
+              <AlertTriangle className="w-4 h-4 shrink-0 mt-0.5" /> {wordCountWarning}
             </div>
           )}
 
@@ -874,7 +945,7 @@ export function FeedbackPage() {
                 );
               })()
             )}
-            <p className="leading-relaxed text-gray-800 text-[0.9375rem] m-0">
+            <p className="leading-relaxed text-[var(--text-primary)] text-[0.9375rem] m-0">
               {selectedTask === 'task1' ? reportData.task1?.report : reportData.task2?.report}
             </p>
           </div>
@@ -884,13 +955,13 @@ export function FeedbackPage() {
             const stage = analysisStage[selectedTask] ?? 0;
             const pct = Math.round((stage / LAST_STAGE) * 100);
             return (
-              <div className="rounded-2xl border border-[var(--border-color)] p-6 sm:p-8 bg-[var(--bg-card)]">
-                <div className="flex items-center gap-3 mb-5">
-                  <div className="inline-flex items-center justify-center w-11 h-11 rounded-full bg-indigo-50 shrink-0">
-                    <div className="w-5 h-5 border-2 border-indigo-500 border-t-transparent rounded-full animate-spin" />
+              <div className="rounded-2xl border border-[var(--border-color)] p-6 sm:p-8 bg-[var(--bg-card)] shadow-sm">
+                <div className="flex items-center gap-3.5 mb-6">
+                  <div className="inline-flex items-center justify-center w-12 h-12 rounded-2xl bg-[var(--ink-blue)]/10 shrink-0">
+                    <Loader2 className="w-5 h-5 text-[var(--ink-blue)] animate-spin" />
                   </div>
                   <div className="min-w-0">
-                    <p className="font-semibold text-[var(--text-primary)] text-lg leading-tight">Analysing your essay…</p>
+                    <p className="font-bold text-[var(--text-primary)] text-lg leading-tight">Analysing your essay…</p>
                     <p className="text-sm text-[var(--text-secondary)]">{ANALYSIS_STAGES[stage].label} · {pct}%</p>
                   </div>
                 </div>
@@ -898,7 +969,7 @@ export function FeedbackPage() {
                 {/* progress bar */}
                 <div className="h-1.5 w-full rounded-full bg-[var(--bg-subtle)] overflow-hidden mb-6">
                   <div
-                    className="h-full bg-indigo-500 rounded-full transition-all duration-700 ease-out"
+                    className="h-full bg-[var(--ink-blue)] rounded-full transition-all duration-700 ease-out"
                     style={{ width: `${Math.max(pct, 6)}%` }}
                   />
                 </div>
@@ -918,16 +989,16 @@ export function FeedbackPage() {
                             done
                               ? 'bg-green-100 text-green-600'
                               : active
-                                ? 'bg-indigo-100'
+                                ? 'bg-[var(--ink-blue)]/10'
                                 : 'bg-[var(--bg-subtle)]'
                           }`}
                         >
                           {done ? (
-                            '✓'
+                            <CheckCircle2 className="w-4 h-4" />
                           ) : active ? (
-                            <span className="w-3 h-3 border-2 border-indigo-500 border-t-transparent rounded-full animate-spin inline-block" />
+                            <Loader2 className="w-3.5 h-3.5 text-[var(--ink-blue)] animate-spin" />
                           ) : (
-                            <span aria-hidden>{s.icon}</span>
+                            <span aria-hidden className="text-[0.7rem]">{s.icon}</span>
                           )}
                         </span>
                         <span className={`text-sm ${active ? 'font-semibold text-[var(--text-primary)]' : 'text-[var(--text-secondary)]'}`}>
@@ -945,10 +1016,10 @@ export function FeedbackPage() {
           {feedbackError && (() => {
             const isQuotaError = /free essay check|analysis limit reached/i.test(feedbackError);
             return (
-              <div className="bg-red-50 border border-red-200 rounded-2xl px-6 py-5 mb-6" role="alert" aria-live="polite">
-                <p className="font-semibold text-red-700 mb-1">Error: {feedbackError}</p>
+              <div className="bg-red-50 border border-red-200 dark:bg-red-900/20 dark:border-red-800 rounded-2xl px-6 py-5 mb-6" role="alert" aria-live="polite">
+                <p className="font-semibold text-red-700 dark:text-red-300 mb-1">Error: {feedbackError}</p>
                 {!isQuotaError && (
-                  <p className="text-sm text-red-600/80 mb-4">
+                  <p className="text-sm text-red-600/80 dark:text-red-400/80 mb-4">
                     If this keeps happening, contact us on Telegram and we'll sort it out quickly.
                   </p>
                 )}
@@ -981,136 +1052,152 @@ export function FeedbackPage() {
           {/* ── Main feedback UI ── */}
           {feedback && (
             <div>
-              {/* Score banner */}
-              <div className="rounded-2xl p-7 mb-5 flex items-center gap-8 flex-wrap bg-[var(--bg-card)] border border-[var(--border-color)] shadow-sm">
-                {/* Overall score ring */}
-                <div className="flex flex-col items-center min-w-[110px]">
-                  <p className="text-[0.65rem] font-bold tracking-widest uppercase text-[var(--text-secondary)] mb-3">
-                    Band Score
-                  </p>
-                  <div className="relative flex items-center justify-center">
-                    <svg className="w-24 h-24 -rotate-90" viewBox="0 0 96 96">
-                      <circle cx="48" cy="48" r="38" fill="none" stroke="var(--border-color)" strokeWidth="7" />
-                      <circle
-                        cx="48" cy="48" r="38" fill="none"
-                        stroke={feedback.scores.overall >= 7 ? '#f59e0b' : feedback.scores.overall >= 6 ? 'var(--ink-blue)' : '#f59e0b'}
-                        strokeWidth="7"
-                        strokeLinecap="round"
-                        strokeDasharray={`${2 * Math.PI * 38}`}
-                        strokeDashoffset={`${2 * Math.PI * 38 * (1 - (feedback.scores.overall - 4) / 5)}`}
-                        className="transition-all duration-700"
-                      />
-                    </svg>
-                    <div className="absolute flex flex-col items-center">
-                      <span className={`font-['IBM_Plex_Mono'] text-2xl font-bold leading-none ${
-                        feedback.scores.overall >= 7 ? 'text-amber-500' : feedback.scores.overall >= 6 ? 'text-[var(--ink-blue)]' : 'text-amber-600'
-                      }`}>
-                        {feedback.scores.overall.toFixed(1)}
-                      </span>
-                      <span className="text-[0.6rem] text-[var(--text-secondary)] mt-0.5">/ 9.0</span>
-                      <span className="text-[0.55rem] text-[var(--text-secondary)] opacity-60 mt-0.5">±0.5</span>
+              {/* Score hero */}
+              <div className="relative overflow-hidden rounded-2xl mb-5 bg-[var(--bg-card)] border border-[var(--border-color)] shadow-sm">
+                <div className="absolute inset-0 bg-gradient-to-br from-[var(--ink-blue)]/[0.07] via-transparent to-[var(--gold)]/[0.06] pointer-events-none" />
+                <div
+                  className="absolute -top-24 -right-24 w-64 h-64 rounded-full blur-3xl opacity-[0.15] pointer-events-none"
+                  style={{ background: scoreStroke(feedback.scores.overall) }}
+                />
+                <div className="relative p-6 sm:p-8 flex items-center gap-8 lg:gap-10 flex-wrap">
+                  {/* Overall score ring */}
+                  <div className="flex flex-col items-center min-w-[130px]">
+                    <p className="inline-flex items-center gap-1.5 text-[0.65rem] font-bold tracking-widest uppercase text-[var(--text-secondary)] mb-4">
+                      <Sparkles className="w-3 h-3 text-[var(--gold)]" /> Band Score
+                    </p>
+                    <div className="relative flex items-center justify-center">
+                      <svg className="w-28 h-28 -rotate-90 drop-shadow-[0_2px_10px_rgba(0,0,0,0.08)]" viewBox="0 0 96 96">
+                        <circle cx="48" cy="48" r="40" fill="none" stroke="var(--border-color)" strokeWidth="8" />
+                        <circle
+                          cx="48" cy="48" r="40" fill="none"
+                          stroke={scoreStroke(feedback.scores.overall)}
+                          strokeWidth="8"
+                          strokeLinecap="round"
+                          strokeDasharray={`${2 * Math.PI * 40}`}
+                          strokeDashoffset={`${2 * Math.PI * 40 * (1 - (feedback.scores.overall - 4) / 5)}`}
+                          className="transition-all duration-700"
+                        />
+                      </svg>
+                      <div className="absolute flex flex-col items-center">
+                        <span className={`font-mono text-3xl font-bold leading-none ${scoreColor(feedback.scores.overall)}`}>
+                          {feedback.scores.overall.toFixed(1)}
+                        </span>
+                        <span className="text-[0.6rem] text-[var(--text-secondary)] mt-1">/ 9.0 · ±0.5</span>
+                      </div>
                     </div>
+                    <span className="mt-3 px-2.5 py-1 rounded-full bg-[var(--bg-subtle)] text-[0.7rem] font-bold text-[var(--text-primary)]">
+                      {bandLabel(feedback.scores.overall)}
+                    </span>
+                    <p className="text-[0.7rem] text-[var(--text-secondary)] mt-2">{feedback.wordCount} words</p>
                   </div>
-                  <p className="text-[0.65rem] text-[var(--text-secondary)] mt-2">{feedback.wordCount} words</p>
-                </div>
 
-                {/* Category bars */}
-                <div className="flex-1 min-w-[200px]">
-                  <p className="text-[var(--text-secondary)] text-[0.65rem] font-bold tracking-widest uppercase mb-4">
-                    Category Scores
-                  </p>
-                  <div className="flex flex-col gap-3">
-                    {([
-                      ['Task Achievement', 'TA', feedback.scores.taskAchievement],
-                      ['Coherence & Cohesion', 'CC', feedback.scores.coherenceCohesion],
-                      ['Lexical Resource', 'LR', feedback.scores.lexicalResource],
-                      ['Grammatical Range', 'GRA', feedback.scores.grammaticalRangeAccuracy],
-                    ] as [string, string, number][]).map(([, abbr, score]) => {
-                      return (
-                        <div key={abbr} className="flex items-center gap-3">
-                          <span className="text-[0.7rem] text-[var(--text-secondary)] w-8 font-mono shrink-0">{abbr}</span>
-                          <div className="flex-1 h-2 bg-[var(--bg-subtle,#f1f5f9)] rounded-full overflow-hidden">
-                            <div
-                              className={`h-full rounded-full transition-all duration-700 ${
-                                score >= 7 ? 'bg-amber-400' : score >= 6 ? 'bg-[var(--ink-blue)]' : 'bg-amber-500'
-                              }`}
-                              style={{ width: `${Math.max(4, ((score - 4) / 5) * 100)}%` }}
-                            />
+                  <div className="hidden sm:block w-px self-stretch bg-[var(--border-color)]" />
+
+                  {/* Category bars */}
+                  <div className="flex-1 min-w-[240px]">
+                    <p className="text-[var(--text-secondary)] text-[0.65rem] font-bold tracking-widest uppercase mb-4">
+                      Category Scores
+                    </p>
+                    <div className="flex flex-col gap-3.5">
+                      {CATEGORY_META.map((cat) => {
+                        const score = feedback.scores[cat.key as keyof typeof feedback.scores];
+                        const cc = CATEGORY_COLOR_CLASSES[cat.color];
+                        const Icon = cat.icon;
+                        return (
+                          <div key={cat.key} className="flex items-center gap-3">
+                            <span className={`inline-flex items-center justify-center w-6 h-6 rounded-md shrink-0 ${cc.iconBg}`}>
+                              <Icon className={`w-3.5 h-3.5 ${cc.icon}`} />
+                            </span>
+                            <span className="text-[0.8rem] text-[var(--text-secondary)] w-[8.5rem] sm:w-40 shrink-0 truncate">{cat.shortLabel}</span>
+                            <div className="flex-1 h-2 bg-[var(--bg-subtle)] rounded-full overflow-hidden">
+                              <div
+                                className={`h-full rounded-full transition-all duration-700 ${scoreBarColor(score)}`}
+                                style={{ width: `${Math.max(4, ((score - 4) / 5) * 100)}%` }}
+                              />
+                            </div>
+                            <span className="text-[0.8125rem] font-bold text-[var(--text-primary)] font-mono min-w-[30px] text-right">
+                              {score.toFixed(1)}
+                            </span>
                           </div>
-                          <span className="text-[0.8125rem] font-bold text-[var(--text-primary)] font-mono min-w-[30px] text-right">
-                            {score.toFixed(1)}
-                          </span>
-                        </div>
-                      );
-                    })}
+                        );
+                      })}
+                    </div>
                   </div>
                 </div>
               </div>
 
               {/* Recurring issues */}
               {recurringIssues.length > 0 && (
-                <div className="bg-amber-50 border border-amber-200 rounded-2xl px-5 py-4 mb-5">
-                  <p className="font-bold text-amber-800 text-sm mb-2">
-                    🔁 Recurring patterns in your recent essays:
-                  </p>
-                  <div className="flex flex-wrap gap-1.5">
-                    {recurringIssues.map((issue) => (
-                      <span
-                        key={issue}
-                        className="bg-amber-100 border border-amber-300 rounded-full px-3 py-0.5 text-[0.8125rem] text-amber-900"
-                      >
-                        {issue}
-                      </span>
-                    ))}
+                <div className="flex items-start gap-3 bg-amber-50 border border-amber-200 dark:bg-amber-900/20 dark:border-amber-800 rounded-2xl px-5 py-4 mb-5">
+                  <Repeat2 className="w-4 h-4 text-amber-700 dark:text-amber-400 mt-0.5 shrink-0" />
+                  <div>
+                    <p className="font-bold text-amber-800 dark:text-amber-300 text-sm mb-2">
+                      Recurring patterns in your recent essays
+                    </p>
+                    <div className="flex flex-wrap gap-1.5">
+                      {recurringIssues.map((issue) => (
+                        <span
+                          key={issue}
+                          className="bg-amber-100 border border-amber-300 dark:bg-amber-900/30 dark:border-amber-700 rounded-full px-3 py-0.5 text-[0.8125rem] text-amber-900 dark:text-amber-200"
+                        >
+                          {issue}
+                        </span>
+                      ))}
+                    </div>
                   </div>
                 </div>
               )}
 
               {/* Tab bar */}
-              <div className="sticky top-[72px] z-10 -mx-4 mb-6 bg-[var(--bg-card)]/90 backdrop-blur border-b border-[var(--border-color)]">
-                <div className="flex flex-wrap px-1">
-                  {TABS.map((tab) => (
-                    <button
-                      key={tab.id}
-                      onClick={() => setActiveTab(tab.id)}
-                      title={tab.label}
-                      className={`flex flex-col items-center gap-0.5 px-2.5 py-2 text-[0.6rem] cursor-pointer transition-all border-none bg-transparent relative ${
-                        activeTab === tab.id
-                          ? 'text-[var(--ink-blue)] font-bold'
-                          : 'text-[var(--text-secondary)] font-medium hover:text-[var(--text-primary)]'
-                      }`}
-                    >
-                      <span className="text-base leading-none">{tab.icon}</span>
-                      <span className="whitespace-nowrap">{tab.label}</span>
-                      {activeTab === tab.id && (
-                        <span className="absolute bottom-0 left-0 right-0 h-0.5 bg-[var(--ink-blue)] rounded-t-full" />
-                      )}
-                    </button>
-                  ))}
+              <div className="sticky top-14 z-10 -mx-4 sm:-mx-6 mb-6 bg-[var(--bg-base)]/95 backdrop-blur-md border-b border-[var(--border-color)]">
+                <div className="mock-question-scroll flex overflow-x-auto px-4 sm:px-6">
+                  {TABS.map((tab) => {
+                    const Icon = tab.icon;
+                    const active = activeTab === tab.id;
+                    return (
+                      <button
+                        key={tab.id}
+                        onClick={() => setActiveTab(tab.id)}
+                        className={`flex items-center gap-1.5 mt-1.5 px-3.5 py-2.5 rounded-lg text-[0.8125rem] font-semibold whitespace-nowrap cursor-pointer border-none bg-transparent relative transition-colors duration-150 shrink-0 ${
+                          active
+                            ? 'text-[var(--ink-blue)]'
+                            : 'text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-subtle)]'
+                        }`}
+                      >
+                        <Icon className="w-4 h-4" />
+                        {tab.label}
+                        {active && (
+                          <span className="absolute bottom-[-6px] left-2 right-2 h-0.5 bg-[var(--ink-blue)] rounded-t-full" />
+                        )}
+                      </button>
+                    );
+                  })}
                 </div>
               </div>
 
               {/* ── OVERVIEW ── */}
               {activeTab === 'overview' && (
-                <div>
+                <div className="fp-tab-panel">
                   <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-6">
-                    {([
-                      ['Task Achievement', feedback.scores.taskAchievement],
-                      ['Coherence & Cohesion', feedback.scores.coherenceCohesion],
-                      ['Lexical Resource', feedback.scores.lexicalResource],
-                      ['Grammatical Range', feedback.scores.grammaticalRangeAccuracy],
-                    ] as [string, number][]).map(([name, score]) => {
+                    {CATEGORY_META.map((cat) => {
+                      const score = feedback.scores[cat.key as keyof typeof feedback.scores];
+                      const cc = CATEGORY_COLOR_CLASSES[cat.color];
+                      const Icon = cat.icon;
                       return (
-                        <div key={name} className="bg-[var(--bg-card)] rounded-2xl p-5 border border-[var(--border-color)] shadow-sm text-center">
+                        <div
+                          key={cat.key}
+                          className="bg-[var(--bg-card)] rounded-2xl p-5 border border-[var(--border-color)] shadow-sm text-center transition-all duration-200 hover:shadow-md hover:-translate-y-0.5"
+                        >
+                          <div className={`w-9 h-9 rounded-xl ${cc.iconBg} flex items-center justify-center mx-auto mb-3`}>
+                            <Icon className={`w-4 h-4 ${cc.icon}`} />
+                          </div>
                           <p className="text-[0.65rem] font-bold text-[var(--text-secondary)] uppercase tracking-wider mb-3 leading-snug">
-                            {name}
+                            {cat.shortLabel}
                           </p>
                           <ScoreBadge score={score} />
-                          <div className="h-1.5 bg-slate-100 rounded-full mt-3">
+                          <div className="h-1.5 bg-[var(--bg-subtle)] rounded-full mt-3">
                             <div
-                              className={`h-full rounded-full ${
-                                score >= 7 ? 'bg-amber-400' : score >= 6 ? 'bg-[var(--ink-blue)]' : 'bg-amber-500'
-                              }`}
+                              className={`h-full rounded-full transition-all duration-700 ${scoreBarColor(score)}`}
                               style={{ width: `${Math.max(4, ((score - 4) / 5) * 100)}%` }}
                             />
                           </div>
@@ -1122,8 +1209,13 @@ export function FeedbackPage() {
                   {feedback.limited ? (
                     <UpgradePrompt />
                   ) : (
-                    <div className="bg-[var(--bg-card)] rounded-2xl p-6 border border-[var(--border-color)] border-l-4 border-l-[var(--gold)] shadow-sm">
-                      <p className="font-bold text-[var(--text-primary)] mb-3">📈 Band Gap Analysis</p>
+                    <div className="bg-[var(--bg-card)] rounded-2xl p-6 border border-[var(--border-color)] border-l-4 border-l-[var(--gold)] shadow-sm transition-shadow duration-200 hover:shadow-md">
+                      <p className="flex items-center gap-2 font-bold text-[var(--text-primary)] mb-3">
+                        <span className="inline-flex items-center justify-center w-7 h-7 rounded-lg bg-[var(--gold)]/15">
+                          <TrendingUp className="w-4 h-4 text-[var(--gold)]" />
+                        </span>
+                        Band Gap Analysis
+                      </p>
                       <p className="leading-relaxed text-[var(--text-primary)] text-[0.9375rem] m-0">
                         {feedback.bandGapAnalysis}
                       </p>
@@ -1134,21 +1226,21 @@ export function FeedbackPage() {
 
               {/* ── PRIORITY FIXES ── */}
               {activeTab === 'priority' && (
-                <div className="flex flex-col gap-4">
+                <div className="fp-tab-panel flex flex-col gap-4">
                   {feedback.priorityFixes.map((fix, i) => {
                     const accent = i === 0 ? '#b91c1c' : i === 1 ? '#D97706' : '#16A34A';
                     const label = i === 0 ? 'High priority' : i === 1 ? 'Medium priority' : 'Also consider';
-                    const labelColor = i === 0 ? 'text-red-700' : i === 1 ? 'text-amber-800' : 'text-green-700';
-                    const bgGradient = i === 0 ? 'from-red-50 to-transparent' : i === 1 ? 'from-amber-50 to-transparent' : 'from-green-50 to-transparent';
+                    const labelColor = i === 0 ? 'text-red-700 dark:text-red-400' : i === 1 ? 'text-amber-800 dark:text-amber-400' : 'text-green-700 dark:text-green-400';
+                    const bgGradient = i === 0 ? 'from-red-500/[0.06]' : i === 1 ? 'from-amber-500/[0.07]' : 'from-green-500/[0.06]';
                     return (
                       <div
                         key={i}
-                        className={`bg-gradient-to-r ${bgGradient} bg-[var(--bg-card)] rounded-2xl px-6 py-5 border border-[var(--border-color)] flex gap-5 items-start shadow-sm`}
+                        className={`bg-gradient-to-r ${bgGradient} to-transparent bg-[var(--bg-card)] rounded-2xl px-6 py-5 border border-[var(--border-color)] flex gap-5 items-start shadow-sm transition-all duration-200 hover:shadow-md hover:-translate-y-0.5`}
                         style={{ borderLeft: `4px solid ${accent}` }}
                       >
                         <div
-                          className="w-9 h-9 rounded-xl flex items-center justify-center text-white font-mono font-bold text-base shrink-0 shadow-sm"
-                          style={{ background: accent }}
+                          className="w-9 h-9 rounded-xl flex items-center justify-center text-white font-mono font-bold text-base shrink-0"
+                          style={{ background: accent, boxShadow: `0 0 0 4px ${accent}1A` }}
                         >
                           {i + 1}
                         </div>
@@ -1166,58 +1258,86 @@ export function FeedbackPage() {
 
               {/* ── DETAILED FEEDBACK ── */}
               {activeTab === 'detailed' && (feedback.limited ? <UpgradePrompt /> :(
-                <div className="flex flex-col gap-3">
+                <div className="fp-tab-panel flex flex-col gap-3">
                   {(Object.entries(feedback.feedback) as [string, { strengths: string[]; issues: string[] }][]).map(
-                    ([key, cat]) => (
-                      <div key={key} className="bg-[var(--bg-card)] rounded-2xl border border-[var(--border-color)] overflow-hidden shadow-sm">
-                        <button
-                          onClick={() => setExpandedCat(expandedCat === key ? null : key)}
-                          className="w-full px-5 py-4 bg-transparent border-none flex items-center justify-between cursor-pointer"
-                        >
-                          <span className="font-bold text-[var(--text-primary)] text-[0.9375rem]">
-                            {CAT_LABELS[key] ?? key}
-                          </span>
-                          <span className="text-[var(--text-secondary)] text-sm">{expandedCat === key ? '▲' : '▼'}</span>
-                        </button>
-                        {expandedCat === key && (
-                          <div className="px-5 pb-5 border-t border-[var(--border-color)]">
-                            {cat.strengths.length > 0 && (
-                              <div className="mt-4 mb-3">
-                                <p className="text-[0.65rem] font-bold uppercase tracking-wider text-green-700 mb-2">
-                                  Strengths
-                                </p>
-                                {cat.strengths.map((s, i) => (
-                                  <div key={i} className="flex gap-2.5 mb-1.5 items-start">
-                                    <span className="text-green-600 text-sm mt-0.5">✓</span>
-                                    <p className="text-[0.9rem] text-[var(--text-primary)] leading-relaxed m-0">{s}</p>
-                                  </div>
-                                ))}
-                              </div>
+                    ([key, cat]) => {
+                      const isOpen = expandedCats.has(key);
+                      const catMeta = CATEGORY_BY_KEY[key] as typeof CATEGORY_META[number] | undefined;
+                      const cc = CATEGORY_COLOR_CLASSES[catMeta?.color ?? 'indigo'];
+                      const Icon = catMeta?.icon ?? ListChecks;
+                      return (
+                        <div key={key} className="bg-[var(--bg-card)] rounded-2xl border border-[var(--border-color)] overflow-hidden shadow-sm transition-shadow duration-200 hover:shadow-md">
+                          <button
+                            onClick={() => toggleCat(key)}
+                            className="w-full px-5 py-4 bg-transparent border-none flex items-center gap-3 cursor-pointer hover:bg-[var(--bg-subtle)] transition-colors"
+                            aria-expanded={isOpen}
+                          >
+                            <span className={`inline-flex items-center justify-center w-8 h-8 rounded-lg shrink-0 ${cc.iconBg}`}>
+                              <Icon className={`w-4 h-4 ${cc.icon}`} />
+                            </span>
+                            <span className="font-bold text-[var(--text-primary)] text-[0.9375rem] flex-1 text-left">
+                              {CAT_LABELS[key] ?? key}
+                            </span>
+                            <span className="hidden sm:flex items-center gap-1.5 text-[0.7rem] text-[var(--text-secondary)]">
+                              {cat.strengths.length > 0 && (
+                                <span className="inline-flex items-center gap-1 text-green-700 dark:text-green-400">
+                                  <CheckCircle2 className="w-3 h-3" /> {cat.strengths.length}
+                                </span>
+                              )}
+                              {cat.issues.length > 0 && (
+                                <span className="inline-flex items-center gap-1 text-red-600 dark:text-red-400">
+                                  <XCircle className="w-3 h-3" /> {cat.issues.length}
+                                </span>
+                              )}
+                            </span>
+                            {isOpen ? (
+                              <ChevronUp className="w-4 h-4 text-[var(--text-secondary)] shrink-0" />
+                            ) : (
+                              <ChevronDown className="w-4 h-4 text-[var(--text-secondary)] shrink-0" />
                             )}
-                            {cat.issues.length > 0 && (
-                              <div>
-                                <p className="text-[0.65rem] font-bold uppercase tracking-wider text-red-600 mb-2">
-                                  Issues to Improve
-                                </p>
-                                {cat.issues.map((s, i) => (
-                                  <div key={i} className="flex gap-2.5 mb-1.5 items-start">
-                                    <span className="text-red-600 text-sm mt-0.5">✗</span>
-                                    <p className="text-[0.9rem] text-[var(--text-primary)] leading-relaxed m-0">{s}</p>
+                          </button>
+                          <div className={`grid transition-[grid-template-rows] duration-300 ease-in-out ${isOpen ? 'grid-rows-[1fr]' : 'grid-rows-[0fr]'}`}>
+                            <div className="overflow-hidden">
+                              <div className="px-5 pb-5 border-t border-[var(--border-color)]">
+                                {cat.strengths.length > 0 && (
+                                  <div className="mt-4 mb-3">
+                                    <p className="text-[0.65rem] font-bold uppercase tracking-wider text-green-700 dark:text-green-400 mb-2">
+                                      Strengths
+                                    </p>
+                                    {cat.strengths.map((s, i) => (
+                                      <div key={i} className="flex gap-2.5 mb-1.5 items-start">
+                                        <CheckCircle2 className="w-4 h-4 text-green-600 dark:text-green-400 mt-0.5 shrink-0" />
+                                        <p className="text-[0.9rem] text-[var(--text-primary)] leading-relaxed m-0">{s}</p>
+                                      </div>
+                                    ))}
                                   </div>
-                                ))}
+                                )}
+                                {cat.issues.length > 0 && (
+                                  <div>
+                                    <p className="text-[0.65rem] font-bold uppercase tracking-wider text-red-600 dark:text-red-400 mb-2">
+                                      Issues to Improve
+                                    </p>
+                                    {cat.issues.map((s, i) => (
+                                      <div key={i} className="flex gap-2.5 mb-1.5 items-start">
+                                        <XCircle className="w-4 h-4 text-red-600 dark:text-red-400 mt-0.5 shrink-0" />
+                                        <p className="text-[0.9rem] text-[var(--text-primary)] leading-relaxed m-0">{s}</p>
+                                      </div>
+                                    ))}
+                                  </div>
+                                )}
                               </div>
-                            )}
+                            </div>
                           </div>
-                        )}
-                      </div>
-                    )
+                        </div>
+                      );
+                    }
                   )}
                 </div>
               ))}
 
               {/* ── VOCABULARY ── */}
               {activeTab === 'vocabulary' && (feedback.limited ? <UpgradePrompt /> :(
-                <div>
+                <div className="fp-tab-panel">
                   <p className="text-sm text-[var(--text-muted)] mb-5">
                     Tap a card to flip it and see the meaning and example sentence.
                   </p>
@@ -1226,12 +1346,12 @@ export function FeedbackPage() {
                       <button
                         key={i}
                         type="button"
-                        className="fp-flip-card h-[185px] text-left bg-transparent border-0 p-0 cursor-pointer"
+                        className="fp-flip-card h-[185px] text-left bg-transparent border-0 p-0 cursor-pointer transition-transform duration-200 hover:scale-[1.03]"
                         onClick={() => setFlipped((prev) => ({ ...prev, [i]: !prev[i] }))}
                       >
                         <div className={`fp-flip-inner h-full${flipped[i] ? ' is-flipped' : ''}`}>
                           <div
-                            className="fp-flip-face bg-[var(--ink-blue)] text-white border border-[var(--ink-blue)]"
+                            className="fp-flip-face bg-gradient-to-br from-purple-500 to-purple-700 text-white border border-purple-600 shadow-sm"
                           >
                             <p className="text-[0.65rem] font-bold tracking-widest uppercase text-white/40 mb-3">
                               Word {i + 1} of {feedback.vocabulary.length}
@@ -1242,15 +1362,15 @@ export function FeedbackPage() {
                             <p className="text-[0.7rem] text-white/35 mt-auto">tap to flip ↩</p>
                           </div>
                           <div
-                            className="fp-flip-face fp-flip-back bg-[var(--paper)] border border-[var(--border)]"
+                            className="fp-flip-face fp-flip-back bg-[var(--paper)] border border-[var(--border)] shadow-sm"
                           >
                             <div className="w-full">
                               <span className="bg-[var(--gold)] text-white text-[0.65rem] font-bold px-2 py-0.5 rounded-full inline-block mb-2 uppercase tracking-wide">
                                 O'zbek
                               </span>
-                              <p className="text-[0.9rem] font-bold text-gray-800 mb-1">{v.uzbek}</p>
+                              <p className="text-[0.9rem] font-bold text-[var(--text-primary)] mb-1">{v.uzbek}</p>
                               <p className="text-[0.75rem] text-[var(--text-muted)] mb-2 leading-snug">{v.english}</p>
-                              <p className="text-[0.75rem] text-[var(--ink-blue)] italic leading-snug">
+                              <p className="text-[0.75rem] text-purple-700 dark:text-purple-300 italic leading-snug">
                                 "{v.exampleFromEssay}"
                               </p>
                             </div>
@@ -1264,18 +1384,18 @@ export function FeedbackPage() {
 
               {/* ── GRAMMAR ── */}
               {activeTab === 'grammar' && (feedback.limited ? <UpgradePrompt /> :(
-                <div className="flex flex-col gap-3">
+                <div className="fp-tab-panel flex flex-col gap-3">
                   {feedback.grammar.map((g, i) => (
-                    <div key={i} className="bg-[var(--bg-card)] rounded-2xl px-6 py-5 border border-[var(--border-color)] shadow-sm">
+                    <div key={i} className="bg-[var(--bg-card)] rounded-2xl px-6 py-5 border border-[var(--border-color)] shadow-sm transition-all duration-200 hover:shadow-md hover:-translate-y-0.5">
                       <div className="flex gap-4 items-start">
-                        <div className="w-8 h-8 rounded-lg flex items-center justify-center bg-[var(--ink-blue)]/10 text-[var(--ink-blue)] font-mono font-bold text-sm shrink-0">
-                          {i + 1}
+                        <div className="w-9 h-9 rounded-xl flex items-center justify-center bg-amber-500/10 text-amber-600 dark:text-amber-400 shrink-0">
+                          <SpellCheck2 className="w-4 h-4" />
                         </div>
                         <div className="flex-1">
                           <p className="font-bold text-[var(--text-primary)] mb-1.5 text-[0.9375rem]">{g.point}</p>
                           <p className="text-sm text-[var(--text-secondary)] leading-relaxed mb-2.5">{g.explanation}</p>
                           <div className="bg-[var(--gold)]/10 border border-[var(--gold)]/30 rounded-lg px-3.5 py-2.5">
-                            <p className="text-[0.8125rem] text-amber-900 italic m-0">
+                            <p className="text-[0.8125rem] text-amber-900 dark:text-amber-300 italic m-0">
                               Example: "{g.example}"
                             </p>
                           </div>
@@ -1289,18 +1409,18 @@ export function FeedbackPage() {
               {/* ── ESSAY ANALYSIS ── */}
               {activeTab === 'essay' && (feedback.limited ? <UpgradePrompt /> : (() => {
                 const sentences = feedback.sentenceAnalysis ?? [];
-                const typeColor: Record<string, { bg: string; border: string; label: string; dot: string }> = {
-                  word_choice: { bg: 'bg-purple-50', border: 'border-purple-200', label: 'Word Choice', dot: 'bg-purple-500' },
-                  grammar:     { bg: 'bg-amber-50',  border: 'border-amber-200',  label: 'Grammar',     dot: 'bg-amber-500'  },
-                  coherence:   { bg: 'bg-indigo-50',   border: 'border-indigo-200',   label: 'Coherence',   dot: 'bg-indigo-500'   },
-                  structure:   { bg: 'bg-red-50',    border: 'border-red-200',    label: 'Structure',   dot: 'bg-red-500'    },
-                  ok:          { bg: 'bg-green-50',  border: 'border-green-200',  label: 'Good',        dot: 'bg-green-500'  },
+                const typeColor: Record<string, { bg: string; border: string; label: string; dot: string; text: string }> = {
+                  word_choice: { bg: 'bg-purple-50 dark:bg-purple-900/20', border: 'border-purple-200 dark:border-purple-800', label: 'Word Choice', dot: 'bg-purple-500', text: 'text-purple-900 dark:text-purple-200' },
+                  grammar:     { bg: 'bg-amber-50 dark:bg-amber-900/20',  border: 'border-amber-200 dark:border-amber-800',  label: 'Grammar',     dot: 'bg-amber-500',  text: 'text-amber-900 dark:text-amber-200'  },
+                  coherence:   { bg: 'bg-indigo-50 dark:bg-indigo-900/20',   border: 'border-indigo-200 dark:border-indigo-800',   label: 'Coherence',   dot: 'bg-indigo-500',   text: 'text-indigo-900 dark:text-indigo-200'   },
+                  structure:   { bg: 'bg-red-50 dark:bg-red-900/20',    border: 'border-red-200 dark:border-red-800',    label: 'Structure',   dot: 'bg-red-500',    text: 'text-red-900 dark:text-red-200'    },
+                  ok:          { bg: 'bg-green-50 dark:bg-green-900/20',  border: 'border-green-200 dark:border-green-800',  label: 'Good',        dot: 'bg-green-500',  text: 'text-green-900 dark:text-green-200'  },
                 };
                 return (
-                  <div>
+                  <div className="fp-tab-panel">
                     <div className="flex flex-wrap gap-2 mb-5">
                       {Object.entries(typeColor).map(([type, style]) => (
-                        <span key={type} className={`flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold border ${style.bg} ${style.border}`}>
+                        <span key={type} className={`flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold border ${style.bg} ${style.border} ${style.text}`}>
                           <span className={`w-2 h-2 rounded-full ${style.dot}`} />
                           {style.label}
                         </span>
@@ -1317,38 +1437,44 @@ export function FeedbackPage() {
                             <button
                               key={i}
                               type="button"
-                              className={`w-full text-left block rounded-xl border px-5 py-3.5 cursor-pointer transition-all ${style.bg} ${style.border}`}
+                              className={`w-full text-left block rounded-xl border px-5 py-3.5 cursor-pointer transition-all duration-200 hover:shadow-md hover:-translate-y-0.5 ${style.bg} ${style.border}`}
                               onClick={() => toggleSentence(i)}
                               aria-expanded={isOpen}
                             >
                               <div className="flex items-start gap-3">
                                 <span className={`mt-1.5 w-2 h-2 rounded-full shrink-0 ${style.dot}`} />
                                 <div className="flex-1 min-w-0">
-                                  <p className="text-[0.9375rem] text-gray-800 leading-relaxed m-0">
+                                  <p className="text-[0.9375rem] text-gray-800 dark:text-gray-100 leading-relaxed m-0">
                                     {s.sentence}
                                   </p>
-                                  {isOpen && (
-                                    <div className="mt-2.5 pt-2.5 border-t border-current/10 flex flex-col gap-2">
-                                      <div>
-                                        <span className={`text-[0.65rem] font-bold uppercase tracking-widest mr-2 ${style.dot.replace('bg-', 'text-')}`}>
-                                          {style.label}
-                                        </span>
-                                        <span className="text-sm text-gray-700">{s.feedback}</span>
-                                      </div>
-                                      {s.improved && s.type !== 'ok' && (
-                                        <div className="bg-[var(--ink-blue)]/6 border border-[var(--ink-blue)]/20 rounded-lg px-3 py-2.5">
-                                          <p className="text-[0.65rem] font-bold uppercase tracking-widest text-[var(--ink-blue)] mb-1">
-                                            ✨ Improved version
-                                          </p>
-                                          <p className="text-sm text-[var(--ink-blue)] leading-relaxed m-0 italic">
-                                            {s.improved}
-                                          </p>
+                                  <div className={`grid transition-[grid-template-rows] duration-300 ease-in-out ${isOpen ? 'grid-rows-[1fr]' : 'grid-rows-[0fr]'}`}>
+                                    <div className="overflow-hidden">
+                                      <div className="mt-2.5 pt-2.5 border-t border-current/10 flex flex-col gap-2">
+                                        <div>
+                                          <span className={`text-[0.65rem] font-bold uppercase tracking-widest mr-2 ${style.dot.replace('bg-', 'text-')}`}>
+                                            {style.label}
+                                          </span>
+                                          <span className="text-sm text-gray-700 dark:text-gray-300">{s.feedback}</span>
                                         </div>
-                                      )}
+                                        {s.improved && s.type !== 'ok' && (
+                                          <div className="bg-[var(--ink-blue)]/6 border border-[var(--ink-blue)]/20 rounded-lg px-3 py-2.5">
+                                            <p className="flex items-center gap-1.5 text-[0.65rem] font-bold uppercase tracking-widest text-[var(--ink-blue)] mb-1">
+                                              <Sparkles className="w-3 h-3" /> Improved version
+                                            </p>
+                                            <p className="text-sm text-[var(--ink-blue)] leading-relaxed m-0 italic">
+                                              {s.improved}
+                                            </p>
+                                          </div>
+                                        )}
+                                      </div>
                                     </div>
-                                  )}
+                                  </div>
                                 </div>
-                                <span className="text-[var(--text-muted)] text-xs shrink-0 mt-1">{isOpen ? '▲' : '▼'}</span>
+                                {isOpen ? (
+                                  <ChevronUp className="w-4 h-4 text-[var(--text-muted)] shrink-0 mt-1" />
+                                ) : (
+                                  <ChevronDown className="w-4 h-4 text-[var(--text-muted)] shrink-0 mt-1" />
+                                )}
                               </div>
                             </button>
                           );
@@ -1361,11 +1487,15 @@ export function FeedbackPage() {
 
               {/* ── SAMPLE RESPONSE ── */}
               {activeTab === 'sample' && (feedback.limited ? <UpgradePrompt /> : (
-                <div className="bg-[var(--bg-card)] rounded-2xl border border-[var(--border-color)] border-l-4 border-l-[var(--gold)] px-6 py-6 shadow-sm">
-                  <p className="text-xs font-bold tracking-widest uppercase text-[var(--gold)] mb-4">
-                    ✍️ Band 7–8 Sample Response
+                <div className="fp-tab-panel relative overflow-hidden bg-[var(--bg-card)] rounded-2xl border border-[var(--border-color)] border-l-4 border-l-[var(--gold)] px-6 py-6 shadow-sm transition-shadow duration-200 hover:shadow-md">
+                  <div className="absolute inset-0 bg-gradient-to-br from-[var(--gold)]/[0.05] via-transparent to-transparent pointer-events-none" />
+                  <p className="relative flex items-center gap-2 text-xs font-bold tracking-widest uppercase text-[var(--gold)] mb-4">
+                    <span className="inline-flex items-center justify-center w-6 h-6 rounded-md bg-[var(--gold)]/15">
+                      <PenLine className="w-3.5 h-3.5" />
+                    </span>
+                    Band 7–8 Sample Response
                   </p>
-                  <p className="text-[var(--text-primary)] leading-[1.9] text-[0.9375rem] whitespace-pre-wrap">
+                  <p className="relative text-[var(--text-primary)] leading-[1.9] text-[0.9375rem] whitespace-pre-wrap">
                     {feedback.sampleResponse ?? 'Sample response not available for this analysis.'}
                   </p>
                 </div>
@@ -1375,10 +1505,10 @@ export function FeedbackPage() {
               {activeTab === 'spelling' && (() => {
                 const essayText = selectedTask === 'task1' ? reportData.userText1 : reportData.userText2;
                 return (
-                <div>
+                <div className="fp-tab-panel">
                   {!ltChecked ? (
                     <div className="bg-[var(--bg-card)] rounded-2xl border border-[var(--border-color)] overflow-hidden shadow-sm">
-                      <div className="flex items-center justify-between px-5 py-3 border-b border-[var(--border-color)] bg-slate-50">
+                      <div className="flex items-center justify-between px-5 py-3 border-b border-[var(--border-color)] bg-[var(--bg-subtle)]">
                         <div className="flex gap-1">
                           {(['en-GB', 'en-US'] as const).map((lang) => (
                             <button
@@ -1387,7 +1517,7 @@ export function FeedbackPage() {
                               className={`px-3 py-1 rounded-full text-xs font-semibold border transition-colors cursor-pointer ${
                                 ltLang === lang
                                   ? 'bg-[var(--ink-blue)] text-white border-[var(--ink-blue)]'
-                                  : 'bg-white text-gray-600 border-[var(--border)]'
+                                  : 'bg-[var(--bg-card)] text-[var(--text-secondary)] border-[var(--border-color)]'
                               }`}
                             >
                               {lang === 'en-GB' ? '🇬🇧 British' : '🇺🇸 American'}
@@ -1395,19 +1525,21 @@ export function FeedbackPage() {
                           ))}
                         </div>
                         <Button size="sm" onClick={() => runSpellCheck(essayText)} disabled={ltLoading || !essayText.trim()}>
+                          {ltLoading && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
                           {ltLoading ? 'Checking…' : 'Check my essay'}
                         </Button>
                       </div>
-                      <div className="px-5 py-4 text-[0.9375rem] leading-relaxed text-gray-500 whitespace-pre-wrap min-h-[200px]">
+                      <div className="px-5 py-4 text-[0.9375rem] leading-relaxed text-[var(--text-secondary)] whitespace-pre-wrap min-h-[200px]">
                         {essayText || <span className="italic">No essay text available.</span>}
                       </div>
-                      {ltError && <p className="px-5 pb-3 text-sm text-red-600">{ltError}</p>}
+                      {ltError && <p className="px-5 pb-3 text-sm text-red-600 dark:text-red-400">{ltError}</p>}
                     </div>
                   ) : (
                     <div className="bg-[var(--bg-card)] rounded-2xl border border-[var(--border-color)] shadow-sm">
-                      <div className="flex items-center justify-between px-5 py-3 border-b border-[var(--border-color)] bg-slate-50 rounded-t-2xl">
-                        <span className={`text-sm font-semibold ${ltMatches.length === 0 ? 'text-green-700' : 'text-red-600'}`}>
-                          {ltMatches.length === 0 ? '✓ No issues found' : `${ltMatches.length} issue${ltMatches.length !== 1 ? 's' : ''} found`}
+                      <div className="flex items-center justify-between px-5 py-3 border-b border-[var(--border-color)] bg-[var(--bg-subtle)] rounded-t-2xl">
+                        <span className={`inline-flex items-center gap-1.5 text-sm font-semibold ${ltMatches.length === 0 ? 'text-green-700 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>
+                          {ltMatches.length === 0 ? <CheckCircle2 className="w-4 h-4" /> : <AlertTriangle className="w-4 h-4" />}
+                          {ltMatches.length === 0 ? 'No issues found' : `${ltMatches.length} issue${ltMatches.length !== 1 ? 's' : ''} found`}
                         </span>
                         <button
                           onClick={() => { setLtChecked(false); setLtMatches([]); setLtPopover(null); }}
@@ -1417,7 +1549,7 @@ export function FeedbackPage() {
                         </button>
                       </div>
                       <div
-                        className="relative px-5 py-4 text-[0.9375rem] leading-relaxed text-gray-800 whitespace-pre-wrap min-h-[200px] cursor-default"
+                        className="relative px-5 py-4 text-[0.9375rem] leading-relaxed text-[var(--text-primary)] whitespace-pre-wrap min-h-[200px] cursor-default"
                         ref={ltOverlayRef}
                         onClick={() => setLtPopover(null)}
                       >
@@ -1486,13 +1618,13 @@ export function FeedbackPage() {
                         <div key={i} className="bg-[var(--bg-card)] rounded-2xl px-4 py-3 border border-[var(--border-color)] flex items-center gap-3">
                           <span className="w-2 h-2 rounded-full shrink-0" style={{ background: ltColor(m.rule.issueType) }} />
                           <div className="flex-1 min-w-0">
-                            <span className="font-semibold text-sm text-gray-900 block">"{ltCorrected.slice(m.offset, m.offset + m.length)}"</span>
+                            <span className="font-semibold text-sm text-[var(--text-primary)] block">"{ltCorrected.slice(m.offset, m.offset + m.length)}"</span>
                             <span className="text-xs text-[var(--text-muted)]">{m.message}</span>
                           </div>
                           {m.replacements.length > 0 && (
                             <button
                               onClick={() => applyLtFix(m, m.replacements[0].value)}
-                              className="px-3 py-1 bg-indigo-600 text-white text-xs font-semibold rounded cursor-pointer border-none shrink-0"
+                              className="px-3 py-1 bg-[var(--ink-blue)] text-white text-xs font-semibold rounded cursor-pointer border-none shrink-0"
                             >{m.replacements[0].value}</button>
                           )}
                         </div>
@@ -1505,7 +1637,7 @@ export function FeedbackPage() {
 
               {/* ── WRITING PRACTICE ── */}
               {activeTab === 'quiz' && (feedback.limited ? <UpgradePrompt /> : (
-                <div>
+                <div className="fp-tab-panel">
                   <p className="text-sm text-[var(--text-muted)] mb-5">
                     Write a sentence using each word or grammar rule. Tap <strong>Show example</strong> to check.
                   </p>
@@ -1513,14 +1645,14 @@ export function FeedbackPage() {
                     {feedback.vocabulary.map((v, i) => {
                       const key = `vocab_${i}`;
                       return (
-                        <div key={key} className="bg-[var(--bg-card)] rounded-2xl px-5 py-4 border border-[var(--border-color)] shadow-sm">
+                        <div key={key} className="bg-[var(--bg-card)] rounded-2xl px-5 py-4 border border-[var(--border-color)] border-l-4 border-l-purple-500 shadow-sm transition-shadow duration-200 hover:shadow-md">
                           <div className="flex items-center gap-3 mb-3">
-                            <span className="bg-[var(--ink-blue)]/10 text-[var(--ink-blue)] text-xs font-bold px-2 py-0.5 rounded-full uppercase tracking-wide">Vocab</span>
-                            <span className="font-bold text-[var(--ink-blue)] text-base">{v.word}</span>
+                            <span className="bg-purple-500/10 text-purple-700 dark:text-purple-300 text-xs font-bold px-2 py-0.5 rounded-full uppercase tracking-wide">Vocab</span>
+                            <span className="font-bold text-purple-700 dark:text-purple-300 text-base">{v.word}</span>
                             <span className="text-xs text-[var(--text-muted)]">— {v.uzbek}</span>
                           </div>
                           <textarea
-                            className="w-full border border-[var(--border)] rounded-lg px-3 py-2 text-sm text-gray-800 resize-none outline-none focus:border-[var(--ink-blue)] transition-colors"
+                            className="w-full border border-[var(--border-color)] bg-[var(--bg-input)] rounded-lg px-3 py-2 text-sm text-[var(--text-primary)] resize-none outline-none focus:border-purple-500 transition-colors"
                             rows={2}
                             placeholder={`Write a sentence using "${v.word}"…`}
                             value={practiceInputs[key] ?? ''}
@@ -1530,22 +1662,23 @@ export function FeedbackPage() {
                             <button
                               onClick={() => checkPracticeSentence(key, practiceInputs[key] ?? '', v.word, 'vocab', v.exampleFromEssay)}
                               disabled={practiceChecking[key] || !(practiceInputs[key] ?? '').trim()}
-                              className="text-xs bg-[var(--ink-blue)] text-white px-3 py-1 rounded cursor-pointer border-none disabled:opacity-40"
+                              className="inline-flex items-center gap-1.5 text-xs bg-purple-600 text-white px-3 py-1 rounded cursor-pointer border-none disabled:opacity-40 hover:bg-purple-700 transition-colors"
                             >
-                              {practiceChecking[key] ? 'Checking…' : '🤖 Check with AI'}
+                              {practiceChecking[key] ? <Loader2 className="w-3 h-3 animate-spin" /> : <Brain className="w-3 h-3" />}
+                              {practiceChecking[key] ? 'Checking…' : 'Check with AI'}
                             </button>
                             <button
                               onClick={() => setPracticeRevealed((p) => ({ ...p, [key]: !p[key] }))}
-                              className="text-xs text-[var(--ink-blue)] underline cursor-pointer bg-transparent border-none"
+                              className="text-xs text-purple-700 dark:text-purple-300 underline cursor-pointer bg-transparent border-none"
                             >
                               {practiceRevealed[key] ? 'Hide' : 'Show example'}
                             </button>
                           </div>
                           {practiceChecked[key] && (
-                            <PracticeResult result={practiceChecked[key]} accentClass="text-[var(--ink-blue)]" />
+                            <PracticeResult result={practiceChecked[key]} accentClass="text-purple-700 dark:text-purple-300" />
                           )}
                           {practiceRevealed[key] && (
-                            <p className="mt-2 text-sm text-[var(--ink-blue)] italic bg-[var(--ink-blue)]/5 rounded-lg px-3 py-2">
+                            <p className="mt-2 text-sm text-purple-700 dark:text-purple-300 italic bg-purple-500/5 rounded-lg px-3 py-2">
                               "{v.exampleFromEssay}"
                             </p>
                           )}
@@ -1555,14 +1688,14 @@ export function FeedbackPage() {
                     {feedback.grammar.map((g, i) => {
                       const key = `grammar_${i}`;
                       return (
-                        <div key={key} className="bg-[var(--bg-card)] rounded-2xl px-5 py-4 border border-[var(--border-color)] shadow-sm">
+                        <div key={key} className="bg-[var(--bg-card)] rounded-2xl px-5 py-4 border border-[var(--border-color)] border-l-4 border-l-amber-500 shadow-sm transition-shadow duration-200 hover:shadow-md">
                           <div className="flex items-center gap-3 mb-1">
-                            <span className="bg-[var(--gold)]/20 text-amber-800 text-xs font-bold px-2 py-0.5 rounded-full uppercase tracking-wide">Grammar</span>
-                            <span className="font-bold text-gray-800 text-sm">{g.point}</span>
+                            <span className="bg-[var(--gold)]/20 text-amber-800 dark:text-amber-200 text-xs font-bold px-2 py-0.5 rounded-full uppercase tracking-wide">Grammar</span>
+                            <span className="font-bold text-[var(--text-primary)] text-sm">{g.point}</span>
                           </div>
                           <p className="text-xs text-[var(--text-muted)] mb-3">{g.explanation}</p>
                           <textarea
-                            className="w-full border border-[var(--border)] rounded-lg px-3 py-2 text-sm text-gray-800 resize-none outline-none focus:border-[var(--gold)] transition-colors"
+                            className="w-full border border-[var(--border-color)] bg-[var(--bg-input)] rounded-lg px-3 py-2 text-sm text-[var(--text-primary)] resize-none outline-none focus:border-[var(--gold)] transition-colors"
                             rows={2}
                             placeholder={`Write an example using this rule…`}
                             value={practiceInputs[key] ?? ''}
@@ -1572,22 +1705,23 @@ export function FeedbackPage() {
                             <button
                               onClick={() => checkPracticeSentence(key, practiceInputs[key] ?? '', g.point, 'grammar', g.example)}
                               disabled={practiceChecking[key] || !(practiceInputs[key] ?? '').trim()}
-                              className="text-xs bg-amber-700 text-white px-3 py-1 rounded cursor-pointer border-none disabled:opacity-40"
+                              className="inline-flex items-center gap-1.5 text-xs bg-amber-700 text-white px-3 py-1 rounded cursor-pointer border-none disabled:opacity-40 hover:bg-amber-800 transition-colors"
                             >
-                              {practiceChecking[key] ? 'Checking…' : '🤖 Check with AI'}
+                              {practiceChecking[key] ? <Loader2 className="w-3 h-3 animate-spin" /> : <Brain className="w-3 h-3" />}
+                              {practiceChecking[key] ? 'Checking…' : 'Check with AI'}
                             </button>
                             <button
                               onClick={() => setPracticeRevealed((p) => ({ ...p, [key]: !p[key] }))}
-                              className="text-xs text-amber-700 underline cursor-pointer bg-transparent border-none"
+                              className="text-xs text-amber-700 dark:text-amber-400 underline cursor-pointer bg-transparent border-none"
                             >
                               {practiceRevealed[key] ? 'Hide' : 'Show example'}
                             </button>
                           </div>
                           {practiceChecked[key] && (
-                            <PracticeResult result={practiceChecked[key]} accentClass="text-amber-800" />
+                            <PracticeResult result={practiceChecked[key]} accentClass="text-amber-800 dark:text-amber-300" />
                           )}
                           {practiceRevealed[key] && (
-                            <p className="mt-2 text-sm text-amber-900 italic bg-amber-50 rounded-lg px-3 py-2">
+                            <p className="mt-2 text-sm text-amber-900 dark:text-amber-200 italic bg-amber-50 dark:bg-amber-900/20 rounded-lg px-3 py-2">
                               "{g.example}"
                             </p>
                           )}
@@ -1602,7 +1736,7 @@ export function FeedbackPage() {
 
           <div className="text-center mt-10">
             <Link to="/dashboard">
-              <Button variant="secondary">← Try another question</Button>
+              <Button variant="secondary"><ChevronLeft className="w-4 h-4" /> Try another question</Button>
             </Link>
           </div>
         </div>
