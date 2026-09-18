@@ -33,3 +33,4 @@ firebase-service-account.json
 *.sln
 *.sw?
 .claude/
+.env*

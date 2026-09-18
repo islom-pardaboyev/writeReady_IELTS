@@ -7,8 +7,7 @@ import { Card } from '../components/ui/Card';
 import { Input } from '../components/ui/input';
 import { PasswordInput } from '../components/ui/PasswordInput';
 import { Label } from '../components/ui/label';
-import { getAuth, signInWithEmailAndPassword,getAdditionalUserInfo } from 'firebase/auth';
-import { notifyNewAccount } from '@/lib/notifySignup';
+import { getAuth, signInWithEmailAndPassword } from 'firebase/auth';
 
 type Mode = 'login' | 'signup' | 'student';
 
@@ -55,7 +54,6 @@ export function AuthPage() {
     try {
       if (mode === 'signup') {
         await signUp(email, password);
-        notifyNewAccount(email, 'email')
       } else {
         await signIn(email, password);
       }
@@ -99,11 +97,7 @@ export function AuthPage() {
     setError('');
     setLoading(true);
     try {
-      const result = await signInWithGoogle();
-      const isNewUser = getAdditionalUserInfo(result)?.isNewUser;
-      if (isNewUser && result.user.email) {
-        notifyNewAccount(result.user.email, 'google');
-      }
+      await signInWithGoogle();
       navigate('/dashboard');
     } catch (err: unknown) {
       setError(cleanAuthError(err, 'Google sign-in failed'));

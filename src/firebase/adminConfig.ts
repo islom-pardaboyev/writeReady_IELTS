@@ -14,3 +14,8 @@ const adminApp =
 
 export const adminAuth = getAuth(adminApp);
 export const adminDb = getFirestore(adminApp);
+
+// Fixed internal email the admin role's Firebase Auth account always uses
+// (minted server-side in api/staff-login.ts) — used client-side to recognize
+// an admin session, e.g. to bypass the maintenance gate.
+export const ADMIN_EMAIL = 'admin@writeready.internal';
