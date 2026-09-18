@@ -10,8 +10,9 @@ import { auth, db } from "@/firebase/firebase";
 import { collection, doc, getDoc, getDocs } from "firebase/firestore";
 import { downloadEssayPdf } from "@/lib/essayPdf";
 import WritingTask1Preview from "@/components/writingTask1Preview/WritingTask1Preview";
-import { NavLink, useNavigate } from "react-router-dom";
+import { NavLink, useNavigate } from "react-router";
 import { useAuth } from "@/hooks/useAuth";
+import { useUnsavedWork } from "@/hooks/useUnsavedWork";
 import { Button } from "@/components/ui/Button";
 import WritingTask2Preview from "@/components/writingTask2Preview/WritingTask2Preview";
 import { encodeReport } from "@/lib/reportEncoding";
@@ -68,6 +69,9 @@ function Practice() {
   const humanCheckEnabled = useFeatureFlag("humanCheck");
 
   const [splitRatio, setSplitRatio] = useState(0.46);
+  const confirmLeave = useUnsavedWork(
+    (userText1.trim().length > 0 || userText2.trim().length > 0) && !checkingAccess,
+  );
   const [timerRunning, setTimerRunning] = useState(false);
   const elapsed = useStopwatch(timerRunning);
   const splitContainerRef = useRef<HTMLDivElement>(null);
@@ -272,7 +276,7 @@ function Practice() {
         {/* Progress bar */}
         <div className="h-0.5 bg-black/10">
           <div
-            className="h-full bg-black/60 transition-all duration-500"
+            className="h-full bg-black/60 transition-[width] duration-500"
             style={{ width: `${currentProgress}%` }}
           />
         </div>
@@ -290,7 +294,7 @@ function Practice() {
                   <button
                     key={t}
                     onClick={() => setActiveTask(t)}
-                    className={`relative flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-lg transition-all ${
+                    className={`relative flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-lg transition-[color,background-color,box-shadow] ${
                       activeTask === t
                         ? "bg-blue-600 text-white shadow-sm"
                         : "text-slate-600 hover:bg-slate-100"
@@ -310,25 +314,25 @@ function Practice() {
             </div>
 
             <nav className="hidden md:flex items-center gap-1 text-xs text-slate-500">
-              <NavLink
+              <NavLink onClick={confirmLeave}
                 to="/"
                 className="px-2 py-1 hover:text-slate-900 hover:bg-slate-100 rounded transition-colors"
               >
                 Home
               </NavLink>
-              <NavLink
+              <NavLink onClick={confirmLeave}
                 to="/writing/mock"
                 className="px-2 py-1 hover:text-slate-900 hover:bg-slate-100 rounded transition-colors"
               >
                 Mock Test
               </NavLink>
-              <NavLink
+              <NavLink onClick={confirmLeave}
                 to="/writing/quick"
                 className="px-2 py-1 hover:text-slate-900 hover:bg-slate-100 rounded transition-colors"
               >
                 Quick Write
               </NavLink>
-              <NavLink
+              <NavLink onClick={confirmLeave}
                 to="/writing/relax"
                 className="px-2 py-1 hover:text-slate-900 hover:bg-slate-100 rounded transition-colors"
               >
@@ -424,6 +428,7 @@ function Practice() {
           </label>
           <textarea
             id={`answer-task-${activeTask}`}
+            name="essay"
             value={activeTask === 1 ? userText1 : userText2}
             onChange={(e) => {
               if (activeTask === 1) {
@@ -447,7 +452,7 @@ function Practice() {
             <div className="flex items-center gap-3">
               <div className="w-24 h-1.5 bg-slate-100 rounded-full overflow-hidden">
                 <div
-                  className={`h-full rounded-full transition-all duration-300 ${meetsMinWords ? "bg-emerald-500" : "bg-blue-400"}`}
+                  className={`h-full rounded-full transition-[width,background-color] duration-300 ${meetsMinWords ? "bg-emerald-500" : "bg-blue-400"}`}
                   style={{ width: `${currentProgress}%` }}
                 />
               </div>
@@ -482,7 +487,7 @@ function Practice() {
       {showFeedbackModal && (
         <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-4 bg-black/40 backdrop-blur-sm overscroll-contain">
           <div className="w-full max-w-sm bg-white rounded-2xl shadow-2xl overflow-hidden">
-            <div className="h-1.5 bg-gradient-to-r from-blue-500 to-indigo-500" />
+            <div className="h-1.5 bg-linear-to-r from-blue-500 to-indigo-500" />
             <div className="p-7">
               <div className="flex items-center justify-center w-11 h-11 mx-auto rounded-full bg-blue-50">
                 <CheckIcon aria-hidden="true" className="w-5 h-5 text-blue-600" />
@@ -547,7 +552,7 @@ function Practice() {
       {humanCheck.success && (
         <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-4 bg-black/40 backdrop-blur-sm overscroll-contain">
           <div className="w-full max-w-sm bg-white rounded-2xl shadow-2xl overflow-hidden">
-            <div className="h-1.5 bg-gradient-to-r from-emerald-500 to-teal-500" />
+            <div className="h-1.5 bg-linear-to-r from-emerald-500 to-teal-500" />
             <div className="p-7 text-center">
               <div className="flex items-center justify-center w-11 h-11 mx-auto rounded-full bg-emerald-50">
                 <CheckIcon aria-hidden="true" className="w-5 h-5 text-emerald-600" />

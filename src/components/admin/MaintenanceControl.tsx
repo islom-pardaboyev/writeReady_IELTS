@@ -131,7 +131,7 @@ export function MaintenanceControl() {
       >
         <Field label={on ? 'New end, counted from now' : 'Close the site for'} htmlFor="maintenance-amount">
           <div className="flex gap-2">
-            <Input
+            <Input name="maintenance-amount" autoComplete="off"
               id="maintenance-amount"
               type="number"
               inputMode="numeric"
@@ -141,7 +141,7 @@ export function MaintenanceControl() {
               onChange={(e) => setAmount(e.target.value)}
               className="w-20 font-mono"
             />
-            <select aria-label="Unit" value={unit} onChange={(e) => setUnit(e.target.value as MaintenanceUnit)} className={cn(selectClass, 'w-auto')}>
+            <select name="unit" autoComplete="off" aria-label="Unit" value={unit} onChange={(e) => setUnit(e.target.value as MaintenanceUnit)} className={cn(selectClass, 'w-auto')}>
               {UNITS.map((u) => (
                 <option key={u} value={u}>
                   {u}

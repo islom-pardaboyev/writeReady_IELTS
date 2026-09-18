@@ -54,7 +54,7 @@ export function AnnouncementPopup() {
     <Dialog open={open} onOpenChange={(v) => { if (!v) dismiss(); }}>
       <DialogContent className="bg-white dark:bg-slate-900 max-w-[440px] p-0 overflow-hidden gap-0 rounded-2xl border border-slate-200/60 dark:border-slate-800 shadow-2xl">
         {/* Header */}
-        <div className={`relative bg-gradient-to-br ${meta.from} ${meta.to} px-6 pt-6 pb-7 overflow-hidden`}>
+        <div className={`relative bg-linear-to-br ${meta.from} ${meta.to} px-6 pt-6 pb-7 overflow-hidden`}>
           {/* Decorative glow */}
           <div className="pointer-events-none absolute -top-10 -right-10 w-36 h-36 rounded-full bg-white/10 blur-2xl" />
           <div className="pointer-events-none absolute bottom-0 left-10 w-20 h-20 rounded-full bg-black/10 blur-xl" />
@@ -99,7 +99,7 @@ export function AnnouncementPopup() {
                 target="_blank"
                 rel="noopener noreferrer"
                 onClick={dismiss}
-                className={`group inline-flex items-center gap-1.5 px-5 py-2.5 rounded-xl font-semibold text-sm text-white no-underline bg-gradient-to-br ${meta.from} ${meta.to} shadow-sm hover:shadow-md hover:brightness-105 active:brightness-95 transition-all`}
+                className={`group inline-flex items-center gap-1.5 px-5 py-2.5 rounded-xl font-semibold text-sm text-white no-underline bg-linear-to-br ${meta.from} ${meta.to} shadow-sm hover:shadow-md hover:brightness-105 active:brightness-95 transition-[box-shadow,filter]`}
               >
                 {announcement.linkLabel || "Ko'proq"}
                 <ArrowRight size={16} strokeWidth={2.25} className="transition-transform group-hover:translate-x-0.5" />
@@ -114,7 +114,7 @@ export function AnnouncementPopup() {
           ) : (
             <button
               onClick={dismiss}
-              className={`w-full justify-center inline-flex items-center gap-1.5 px-5 py-2.5 rounded-xl font-semibold text-sm text-white bg-gradient-to-br ${meta.from} ${meta.to} shadow-sm hover:shadow-md hover:brightness-105 active:brightness-95 transition-all cursor-pointer border-0`}
+              className={`w-full justify-center inline-flex items-center gap-1.5 px-5 py-2.5 rounded-xl font-semibold text-sm text-white bg-linear-to-br ${meta.from} ${meta.to} shadow-sm hover:shadow-md hover:brightness-105 active:brightness-95 transition-[box-shadow,filter] cursor-pointer border-0`}
             >
               Tushunarli!
             </button>

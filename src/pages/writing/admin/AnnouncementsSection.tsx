@@ -145,7 +145,7 @@ export function AnnouncementsSection({ intent, clearIntent }: SectionProps) {
       action={<Button size="sm" onClick={() => setSelectedId("new")}><Plus aria-hidden="true" /> New</Button>}
       toolbar={
         <>
-          <SearchField value={search} onChange={setSearch} placeholder="Search announcements" label="Search announcements" inputRef={searchRef} />
+          <SearchField value={search} onChange={setSearch} placeholder="Search announcements…" label="Search announcements" inputRef={searchRef} />
           <p className="text-sm text-[var(--text-secondary)]">{activeCount === 0 ? "None showing to students right now." : `${activeCount} showing to students.`}</p>
         </>
       }
@@ -215,17 +215,17 @@ export function AnnouncementsSection({ intent, clearIntent }: SectionProps) {
             </div>
           </Field>
           <Field label="Title" htmlFor="ann-title">
-            <Input id="ann-title" value={title} onChange={(e) => setTitle(e.target.value)} />
+            <Input name="ann-title" autoComplete="off" id="ann-title" value={title} onChange={(e) => setTitle(e.target.value)} />
           </Field>
           <Field label="Message" htmlFor="ann-text">
-            <Textarea id="ann-text" rows={4} value={text} onChange={(e) => setText(e.target.value)} />
+            <Textarea name="ann-text" autoComplete="off" id="ann-text" rows={4} value={text} onChange={(e) => setText(e.target.value)} />
           </Field>
           <div className="grid gap-4 sm:grid-cols-[1fr_200px]">
             <Field label="Link" htmlFor="ann-link" optional hint="Where the button takes students.">
-              <Input id="ann-link" type="url" placeholder="https://" value={link} onChange={(e) => setLink(e.target.value)} />
+              <Input name="ann-link" autoComplete="off" id="ann-link" type="url" placeholder="https://example.com…" value={link} onChange={(e) => setLink(e.target.value)} />
             </Field>
             <Field label="Button text" htmlFor="ann-link-label" optional>
-              <Input id="ann-link-label" value={linkLabel} onChange={(e) => setLinkLabel(e.target.value)} />
+              <Input name="ann-link-label" autoComplete="off" id="ann-link-label" value={linkLabel} onChange={(e) => setLinkLabel(e.target.value)} />
             </Field>
           </div>
           {formError && <Notice tone="error">{formError}</Notice>}

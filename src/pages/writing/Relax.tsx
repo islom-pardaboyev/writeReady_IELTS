@@ -7,7 +7,7 @@ import {
 } from "react";
 import { useStopwatch } from "@/hooks/useStopwatch";
 import { downloadEssayPdf } from "@/lib/essayPdf";
-import { NavLink, useNavigate } from "react-router-dom";
+import { NavLink, useNavigate } from "react-router";
 import { doc, getDoc } from "firebase/firestore";
 import { auth, db } from "@/firebase/firebase";
 import { Button } from "@/components/ui/Button";
@@ -23,6 +23,7 @@ import {
   GraduationCap,
 } from "lucide-react";
 import { useHumanCheck } from "@/hooks/useHumanCheck";
+import { useUnsavedWork } from "@/hooks/useUnsavedWork";
 import { useFeatureFlag } from "@/hooks/useFeatureFlag";
 import { TeacherPickerModal } from "@/components/ui/TeacherPickerModal";
 import { HumanCheckConfirmModal } from "@/components/ui/HumanCheckConfirmModal";
@@ -55,6 +56,9 @@ function Relax() {
   const humanCheckEnabled = useFeatureFlag("humanCheck");
 
   const [splitRatio, setSplitRatio] = useState(0.46);
+  const confirmLeave = useUnsavedWork(
+    userText.trim().length > 0 && !checkingAccess,
+  );
   const [timerRunning, setTimerRunning] = useState(false);
   const elapsed = useStopwatch(timerRunning);
   const splitContainerRef = useRef<HTMLDivElement>(null);
@@ -218,25 +222,25 @@ function Relax() {
               <span className="text-sm font-medium text-black">Relax Mode</span>
             </div>
             <nav className="flex items-center gap-1">
-              <NavLink
+              <NavLink onClick={confirmLeave}
                 to="/"
                 className="px-3 py-1.5 text-xs text-black/60 hover:text-black border border-black/20 hover:border-black/40 rounded-md transition-colors"
               >
                 Home
               </NavLink>
-              <NavLink
+              <NavLink onClick={confirmLeave}
                 to="/writing/mock"
                 className="px-3 py-1.5 text-xs text-black/60 hover:text-black border border-black/20 hover:border-black/40 rounded-md transition-colors"
               >
                 Mock
               </NavLink>
-              <NavLink
+              <NavLink onClick={confirmLeave}
                 to="/writing/practice"
                 className="px-3 py-1.5 text-xs text-black/60 hover:text-black border border-black/20 hover:border-black/40 rounded-md transition-colors"
               >
                 Practice
               </NavLink>
-              <NavLink
+              <NavLink onClick={confirmLeave}
                 to="/writing/quick"
                 className="px-3 py-1.5 text-xs text-black/60 hover:text-black border border-black/20 hover:border-black/40 rounded-md transition-colors"
               >
@@ -265,7 +269,7 @@ function Relax() {
                 <button
                   key={task}
                   onClick={() => handleSelectTask(task)}
-                  className="group p-7 text-left bg-white border-2 border-slate-200 rounded-xl hover:border-blue-500 hover:shadow-md transition-all"
+                  className="group p-7 text-left bg-white border-2 border-slate-200 rounded-xl hover:border-blue-500 hover:shadow-md transition-[border-color,box-shadow]"
                 >
                   <div className="flex items-center justify-between mb-3">
                     <span className="inline-flex items-center justify-center w-8 h-8 rounded-full bg-slate-100 group-hover:bg-blue-600 text-slate-600 group-hover:text-white text-sm font-bold transition-colors">
@@ -341,8 +345,9 @@ function Relax() {
                     <label className="block mb-1.5 text-xs font-semibold text-slate-700 uppercase tracking-wide">
                       Task 1 prompt
                     </label>
-                    <textarea
+                    <textarea name="task-1-prompt" autoComplete="off"
                       value={prompt}
+                      aria-label="Task 1 prompt"
                       onChange={(e) => setPrompt(e.target.value)}
                       placeholder="The chart below shows… Summarise the information by selecting and reporting the main features…"
                       className="w-full h-28 px-4 py-3 text-sm text-slate-800 border border-slate-200 outline-none resize-none rounded-lg focus:border-blue-500 focus:ring-1 focus:ring-blue-500 bg-white transition placeholder:text-slate-300"
@@ -392,6 +397,9 @@ function Relax() {
                           <img
                             src={imageUrl}
                             alt="Preview"
+                            width={1200}
+                            height={800}
+                            loading="lazy"
                             className="object-cover w-full max-h-64"
                           />
                         )}
@@ -404,8 +412,9 @@ function Relax() {
                   <label className="block mb-1.5 text-xs font-semibold text-slate-700 uppercase tracking-wide">
                     Task 2 prompt
                   </label>
-                  <textarea
+                  <textarea name="task-2-prompt" autoComplete="off"
                     value={task2Prompt}
+                    aria-label="Task 2 prompt"
                     onChange={(e) => setTask2Prompt(e.target.value)}
                     placeholder="Some people believe that… To what extent do you agree or disagree?"
                     className="w-full h-36 px-4 py-3 text-sm text-slate-800 bg-slate-50 border border-slate-200 outline-none resize-none rounded-lg focus:border-blue-500 focus:ring-1 focus:ring-blue-500 focus:bg-white transition placeholder:text-slate-300"
@@ -474,25 +483,25 @@ function Relax() {
               Start over
             </button>
             <nav className="hidden sm:flex items-center gap-1">
-              <NavLink
+              <NavLink onClick={confirmLeave}
                 to="/"
                 className="px-3 py-1.5 text-xs text-black/60 hover:text-black border border-black/20 hover:border-black/40 rounded-md transition-colors"
               >
                 Home
               </NavLink>
-              <NavLink
+              <NavLink onClick={confirmLeave}
                 to="/writing/mock"
                 className="px-3 py-1.5 text-xs text-black/60 hover:text-black border border-black/20 hover:border-black/40 rounded-md transition-colors"
               >
                 Mock
               </NavLink>
-              <NavLink
+              <NavLink onClick={confirmLeave}
                 to="/writing/practice"
                 className="px-3 py-1.5 text-xs text-black/60 hover:text-black border border-black/20 hover:border-black/40 rounded-md transition-colors"
               >
                 Practice
               </NavLink>
-              <NavLink
+              <NavLink onClick={confirmLeave}
                 to="/writing/quick"
                 className="px-3 py-1.5 text-xs text-black/60 hover:text-black border border-black/20 hover:border-black/40 rounded-md transition-colors"
               >
@@ -511,7 +520,7 @@ function Relax() {
         {/* Progress bar */}
         <div className="h-0.5 bg-black/10">
           <div
-            className="h-full bg-black/40 transition-all duration-500"
+            className="h-full bg-black/40 transition-[width] duration-500"
             style={{ width: `${currentProgress}%` }}
           />
         </div>
@@ -569,7 +578,7 @@ function Relax() {
           <label htmlFor="relax-answer" className="sr-only">
             Your answer for Task {activeTask}
           </label>
-          <textarea
+          <textarea name="relax-answer"
             id="relax-answer"
             value={userText}
             onChange={(e) => setUserText(e.target.value)}
@@ -581,14 +590,14 @@ function Relax() {
             data-gramm="false"
             data-gramm_editor="false"
             data-enable-grammarly="false"
-            className="flex-1 w-full p-6 text-[15px] leading-relaxed text-slate-800 bg-transparent outline-none resize-none placeholder:text-slate-300 focus:bg-white transition-colors duration-200 min-h-[300px] [scrollbar-gutter:stable]"
+            className="flex-1 w-full p-6 text-[15px] leading-relaxed text-slate-800 bg-transparent outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-inset resize-none placeholder:text-slate-300 focus:bg-white transition-colors duration-200 min-h-[300px] [scrollbar-gutter:stable]"
           />
 
           <div className="flex items-center justify-between gap-4 px-5 py-3 border-t border-slate-200 bg-white">
             <div className="flex items-center gap-3">
               <div className="w-24 h-1.5 bg-slate-100 rounded-full overflow-hidden">
                 <div
-                  className={`h-full rounded-full transition-all duration-300 ${meetsMinWords ? "bg-emerald-500" : "bg-blue-400"}`}
+                  className={`h-full rounded-full transition-[width,background-color] duration-300 ${meetsMinWords ? "bg-emerald-500" : "bg-blue-400"}`}
                   style={{ width: `${currentProgress}%` }}
                 />
               </div>
@@ -623,7 +632,7 @@ function Relax() {
       {showFeedbackModal && (
         <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-4 bg-black/40 backdrop-blur-sm">
           <div className="w-full max-w-sm bg-white rounded-2xl shadow-2xl overflow-hidden">
-            <div className="h-1.5 bg-gradient-to-r from-blue-500 to-indigo-500" />
+            <div className="h-1.5 bg-linear-to-r from-blue-500 to-indigo-500" />
             <div className="p-7">
               <div className="flex items-center justify-center w-11 h-11 mx-auto rounded-full bg-blue-50">
                 <CheckIcon className="w-5 h-5 text-blue-600" />
@@ -688,7 +697,7 @@ function Relax() {
       {humanCheck.success && (
         <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-4 bg-black/40 backdrop-blur-sm">
           <div className="w-full max-w-sm bg-white rounded-2xl shadow-2xl overflow-hidden">
-            <div className="h-1.5 bg-gradient-to-r from-emerald-500 to-teal-500" />
+            <div className="h-1.5 bg-linear-to-r from-emerald-500 to-teal-500" />
             <div className="p-7 text-center">
               <div className="flex items-center justify-center w-11 h-11 mx-auto rounded-full bg-emerald-50">
                 <CheckIcon className="w-5 h-5 text-emerald-600" />

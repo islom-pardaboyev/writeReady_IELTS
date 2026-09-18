@@ -206,7 +206,7 @@ export default function TeacherPortalPage() {
       }
       toolbar={
         <>
-          <SearchField value={search} onChange={setSearch} placeholder="Search by student" label="Search reviews" inputRef={searchRef} />
+          <SearchField value={search} onChange={setSearch} placeholder="Search by student…" label="Search reviews" inputRef={searchRef} />
           <FilterChips
             label="Filter reviews"
             value={filter}

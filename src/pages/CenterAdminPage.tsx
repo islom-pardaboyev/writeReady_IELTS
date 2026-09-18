@@ -444,7 +444,7 @@ export default function CenterAdminPage() {
       action={<Button size="sm" onClick={() => selectStudent("new")} disabled={full} title={full ? "All places are used" : undefined}><Plus aria-hidden="true" /> Add</Button>}
       toolbar={
         <>
-          <SearchField value={search} onChange={setSearch} placeholder="Search by name or login" label="Search students" inputRef={searchRef} />
+          <SearchField value={search} onChange={setSearch} placeholder="Search by name or login…" label="Search students" inputRef={searchRef} />
           <p className={cn("text-xs tabular-nums", full ? "text-red-600 dark:text-red-400" : "text-[var(--text-secondary)]")}>
             {students.length} of {limit} places used
           </p>
@@ -489,13 +489,13 @@ export default function CenterAdminPage() {
         <DetailHeader title="Add a student" meta="The student signs in on writeready.uz with this login and password." />
         <div className="mt-6 grid gap-5 sm:grid-cols-2">
           <Field label="Full name" htmlFor="ns-name" className="sm:col-span-2">
-            <Input id="ns-name" autoComplete="off" placeholder="Ali Valiyev" value={newName} onChange={(e) => setNewName(e.target.value)} />
+            <Input name="ns-name" id="ns-name" autoComplete="off" placeholder="Ali Valiyev…" value={newName} onChange={(e) => setNewName(e.target.value)} />
           </Field>
           <Field label="Login" htmlFor="ns-login" hint="Letters and numbers, no spaces.">
-            <Input id="ns-login" autoComplete="off" placeholder="ali_valiyev" value={newLogin} onChange={(e) => setNewLogin(e.target.value)} />
+            <Input name="ns-login" id="ns-login" autoComplete="off" placeholder="ali_valiyev…" value={newLogin} onChange={(e) => setNewLogin(e.target.value)} />
           </Field>
           <Field label="Password" htmlFor="ns-pass" hint="At least 6 characters.">
-            <PasswordInput id="ns-pass" autoComplete="new-password" value={newPass} onChange={(e) => setNewPass(e.target.value)} />
+            <PasswordInput name="ns-pass" id="ns-pass" autoComplete="new-password" value={newPass} onChange={(e) => setNewPass(e.target.value)} />
           </Field>
         </div>
         {full && <Notice tone="warning" className="mt-5">All {limit} places are used. Contact WriteReady to raise your limit.</Notice>}
@@ -523,13 +523,13 @@ export default function CenterAdminPage() {
         <DetailSection title="Details">
           <div className="grid gap-5 sm:grid-cols-2">
             <Field label="Full name" htmlFor="es-name" className="sm:col-span-2">
-              <Input id="es-name" value={editName} onChange={(e) => setEditName(e.target.value)} />
+              <Input name="es-name" autoComplete="off" id="es-name" value={editName} onChange={(e) => setEditName(e.target.value)} />
             </Field>
             <Field label="Login" htmlFor="es-login">
-              <Input id="es-login" autoComplete="off" value={editLogin} onChange={(e) => setEditLogin(e.target.value)} />
+              <Input name="es-login" id="es-login" autoComplete="off" value={editLogin} onChange={(e) => setEditLogin(e.target.value)} />
             </Field>
             <Field label="New password" htmlFor="es-pass" optional hint="Leave empty to keep the current one.">
-              <PasswordInput id="es-pass" autoComplete="new-password" value={editPass} onChange={(e) => setEditPass(e.target.value)} />
+              <PasswordInput name="es-pass" id="es-pass" autoComplete="new-password" value={editPass} onChange={(e) => setEditPass(e.target.value)} />
             </Field>
           </div>
         </DetailSection>

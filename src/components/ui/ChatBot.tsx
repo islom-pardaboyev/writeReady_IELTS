@@ -223,8 +223,8 @@ export function ChatBot() {
 
           {/* Input */}
           <div className="px-3 pb-3 pt-2 border-t border-[var(--border-color)] shrink-0">
-            <div className="flex items-end gap-2 bg-[var(--bg-subtle)] rounded-xl px-3 py-2">
-              <textarea
+            <div className="flex items-end gap-2 bg-[var(--bg-subtle)] rounded-xl px-3 py-2 focus-within:ring-2 focus-within:ring-[var(--ink-blue)]">
+              <textarea name="message-to-ielts-assistant" autoComplete="off"
                 ref={inputRef}
                 rows={1}
                 value={input}

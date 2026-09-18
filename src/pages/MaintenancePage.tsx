@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link } from 'react-router';
 import { formatDuration, splitDuration } from '@/lib/duration';
 import Logo from '/logo.png';
 
@@ -49,7 +49,7 @@ export function MaintenancePage({ startedAt, endsAt }: { startedAt: number | nul
   return (
     <div className="flex min-h-dvh flex-col bg-[var(--bg-base)] text-[var(--text-primary)]">
       <header className="mx-auto flex w-full max-w-[1160px] items-center gap-2 px-6 py-5">
-        <img src={Logo} className="size-9" alt="" />
+        <img src={Logo} width={36} height={36} className="size-9" alt="" />
         <span className="text-lg font-bold">
           WriteReady <span className="text-[var(--ink-blue)]">IELTS</span>
         </span>

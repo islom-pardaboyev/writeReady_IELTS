@@ -201,7 +201,7 @@ export function TeachersSection({
       }
       toolbar={
         <>
-          <SearchField value={search} onChange={setSearch} placeholder="Search by name or login" label="Search teachers" inputRef={searchRef} />
+          <SearchField value={search} onChange={setSearch} placeholder="Search by name or login…" label="Search teachers" inputRef={searchRef} />
           <p className="text-sm text-[var(--text-secondary)]">
             {totalPending === 0 ? "No essays are waiting with these teachers." : `${totalPending} ${totalPending === 1 ? "essay is" : "essays are"} waiting for review.`}
           </p>
@@ -270,19 +270,19 @@ export function TeachersSection({
         <DetailHeader title={isNew ? "New teacher" : `Edit ${editing.name || "teacher"}`} meta="Teachers sign in to the teacher portal with this login and password." />
         <div className="mt-6 grid gap-5 sm:grid-cols-2">
           <Field label="Full name" htmlFor="t-name" className="sm:col-span-2">
-            <Input id="t-name" value={editing.name ?? ""} onChange={(e) => set({ name: e.target.value })} />
+            <Input name="t-name" autoComplete="off" id="t-name" value={editing.name ?? ""} onChange={(e) => set({ name: e.target.value })} />
           </Field>
           <Field label="IELTS overall" htmlFor="t-overall">
-            <Input id="t-overall" type="number" step="0.5" min={0} max={9} value={editing.ieltsOverall ?? 8} onChange={(e) => set({ ieltsOverall: Number(e.target.value) })} className="font-mono" />
+            <Input name="t-overall" autoComplete="off" id="t-overall" type="number" step="0.5" min={0} max={9} value={editing.ieltsOverall ?? 8} onChange={(e) => set({ ieltsOverall: Number(e.target.value) })} className="font-mono" />
           </Field>
           <Field label="IELTS writing" htmlFor="t-writing">
-            <Input id="t-writing" type="number" step="0.5" min={0} max={9} value={editing.ieltsWriting ?? 8} onChange={(e) => set({ ieltsWriting: Number(e.target.value) })} className="font-mono" />
+            <Input name="t-writing" autoComplete="off" id="t-writing" type="number" step="0.5" min={0} max={9} value={editing.ieltsWriting ?? 8} onChange={(e) => set({ ieltsWriting: Number(e.target.value) })} className="font-mono" />
           </Field>
           <Field label="Portal login" htmlFor="t-login">
-            <Input id="t-login" autoComplete="off" value={editing.login ?? ""} onChange={(e) => set({ login: e.target.value })} />
+            <Input name="t-login" id="t-login" autoComplete="off" value={editing.login ?? ""} onChange={(e) => set({ login: e.target.value })} />
           </Field>
           <Field label="Portal password" htmlFor="t-password">
-            <PasswordInput id="t-password" autoComplete="new-password" value={editing.password ?? ""} onChange={(e) => set({ password: e.target.value })} />
+            <PasswordInput name="t-password" id="t-password" autoComplete="new-password" value={editing.password ?? ""} onChange={(e) => set({ password: e.target.value })} />
           </Field>
           <Field label="Photo" optional hint="Students see it when they pick a teacher.">
             <div className="flex items-center gap-3">
@@ -293,7 +293,7 @@ export function TeachersSection({
           <Field label="IELTS certificate" optional>
             <div className="flex items-center gap-3">
               {editing.certificateBase64 ? (
-                <img src={editing.certificateBase64} alt="IELTS certificate" className="h-12 w-16 rounded-md border border-[var(--border-color)] object-cover" />
+                <img src={editing.certificateBase64} alt="IELTS certificate" width={64} height={48} loading="lazy" className="h-12 w-16 rounded-md border border-[var(--border-color)] object-cover" />
               ) : (
                 <span className="h-12 w-16 rounded-md bg-[var(--bg-subtle)]" />
               )}
@@ -389,7 +389,7 @@ export function TeachersSection({
               className="overflow-hidden rounded-xl border border-[var(--border-color)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ring)]"
               aria-label="Open the certificate at full size"
             >
-              <img src={selected.certificateBase64} alt="IELTS certificate" className="max-h-56 object-contain" />
+              <img src={selected.certificateBase64} alt="IELTS certificate" loading="lazy" className="max-h-56 object-contain" />
             </button>
           </DetailSection>
         )}
@@ -426,7 +426,7 @@ export function TeachersSection({
       <Dialog open={!!preview} onOpenChange={(open) => { if (!open) setPreview(null); }}>
         <DialogContent className="max-w-3xl p-3">
           <DialogTitle className="sr-only">IELTS certificate</DialogTitle>
-          {preview && <img src={preview} alt="IELTS certificate at full size" className="max-h-[82vh] w-full rounded-lg object-contain" />}
+          {preview && <img src={preview} alt="IELTS certificate at full size" width={1200} height={800} className="max-h-[82vh] w-full rounded-lg object-contain" />}
         </DialogContent>
       </Dialog>
       {dialog}

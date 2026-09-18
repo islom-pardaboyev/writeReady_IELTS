@@ -226,7 +226,8 @@ export function SearchField({
   return (
     <div className="relative">
       <Search size={16} aria-hidden="true" className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-[var(--text-secondary)]" />
-      <Input
+      <Input autoComplete="off"
+        name="search"
         ref={inputRef}
         type="search"
         aria-label={label}

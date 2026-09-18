@@ -1,5 +1,5 @@
 import { useState, useLayoutEffect, useRef, type FormEvent } from 'react';
-import { useNavigate, useSearchParams, Link, Navigate } from 'react-router-dom';
+import { useNavigate, useSearchParams, Link, Navigate } from 'react-router';
 import gsap from 'gsap';
 import { useAuth } from '../hooks/useAuth';
 import { Button } from '../components/ui/Button';
@@ -167,11 +167,13 @@ export function AuthPage() {
                   <Label htmlFor="s-login" className="font-semibold">Login</Label>
                   <Input
                     id="s-login"
+                    name="username"
                     type="text"
+                    spellCheck={false}
                     value={studentLogin}
                     onChange={(e) => setStudentLogin(e.target.value)}
                     required
-                    placeholder="Login provided by your centre"
+                    placeholder="Login provided by your centre…"
                     autoComplete="username"
                   />
                 </div>
@@ -179,10 +181,12 @@ export function AuthPage() {
                   <Label htmlFor="s-pass" className="font-semibold">Password</Label>
                   <PasswordInput
                     id="s-pass"
+                    name="password"
+                    autoComplete="current-password"
                     value={studentPassword}
                     onChange={(e) => setStudentPassword(e.target.value)}
                     required
-                    placeholder="Password provided by your centre"
+                    placeholder="Password provided by your centre…"
                   />
                 </div>
                 <Button type="submit" loading={loading} size="lg" className="w-full mt-1 bg-emerald-600 hover:bg-emerald-700">
@@ -199,11 +203,13 @@ export function AuthPage() {
                     <Label htmlFor="auth-email" className="font-semibold">Email</Label>
                     <Input
                       id="auth-email"
+                      name="email"
                       type="email"
+                      spellCheck={false}
                       value={email}
                       onChange={(e) => setEmail(e.target.value)}
                       required
-                      placeholder="you@example.com"
+                      placeholder="you@example.com…"
                       autoComplete="email"
                     />
                   </div>
@@ -211,10 +217,11 @@ export function AuthPage() {
                     <Label htmlFor="auth-password" className="font-semibold">Password</Label>
                     <PasswordInput
                       id="auth-password"
+                      name="password"
                       value={password}
                       onChange={(e) => setPassword(e.target.value)}
                       required
-                      placeholder={mode === 'signup' ? 'At least 6 characters' : '••••••••'}
+                      placeholder={mode === 'signup' ? 'At least 6 characters…' : '••••••••'}
                       minLength={6}
                       autoComplete={mode === 'signup' ? 'new-password' : 'current-password'}
                     />

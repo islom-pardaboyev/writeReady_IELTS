@@ -1,7 +1,7 @@
 import { useRef, useLayoutEffect, useEffect, useState, useId } from "react";
 import gsap from "gsap";
 import { ScrollTrigger } from "gsap/ScrollTrigger";
-import { Link } from "react-router-dom";
+import { Link } from "react-router";
 import { X, CreditCard, Copy, Send, Check, Sparkles } from "lucide-react";
 import { Layout } from "../components/layout/Layout";
 import { Button } from "../components/ui/Button";
@@ -161,7 +161,7 @@ export function PricingPage() {
           {/* Plans grid */}
           <div className="gs-plans grid grid-cols-[repeat(auto-fit,minmax(240px,1fr))] gap-6 max-w-[1100px] mx-auto">
             {/* Free */}
-            <Card className="gs-plan-card hover:-translate-y-1 hover:shadow-xl transition-all duration-200 p-7 flex flex-col">
+            <Card className="gs-plan-card hover:-translate-y-1 hover:shadow-xl transition-[transform,box-shadow] duration-200 p-7 flex flex-col">
               <div className="mb-5">
                 <div
                   className={`text-[1.25rem] font-bold text-[var(--text-primary)] mb-1`}
@@ -214,7 +214,7 @@ export function PricingPage() {
             </Card>
 
             {/* Basic */}
-            <Card className="gs-plan-card hover:-translate-y-1 hover:shadow-xl transition-all duration-200 p-7 flex flex-col">
+            <Card className="gs-plan-card hover:-translate-y-1 hover:shadow-xl transition-[transform,box-shadow] duration-200 p-7 flex flex-col">
               <div className="mb-5">
                 <div
                   className={`text-[1.25rem] font-bold text-[var(--text-primary)] mb-1`}
@@ -272,7 +272,7 @@ export function PricingPage() {
             </Card>
 
             {/* Standard — Popular */}
-            <Card className="gs-plan-card hover:-translate-y-1 transition-all duration-200 p-7 flex flex-col relative border-2 border-[var(--ink-blue)] shadow-[0_8px_32px_rgba(79,70,229,0.18)]">
+            <Card className="gs-plan-card hover:-translate-y-1 transition-[transform,box-shadow] duration-200 p-7 flex flex-col relative border-2 border-[var(--ink-blue)] shadow-[0_8px_32px_rgba(79,70,229,0.18)]">
               <div className="absolute -top-[13px] left-1/2 -translate-x-1/2 bg-[var(--ink-blue)] text-white text-[0.6875rem] font-bold tracking-[0.08em] uppercase px-4 py-[0.3rem] rounded-[20px] whitespace-nowrap">
                 ⭐ Most popular
               </div>
@@ -320,7 +320,7 @@ export function PricingPage() {
             </Card>
 
             {/* Premium */}
-            <Card className="gs-plan-card hover:-translate-y-1 hover:shadow-xl transition-all duration-200 p-7 flex flex-col bg-gradient-to-br from-slate-900 to-[#312E81] border-indigo-800">
+            <Card className="gs-plan-card hover:-translate-y-1 hover:shadow-xl transition-[transform,box-shadow] duration-200 p-7 flex flex-col bg-linear-to-br from-slate-900 to-[#312E81] border-indigo-800">
               <div className="mb-5">
                 <div
                   className={`text-[1.25rem] font-bold text-white mb-1`}
@@ -388,12 +388,13 @@ export function PricingPage() {
                 </div>
               </div>
               <div className="flex items-center gap-2 flex-wrap">
-                <input
+                <input autoComplete="off"
+                  name="top-up-amount"
                   type="number"
                   min={MIN_TOPUP_UZS}
                   step="1000"
                   aria-label={`Top-up amount in UZS, minimum ${MIN_TOPUP_UZS.toLocaleString()}`}
-                  placeholder={`Amount (min ${MIN_TOPUP_UZS.toLocaleString()} UZS)`}
+                  placeholder={`Amount (min ${MIN_TOPUP_UZS.toLocaleString()} UZS)…`}
                   value={topUpAmount}
                   onChange={(e) => setTopUpAmount(e.target.value)}
                   className={`flex-1 min-w-[160px] h-11 px-4 rounded-xl border bg-[var(--bg-base)] text-[var(--text-primary)] text-sm outline-none focus:border-[var(--ink-blue)] ${topUpTooLow ? "border-red-400" : "border-[var(--border-color)]"}`}

@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, type ComponentType, type ReactNode } from 'react';
-import { Link } from 'react-router-dom';
+import { Link } from 'react-router';
 import { Popover } from 'radix-ui';
 import { Bell, Gift, GraduationCap, Heart, MessageCircle, Newspaper } from 'lucide-react';
 import { useAuth } from '../../hooks/useAuth';

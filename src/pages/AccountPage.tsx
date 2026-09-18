@@ -1,5 +1,5 @@
 import { useEffect, useLayoutEffect, useRef, useState, type FormEvent } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router';
 import gsap from 'gsap';
 import { useAuth } from '../hooks/useAuth';
 import { useUsage } from '../hooks/useUsage';
@@ -179,7 +179,7 @@ export function AccountPage() {
 
           {/* Plan card */}
           {isPro ? (
-            <Card className="gs-plan-card bg-gradient-to-br from-slate-900 to-[#312E81] p-8 mb-4 text-white border-0">
+            <Card className="gs-plan-card bg-linear-to-br from-slate-900 to-[#312E81] p-8 mb-4 text-white border-0">
               <div className="inline-flex items-center gap-1.5 bg-[rgba(245,158,11,0.2)] border border-[rgba(245,158,11,0.5)] text-amber-400 text-[0.7rem] font-bold tracking-[0.1em] uppercase px-3 py-1.5 rounded-full mb-4">
                 <span>⚡</span> {isForever ? 'LIFETIME' : 'PRO'}
               </div>
@@ -237,9 +237,11 @@ export function AccountPage() {
               <div className="flex items-center gap-2 mt-1.5">
                 <Input
                   id="displayName"
+                  name="displayName"
+                  autoComplete="name"
                   value={nameInput}
                   onChange={(e) => { setNameInput(e.target.value); setNameSuccess(false); setNameError(null); }}
-                  placeholder="Your name"
+                  placeholder="Your name…"
                 />
                 <Button type="submit" size="sm" disabled={savingName || nameInput.trim() === (user.displayName ?? '')}>
                   {savingName ? 'Saving…' : 'Save'}
@@ -259,6 +261,7 @@ export function AccountPage() {
                     <Label htmlFor="currentPassword">Current password</Label>
                     <PasswordInput
                       id="currentPassword"
+                      name="currentPassword"
                       className="mt-1.5"
                       value={currentPassword}
                       onChange={(e) => setCurrentPassword(e.target.value)}
@@ -269,6 +272,7 @@ export function AccountPage() {
                     <Label htmlFor="newPassword">New password</Label>
                     <PasswordInput
                       id="newPassword"
+                      name="newPassword"
                       className="mt-1.5"
                       value={newPassword}
                       onChange={(e) => setNewPassword(e.target.value)}
@@ -279,6 +283,7 @@ export function AccountPage() {
                     <Label htmlFor="confirmPassword">Confirm new password</Label>
                     <PasswordInput
                       id="confirmPassword"
+                      name="confirmPassword"
                       className="mt-1.5"
                       value={confirmPassword}
                       onChange={(e) => setConfirmPassword(e.target.value)}

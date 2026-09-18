@@ -1,4 +1,4 @@
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useNavigate } from "react-router";
 import { signInWithCustomToken } from "firebase/auth";
 import { adminAuth } from "@/firebase/adminConfig";
 import { StaffLogin } from "@/components/staff/StaffLogin";

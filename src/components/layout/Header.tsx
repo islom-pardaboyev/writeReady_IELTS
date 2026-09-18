@@ -1,4 +1,4 @@
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useNavigate } from "react-router";
 import { useAuth } from "../../hooks/useAuth";
 import Logo from "/logo.png";
 import {
@@ -74,7 +74,7 @@ export function Header() {
     <header className="sticky top-0 py-2 z-10 bg-[var(--bg-card)]/95 backdrop-blur-[8px] border-b border-[var(--border-color)]">
       <div className="max-w-[1160px] mx-auto px-6 h-[60px] flex items-center justify-between">
         <Link to="/" className="flex items-center gap-2 no-underline">
-          <img src={Logo} className={"size-[40px]"} alt="" />
+          <img src={Logo} width={40} height={40} className="size-[40px]" alt="" />
           <span className="font-bold text-lg text-[var(--text-primary)]">
             WriteReady{" "}
             <span className="text-[var(--ink-blue)]">

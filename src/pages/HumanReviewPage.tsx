@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { useParams, Link, useNavigate } from "react-router-dom";
+import { useParams, Link, useNavigate } from "react-router";
 import { AppShell } from "../components/layout/AppShell";
 import { Button } from "../components/ui/Button";
 import { Card } from "../components/ui/Card";

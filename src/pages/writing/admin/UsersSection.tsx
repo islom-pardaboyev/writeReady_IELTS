@@ -168,7 +168,7 @@ export function UsersSection({
       }
       toolbar={
         <>
-          <SearchField value={search} onChange={setSearch} placeholder="Search by email or login" label="Search users" inputRef={searchRef} />
+          <SearchField value={search} onChange={setSearch} placeholder="Search by email or login…" label="Search users" inputRef={searchRef} />
           <FilterChips
             label="Filter users"
             value={filter}
@@ -237,7 +237,7 @@ export function UsersSection({
             onSubmit={(e) => { e.preventDefault(); addBalance(selected); }}
           >
             <Field label="Add to balance" htmlFor="balance-amount" className="w-full max-w-[220px]">
-              <Input id="balance-amount" type="number" inputMode="numeric" min={1} placeholder="Amount in UZS" value={amount} onChange={(e) => setAmount(e.target.value)} className="font-mono" />
+              <Input name="balance-amount" autoComplete="off" id="balance-amount" type="number" inputMode="numeric" min={1} placeholder="Amount in UZS…" value={amount} onChange={(e) => setAmount(e.target.value)} className="font-mono" />
             </Field>
             <Button type="submit" disabled={busy || !amount || Number(amount) <= 0}>Add</Button>
             <Button type="button" variant="outline" disabled={busy || (selected.balanceUZS ?? 0) === 0} onClick={() => resetBalance(selected)}>

@@ -1,6 +1,7 @@
-import { useState, useEffect, useRef, useCallback, type MouseEvent } from 'react';
-import { useParams, useSearchParams, useNavigate, Link } from 'react-router-dom';
+import { useState, useEffect, useRef, useCallback } from 'react';
+import { useParams, useSearchParams, useNavigate, Link } from 'react-router';
 import { useAuth } from '../hooks/useAuth';
+import { useUnsavedWork } from '../hooks/useUnsavedWork';
 import { getQuestion, saveSubmission } from '../firebase/firestore';
 import { AppShell } from '../components/layout/AppShell';
 import { Button } from '../components/ui/Button';
@@ -57,21 +58,7 @@ export function WorkspacePage() {
 
   const hasUnsavedWork = essay.trim().length > 0 && !submitting;
 
-  useEffect(() => {
-    const handler = (e: BeforeUnloadEvent) => {
-      if (!hasUnsavedWork) return;
-      e.preventDefault();
-      e.returnValue = '';
-    };
-    window.addEventListener('beforeunload', handler);
-    return () => window.removeEventListener('beforeunload', handler);
-  }, [hasUnsavedWork]);
-
-  const confirmLeave = (e: MouseEvent) => {
-    if (hasUnsavedWork && !window.confirm('You have unsaved essay text that hasn’t been submitted. Leave this page?')) {
-      e.preventDefault();
-    }
-  };
+  const confirmLeave = useUnsavedWork(hasUnsavedWork);
 
   const isPro = profile?.plan === 'basic' || profile?.plan === 'standard' || profile?.plan === 'premium' || profile?.plan === 'forever';
   const wordCount = essay.trim() ? essay.trim().split(/\s+/).length : 0;
@@ -205,7 +192,7 @@ export function WorkspacePage() {
 
               {/* Text editor */}
               <div>
-                <textarea
+                <textarea name="your-essay-response" autoComplete="off"
                   aria-label="Your essay response"
                   value={essay}
                   onChange={(e) => setEssay(e.target.value)}

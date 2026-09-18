@@ -73,7 +73,7 @@ export function RichEditor({ value, onChange }: Props) {
       {/* Toolbar */}
       <div className="flex flex-wrap items-center gap-0.5 px-2 py-1.5 border-b border-[var(--border-color)] bg-[var(--bg-subtle)]">
         {/* Headings */}
-        <select
+        <select name="text-style" autoComplete="off"
           aria-label="Text style"
           className="text-xs border border-[var(--border-color)] rounded px-1.5 py-1 bg-[var(--bg-card)] text-[var(--text-primary)] cursor-pointer mr-1"
           value={

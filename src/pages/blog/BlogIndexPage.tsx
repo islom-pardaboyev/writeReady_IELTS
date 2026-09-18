@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Link } from 'react-router-dom';
+import { Link } from 'react-router';
 import { Layout } from '../../components/layout/Layout';
 import { getBlogPosts } from '../../firebase/blog';
 import type { BlogPost } from '../../types/blog';

@@ -17,6 +17,24 @@ button:not(:disabled) {
   cursor: pointer;
 }
 
+/* No double-tap-zoom delay on controls. */
+a,
+button,
+label,
+summary,
+[role="button"],
+input,
+select,
+textarea {
+  touch-action: manipulation;
+}
+
+h1,
+h2,
+h3 {
+  text-wrap: balance;
+}
+
 button:disabled {
   cursor: not-allowed;
 }
@@ -301,5 +319,16 @@ button:disabled {
 
   .dark .mock-question-scroll::-webkit-scrollbar-thumb:hover {
     background: #64748b;
+  }
+}
+
+/* Honor reduced motion for every CSS transition (spinners and pulses carry
+   their own motion-reduce: variants). */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  ::before,
+  ::after {
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
   }
 }

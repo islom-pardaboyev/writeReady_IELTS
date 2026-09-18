@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useParams, Link } from 'react-router-dom';
+import { useParams, Link } from 'react-router';
 import { Layout } from '../../components/layout/Layout';
 import { getBlogPost, getBlogPosts, togglePostLike, isPostLiked } from '../../firebase/blog';
 import { CommentSection } from '../../components/blog/CommentSection';

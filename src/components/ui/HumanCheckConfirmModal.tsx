@@ -1,4 +1,4 @@
-import { Link } from 'react-router-dom';
+import { Link } from 'react-router';
 import { Wallet } from 'lucide-react';
 import { Button } from './Button';
 import { Dialog, DialogContent, DialogTitle, DialogDescription } from './dialog';
@@ -17,7 +17,7 @@ export function HumanCheckConfirmModal({ open, priceLoading, price, balance, can
   return (
     <Dialog open={open} onOpenChange={(v) => { if (!v) onCancel(); }}>
       <DialogContent className="max-w-sm p-0 overflow-hidden gap-0 rounded-2xl">
-        <div className="h-1.5 bg-gradient-to-r from-emerald-500 to-teal-500" />
+        <div className="h-1.5 bg-linear-to-r from-emerald-500 to-teal-500" />
         <div className="p-7">
           <div className="flex items-center justify-center w-11 h-11 rounded-full bg-emerald-50 mb-4">
             <Wallet className="w-5 h-5 text-emerald-600" />

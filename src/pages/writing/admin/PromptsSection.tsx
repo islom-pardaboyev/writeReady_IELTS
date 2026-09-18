@@ -169,7 +169,7 @@ export function PromptsSection({
           <Plus aria-hidden="true" /> New
         </Button>
       }
-      toolbar={<SearchField value={search} onChange={setSearch} placeholder="Search questions" label={`Search ${copy.title}`} inputRef={searchRef} />}
+      toolbar={<SearchField value={search} onChange={setSearch} placeholder="Search questions…" label={`Search ${copy.title}`} inputRef={searchRef} />}
     >
       {loading && list.length === 0 ? (
         <RowSkeletons />
@@ -189,7 +189,7 @@ export function PromptsSection({
             <ListRow key={p.id} selected={p.id === selectedId} onSelect={() => { if (p.id !== selectedId) guard(() => select(p.id)); }}>
               {hasImage && (
                 p.image ? (
-                  <img src={p.image} alt="" loading="lazy" className="h-10 w-14 shrink-0 rounded-md border border-[var(--border-color)] bg-[var(--bg-subtle)] object-cover" />
+                  <img src={p.image} alt="" width={56} height={40} loading="lazy" className="h-10 w-14 shrink-0 rounded-md border border-[var(--border-color)] bg-[var(--bg-subtle)] object-cover" />
                 ) : (
                   <span className="h-10 w-14 shrink-0 rounded-md bg-[var(--bg-subtle)]" />
                 )
@@ -221,7 +221,7 @@ export function PromptsSection({
             <Field label="Chart or diagram">
               {newImage ? (
                 <div className="flex flex-col items-start gap-3">
-                  <img src={newImage} alt="Uploaded chart" className="max-h-72 w-full rounded-xl border border-[var(--border-color)] bg-[var(--bg-subtle)] object-contain" />
+                  <img src={newImage} alt="Uploaded chart" width={1200} height={800} loading="lazy" className="max-h-72 w-full rounded-xl border border-[var(--border-color)] bg-[var(--bg-subtle)] object-contain" />
                   <FileButton accept="image/*,application/pdf" onFile={(f) => uploadTo(f, setNewImage)} disabled={uploading}>
                     {uploading ? <Loader2 size={16} className="animate-spin" aria-hidden="true" /> : <Upload size={16} aria-hidden="true" />}
                     {uploading ? "Uploading…" : "Choose another image"}
@@ -240,7 +240,7 @@ export function PromptsSection({
             </Field>
           )}
           <Field label="Question" htmlFor="new-prompt-text">
-            <Textarea id="new-prompt-text" rows={hasImage ? 5 : 8} value={newReport} onChange={(e) => setNewReport(e.target.value)} />
+            <Textarea name="new-prompt-text" autoComplete="off" id="new-prompt-text" rows={hasImage ? 5 : 8} value={newReport} onChange={(e) => setNewReport(e.target.value)} />
           </Field>
           {newError && <Notice tone="error">{newError}</Notice>}
         </div>
@@ -282,7 +282,7 @@ export function PromptsSection({
                     className="w-full overflow-hidden rounded-xl border border-[var(--border-color)] bg-[var(--bg-subtle)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ring)]"
                     aria-label="Open the image at full size"
                   >
-                    <img src={draftImage} alt="Task 1 chart" className="max-h-80 w-full object-contain" />
+                    <img src={draftImage} alt="Task 1 chart" width={1200} height={800} loading="lazy" className="max-h-80 w-full object-contain" />
                   </button>
                 )}
                 <FileButton accept="image/*,application/pdf" onFile={(f) => uploadTo(f, setDraftImage)} disabled={uploading}>
@@ -293,7 +293,7 @@ export function PromptsSection({
             </Field>
           )}
           <Field label="Question" htmlFor="prompt-text">
-            <Textarea id="prompt-text" rows={hasImage ? 5 : 9} value={draftReport} onChange={(e) => setDraftReport(e.target.value)} />
+            <Textarea name="prompt-text" autoComplete="off" id="prompt-text" rows={hasImage ? 5 : 9} value={draftReport} onChange={(e) => setDraftReport(e.target.value)} />
           </Field>
         </div>
       </DetailView>
@@ -325,7 +325,7 @@ export function PromptsSection({
       <Dialog open={!!preview} onOpenChange={(open) => { if (!open) setPreview(null); }}>
         <DialogContent className="max-w-5xl p-3">
           <DialogTitle className="sr-only">Task 1 image</DialogTitle>
-          {preview && <img src={preview} alt="Task 1 chart at full size" className="max-h-[82vh] w-full rounded-lg object-contain" />}
+          {preview && <img src={preview} alt="Task 1 chart at full size" width={1200} height={800} className="max-h-[82vh] w-full rounded-lg object-contain" />}
         </DialogContent>
       </Dialog>
       {dialog}

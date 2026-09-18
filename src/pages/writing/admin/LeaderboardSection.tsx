@@ -226,7 +226,7 @@ export function LeaderboardSection() {
           </div>
           <form className="flex flex-wrap items-end gap-2" onSubmit={(e) => { e.preventDefault(); grant(); }}>
             <Field label="Free analyses for each student" htmlFor="bonus-amount" className="w-full max-w-[240px]">
-              <Input id="bonus-amount" type="number" min={1} max={50} value={amount} onChange={(e) => setAmount(e.target.value)} className="font-mono" />
+              <Input name="bonus-amount" autoComplete="off" id="bonus-amount" type="number" min={1} max={50} value={amount} onChange={(e) => setAmount(e.target.value)} className="font-mono" />
             </Field>
             <Button type="submit" loading={granting} disabled={!amount || Number(amount) < 1}>
               {granting ? "Giving…" : `Give to ${chosen.length} ${chosen.length === 1 ? "student" : "students"}`}

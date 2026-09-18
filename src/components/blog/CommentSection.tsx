@@ -98,9 +98,10 @@ export function CommentSection({ postId }: Props) {
 
       {/* Input */}
       <div className="mb-6">
-        <Textarea
+        <Textarea name="comment" autoComplete="off"
           rows={3}
-          placeholder={user ? 'Write a comment…' : 'Sign in to comment'}
+          aria-label="Comment"
+          placeholder={user ? 'Write a comment…' : 'Sign in to comment…'}
           value={text}
           onChange={(e) => setText(e.target.value)}
           disabled={!user}

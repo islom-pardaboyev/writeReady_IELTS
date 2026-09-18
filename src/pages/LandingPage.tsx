@@ -1,7 +1,7 @@
 import { useRef, useLayoutEffect } from 'react';
 import gsap from 'gsap';
 import { ScrollTrigger } from 'gsap/ScrollTrigger';
-import { Link } from 'react-router-dom';
+import { Link } from 'react-router';
 import { Header } from '@/components/layout/Header';
 import { ChatBot } from '../components/ui/ChatBot';
 import { AnnouncementPopup } from '../components/ui/AnnouncementPopup';

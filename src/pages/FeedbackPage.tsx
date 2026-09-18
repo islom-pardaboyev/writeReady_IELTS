@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { useParams, Link, useNavigate } from 'react-router-dom';
+import { useParams, Link, useNavigate } from 'react-router';
 import jsPDF from 'jspdf';
 import {
   ArrowLeft, Download, ChevronLeft, ChevronRight, Loader2, Lock, AlertTriangle,
@@ -977,7 +977,7 @@ export function FeedbackPage() {
                 {/* progress bar */}
                 <div className="h-1.5 w-full rounded-full bg-[var(--bg-subtle)] overflow-hidden mb-6">
                   <div
-                    className="h-full bg-[var(--ink-blue)] rounded-full transition-all duration-700 ease-out"
+                    className="h-full bg-[var(--ink-blue)] rounded-full transition-[width] duration-700 ease-out"
                     style={{ width: `${Math.max(pct, 6)}%` }}
                   />
                 </div>
@@ -1062,7 +1062,7 @@ export function FeedbackPage() {
             <div>
               {/* Score hero */}
               <div className="relative overflow-hidden rounded-2xl mb-5 bg-[var(--bg-card)] border border-[var(--border-color)] shadow-sm">
-                <div className="absolute inset-0 bg-gradient-to-br from-[var(--ink-blue)]/[0.07] via-transparent to-[var(--gold)]/[0.06] pointer-events-none" />
+                <div className="absolute inset-0 bg-linear-to-br from-[var(--ink-blue)]/[0.07] via-transparent to-[var(--gold)]/[0.06] pointer-events-none" />
                 <div
                   className="absolute -top-24 -right-24 w-64 h-64 rounded-full blur-3xl opacity-[0.15] pointer-events-none"
                   style={{ background: scoreStroke(feedback.scores.overall) }}
@@ -1083,7 +1083,7 @@ export function FeedbackPage() {
                           strokeLinecap="round"
                           strokeDasharray={`${2 * Math.PI * 40}`}
                           strokeDashoffset={`${2 * Math.PI * 40 * (1 - (feedback.scores.overall - 4) / 5)}`}
-                          className="transition-all duration-700"
+                          className="transition-[stroke-dashoffset,stroke] duration-700"
                         />
                       </svg>
                       <div className="absolute flex flex-col items-center">
@@ -1119,7 +1119,7 @@ export function FeedbackPage() {
                             <span className="text-[0.8rem] text-[var(--text-secondary)] w-[8.5rem] sm:w-40 shrink-0 truncate">{cat.shortLabel}</span>
                             <div className="flex-1 h-2 bg-[var(--bg-subtle)] rounded-full overflow-hidden">
                               <div
-                                className={`h-full rounded-full transition-all duration-700 ${scoreBarColor(score)}`}
+                                className={`h-full rounded-full transition-[width,background-color] duration-700 ${scoreBarColor(score)}`}
                                 style={{ width: `${Math.max(4, ((score - 4) / 5) * 100)}%` }}
                               />
                             </div>
@@ -1198,7 +1198,7 @@ export function FeedbackPage() {
                       return (
                         <div
                           key={cat.key}
-                          className="bg-[var(--bg-card)] rounded-2xl p-5 border border-[var(--border-color)] shadow-sm text-center transition-all duration-200 hover:shadow-md hover:-translate-y-0.5"
+                          className="bg-[var(--bg-card)] rounded-2xl p-5 border border-[var(--border-color)] shadow-sm text-center transition-[transform,box-shadow] duration-200 hover:shadow-md hover:-translate-y-0.5"
                         >
                           <div className={`w-9 h-9 rounded-xl ${cc.iconBg} flex items-center justify-center mx-auto mb-3`}>
                             <Icon className={`w-4 h-4 ${cc.icon}`} />
@@ -1209,7 +1209,7 @@ export function FeedbackPage() {
                           <ScoreBadge score={score} />
                           <div className="h-1.5 bg-[var(--bg-subtle)] rounded-full mt-3">
                             <div
-                              className={`h-full rounded-full transition-all duration-700 ${scoreBarColor(score)}`}
+                              className={`h-full rounded-full transition-[width,background-color] duration-700 ${scoreBarColor(score)}`}
                               style={{ width: `${Math.max(4, ((score - 4) / 5) * 100)}%` }}
                             />
                           </div>
@@ -1247,7 +1247,7 @@ export function FeedbackPage() {
                     return (
                       <div
                         key={i}
-                        className={`bg-gradient-to-r ${bgGradient} to-transparent bg-[var(--bg-card)] rounded-2xl px-6 py-5 border border-[var(--border-color)] flex gap-5 items-start shadow-sm transition-all duration-200 hover:shadow-md hover:-translate-y-0.5`}
+                        className={`bg-linear-to-r ${bgGradient} to-transparent bg-[var(--bg-card)] rounded-2xl px-6 py-5 border border-[var(--border-color)] flex gap-5 items-start shadow-sm transition-[transform,box-shadow] duration-200 hover:shadow-md hover:-translate-y-0.5`}
                         style={{ borderLeft: `4px solid ${accent}` }}
                       >
                         <div
@@ -1365,7 +1365,7 @@ export function FeedbackPage() {
                       >
                         <div className={`fp-flip-inner h-full${flipped[i] ? ' is-flipped' : ''}`}>
                           <div
-                            className="fp-flip-face bg-gradient-to-br from-purple-500 to-purple-700 text-white border border-purple-600 shadow-sm"
+                            className="fp-flip-face bg-linear-to-br from-purple-500 to-purple-700 text-white border border-purple-600 shadow-sm"
                           >
                             <p className="text-[0.65rem] font-bold tracking-widest uppercase text-white/40 mb-3">
                               Word {i + 1} of {feedback.vocabulary.length}
@@ -1400,7 +1400,7 @@ export function FeedbackPage() {
               {activeTab === 'grammar' && (feedback.limited ? <UpgradePrompt /> :(
                 <div id="fp-panel-grammar" role="tabpanel" aria-labelledby="fp-tab-grammar" className="fp-tab-panel flex flex-col gap-3">
                   {feedback.grammar.map((g, i) => (
-                    <div key={i} className="bg-[var(--bg-card)] rounded-2xl px-6 py-5 border border-[var(--border-color)] shadow-sm transition-all duration-200 hover:shadow-md hover:-translate-y-0.5">
+                    <div key={i} className="bg-[var(--bg-card)] rounded-2xl px-6 py-5 border border-[var(--border-color)] shadow-sm transition-[transform,box-shadow] duration-200 hover:shadow-md hover:-translate-y-0.5">
                       <div className="flex gap-4 items-start">
                         <div className="w-9 h-9 rounded-xl flex items-center justify-center bg-amber-500/10 text-amber-600 dark:text-amber-400 shrink-0">
                           <SpellCheck2 className="w-4 h-4" />
@@ -1451,7 +1451,7 @@ export function FeedbackPage() {
                             <button
                               key={i}
                               type="button"
-                              className={`w-full text-left block rounded-xl border px-5 py-3.5 cursor-pointer transition-all duration-200 hover:shadow-md hover:-translate-y-0.5 ${style.bg} ${style.border}`}
+                              className={`w-full text-left block rounded-xl border px-5 py-3.5 cursor-pointer transition-[transform,box-shadow] duration-200 hover:shadow-md hover:-translate-y-0.5 ${style.bg} ${style.border}`}
                               onClick={() => toggleSentence(i)}
                               aria-expanded={isOpen}
                             >
@@ -1502,7 +1502,7 @@ export function FeedbackPage() {
               {/* ── SAMPLE RESPONSE ── */}
               {activeTab === 'sample' && (feedback.limited ? <UpgradePrompt /> : (
                 <div id="fp-panel-sample" role="tabpanel" aria-labelledby="fp-tab-sample" className="fp-tab-panel relative overflow-hidden bg-[var(--bg-card)] rounded-2xl border border-[var(--border-color)] border-l-4 border-l-[var(--gold)] px-6 py-6 shadow-sm transition-shadow duration-200 hover:shadow-md">
-                  <div className="absolute inset-0 bg-gradient-to-br from-[var(--gold)]/[0.05] via-transparent to-transparent pointer-events-none" />
+                  <div className="absolute inset-0 bg-linear-to-br from-[var(--gold)]/[0.05] via-transparent to-transparent pointer-events-none" />
                   <p className="relative flex items-center gap-2 text-xs font-bold tracking-widest uppercase text-[var(--gold)] mb-4">
                     <span className="inline-flex items-center justify-center w-6 h-6 rounded-md bg-[var(--gold)]/15">
                       <PenLine className="w-3.5 h-3.5" />
@@ -1665,9 +1665,11 @@ export function FeedbackPage() {
                             <span className="font-bold text-purple-700 dark:text-purple-300 text-base">{v.word}</span>
                             <span className="text-xs text-[var(--text-muted)]">— {v.uzbek}</span>
                           </div>
-                          <textarea
-                            className="w-full border border-[var(--border-color)] bg-[var(--bg-input)] rounded-lg px-3 py-2 text-sm text-[var(--text-primary)] resize-none outline-none focus:border-purple-500 transition-colors"
+                          <textarea autoComplete="off"
+                            className="w-full border border-[var(--border-color)] bg-[var(--bg-input)] rounded-lg px-3 py-2 text-sm text-[var(--text-primary)] resize-none outline-hidden focus:border-purple-500 focus-visible:ring-2 focus-visible:ring-purple-500/40 transition-colors"
                             rows={2}
+                            name={`practice-${key}`}
+                            aria-label={`Sentence using ${v.word}`}
                             placeholder={`Write a sentence using "${v.word}"…`}
                             value={practiceInputs[key] ?? ''}
                             onChange={(e) => setPracticeInputs((p) => ({ ...p, [key]: e.target.value }))}
@@ -1708,10 +1710,12 @@ export function FeedbackPage() {
                             <span className="font-bold text-[var(--text-primary)] text-sm">{g.point}</span>
                           </div>
                           <p className="text-xs text-[var(--text-muted)] mb-3">{g.explanation}</p>
-                          <textarea
-                            className="w-full border border-[var(--border-color)] bg-[var(--bg-input)] rounded-lg px-3 py-2 text-sm text-[var(--text-primary)] resize-none outline-none focus:border-[var(--gold)] transition-colors"
+                          <textarea autoComplete="off"
+                            className="w-full border border-[var(--border-color)] bg-[var(--bg-input)] rounded-lg px-3 py-2 text-sm text-[var(--text-primary)] resize-none outline-hidden focus:border-[var(--gold)] focus-visible:ring-2 focus-visible:ring-[var(--gold)]/40 transition-colors"
                             rows={2}
-                            placeholder={`Write an example using this rule…`}
+                            name={`practice-${key}`}
+                            aria-label={`Example for ${g.point}`}
+                            placeholder="Write an example using this rule…"
                             value={practiceInputs[key] ?? ''}
                             onChange={(e) => setPracticeInputs((p) => ({ ...p, [key]: e.target.value }))}
                           />

@@ -323,7 +323,7 @@ export function CentersSection({ intent, clearIntent }: SectionProps) {
       }
       toolbar={
         <>
-          <SearchField value={search} onChange={setSearch} placeholder="Search centers" label="Search learning centers" inputRef={searchRef} />
+          <SearchField value={search} onChange={setSearch} placeholder="Search centers…" label="Search learning centers" inputRef={searchRef} />
           <FilterChips
             label="Filter centers"
             value={filter}
@@ -390,31 +390,31 @@ export function CentersSection({ intent, clearIntent }: SectionProps) {
         <DetailHeader title={isNew ? "New learning center" : `Edit ${editing.name || "center"}`} meta="The center signs in to its portal with this login and password." />
         <div className="mt-6 grid gap-5 sm:grid-cols-2">
           <Field label="Center name" htmlFor="c-name" className="sm:col-span-2">
-            <Input id="c-name" value={editing.name ?? ""} onChange={(e) => set({ name: e.target.value })} />
+            <Input name="c-name" autoComplete="off" id="c-name" value={editing.name ?? ""} onChange={(e) => set({ name: e.target.value })} />
           </Field>
           <Field label="Contact person" htmlFor="c-contact" optional>
-            <Input id="c-contact" value={editing.contactPerson ?? ""} onChange={(e) => set({ contactPerson: e.target.value })} />
+            <Input name="c-contact" autoComplete="off" id="c-contact" value={editing.contactPerson ?? ""} onChange={(e) => set({ contactPerson: e.target.value })} />
           </Field>
           <Field label="Phone" htmlFor="c-phone" optional>
-            <Input id="c-phone" type="tel" value={editing.phone ?? ""} onChange={(e) => set({ phone: e.target.value })} />
+            <Input name="c-phone" autoComplete="off" id="c-phone" type="tel" value={editing.phone ?? ""} onChange={(e) => set({ phone: e.target.value })} />
           </Field>
           <Field label="Portal login" htmlFor="c-login">
-            <Input id="c-login" autoComplete="off" value={editing.login ?? ""} onChange={(e) => set({ login: e.target.value })} />
+            <Input name="c-login" id="c-login" autoComplete="off" value={editing.login ?? ""} onChange={(e) => set({ login: e.target.value })} />
           </Field>
           <Field label="Portal password" htmlFor="c-password">
-            <PasswordInput id="c-password" autoComplete="new-password" value={editing.password ?? ""} onChange={(e) => set({ password: e.target.value })} />
+            <PasswordInput name="c-password" id="c-password" autoComplete="new-password" value={editing.password ?? ""} onChange={(e) => set({ password: e.target.value })} />
           </Field>
           <Field label="Contract ends" htmlFor="c-expires" hint="Status is set from this date: ending soon within 14 days, expired after it passes.">
-            <Input id="c-expires" type="date" value={editing.expiresAt ?? ""} onChange={(e) => set({ expiresAt: e.target.value })} />
+            <Input name="c-expires" autoComplete="off" id="c-expires" type="date" value={editing.expiresAt ?? ""} onChange={(e) => set({ expiresAt: e.target.value })} />
           </Field>
           <Field label="Student places" htmlFor="c-limit">
-            <Input id="c-limit" type="number" min={1} value={editing.studentLimit ?? 30} onChange={(e) => set({ studentLimit: Number(e.target.value) })} className="font-mono" />
+            <Input name="c-limit" autoComplete="off" id="c-limit" type="number" min={1} value={editing.studentLimit ?? 30} onChange={(e) => set({ studentLimit: Number(e.target.value) })} className="font-mono" />
           </Field>
           <Field label="Contract number" htmlFor="c-contract" optional>
-            <Input id="c-contract" value={editing.contractNumber ?? ""} onChange={(e) => set({ contractNumber: e.target.value })} />
+            <Input name="c-contract" autoComplete="off" id="c-contract" value={editing.contractNumber ?? ""} onChange={(e) => set({ contractNumber: e.target.value })} />
           </Field>
           <Field label="Payment (UZS)" htmlFor="c-payment" optional>
-            <Input id="c-payment" type="number" min={0} value={editing.paymentAmount ?? 0} onChange={(e) => set({ paymentAmount: Number(e.target.value) })} className="font-mono" />
+            <Input name="c-payment" autoComplete="off" id="c-payment" type="number" min={0} value={editing.paymentAmount ?? 0} onChange={(e) => set({ paymentAmount: Number(e.target.value) })} className="font-mono" />
           </Field>
         </div>
         {formError && <Notice tone="error" className="mt-5">{formError}</Notice>}
@@ -478,13 +478,13 @@ export function CentersSection({ intent, clearIntent }: SectionProps) {
             onSubmit={(e) => { e.preventDefault(); addStudent(selected); }}
           >
             <Field label="Full name" htmlFor="ns-name">
-              <Input id="ns-name" autoComplete="off" value={newName} onChange={(e) => setNewName(e.target.value)} />
+              <Input name="ns-name" id="ns-name" autoComplete="off" value={newName} onChange={(e) => setNewName(e.target.value)} />
             </Field>
             <Field label="Login" htmlFor="ns-login">
-              <Input id="ns-login" autoComplete="off" value={newLogin} onChange={(e) => setNewLogin(e.target.value)} />
+              <Input name="ns-login" id="ns-login" autoComplete="off" value={newLogin} onChange={(e) => setNewLogin(e.target.value)} />
             </Field>
             <Field label="Password" htmlFor="ns-pass" hint="At least 6 characters.">
-              <PasswordInput id="ns-pass" autoComplete="new-password" value={newPassword} onChange={(e) => setNewPassword(e.target.value)} />
+              <PasswordInput name="ns-pass" id="ns-pass" autoComplete="new-password" value={newPassword} onChange={(e) => setNewPassword(e.target.value)} />
             </Field>
             <div className="flex items-center gap-3 sm:col-span-3">
               <Button type="submit" loading={adding} disabled={full}>
@@ -508,13 +508,13 @@ export function CentersSection({ intent, clearIntent }: SectionProps) {
                   {editStudentId === s.id ? (
                     <form className="grid gap-3 sm:grid-cols-3" onSubmit={(e) => { e.preventDefault(); saveStudent(selected, s); }}>
                       <Field label="Full name" htmlFor={`es-name-${s.id}`}>
-                        <Input id={`es-name-${s.id}`} value={esName} onChange={(e) => setEsName(e.target.value)} />
+                        <Input autoComplete="off" name={`es-name-${s.id}`} id={`es-name-${s.id}`} value={esName} onChange={(e) => setEsName(e.target.value)} />
                       </Field>
                       <Field label="Login" htmlFor={`es-login-${s.id}`}>
-                        <Input id={`es-login-${s.id}`} value={esLogin} onChange={(e) => setEsLogin(e.target.value)} />
+                        <Input autoComplete="off" name={`es-login-${s.id}`} id={`es-login-${s.id}`} value={esLogin} onChange={(e) => setEsLogin(e.target.value)} />
                       </Field>
                       <Field label="New password" htmlFor={`es-pass-${s.id}`} optional hint="Leave empty to keep it.">
-                        <PasswordInput id={`es-pass-${s.id}`} autoComplete="new-password" value={esPass} onChange={(e) => setEsPass(e.target.value)} />
+                        <PasswordInput name={`es-pass-${s.id}`} id={`es-pass-${s.id}`} autoComplete="new-password" value={esPass} onChange={(e) => setEsPass(e.target.value)} />
                       </Field>
                       {esError && <Notice tone="error" className="sm:col-span-3">{esError}</Notice>}
                       <div className="flex gap-2 sm:col-span-3">

@@ -233,7 +233,7 @@ export function BlogSection({ intent, clearIntent }: SectionProps) {
       action={<Button size="sm" onClick={() => open("new")}><Plus aria-hidden="true" /> New</Button>}
       toolbar={
         <>
-          <SearchField value={search} onChange={setSearch} placeholder="Search posts" label="Search blog posts" inputRef={searchRef} />
+          <SearchField value={search} onChange={setSearch} placeholder="Search posts…" label="Search blog posts" inputRef={searchRef} />
           <FilterChips
             label="Filter posts"
             value={filter}
@@ -323,27 +323,27 @@ export function BlogSection({ intent, clearIntent }: SectionProps) {
 
         <div className="mt-6 grid gap-5 sm:grid-cols-2">
           <Field label="Title" htmlFor="b-title" className="sm:col-span-2">
-            <Input id="b-title" value={editor.title ?? ""} onChange={(e) => set({ title: e.target.value, slug: slugify(e.target.value) })} />
+            <Input name="b-title" autoComplete="off" id="b-title" value={editor.title ?? ""} onChange={(e) => set({ title: e.target.value, slug: slugify(e.target.value) })} />
           </Field>
           <Field label="Web address" htmlFor="b-slug" hint={`writeready.uz/blog/${editor.slug || "…"}`}>
-            <Input id="b-slug" value={editor.slug ?? ""} onChange={(e) => set({ slug: e.target.value })} className="font-mono" />
+            <Input name="b-slug" autoComplete="off" id="b-slug" value={editor.slug ?? ""} onChange={(e) => set({ slug: e.target.value })} className="font-mono" />
           </Field>
           <Field label="Status" htmlFor="b-status">
-            <select id="b-status" className={selectClass} value={editor.status ?? "draft"} onChange={(e) => set({ status: e.target.value as BlogPost["status"] })}>
+            <select name="b-status" autoComplete="off" id="b-status" className={selectClass} value={editor.status ?? "draft"} onChange={(e) => set({ status: e.target.value as BlogPost["status"] })}>
               <option value="draft">Draft</option>
               <option value="published">Published</option>
               <option value="scheduled">Scheduled</option>
             </select>
           </Field>
           <Field label="Summary" htmlFor="b-excerpt" className="sm:col-span-2" hint="Shown on the blog list and in search results.">
-            <Textarea id="b-excerpt" rows={3} value={editor.excerpt ?? ""} onChange={(e) => set({ excerpt: e.target.value })} />
+            <Textarea name="b-excerpt" autoComplete="off" id="b-excerpt" rows={3} value={editor.excerpt ?? ""} onChange={(e) => set({ excerpt: e.target.value })} />
           </Field>
         </div>
 
         <DetailSection title="Article">
           <div className="mb-4 flex flex-wrap items-end gap-2 rounded-xl border border-[var(--border-color)] bg-[var(--bg-subtle)] p-4">
             <Field label="Draft the article with AI" htmlFor="b-ai" className="min-w-[220px] flex-1" hint="Replaces the text below with a first draft.">
-              <Input id="b-ai" placeholder="Topic, e.g. linking words for Task 2" value={aiTopic} onChange={(e) => setAiTopic(e.target.value)} />
+              <Input name="b-ai" autoComplete="off" id="b-ai" placeholder="Topic, e.g. linking words for Task 2…" value={aiTopic} onChange={(e) => setAiTopic(e.target.value)} />
             </Field>
             <Button variant="outline" onClick={generate} loading={aiLoading} disabled={!aiTopic.trim()} className="mb-5">
               <Sparkles aria-hidden="true" /> {aiLoading ? "Writing…" : "Generate"}
@@ -355,21 +355,21 @@ export function BlogSection({ intent, clearIntent }: SectionProps) {
         <DetailSection title="Details">
           <div className="grid gap-5 sm:grid-cols-2">
             <Field label="Category" htmlFor="b-category">
-              <select id="b-category" className={selectClass} value={editor.category ?? "Writing tips"} onChange={(e) => set({ category: e.target.value as BlogPost["category"] })}>
+              <select name="b-category" autoComplete="off" id="b-category" className={selectClass} value={editor.category ?? "Writing tips"} onChange={(e) => set({ category: e.target.value as BlogPost["category"] })}>
                 {CATEGORIES.map((c) => <option key={c} value={c}>{c}</option>)}
               </select>
             </Field>
             <Field label="Author" htmlFor="b-author">
-              <Input id="b-author" value={editor.author ?? "WriteReady Team"} onChange={(e) => set({ author: e.target.value })} />
+              <Input name="b-author" autoComplete="off" id="b-author" value={editor.author ?? "WriteReady Team"} onChange={(e) => set({ author: e.target.value })} />
             </Field>
             <Field label="Cover image URL" htmlFor="b-image" optional className="sm:col-span-2">
-              <Input id="b-image" type="url" placeholder="https://" value={editor.featuredImage ?? ""} onChange={(e) => set({ featuredImage: e.target.value })} />
+              <Input name="b-image" autoComplete="off" id="b-image" type="url" placeholder="https://example.com…" value={editor.featuredImage ?? ""} onChange={(e) => set({ featuredImage: e.target.value })} />
             </Field>
             <Field label="Call-to-action text" htmlFor="b-cta" optional>
-              <Input id="b-cta" value={editor.ctaText ?? ""} onChange={(e) => set({ ctaText: e.target.value })} />
+              <Input name="b-cta" autoComplete="off" id="b-cta" value={editor.ctaText ?? ""} onChange={(e) => set({ ctaText: e.target.value })} />
             </Field>
             <Field label="Call-to-action link" htmlFor="b-cta-link" optional>
-              <Input id="b-cta-link" placeholder="https://" value={editor.ctaLink ?? ""} onChange={(e) => set({ ctaLink: e.target.value })} />
+              <Input name="b-cta-link" autoComplete="off" id="b-cta-link" placeholder="https://example.com…" value={editor.ctaLink ?? ""} onChange={(e) => set({ ctaLink: e.target.value })} />
             </Field>
           </div>
         </DetailSection>
@@ -377,13 +377,13 @@ export function BlogSection({ intent, clearIntent }: SectionProps) {
         <DetailSection title="Search engines" description="How the post appears on Google.">
           <div className="grid gap-5 sm:grid-cols-2">
             <Field label="SEO title" htmlFor="b-seo-title" optional>
-              <Input id="b-seo-title" value={editor.seo?.metaTitle ?? ""} onChange={(e) => setSeo({ metaTitle: e.target.value })} />
+              <Input name="b-seo-title" autoComplete="off" id="b-seo-title" value={editor.seo?.metaTitle ?? ""} onChange={(e) => setSeo({ metaTitle: e.target.value })} />
             </Field>
             <Field label="Focus keyword" htmlFor="b-seo-kw" optional>
-              <Input id="b-seo-kw" value={editor.seo?.focusKeyword ?? ""} onChange={(e) => setSeo({ focusKeyword: e.target.value })} />
+              <Input name="b-seo-kw" autoComplete="off" id="b-seo-kw" value={editor.seo?.focusKeyword ?? ""} onChange={(e) => setSeo({ focusKeyword: e.target.value })} />
             </Field>
             <Field label="Meta description" htmlFor="b-seo-desc" optional className="sm:col-span-2">
-              <Textarea id="b-seo-desc" rows={2} value={editor.seo?.metaDescription ?? ""} onChange={(e) => setSeo({ metaDescription: e.target.value })} />
+              <Textarea name="b-seo-desc" autoComplete="off" id="b-seo-desc" rows={2} value={editor.seo?.metaDescription ?? ""} onChange={(e) => setSeo({ metaDescription: e.target.value })} />
             </Field>
           </div>
         </DetailSection>

@@ -1,5 +1,5 @@
 import { useLayoutEffect, useRef, useEffect, useState } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router';
 import gsap from 'gsap';
 import { ScrollTrigger } from 'gsap/ScrollTrigger';
 import { useAuth } from '../hooks/useAuth';
@@ -183,7 +183,7 @@ export function DashboardPage() {
 
           {/* Bonus notification banner — hide for paid users */}
           {notification && !isPaidPlan && (
-            <div role="status" aria-live="polite" className="mb-6 flex items-start gap-3 bg-gradient-to-r from-amber-50 to-yellow-50 border border-amber-200 rounded-2xl px-5 py-4">
+            <div role="status" aria-live="polite" className="mb-6 flex items-start gap-3 bg-linear-to-r from-amber-50 to-yellow-50 border border-amber-200 rounded-2xl px-5 py-4">
               <span className="text-2xl shrink-0" aria-hidden="true">🎁</span>
               <p className="text-sm text-amber-800 font-medium flex-1 leading-relaxed">{notification}</p>
               <button
@@ -214,7 +214,7 @@ export function DashboardPage() {
 
           {/* Learning Center student info card */}
           {isStudent && (
-            <Card className="gs-db-quota px-6 py-5 mb-8 bg-gradient-to-r from-emerald-50 to-teal-50 dark:from-emerald-900/20 dark:to-teal-900/20 border-emerald-200 dark:border-emerald-800">
+            <Card className="gs-db-quota px-6 py-5 mb-8 bg-linear-to-r from-emerald-50 to-teal-50 dark:from-emerald-900/20 dark:to-teal-900/20 border-emerald-200 dark:border-emerald-800">
               <div className="flex items-center gap-4 flex-wrap">
                 <div className="w-11 h-11 rounded-full bg-emerald-600 flex items-center justify-center text-2xl shrink-0">🏫</div>
                 <div className="flex-1 min-w-0">
@@ -348,7 +348,7 @@ export function DashboardPage() {
                     return (
                       <Card
                         key={r.id}
-                        className="group p-5 hover:shadow-[var(--shadow-md)] hover:-translate-y-0.5 transition-all duration-200 flex flex-col gap-4"
+                        className="group p-5 hover:shadow-[var(--shadow-md)] hover:-translate-y-0.5 transition-[transform,box-shadow] duration-200 flex flex-col gap-4"
                       >
                         {/* Header */}
                         <div className="flex items-start justify-between gap-2">
@@ -425,7 +425,7 @@ export function DashboardPage() {
                     const isChecked = r.status === 'checked';
                     return (
                       <Link key={r.id} to={`/human-review/${r.id}`} className="no-underline">
-                        <Card className="group p-5 hover:shadow-[var(--shadow-md)] hover:-translate-y-0.5 transition-all duration-200 flex flex-col gap-4 h-full">
+                        <Card className="group p-5 hover:shadow-[var(--shadow-md)] hover:-translate-y-0.5 transition-[transform,box-shadow] duration-200 flex flex-col gap-4 h-full">
                           <div className="flex items-start justify-between gap-2">
                             <div className="flex-1 min-w-0">
                               <Badge variant="purple" className="mb-2 text-[0.65rem] uppercase tracking-wider">
@@ -464,7 +464,7 @@ export function DashboardPage() {
           )}
 
           {!isPro && (
-            <div className="gs-db-upsell mt-4 bg-gradient-to-br from-slate-900 to-[#312E81] rounded-2xl p-8 flex items-center justify-between gap-4 flex-wrap">
+            <div className="gs-db-upsell mt-4 bg-linear-to-br from-slate-900 to-[#312E81] rounded-2xl p-8 flex items-center justify-between gap-4 flex-wrap">
               <div>
                 <h3 className="font-sans font-bold text-white mb-1.5 text-xl">
                   Unlock AI Feedback

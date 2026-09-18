@@ -15,7 +15,7 @@ export function AnnouncementBanner() {
   if (!user || !announcement || dismissed) return null;
 
   return (
-    <div className="flex items-center gap-3 bg-gradient-to-r from-blue-600 to-indigo-600 px-5 py-2.5 text-white text-sm">
+    <div className="flex items-center gap-3 bg-linear-to-r from-blue-600 to-indigo-600 px-5 py-2.5 text-white text-sm">
       <span className="text-base shrink-0">📢</span>
       <p className="flex-1 leading-snug">{announcement.text}</p>
       <button

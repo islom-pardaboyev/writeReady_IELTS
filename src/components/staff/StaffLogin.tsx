@@ -58,6 +58,7 @@ export function StaffLogin({
                 id="staff-login"
                 name="username"
                 autoComplete="username"
+                spellCheck={false}
                 value={login}
                 onChange={(e) => setLogin(e.target.value)}
                 autoFocus

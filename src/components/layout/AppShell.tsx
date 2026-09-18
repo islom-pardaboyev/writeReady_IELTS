@@ -1,5 +1,5 @@
 import type { ReactNode } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useNavigate } from "react-router";
 import { LogOut } from "lucide-react";
 import Logo from "/logo.png";
 import { ChatBot } from "../ui/ChatBot";

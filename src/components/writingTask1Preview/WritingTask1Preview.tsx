@@ -23,7 +23,7 @@ export default function WritingTask1Preview({ task1 }: Props) {
               <iframe src={task1.image} className="w-full h-[520px] border-0" title="Task 1 chart" />
             </object>
           ) : (
-            <img src={task1.image} alt="Task 1 chart or diagram" className="w-full h-auto object-contain" />
+            <img src={task1.image} alt="Task 1 chart or diagram" width={1200} height={800} loading="lazy" className="w-full h-auto object-contain" />
           )}
         </div>
       )}

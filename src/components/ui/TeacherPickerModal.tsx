@@ -29,7 +29,7 @@ export function TeacherPickerModal({ open, onClose, onSelect, submitting }: Teac
   return (
     <Dialog open={open} onOpenChange={(v) => { if (!v) onClose(); }}>
       <DialogContent className="max-w-md p-0 overflow-hidden gap-0 rounded-2xl">
-        <div className="h-1.5 bg-gradient-to-r from-emerald-500 to-teal-500" />
+        <div className="h-1.5 bg-linear-to-r from-emerald-500 to-teal-500" />
         <div className="p-6">
           <div className="flex items-center gap-2 mb-4">
             <GraduationCap className="w-5 h-5 text-emerald-600" />
@@ -58,7 +58,7 @@ export function TeacherPickerModal({ open, onClose, onSelect, submitting }: Teac
                   className="flex items-center gap-3 p-3 rounded-xl border border-slate-200 hover:border-emerald-400 hover:bg-emerald-50/50 transition-colors text-left disabled:opacity-50 disabled:pointer-events-none"
                 >
                   {t.photoBase64 ? (
-                    <img src={t.photoBase64} alt={t.name} className="w-11 h-11 rounded-full object-cover shrink-0" />
+                    <img src={t.photoBase64} alt={t.name} width={44} height={44} loading="lazy" className="w-11 h-11 rounded-full object-cover shrink-0" />
                   ) : (
                     <div className="w-11 h-11 rounded-full bg-emerald-100 text-emerald-700 font-bold flex items-center justify-center shrink-0">
                       {t.name.slice(0, 2).toUpperCase()}

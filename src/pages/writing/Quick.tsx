@@ -9,8 +9,9 @@ import { auth, db } from "@/firebase/firebase";
 import { collection, doc, getDoc, getDocs } from "firebase/firestore";
 import { downloadEssayPdf } from "@/lib/essayPdf";
 import WritingTask1Preview from "@/components/writingTask1Preview/WritingTask1Preview";
-import { NavLink, useNavigate } from "react-router-dom";
+import { NavLink, useNavigate } from "react-router";
 import { useAuth } from "@/hooks/useAuth";
+import { useUnsavedWork } from "@/hooks/useUnsavedWork";
 import { Button } from "@/components/ui/Button";
 import WritingTask2Preview from "@/components/writingTask2Preview/WritingTask2Preview";
 import { encodeReport } from "@/lib/reportEncoding";
@@ -54,6 +55,9 @@ function Quick() {
   const humanCheckEnabled = useFeatureFlag("humanCheck");
 
   const [splitRatio, setSplitRatio] = useState(0.46);
+  const confirmLeave = useUnsavedWork(
+    userText.trim().length > 0 && !checkingAccess,
+  );
   const [timerRunning, setTimerRunning] = useState(false);
   const elapsed = useStopwatch(timerRunning);
   const splitContainerRef = useRef<HTMLDivElement>(null);
@@ -206,7 +210,7 @@ function Quick() {
             {/* Task 1 */}
             <button
               onClick={() => setSelectedTaskType(1)}
-              className="group relative rounded-2xl border-2 border-slate-200 bg-white p-6 text-left hover:border-violet-400 hover:shadow-lg transition-all duration-200 cursor-pointer"
+              className="group relative rounded-2xl border-2 border-slate-200 bg-white p-6 text-left hover:border-violet-400 hover:shadow-lg transition-[border-color,box-shadow] duration-200 cursor-pointer"
             >
               <div className="text-3xl mb-3">🖼️</div>
               <h2 className="text-lg font-bold text-slate-900 mb-1">Task 1</h2>
@@ -221,7 +225,7 @@ function Quick() {
             {/* Task 2 */}
             <button
               onClick={() => setSelectedTaskType(2)}
-              className="group relative rounded-2xl border-2 border-slate-200 bg-white p-6 text-left hover:border-violet-400 hover:shadow-lg transition-all duration-200 cursor-pointer"
+              className="group relative rounded-2xl border-2 border-slate-200 bg-white p-6 text-left hover:border-violet-400 hover:shadow-lg transition-[border-color,box-shadow] duration-200 cursor-pointer"
             >
               <div className="text-3xl mb-3">✍️</div>
               <h2 className="text-lg font-bold text-slate-900 mb-1">Task 2</h2>
@@ -236,13 +240,13 @@ function Quick() {
 
           {/* Nav links */}
           <div className="flex justify-center gap-4 text-sm text-slate-500">
-            <NavLink to="/writing/mock" className="hover:text-slate-900 transition-colors">Mock Exam</NavLink>
+            <NavLink onClick={confirmLeave} to="/writing/mock" className="hover:text-slate-900 transition-colors">Mock Exam</NavLink>
             <span>·</span>
-            <NavLink to="/writing/practice" className="hover:text-slate-900 transition-colors">Practice</NavLink>
+            <NavLink onClick={confirmLeave} to="/writing/practice" className="hover:text-slate-900 transition-colors">Practice</NavLink>
             <span>·</span>
-            <NavLink to="/writing/relax" className="hover:text-slate-900 transition-colors">Relax</NavLink>
+            <NavLink onClick={confirmLeave} to="/writing/relax" className="hover:text-slate-900 transition-colors">Relax</NavLink>
             <span>·</span>
-            <NavLink to="/dashboard" className="hover:text-slate-900 transition-colors">Dashboard</NavLink>
+            <NavLink onClick={confirmLeave} to="/dashboard" className="hover:text-slate-900 transition-colors">Dashboard</NavLink>
           </div>
         </div>
       </div>
@@ -304,7 +308,7 @@ function Quick() {
         {/* Word count progress stripe */}
         <div className="h-0.5 bg-white/10">
           <div
-            className="h-full bg-white/60 transition-all duration-500"
+            className="h-full bg-white/60 transition-[width] duration-500"
             style={{ width: `${progress}%` }}
           />
         </div>
@@ -322,10 +326,10 @@ function Quick() {
               <span className="text-xs text-slate-500">— minimum {minWords} words</span>
             </div>
             <nav className="hidden md:flex items-center gap-1 text-xs text-slate-500">
-              <NavLink to="/" className="px-2 py-1 hover:text-slate-900 hover:bg-slate-100 rounded transition-colors">Home</NavLink>
-              <NavLink to="/writing/mock" className="px-2 py-1 hover:text-slate-900 hover:bg-slate-100 rounded transition-colors">Mock</NavLink>
-              <NavLink to="/writing/practice" className="px-2 py-1 hover:text-slate-900 hover:bg-slate-100 rounded transition-colors">Practice</NavLink>
-              <NavLink to="/writing/relax" className="px-2 py-1 hover:text-slate-900 hover:bg-slate-100 rounded transition-colors">Relax</NavLink>
+              <NavLink onClick={confirmLeave} to="/" className="px-2 py-1 hover:text-slate-900 hover:bg-slate-100 rounded transition-colors">Home</NavLink>
+              <NavLink onClick={confirmLeave} to="/writing/mock" className="px-2 py-1 hover:text-slate-900 hover:bg-slate-100 rounded transition-colors">Mock</NavLink>
+              <NavLink onClick={confirmLeave} to="/writing/practice" className="px-2 py-1 hover:text-slate-900 hover:bg-slate-100 rounded transition-colors">Practice</NavLink>
+              <NavLink onClick={confirmLeave} to="/writing/relax" className="px-2 py-1 hover:text-slate-900 hover:bg-slate-100 rounded transition-colors">Relax</NavLink>
             </nav>
           </div>
           <div className="flex items-center gap-3 px-5 py-2 bg-slate-100 border-t border-slate-200">
@@ -384,7 +388,7 @@ function Quick() {
           <label htmlFor="quick-answer" className="sr-only">
             Your answer for Task {selectedTaskType}
           </label>
-          <textarea
+          <textarea name="quick-answer"
             id="quick-answer"
             value={userText}
             onChange={(e) => setUserText(e.target.value)}
@@ -396,7 +400,7 @@ function Quick() {
             data-gramm="false"
             data-gramm_editor="false"
             data-enable-grammarly="false"
-            className="flex-1 w-full p-6 text-sm text-slate-900 bg-white outline-none resize-none placeholder:text-slate-500/40 focus:bg-white transition-colors min-h-[300px] [scrollbar-gutter:stable]"
+            className="flex-1 w-full p-6 text-sm text-slate-900 bg-white outline-none focus-visible:ring-2 focus-visible:ring-violet-500 focus-visible:ring-inset resize-none placeholder:text-slate-500/40 focus:bg-white transition-colors min-h-[300px] [scrollbar-gutter:stable]"
           />
 
           {/* Status bar */}
@@ -404,7 +408,7 @@ function Quick() {
             <div className="flex items-center gap-3">
               <div className="w-24 h-1.5 bg-slate-100 rounded-full overflow-hidden">
                 <div
-                  className={`h-full rounded-full transition-all duration-300 ${meetsMinWords ? "bg-emerald-500" : "bg-violet-500"}`}
+                  className={`h-full rounded-full transition-[width,background-color] duration-300 ${meetsMinWords ? "bg-emerald-500" : "bg-violet-500"}`}
                   style={{ width: `${progress}%` }}
                 />
               </div>
@@ -436,7 +440,7 @@ function Quick() {
       {showFeedbackModal && (
         <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-4 bg-black/40 backdrop-blur-sm">
           <div className="w-full max-w-sm bg-white rounded-2xl shadow-2xl overflow-hidden">
-            <div className="h-1.5 bg-gradient-to-r from-violet-500 to-purple-500" />
+            <div className="h-1.5 bg-linear-to-r from-violet-500 to-purple-500" />
             <div className="p-7">
               <div className="flex items-center justify-center w-11 h-11 mx-auto rounded-full bg-violet-50">
                 <CheckIcon className="w-5 h-5 text-violet-600" />
@@ -500,7 +504,7 @@ function Quick() {
       {humanCheck.success && (
         <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-4 bg-black/40 backdrop-blur-sm">
           <div className="w-full max-w-sm bg-white rounded-2xl shadow-2xl overflow-hidden">
-            <div className="h-1.5 bg-gradient-to-r from-emerald-500 to-teal-500" />
+            <div className="h-1.5 bg-linear-to-r from-emerald-500 to-teal-500" />
             <div className="p-7 text-center">
               <div className="flex items-center justify-center w-11 h-11 mx-auto rounded-full bg-emerald-50">
                 <CheckIcon className="w-5 h-5 text-emerald-600" />
