@@ -2,7 +2,7 @@ import { useEffect, useState, type ReactNode } from 'react';
 import { useLocation } from 'react-router-dom';
 import { onAuthStateChanged } from 'firebase/auth';
 import { adminAuth, ADMIN_EMAIL } from '@/firebase/adminConfig';
-import { subscribeMaintenanceStatus, type MaintenanceStatus } from '@/hooks/useFeatureFlag';
+import { getMaintenanceStatus, type MaintenanceStatus } from '@/hooks/useFeatureFlag';
 import { MaintenancePage } from '@/pages/MaintenancePage';
 
 const PageSpinner = (
@@ -17,9 +17,9 @@ const PageSpinner = (
  * flag can always be turned back off), and an admin session bypasses it
  * everywhere else, so the site keeps working normally while you fix things.
  *
- * The status is unknown until the first Firestore read resolves, so we hold
- * up rendering behind a spinner rather than risk a flash of a possibly
- * broken app for a fresh visit that lands while maintenance is on.
+ * Status is checked once, when the visitor opens the site; tabs that are
+ * already open pick up a change on their next reload. Until that one check
+ * returns we show a spinner rather than risk a flash of a possibly broken app.
  */
 export function MaintenanceGate({ children }: { children: ReactNode }) {
   const location = useLocation();
@@ -31,7 +31,11 @@ export function MaintenanceGate({ children }: { children: ReactNode }) {
   // another visitor's console just shows them the (normal, public) site.
   const [isAdmin, setIsAdmin] = useState(() => localStorage.getItem('adminLoggedIn') === 'true');
 
-  useEffect(() => subscribeMaintenanceStatus(setStatus), []);
+  useEffect(() => {
+    let cancelled = false;
+    getMaintenanceStatus().then((s) => { if (!cancelled) setStatus(s); });
+    return () => { cancelled = true; };
+  }, []);
 
   useEffect(() => {
     return onAuthStateChanged(adminAuth, (user) => {

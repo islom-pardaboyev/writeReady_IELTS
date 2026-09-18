@@ -81,18 +81,6 @@ export async function updateMaintenance(update: MaintenanceUpdate, idToken: stri
 }
 
 /**
- * Polls maintenance status so every open tab flips to (or off) the
- * maintenance page within moments of the flag changing, without a reload.
- */
-export function subscribeMaintenanceStatus(callback: (status: MaintenanceStatus) => void, intervalMs = 8000): () => void {
-  let cancelled = false;
-  const tick = () => { getMaintenanceStatus().then((status) => { if (!cancelled) callback(status); }); };
-  tick();
-  const id = setInterval(tick, intervalMs);
-  return () => { cancelled = true; clearInterval(id); };
-}
-
-/**
  * Reads a feature flag once on mount. Defaults to `false` (hidden) until loaded or if unset.
  * A `?preview=<key>` URL param bypasses the Firestore flag so you can test an unreleased
  * feature on production without flipping it on for every user — share that link only with
