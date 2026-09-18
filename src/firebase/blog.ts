@@ -13,6 +13,7 @@ import {
   serverTimestamp,
   Timestamp,
   setDoc,
+  type Firestore,
 } from 'firebase/firestore';
 import { db } from '../firebase/config';
 import type { BlogPost, BlogComment, Notification } from '../types/blog';
@@ -46,8 +47,8 @@ function postFromDoc(id: string, data: Record<string, unknown>): BlogPost {
   };
 }
 
-export async function getBlogPosts(status?: string): Promise<BlogPost[]> {
-  const col = collection(db, 'blogPosts');
+export async function getBlogPosts(status?: string, dbInstance: Firestore = db): Promise<BlogPost[]> {
+  const col = collection(dbInstance, 'blogPosts');
   const q = status
     ? query(col, where('status', '==', status), orderBy('publishedAt', 'desc'))
     : query(col, orderBy('publishedAt', 'desc'));
@@ -63,14 +64,14 @@ export async function getBlogPost(slug: string): Promise<BlogPost | null> {
   return postFromDoc(d.id, d.data() as Record<string, unknown>);
 }
 
-export async function getBlogPostById(id: string): Promise<BlogPost | null> {
-  const snap = await getDoc(doc(db, 'blogPosts', id));
+export async function getBlogPostById(id: string, dbInstance: Firestore = db): Promise<BlogPost | null> {
+  const snap = await getDoc(doc(dbInstance, 'blogPosts', id));
   if (!snap.exists()) return null;
   return postFromDoc(snap.id, snap.data() as Record<string, unknown>);
 }
 
-export async function saveBlogPost(data: Omit<BlogPost, 'id'>): Promise<string> {
-  const ref = await addDoc(collection(db, 'blogPosts'), {
+export async function saveBlogPost(data: Omit<BlogPost, 'id'>, dbInstance: Firestore = db): Promise<string> {
+  const ref = await addDoc(collection(dbInstance, 'blogPosts'), {
     ...data,
     publishedAt: data.publishedAt ?? serverTimestamp(),
     viewCount: data.viewCount ?? 0,
@@ -80,12 +81,12 @@ export async function saveBlogPost(data: Omit<BlogPost, 'id'>): Promise<string> 
   return ref.id;
 }
 
-export async function updateBlogPost(id: string, data: Partial<BlogPost>): Promise<void> {
-  await updateDoc(doc(db, 'blogPosts', id), data as Record<string, unknown>);
+export async function updateBlogPost(id: string, data: Partial<BlogPost>, dbInstance: Firestore = db): Promise<void> {
+  await updateDoc(doc(dbInstance, 'blogPosts', id), data as Record<string, unknown>);
 }
 
-export async function deleteBlogPost(id: string): Promise<void> {
-  await deleteDoc(doc(db, 'blogPosts', id));
+export async function deleteBlogPost(id: string, dbInstance: Firestore = db): Promise<void> {
+  await deleteDoc(doc(dbInstance, 'blogPosts', id));
 }
 
 export async function getComments(postId: string): Promise<BlogComment[]> {

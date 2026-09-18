@@ -219,6 +219,51 @@ button:disabled {
   }
 }
 
+/* ── Staff panels (admin, center, teacher) ────────────────────────────────── */
+.staff-shell {
+  caret-color: var(--ink-blue);
+}
+
+/* The shared dark theme sets --bg-subtle equal to --bg-card, which hides
+   hover states, skeletons and inset areas on staff cards. */
+.dark .staff-shell {
+  --bg-subtle: #273449;
+}
+
+.staff-shell ::selection {
+  background: color-mix(in srgb, var(--ink-blue) 24%, transparent);
+}
+
+.staff-shell :is([data-slot="input"], [data-slot="password-input"], [data-slot="textarea"], select):focus-visible {
+  --tw-ring-color: var(--ring);
+}
+
+.staff-scroll {
+  scrollbar-width: thin;
+  scrollbar-color: var(--border-strong) transparent;
+}
+
+@keyframes staff-detail-in {
+  from {
+    opacity: 0.4;
+    transform: translateY(4px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+.staff-detail-in {
+  animation: staff-detail-in 180ms cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .staff-detail-in {
+    animation: none;
+  }
+}
+
 @layer utilities {
   .mock-question-scroll {
     scrollbar-width: thin;

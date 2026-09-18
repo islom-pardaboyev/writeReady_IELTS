@@ -2,6 +2,7 @@ import { lazy, Suspense } from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider } from './contexts/AuthContext';
 import { MaintenanceGate } from './components/layout/MaintenanceGate';
+import { RouteTitle } from './components/layout/RouteTitle';
 import { LandingPage } from './pages/LandingPage';
 import { AuthPage } from './pages/AuthPage';
 
@@ -36,6 +37,7 @@ export default function App() {
     <AuthProvider>
       <BrowserRouter>
         <MaintenanceGate>
+          <RouteTitle />
           <Routes>
             <Route path="/" element={<LandingPage />} />
             <Route path="/auth" element={<AuthPage />} />

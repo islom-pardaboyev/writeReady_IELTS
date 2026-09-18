@@ -1,42 +1,42 @@
 import { useEffect, useState } from 'react';
-import { doc, getDoc, setDoc } from 'firebase/firestore';
+import { doc, getDoc, setDoc, type Firestore } from 'firebase/firestore';
 import { db } from '../firebase/config';
 
 export type FeatureFlagKey = 'humanCheck';
 
-export async function getFeatureFlag(key: FeatureFlagKey): Promise<boolean> {
-  const snap = await getDoc(doc(db, 'config', 'featureFlags'));
+export async function getFeatureFlag(key: FeatureFlagKey, dbInstance: Firestore = db): Promise<boolean> {
+  const snap = await getDoc(doc(dbInstance, 'config', 'featureFlags'));
   if (!snap.exists()) return false;
   return snap.data()[key] === true;
 }
 
-export async function setFeatureFlag(key: FeatureFlagKey, value: boolean): Promise<void> {
-  await setDoc(doc(db, 'config', 'featureFlags'), { [key]: value }, { merge: true });
+export async function setFeatureFlag(key: FeatureFlagKey, value: boolean, dbInstance: Firestore = db): Promise<void> {
+  await setDoc(doc(dbInstance, 'config', 'featureFlags'), { [key]: value }, { merge: true });
 }
 
 const DEFAULT_HUMAN_CHECK_PRICE_UZS = 20000;
 
-export async function getHumanCheckPrice(): Promise<number> {
-  const snap = await getDoc(doc(db, 'config', 'featureFlags'));
+export async function getHumanCheckPrice(dbInstance: Firestore = db): Promise<number> {
+  const snap = await getDoc(doc(dbInstance, 'config', 'featureFlags'));
   const price = snap.exists() ? snap.data().humanCheckPriceUZS : undefined;
   return typeof price === 'number' && price > 0 ? price : DEFAULT_HUMAN_CHECK_PRICE_UZS;
 }
 
-export async function setHumanCheckPrice(priceUZS: number): Promise<void> {
-  await setDoc(doc(db, 'config', 'featureFlags'), { humanCheckPriceUZS: priceUZS }, { merge: true });
+export async function setHumanCheckPrice(priceUZS: number, dbInstance: Firestore = db): Promise<void> {
+  await setDoc(doc(dbInstance, 'config', 'featureFlags'), { humanCheckPriceUZS: priceUZS }, { merge: true });
 }
 
 const DEFAULT_PLATFORM_FEE_UZS = 5000;
 
 // The platform (admin) keeps this fee per checked review; the teacher earns the rest.
-export async function getHumanCheckPlatformFee(): Promise<number> {
-  const snap = await getDoc(doc(db, 'config', 'featureFlags'));
+export async function getHumanCheckPlatformFee(dbInstance: Firestore = db): Promise<number> {
+  const snap = await getDoc(doc(dbInstance, 'config', 'featureFlags'));
   const fee = snap.exists() ? snap.data().humanCheckPlatformFeeUZS : undefined;
   return typeof fee === 'number' && fee >= 0 ? fee : DEFAULT_PLATFORM_FEE_UZS;
 }
 
-export async function setHumanCheckPlatformFee(feeUZS: number): Promise<void> {
-  await setDoc(doc(db, 'config', 'featureFlags'), { humanCheckPlatformFeeUZS: feeUZS }, { merge: true });
+export async function setHumanCheckPlatformFee(feeUZS: number, dbInstance: Firestore = db): Promise<void> {
+  await setDoc(doc(dbInstance, 'config', 'featureFlags'), { humanCheckPlatformFeeUZS: feeUZS }, { merge: true });
 }
 
 // Site-wide maintenance flag. Reads/writes go through api/maintenance.ts
@@ -58,13 +58,18 @@ export type MaintenanceUpdate =
 
 const MAINTENANCE_OFF: MaintenanceStatus = { enabled: false, startedAt: null, endsAt: null };
 
-export async function getMaintenanceStatus({ fresh = false } = {}): Promise<MaintenanceStatus> {
+/**
+ * The site gate fails open (treats errors as "off"); pass `strict` where a
+ * wrong "off" would mislead, e.g. the admin overview, to get the error instead.
+ */
+export async function getMaintenanceStatus({ fresh = false, strict = false } = {}): Promise<MaintenanceStatus> {
   try {
     // The CDN caches this response for a few seconds; a unique query string skips that cache.
     const res = await fetch(fresh ? `/api/maintenance?fresh=${Date.now()}` : '/api/maintenance');
-    if (!res.ok) return MAINTENANCE_OFF;
+    if (!res.ok) throw new Error(`Maintenance status request failed (${res.status})`);
     return await res.json();
-  } catch {
+  } catch (e) {
+    if (strict) throw e;
     return MAINTENANCE_OFF;
   }
 }

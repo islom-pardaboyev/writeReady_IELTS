@@ -1,0 +1,877 @@
+{
+  "schemaVersion": 2,
+  "generatedAt": "2026-09-18T15:58:41+00:00",
+  "title": "Design System: WriteReady IELTS",
+  "extensions": {
+    "colorMeta": {
+      "ink-blue": {
+        "role": "primary",
+        "displayName": "Ink Blue",
+        "canonical": "#4f46e5",
+        "tonalRamp": [
+          "#1e1b4b",
+          "#312e81",
+          "#4338ca",
+          "#4f46e5",
+          "#6366f1",
+          "#818cf8",
+          "#c7d2fe",
+          "#eef2ff"
+        ]
+      },
+      "ink-blue-dark": {
+        "role": "primary",
+        "displayName": "Ink Blue (dark theme)",
+        "canonical": "#818cf8",
+        "tonalRamp": [
+          "#1e1b4b",
+          "#312e81",
+          "#4338ca",
+          "#4f46e5",
+          "#6366f1",
+          "#818cf8",
+          "#c7d2fe",
+          "#eef2ff"
+        ]
+      },
+      "primary-foreground": {
+        "role": "primary",
+        "displayName": "On Ink",
+        "canonical": "#ffffff",
+        "tonalRamp": [
+          "#0f172a",
+          "#1e293b",
+          "#334155",
+          "#475569",
+          "#64748b",
+          "#94a3b8",
+          "#cbd5e1",
+          "#f1f5f9"
+        ]
+      },
+      "primary-foreground-dark": {
+        "role": "primary",
+        "displayName": "On Ink (dark theme)",
+        "canonical": "#0f172a",
+        "tonalRamp": [
+          "#0f172a",
+          "#1e293b",
+          "#334155",
+          "#475569",
+          "#64748b",
+          "#94a3b8",
+          "#cbd5e1",
+          "#f1f5f9"
+        ]
+      },
+      "accent": {
+        "role": "primary",
+        "displayName": "Ink Wash",
+        "canonical": "#eef2ff",
+        "tonalRamp": [
+          "#1e1b4b",
+          "#312e81",
+          "#4338ca",
+          "#4f46e5",
+          "#6366f1",
+          "#818cf8",
+          "#c7d2fe",
+          "#eef2ff"
+        ]
+      },
+      "accent-dark": {
+        "role": "primary",
+        "displayName": "Ink Wash (dark theme)",
+        "canonical": "#312e81",
+        "tonalRamp": [
+          "#1e1b4b",
+          "#312e81",
+          "#4338ca",
+          "#4f46e5",
+          "#6366f1",
+          "#818cf8",
+          "#c7d2fe",
+          "#eef2ff"
+        ]
+      },
+      "accent-foreground": {
+        "role": "primary",
+        "displayName": "Ink Wash Text",
+        "canonical": "#4f46e5",
+        "tonalRamp": [
+          "#1e1b4b",
+          "#312e81",
+          "#4338ca",
+          "#4f46e5",
+          "#6366f1",
+          "#818cf8",
+          "#c7d2fe",
+          "#eef2ff"
+        ]
+      },
+      "accent-foreground-dark": {
+        "role": "primary",
+        "displayName": "Ink Wash Text (dark theme)",
+        "canonical": "#e0e7ff",
+        "tonalRamp": [
+          "#1e1b4b",
+          "#312e81",
+          "#4338ca",
+          "#4f46e5",
+          "#6366f1",
+          "#818cf8",
+          "#c7d2fe",
+          "#eef2ff"
+        ]
+      },
+      "gold": {
+        "role": "tertiary",
+        "displayName": "Upgrade Gold",
+        "canonical": "#f59e0b",
+        "tonalRamp": [
+          "#451a03",
+          "#78350f",
+          "#92400e",
+          "#b45309",
+          "#d97706",
+          "#f59e0b",
+          "#fde68a",
+          "#fffbeb"
+        ]
+      },
+      "bg-base": {
+        "role": "neutral",
+        "displayName": "Paper",
+        "canonical": "#f8f9fa",
+        "tonalRamp": [
+          "#212529",
+          "#343a40",
+          "#495057",
+          "#6c757d",
+          "#adb5bd",
+          "#dee2e6",
+          "#e9ecef",
+          "#f8f9fa"
+        ]
+      },
+      "bg-base-dark": {
+        "role": "neutral",
+        "displayName": "Paper (dark theme)",
+        "canonical": "#0f172a",
+        "tonalRamp": [
+          "#0f172a",
+          "#1e293b",
+          "#334155",
+          "#475569",
+          "#64748b",
+          "#94a3b8",
+          "#cbd5e1",
+          "#f1f5f9"
+        ]
+      },
+      "bg-card": {
+        "role": "neutral",
+        "displayName": "Sheet White",
+        "canonical": "#ffffff",
+        "tonalRamp": [
+          "#0f172a",
+          "#1e293b",
+          "#334155",
+          "#475569",
+          "#64748b",
+          "#94a3b8",
+          "#cbd5e1",
+          "#f1f5f9"
+        ]
+      },
+      "bg-card-dark": {
+        "role": "neutral",
+        "displayName": "Sheet (dark theme)",
+        "canonical": "#1e293b",
+        "tonalRamp": [
+          "#0f172a",
+          "#1e293b",
+          "#334155",
+          "#475569",
+          "#64748b",
+          "#94a3b8",
+          "#cbd5e1",
+          "#f1f5f9"
+        ]
+      },
+      "bg-subtle": {
+        "role": "neutral",
+        "displayName": "Slate Mist",
+        "canonical": "#f1f5f9",
+        "tonalRamp": [
+          "#0f172a",
+          "#1e293b",
+          "#334155",
+          "#475569",
+          "#64748b",
+          "#94a3b8",
+          "#cbd5e1",
+          "#f1f5f9"
+        ]
+      },
+      "bg-subtle-dark-staff": {
+        "role": "neutral",
+        "displayName": "Slate Mist (dark theme, staff shell)",
+        "canonical": "#273449",
+        "tonalRamp": [
+          "#0f172a",
+          "#1e293b",
+          "#334155",
+          "#475569",
+          "#64748b",
+          "#94a3b8",
+          "#cbd5e1",
+          "#f1f5f9"
+        ]
+      },
+      "text-primary": {
+        "role": "neutral",
+        "displayName": "Ink Black",
+        "canonical": "#0f172a",
+        "tonalRamp": [
+          "#0f172a",
+          "#1e293b",
+          "#334155",
+          "#475569",
+          "#64748b",
+          "#94a3b8",
+          "#cbd5e1",
+          "#f1f5f9"
+        ]
+      },
+      "text-primary-dark": {
+        "role": "neutral",
+        "displayName": "Ink Black (dark theme)",
+        "canonical": "#f1f5f9",
+        "tonalRamp": [
+          "#0f172a",
+          "#1e293b",
+          "#334155",
+          "#475569",
+          "#64748b",
+          "#94a3b8",
+          "#cbd5e1",
+          "#f1f5f9"
+        ]
+      },
+      "text-secondary": {
+        "role": "neutral",
+        "displayName": "Slate Gray",
+        "canonical": "#475569",
+        "tonalRamp": [
+          "#0f172a",
+          "#1e293b",
+          "#334155",
+          "#475569",
+          "#64748b",
+          "#94a3b8",
+          "#cbd5e1",
+          "#f1f5f9"
+        ]
+      },
+      "text-secondary-dark": {
+        "role": "neutral",
+        "displayName": "Slate Gray (dark theme)",
+        "canonical": "#94a3b8",
+        "tonalRamp": [
+          "#0f172a",
+          "#1e293b",
+          "#334155",
+          "#475569",
+          "#64748b",
+          "#94a3b8",
+          "#cbd5e1",
+          "#f1f5f9"
+        ]
+      },
+      "border-color": {
+        "role": "neutral",
+        "displayName": "Hairline",
+        "canonical": "#e2e8f0",
+        "tonalRamp": [
+          "#0f172a",
+          "#1e293b",
+          "#334155",
+          "#475569",
+          "#64748b",
+          "#94a3b8",
+          "#cbd5e1",
+          "#f1f5f9"
+        ]
+      },
+      "border-color-dark": {
+        "role": "neutral",
+        "displayName": "Hairline (dark theme)",
+        "canonical": "#334155",
+        "tonalRamp": [
+          "#0f172a",
+          "#1e293b",
+          "#334155",
+          "#475569",
+          "#64748b",
+          "#94a3b8",
+          "#cbd5e1",
+          "#f1f5f9"
+        ]
+      },
+      "border-strong": {
+        "role": "neutral",
+        "displayName": "Firm Hairline",
+        "canonical": "#cbd5e1",
+        "tonalRamp": [
+          "#0f172a",
+          "#1e293b",
+          "#334155",
+          "#475569",
+          "#64748b",
+          "#94a3b8",
+          "#cbd5e1",
+          "#f1f5f9"
+        ]
+      },
+      "border-strong-dark": {
+        "role": "neutral",
+        "displayName": "Firm Hairline (dark theme)",
+        "canonical": "#475569",
+        "tonalRamp": [
+          "#0f172a",
+          "#1e293b",
+          "#334155",
+          "#475569",
+          "#64748b",
+          "#94a3b8",
+          "#cbd5e1",
+          "#f1f5f9"
+        ]
+      },
+      "success-tint": {
+        "role": "state",
+        "displayName": "Emerald Tint",
+        "canonical": "oklch(97.9% 0.021 166.113)",
+        "tonalRamp": [
+          "oklch(26.2% 0.051 172.552)",
+          "oklch(37.8% 0.077 168.94)",
+          "oklch(43.2% 0.095 166.913)",
+          "oklch(50.8% 0.118 165.612)",
+          "oklch(59.6% 0.145 163.225)",
+          "oklch(84.5% 0.143 164.978)",
+          "oklch(95% 0.052 163.051)",
+          "oklch(97.9% 0.021 166.113)"
+        ]
+      },
+      "success-soft": {
+        "role": "state",
+        "displayName": "Emerald Soft",
+        "canonical": "oklch(95% 0.052 163.051)",
+        "tonalRamp": [
+          "oklch(26.2% 0.051 172.552)",
+          "oklch(37.8% 0.077 168.94)",
+          "oklch(43.2% 0.095 166.913)",
+          "oklch(50.8% 0.118 165.612)",
+          "oklch(59.6% 0.145 163.225)",
+          "oklch(84.5% 0.143 164.978)",
+          "oklch(95% 0.052 163.051)",
+          "oklch(97.9% 0.021 166.113)"
+        ]
+      },
+      "success-ink": {
+        "role": "state",
+        "displayName": "Emerald Ink",
+        "canonical": "oklch(50.8% 0.118 165.612)",
+        "tonalRamp": [
+          "oklch(26.2% 0.051 172.552)",
+          "oklch(37.8% 0.077 168.94)",
+          "oklch(43.2% 0.095 166.913)",
+          "oklch(50.8% 0.118 165.612)",
+          "oklch(59.6% 0.145 163.225)",
+          "oklch(84.5% 0.143 164.978)",
+          "oklch(95% 0.052 163.051)",
+          "oklch(97.9% 0.021 166.113)"
+        ]
+      },
+      "warning-tint": {
+        "role": "state",
+        "displayName": "Amber Tint",
+        "canonical": "oklch(98.7% 0.022 95.277)",
+        "tonalRamp": [
+          "oklch(27.9% 0.077 45.635)",
+          "oklch(41.4% 0.112 45.904)",
+          "oklch(47.3% 0.137 46.201)",
+          "oklch(55.5% 0.163 48.998)",
+          "oklch(66.6% 0.179 58.318)",
+          "oklch(87.9% 0.169 91.605)",
+          "oklch(96.2% 0.059 95.617)",
+          "oklch(98.7% 0.022 95.277)"
+        ]
+      },
+      "warning-soft": {
+        "role": "state",
+        "displayName": "Amber Soft",
+        "canonical": "oklch(96.2% 0.059 95.617)",
+        "tonalRamp": [
+          "oklch(27.9% 0.077 45.635)",
+          "oklch(41.4% 0.112 45.904)",
+          "oklch(47.3% 0.137 46.201)",
+          "oklch(55.5% 0.163 48.998)",
+          "oklch(66.6% 0.179 58.318)",
+          "oklch(87.9% 0.169 91.605)",
+          "oklch(96.2% 0.059 95.617)",
+          "oklch(98.7% 0.022 95.277)"
+        ]
+      },
+      "warning-ink": {
+        "role": "state",
+        "displayName": "Amber Ink",
+        "canonical": "oklch(55.5% 0.163 48.998)",
+        "tonalRamp": [
+          "oklch(27.9% 0.077 45.635)",
+          "oklch(41.4% 0.112 45.904)",
+          "oklch(47.3% 0.137 46.201)",
+          "oklch(55.5% 0.163 48.998)",
+          "oklch(66.6% 0.179 58.318)",
+          "oklch(87.9% 0.169 91.605)",
+          "oklch(96.2% 0.059 95.617)",
+          "oklch(98.7% 0.022 95.277)"
+        ]
+      },
+      "danger-tint": {
+        "role": "state",
+        "displayName": "Red Tint",
+        "canonical": "oklch(97.1% 0.013 17.38)",
+        "tonalRamp": [
+          "oklch(25.8% 0.092 26.042)",
+          "oklch(39.6% 0.141 25.723)",
+          "oklch(44.4% 0.177 26.899)",
+          "oklch(50.5% 0.213 27.518)",
+          "oklch(57.7% 0.245 27.325)",
+          "oklch(80.8% 0.114 19.571)",
+          "oklch(93.6% 0.032 17.717)",
+          "oklch(97.1% 0.013 17.38)"
+        ]
+      },
+      "danger-soft": {
+        "role": "state",
+        "displayName": "Red Soft",
+        "canonical": "oklch(93.6% 0.032 17.717)",
+        "tonalRamp": [
+          "oklch(25.8% 0.092 26.042)",
+          "oklch(39.6% 0.141 25.723)",
+          "oklch(44.4% 0.177 26.899)",
+          "oklch(50.5% 0.213 27.518)",
+          "oklch(57.7% 0.245 27.325)",
+          "oklch(80.8% 0.114 19.571)",
+          "oklch(93.6% 0.032 17.717)",
+          "oklch(97.1% 0.013 17.38)"
+        ]
+      },
+      "danger-ink": {
+        "role": "state",
+        "displayName": "Red Ink",
+        "canonical": "oklch(50.5% 0.213 27.518)",
+        "tonalRamp": [
+          "oklch(25.8% 0.092 26.042)",
+          "oklch(39.6% 0.141 25.723)",
+          "oklch(44.4% 0.177 26.899)",
+          "oklch(50.5% 0.213 27.518)",
+          "oklch(57.7% 0.245 27.325)",
+          "oklch(80.8% 0.114 19.571)",
+          "oklch(93.6% 0.032 17.717)",
+          "oklch(97.1% 0.013 17.38)"
+        ]
+      },
+      "danger-action": {
+        "role": "state",
+        "displayName": "Red Action",
+        "canonical": "oklch(57.7% 0.245 27.325)",
+        "tonalRamp": [
+          "oklch(25.8% 0.092 26.042)",
+          "oklch(39.6% 0.141 25.723)",
+          "oklch(44.4% 0.177 26.899)",
+          "oklch(50.5% 0.213 27.518)",
+          "oklch(57.7% 0.245 27.325)",
+          "oklch(80.8% 0.114 19.571)",
+          "oklch(93.6% 0.032 17.717)",
+          "oklch(97.1% 0.013 17.38)"
+        ]
+      },
+      "coral": {
+        "role": "state",
+        "displayName": "Coral (destructive token)",
+        "canonical": "#ef4444",
+        "tonalRamp": [
+          "#450a0a",
+          "#7f1d1d",
+          "#991b1b",
+          "#b91c1c",
+          "#dc2626",
+          "#ef4444",
+          "#fecaca",
+          "#fef2f2"
+        ]
+      },
+      "coral-dark": {
+        "role": "state",
+        "displayName": "Coral (dark theme)",
+        "canonical": "#f87171",
+        "tonalRamp": [
+          "#450a0a",
+          "#7f1d1d",
+          "#991b1b",
+          "#b91c1c",
+          "#dc2626",
+          "#ef4444",
+          "#fecaca",
+          "#fef2f2"
+        ]
+      },
+      "info-soft": {
+        "role": "categorical",
+        "displayName": "Info Indigo Soft",
+        "canonical": "oklch(93% 0.034 272.788)",
+        "tonalRamp": [
+          "oklch(25.7% 0.09 281.288)",
+          "oklch(35.9% 0.144 278.697)",
+          "oklch(39.8% 0.195 277.366)",
+          "oklch(45.7% 0.24 277.023)",
+          "oklch(51.1% 0.262 276.966)",
+          "oklch(78.5% 0.115 274.713)",
+          "oklch(93% 0.034 272.788)",
+          "oklch(96.2% 0.018 272.314)"
+        ]
+      },
+      "info-ink": {
+        "role": "categorical",
+        "displayName": "Info Indigo Ink",
+        "canonical": "oklch(45.7% 0.24 277.023)",
+        "tonalRamp": [
+          "oklch(25.7% 0.09 281.288)",
+          "oklch(35.9% 0.144 278.697)",
+          "oklch(39.8% 0.195 277.366)",
+          "oklch(45.7% 0.24 277.023)",
+          "oklch(51.1% 0.262 276.966)",
+          "oklch(78.5% 0.115 274.713)",
+          "oklch(93% 0.034 272.788)",
+          "oklch(96.2% 0.018 272.314)"
+        ]
+      },
+      "purple-soft": {
+        "role": "categorical",
+        "displayName": "Tier Purple Soft",
+        "canonical": "oklch(94.6% 0.033 307.174)",
+        "tonalRamp": [
+          "oklch(29.1% 0.149 302.717)",
+          "oklch(38.1% 0.176 304.987)",
+          "oklch(43.8% 0.218 303.724)",
+          "oklch(49.6% 0.265 301.924)",
+          "oklch(55.8% 0.288 302.321)",
+          "oklch(82.7% 0.119 306.383)",
+          "oklch(94.6% 0.033 307.174)",
+          "oklch(97.7% 0.014 308.299)"
+        ]
+      },
+      "purple-ink": {
+        "role": "categorical",
+        "displayName": "Tier Purple Ink",
+        "canonical": "oklch(49.6% 0.265 301.924)",
+        "tonalRamp": [
+          "oklch(29.1% 0.149 302.717)",
+          "oklch(38.1% 0.176 304.987)",
+          "oklch(43.8% 0.218 303.724)",
+          "oklch(49.6% 0.265 301.924)",
+          "oklch(55.8% 0.288 302.321)",
+          "oklch(82.7% 0.119 306.383)",
+          "oklch(94.6% 0.033 307.174)",
+          "oklch(97.7% 0.014 308.299)"
+        ]
+      }
+    },
+    "typographyMeta": {
+      "display": {
+        "displayName": "Display",
+        "purpose": "Landing-page hero only. Inter is loaded up to 700, so the declared 900 renders at 700."
+      },
+      "headline": {
+        "displayName": "Headline",
+        "purpose": "Staff page titles (Overview, Settings)."
+      },
+      "title": {
+        "displayName": "Title",
+        "purpose": "Selected record name in the detail pane; staff login card title."
+      },
+      "title-sm": {
+        "displayName": "Title Small",
+        "purpose": "List pane title, with the record count beside it."
+      },
+      "heading": {
+        "displayName": "Heading",
+        "purpose": "Detail-section headings."
+      },
+      "body": {
+        "displayName": "Body",
+        "purpose": "Default operational text; long text caps at 65ch."
+      },
+      "label": {
+        "displayName": "Label",
+        "purpose": "Field labels, list-row titles, sidebar items, key-value values."
+      },
+      "button": {
+        "displayName": "Button",
+        "purpose": "Button text at default and large sizes."
+      },
+      "caption": {
+        "displayName": "Caption",
+        "purpose": "Hints, field errors, row meta lines."
+      },
+      "label-sm": {
+        "displayName": "Label Small",
+        "purpose": "Filter chip text."
+      },
+      "caption-strong": {
+        "displayName": "Caption Strong",
+        "purpose": "Badges and small buttons."
+      },
+      "figure": {
+        "displayName": "Figure",
+        "purpose": "Stat-tile values and all figures: counts, money, band scores, IDs (tabular)."
+      }
+    },
+    "shadows": [
+      {
+        "name": "rest",
+        "value": "0 1px 3px rgba(15, 23, 42, 0.08)",
+        "purpose": "--shadow-sm. Student cards at rest. Dark: 0 1px 3px rgba(0, 0, 0, 0.3)."
+      },
+      {
+        "name": "lift",
+        "value": "0 4px 16px rgba(15, 23, 42, 0.1)",
+        "purpose": "--shadow-md. Student cards on hover, paired with a 2px rise. Dark: 0 4px 16px rgba(0, 0, 0, 0.4)."
+      },
+      {
+        "name": "float",
+        "value": "0 8px 32px rgba(15, 23, 42, 0.12)",
+        "purpose": "--shadow-lg. Floating layers (dialogs, skip link). Dark: 0 8px 32px rgba(0, 0, 0, 0.5)."
+      },
+      {
+        "name": "thumb",
+        "value": "0 1px 2px rgba(15, 23, 42, 0.25)",
+        "purpose": "Switch knob only."
+      }
+    ],
+    "motion": [
+      {
+        "name": "staff-detail-in",
+        "value": "180ms cubic-bezier(0.16, 1, 0.3, 1)",
+        "purpose": "Detail pane entrance when the selected record changes: opacity 0.4 to 1 and a 4px rise. Removed under prefers-reduced-motion."
+      },
+      {
+        "name": "state-transition",
+        "value": "150ms cubic-bezier(0.4, 0, 0.2, 1)",
+        "purpose": "Default color, background and border transitions on buttons, rows, chips and nav items."
+      },
+      {
+        "name": "switch-slide",
+        "value": "200ms cubic-bezier(0.4, 0, 0.2, 1)",
+        "purpose": "Switch track color and knob slide; instant under reduced motion."
+      },
+      {
+        "name": "sidebar-collapse",
+        "value": "300ms ease-in-out",
+        "purpose": "Sidebar width change (220px to 64px) and mobile drawer slide; off under reduced motion."
+      },
+      {
+        "name": "theme-change",
+        "value": "200ms ease",
+        "purpose": "Background and text color crossfade on <html> when the theme switches."
+      },
+      {
+        "name": "student-entrance",
+        "value": "500-650ms power3.out (GSAP)",
+        "purpose": "Student dashboard and landing entrance and scroll reveals only; staff surfaces have no page-load motion."
+      }
+    ],
+    "breakpoints": [
+      {
+        "name": "sm",
+        "value": "640px"
+      },
+      {
+        "name": "md",
+        "value": "768px"
+      },
+      {
+        "name": "lg",
+        "value": "1024px"
+      }
+    ]
+  },
+  "components": [
+    {
+      "name": "Primary Button",
+      "kind": "button",
+      "refersTo": "button-primary",
+      "description": "The one solid Ink Blue action on a screen, usually at the top right of the list pane.",
+      "html": "<button class=\"ds-btn-primary\"><svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><path d=\"M5 12h14\"/><path d=\"M12 5v14\"/></svg>Add center</button>",
+      "css": ".ds-btn-primary { display: inline-flex; align-items: center; justify-content: center; gap: 8px; height: 40px; padding: 8px 16px; border-radius: 10px; font-family: Inter, sans-serif; font-size: 14px; line-height: 20px; font-weight: 600; white-space: nowrap; cursor: pointer; transition: color 150ms cubic-bezier(0.4,0,0.2,1), background-color 150ms cubic-bezier(0.4,0,0.2,1), border-color 150ms cubic-bezier(0.4,0,0.2,1), opacity 150ms cubic-bezier(0.4,0,0.2,1), box-shadow 150ms; border: 0; background: var(--ink-blue, #4f46e5); color: var(--primary-foreground, #ffffff); } .ds-btn-primary svg { width: 16px; height: 16px; flex-shrink: 0; } .ds-btn-primary:hover { opacity: 0.9; } .ds-btn-primary:focus-visible { outline: none; box-shadow: 0 0 0 2px var(--bg-card, #ffffff), 0 0 0 4px var(--ink-blue, #4f46e5); } .ds-btn-primary:disabled { opacity: 0.6; cursor: not-allowed; }"
+    },
+    {
+      "name": "Outline Button",
+      "kind": "button",
+      "refersTo": "button-outline",
+      "description": "Secondary actions such as Refresh and Try again; Sheet White with a hairline.",
+      "html": "<button class=\"ds-btn-outline\"><svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><path d=\"M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8\"/><path d=\"M21 3v5h-5\"/><path d=\"M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16\"/><path d=\"M8 16H3v5\"/></svg>Refresh</button>",
+      "css": ".ds-btn-outline { display: inline-flex; align-items: center; justify-content: center; gap: 8px; height: 40px; padding: 8px 16px; border-radius: 10px; font-family: Inter, sans-serif; font-size: 14px; line-height: 20px; font-weight: 600; white-space: nowrap; cursor: pointer; transition: color 150ms cubic-bezier(0.4,0,0.2,1), background-color 150ms cubic-bezier(0.4,0,0.2,1), border-color 150ms cubic-bezier(0.4,0,0.2,1), opacity 150ms cubic-bezier(0.4,0,0.2,1), box-shadow 150ms; border: 1px solid var(--border-color, #e2e8f0); background: var(--bg-card, #ffffff); color: var(--text-primary, #0f172a); } .ds-btn-outline svg { width: 16px; height: 16px; flex-shrink: 0; } .ds-btn-outline:hover { background: var(--bg-subtle, #f1f5f9); } .ds-btn-outline:focus-visible { outline: none; box-shadow: 0 0 0 2px var(--bg-card, #ffffff), 0 0 0 4px var(--ink-blue, #4f46e5); } .ds-btn-outline:disabled { opacity: 0.6; cursor: not-allowed; }"
+    },
+    {
+      "name": "Danger Outline Button",
+      "kind": "button",
+      "refersTo": "button-danger-outline",
+      "description": "The only way a staff screen offers a destructive action; it opens a confirm dialog whose confirm button is solid red.",
+      "html": "<button class=\"ds-btn-danger-outline\"><svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><path d=\"M3 6h18\"/><path d=\"M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6\"/><path d=\"M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2\"/><line x1=\"10\" x2=\"10\" y1=\"11\" y2=\"17\"/><line x1=\"14\" x2=\"14\" y1=\"11\" y2=\"17\"/></svg>Delete center</button>",
+      "css": ".ds-btn-danger-outline { display: inline-flex; align-items: center; justify-content: center; gap: 8px; height: 40px; padding: 8px 16px; border-radius: 10px; font-family: Inter, sans-serif; font-size: 14px; line-height: 20px; font-weight: 600; white-space: nowrap; cursor: pointer; transition: color 150ms cubic-bezier(0.4,0,0.2,1), background-color 150ms cubic-bezier(0.4,0,0.2,1), border-color 150ms cubic-bezier(0.4,0,0.2,1), opacity 150ms cubic-bezier(0.4,0,0.2,1), box-shadow 150ms; border: 1px solid oklch(88.5% 0.062 18.334); background: var(--bg-card, #ffffff); color: oklch(57.7% 0.245 27.325); } .ds-btn-danger-outline svg { width: 16px; height: 16px; flex-shrink: 0; } .ds-btn-danger-outline:hover { background: oklch(97.1% 0.013 17.38); } .ds-btn-danger-outline:focus-visible { outline: none; box-shadow: 0 0 0 2px var(--bg-card, #ffffff), 0 0 0 4px var(--ink-blue, #4f46e5); }"
+    },
+    {
+      "name": "Text Field",
+      "kind": "input",
+      "refersTo": "input",
+      "description": "Label above, 40px input with 8px corners, hint below; the ring turns Ink Blue on keyboard focus.",
+      "html": "<div class=\"ds-field\"><label class=\"ds-field-label\" for=\"ds-center-name\">Center name</label><input class=\"ds-input\" id=\"ds-center-name\" placeholder=\"Camelot LC\"><p class=\"ds-field-hint\">Shown to the center's students.</p></div>",
+      "css": ".ds-field { display: flex; flex-direction: column; gap: 6px; font-family: Inter, sans-serif; max-width: 320px; } .ds-field-label { font-size: 14px; line-height: 20px; font-weight: 500; color: var(--text-primary, #0f172a); } .ds-input { height: 40px; width: 100%; box-sizing: border-box; padding: 8px 12px; border: 1px solid var(--border-color, #e2e8f0); border-radius: 8px; background: var(--bg-card, #ffffff); color: var(--text-primary, #0f172a); font: inherit; font-size: 14px; line-height: 20px; } .ds-input::placeholder { color: var(--text-secondary, #475569); } .ds-input:focus-visible { outline: none; box-shadow: 0 0 0 1px var(--bg-card, #ffffff), 0 0 0 3px var(--ink-blue, #4f46e5); } .ds-field-hint { margin: 0; font-size: 12px; line-height: 16px; color: var(--text-secondary, #475569); }"
+    },
+    {
+      "name": "Filter Chips",
+      "kind": "chip",
+      "refersTo": "chip-filter",
+      "description": "Single-select pill filters in the list toolbar; the selected chip takes Ink Wash, counts are tabular.",
+      "html": "<div class=\"ds-chips\" role=\"group\" aria-label=\"Filter\"><button class=\"ds-chip\" aria-pressed=\"true\">Waiting <span class=\"ds-chip-count\">4</span></button><button class=\"ds-chip\" aria-pressed=\"false\">Checked <span class=\"ds-chip-count\">28</span></button><button class=\"ds-chip\" aria-pressed=\"false\">All <span class=\"ds-chip-count\">32</span></button></div>",
+      "css": ".ds-chips { display: flex; flex-wrap: wrap; gap: 6px; } .ds-chip { display: inline-flex; align-items: center; gap: 6px; height: 28px; padding: 0 10px; border-radius: 9999px; border: 1px solid var(--border-color, #e2e8f0); background: var(--bg-card, #ffffff); color: var(--text-secondary, #475569); font-family: Inter, sans-serif; font-size: 12px; line-height: 16px; font-weight: 500; cursor: pointer; transition: color 150ms, background-color 150ms; } .ds-chip:hover { background: var(--bg-subtle, #f1f5f9); color: var(--text-primary, #0f172a); } .ds-chip[aria-pressed='true'] { border-color: transparent; background: var(--accent, #eef2ff); color: var(--accent-foreground, #4f46e5); } .ds-chip:focus-visible { outline: none; box-shadow: 0 0 0 2px var(--ink-blue, #4f46e5); } .ds-chip-count { font-variant-numeric: tabular-nums; opacity: 0.8; }"
+    },
+    {
+      "name": "Badges",
+      "kind": "chip",
+      "refersTo": "badge-plan-paid",
+      "description": "Pill labels: secondary, info and purple for plan tiers; emerald, amber and red only for state.",
+      "html": "<div class=\"ds-badges\"><span class=\"ds-badge ds-badge-free\">Free</span><span class=\"ds-badge ds-badge-info\">Standard</span><span class=\"ds-badge ds-badge-purple\">Premium</span><span class=\"ds-badge ds-badge-success\">Checked</span><span class=\"ds-badge ds-badge-warning\">Waiting</span><span class=\"ds-badge ds-badge-danger\">Expired</span></div>",
+      "css": ".ds-badges { display: flex; flex-wrap: wrap; gap: 8px; } .ds-badge { display: inline-flex; align-items: center; padding: 2px 10px; border-radius: 9999px; border: 1px solid transparent; font-family: Inter, sans-serif; font-size: 12px; line-height: 16px; font-weight: 600; } .ds-badge-free { background: var(--bg-subtle, #f1f5f9); color: var(--text-primary, #0f172a); } .ds-badge-info { background: oklch(93% 0.034 272.788); color: oklch(45.7% 0.24 277.023); } .ds-badge-purple { background: oklch(94.6% 0.033 307.174); color: oklch(49.6% 0.265 301.924); } .ds-badge-success { background: oklch(95% 0.052 163.051); color: oklch(50.8% 0.118 165.612); } .ds-badge-warning { background: oklch(96.2% 0.059 95.617); color: oklch(55.5% 0.163 48.998); } .ds-badge-danger { background: oklch(93.6% 0.032 17.717); color: oklch(50.5% 0.213 27.518); }"
+    },
+    {
+      "name": "Staff Sidebar",
+      "kind": "nav",
+      "refersTo": "staff-sidebar",
+      "description": "Light 220px sidebar with grouped sentence-case sections, 18px Lucide icons, an Ink Wash active pill and amber pending counts.",
+      "html": "<nav class=\"ds-side\" aria-label=\"Admin sections\"><div class=\"ds-side-head\"><span class=\"ds-side-logo\"></span><div><p class=\"ds-side-name\">WriteReady</p><p class=\"ds-side-role\">Admin</p></div></div><ul class=\"ds-side-list\"><li><button class=\"ds-side-item\" aria-current=\"page\"><svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><rect width=\"7\" height=\"9\" x=\"3\" y=\"3\" rx=\"1\"/><rect width=\"7\" height=\"5\" x=\"14\" y=\"3\" rx=\"1\"/><rect width=\"7\" height=\"9\" x=\"14\" y=\"12\" rx=\"1\"/><rect width=\"7\" height=\"5\" x=\"3\" y=\"16\" rx=\"1\"/></svg><span>Overview</span></button></li></ul><p class=\"ds-side-group\">Content</p><ul class=\"ds-side-list\"><li><button class=\"ds-side-item\"><svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><path d=\"M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z\"/><path d=\"M14 2v4a2 2 0 0 0 2 2h4\"/><path d=\"M10 9H8\"/><path d=\"M16 13H8\"/><path d=\"M16 17H8\"/></svg><span>Task 2 prompts</span></button></li></ul><p class=\"ds-side-group\">Partners</p><ul class=\"ds-side-list\"><li><button class=\"ds-side-item\"><svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><path d=\"M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2\"/><circle cx=\"9\" cy=\"7\" r=\"4\"/><path d=\"M22 21v-2a4 4 0 0 0-3-3.87\"/><path d=\"M16 3.13a4 4 0 0 1 0 7.75\"/></svg><span>Users</span></button></li><li><button class=\"ds-side-item\"><svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><path d=\"M21.42 10.922a1 1 0 0 0-.019-1.838L12.83 5.18a2 2 0 0 0-1.66 0L2.6 9.08a1 1 0 0 0 0 1.832l8.57 3.908a2 2 0 0 0 1.66 0z\"/><path d=\"M22 10v6\"/><path d=\"M6 12.5V16a6 3 0 0 0 12 0v-3.5\"/></svg><span>Teachers</span><span class=\"ds-side-count\">3</span></button></li></ul></nav>",
+      "css": ".ds-side { width: 220px; box-sizing: border-box; padding: 0 12px 12px; background: var(--bg-card, #ffffff); border-right: 1px solid var(--border-color, #e2e8f0); font-family: Inter, sans-serif; } .ds-side-head { display: flex; align-items: center; gap: 10px; padding: 20px 2px; margin: 0 -12px 8px; padding-left: 14px; border-bottom: 1px solid var(--border-color, #e2e8f0); } .ds-side-logo { width: 32px; height: 32px; border-radius: 8px; background: var(--ink-blue, #4f46e5); flex-shrink: 0; } .ds-side-name { margin: 0; font-size: 14px; line-height: 18px; font-weight: 700; color: var(--text-primary, #0f172a); } .ds-side-role { margin: 0; font-size: 12px; line-height: 16px; color: var(--text-secondary, #475569); } .ds-side-group { margin: 16px 0 4px; padding: 0 14px; font-size: 12px; line-height: 16px; font-weight: 500; color: var(--text-secondary, #475569); } .ds-side-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 2px; } .ds-side-item { width: 100%; display: flex; align-items: center; gap: 12px; padding: 8px 14px; border: 0; border-radius: 10px; background: transparent; color: color-mix(in srgb, var(--text-primary, #0f172a) 70%, transparent); font: inherit; font-size: 14px; line-height: 20px; font-weight: 500; text-align: left; cursor: pointer; transition: color 150ms, background-color 150ms; } .ds-side-item svg { width: 18px; height: 18px; flex-shrink: 0; } .ds-side-item:hover { color: var(--text-primary, #0f172a); background: color-mix(in srgb, var(--accent, #eef2ff) 60%, transparent); } .ds-side-item[aria-current='page'] { background: var(--accent, #eef2ff); color: var(--ink-blue, #4f46e5); font-weight: 600; } .ds-side-item:focus-visible { outline: none; box-shadow: 0 0 0 2px var(--ink-blue, #4f46e5); } .ds-side-count { margin-left: auto; padding: 0 6px; border-radius: 9999px; background: oklch(96.2% 0.059 95.617); color: oklch(47.3% 0.137 46.201); font-size: 11px; font-weight: 600; font-variant-numeric: tabular-nums; }"
+    },
+    {
+      "name": "List Pane",
+      "kind": "custom",
+      "refersTo": "list-pane",
+      "description": "Signature: 340px record list with title, count and primary action, a search field that '/' focuses, and rows; the selected row takes Ink Wash and arrows move the selection.",
+      "html": "<section class=\"ds-list\" aria-label=\"Learning centers\"><div class=\"ds-list-head\"><div class=\"ds-list-title-row\"><h1 class=\"ds-list-title\">Learning centers<span class=\"ds-list-count\">12</span></h1><button class=\"ds-list-add\"><svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><path d=\"M5 12h14\"/><path d=\"M12 5v14\"/></svg>Add</button></div><div class=\"ds-search\"><svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><circle cx=\"11\" cy=\"11\" r=\"8\"/><path d=\"m21 21-4.3-4.3\"/></svg><input type=\"search\" placeholder=\"Search centers\" aria-label=\"Search centers\"><kbd>/</kbd></div></div><div class=\"ds-rows\" role=\"list\"><div role=\"listitem\"><button class=\"ds-row\" aria-current=\"true\"><span class=\"ds-row-main\"><span class=\"ds-row-title\">Camelot LC</span><span class=\"ds-row-meta\">24 of 30 students</span></span><span class=\"ds-row-badge\">Active</span></button></div><div role=\"listitem\"><button class=\"ds-row\"><span class=\"ds-row-main\"><span class=\"ds-row-title\">Registan Academy</span><span class=\"ds-row-meta\">Contract ends in 6 days</span></span></button></div><div role=\"listitem\"><button class=\"ds-row\"><span class=\"ds-row-main\"><span class=\"ds-row-title\">Samarkand English</span><span class=\"ds-row-meta\">11 of 20 students</span></span></button></div></div></section>",
+      "css": ".ds-list { width: 340px; background: var(--bg-card, #ffffff); border-right: 1px solid var(--border-color, #e2e8f0); font-family: Inter, sans-serif; } .ds-list-head { padding: 20px 16px 12px; border-bottom: 1px solid var(--border-color, #e2e8f0); } .ds-list-title-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 12px; } .ds-list-title { margin: 0; font-size: 18px; line-height: 28px; font-weight: 600; letter-spacing: -0.01em; color: var(--text-primary, #0f172a); } .ds-list-count { margin-left: 8px; font-size: 14px; font-weight: 400; font-variant-numeric: tabular-nums; color: var(--text-secondary, #475569); } .ds-list-add { display: inline-flex; align-items: center; gap: 8px; height: 32px; padding: 0 12px; border: 0; border-radius: 8px; background: var(--ink-blue, #4f46e5); color: var(--primary-foreground, #ffffff); font: inherit; font-size: 12px; font-weight: 600; cursor: pointer; } .ds-list-add svg { width: 16px; height: 16px; } .ds-list-add:hover { opacity: 0.9; } .ds-list-add:focus-visible { outline: none; box-shadow: 0 0 0 2px var(--bg-card, #ffffff), 0 0 0 4px var(--ink-blue, #4f46e5); } .ds-search { position: relative; } .ds-search svg { position: absolute; left: 12px; top: 50%; transform: translateY(-50%); width: 16px; height: 16px; color: var(--text-secondary, #475569); pointer-events: none; } .ds-search input { width: 100%; box-sizing: border-box; height: 36px; padding: 0 36px; border: 1px solid var(--border-color, #e2e8f0); border-radius: 8px; background: var(--bg-card, #ffffff); color: var(--text-primary, #0f172a); font: inherit; font-size: 14px; } .ds-search input:focus-visible { outline: none; box-shadow: 0 0 0 1px var(--bg-card, #ffffff), 0 0 0 3px var(--ink-blue, #4f46e5); } .ds-search kbd { position: absolute; right: 10px; top: 50%; transform: translateY(-50%); padding: 0 6px; border: 1px solid var(--border-color, #e2e8f0); border-radius: 4px; font-family: 'IBM Plex Mono', monospace; font-size: 11px; color: var(--text-secondary, #475569); } .ds-rows { display: flex; flex-direction: column; gap: 2px; padding: 8px; } .ds-row { width: 100%; display: flex; align-items: flex-start; gap: 12px; padding: 10px 12px; border: 0; border-radius: 10px; background: transparent; font: inherit; text-align: left; cursor: pointer; transition: background-color 150ms; } .ds-row:hover { background: var(--bg-subtle, #f1f5f9); } .ds-row[aria-current='true'] { background: var(--accent, #eef2ff); } .ds-row:focus-visible { outline: none; box-shadow: inset 0 0 0 2px var(--ink-blue, #4f46e5); } .ds-row-main { flex: 1; min-width: 0; } .ds-row-title { display: block; font-size: 14px; line-height: 20px; font-weight: 500; color: var(--text-primary, #0f172a); } .ds-row-meta { display: block; font-size: 12px; line-height: 16px; color: var(--text-secondary, #475569); } .ds-row-badge { flex-shrink: 0; padding: 2px 10px; border-radius: 9999px; background: oklch(95% 0.052 163.051); color: oklch(50.8% 0.118 165.612); font-size: 12px; line-height: 16px; font-weight: 600; }"
+    },
+    {
+      "name": "Stat Strip",
+      "kind": "card",
+      "refersTo": "stat-tile",
+      "description": "Hairline grid of number tiles: Slate Gray labels over IBM Plex Mono figures; clickable tiles jump to the filtered list.",
+      "html": "<div class=\"ds-stats\"><button class=\"ds-stat\"><span class=\"ds-stat-label\">New today</span><span class=\"ds-stat-value\">14</span></button><button class=\"ds-stat\"><span class=\"ds-stat-label\">Paying users</span><span class=\"ds-stat-value\">312</span></button><button class=\"ds-stat\"><span class=\"ds-stat-label\">All users</span><span class=\"ds-stat-value\">4,870</span></button><div class=\"ds-stat\"><span class=\"ds-stat-label\">This month</span><span class=\"ds-stat-value\">1,240,000</span><span class=\"ds-stat-hint\">UZS, 42 reviews</span></div></div>",
+      "css": ".ds-stats { display: flex; flex-wrap: wrap; gap: 1px; overflow: hidden; border-radius: 14px; border: 1px solid var(--border-color, #e2e8f0); background: var(--border-color, #e2e8f0); font-family: Inter, sans-serif; } .ds-stat { flex: 1 1 150px; min-width: 150px; padding: 16px 20px; border: 0; background: var(--bg-card, #ffffff); text-align: left; font: inherit; } button.ds-stat { cursor: pointer; transition: background-color 150ms; } button.ds-stat:hover { background: var(--bg-subtle, #f1f5f9); } button.ds-stat:focus-visible { outline: none; box-shadow: inset 0 0 0 2px var(--ink-blue, #4f46e5); } .ds-stat-label { display: block; font-size: 14px; line-height: 20px; color: var(--text-secondary, #475569); } .ds-stat-value { display: block; margin-top: 4px; font-family: 'IBM Plex Mono', monospace; font-size: 24px; line-height: 32px; font-weight: 600; font-variant-numeric: tabular-nums; color: var(--text-primary, #0f172a); } .ds-stat-hint { display: block; margin-top: 2px; font-size: 12px; line-height: 16px; color: var(--text-secondary, #475569); }"
+    },
+    {
+      "name": "Panel",
+      "kind": "card",
+      "refersTo": "panel",
+      "description": "Border-only Sheet White panel with a 14px semibold title; shown here as Needs attention with state icon wells and ghost go-to actions.",
+      "html": "<section class=\"ds-panel\"><header class=\"ds-panel-head\"><h2 class=\"ds-panel-title\">Needs attention</h2></header><ul class=\"ds-panel-body\"><li class=\"ds-attn\"><span class=\"ds-well ds-well-warning\"><svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><polyline points=\"22 12 16 12 14 15 10 15 8 12 2 12\"/><path d=\"M5.45 5.11 2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z\"/></svg></span><div class=\"ds-attn-text\"><p class=\"ds-attn-title\">3 essays are waiting for a teacher</p><p class=\"ds-attn-detail\">Oldest request 2 days ago</p></div><button class=\"ds-ghost\">Teachers<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><path d=\"M5 12h14\"/><path d=\"m12 5 7 7-7 7\"/></svg></button></li><li class=\"ds-attn\"><span class=\"ds-well ds-well-ok\"><svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><circle cx=\"12\" cy=\"12\" r=\"10\"/><path d=\"m9 12 2 2 4-4\"/></svg></span><div class=\"ds-attn-text\"><p class=\"ds-attn-title\">The site is open to everyone</p><p class=\"ds-attn-detail\">Maintenance mode is off.</p></div><button class=\"ds-ghost\">Settings<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><path d=\"M5 12h14\"/><path d=\"m12 5 7 7-7 7\"/></svg></button></li></ul></section>",
+      "css": ".ds-panel { border: 1px solid var(--border-color, #e2e8f0); border-radius: 14px; background: var(--bg-card, #ffffff); font-family: Inter, sans-serif; max-width: 560px; } .ds-panel-head { padding: 16px 20px 12px; } .ds-panel-title { margin: 0; font-size: 14px; line-height: 20px; font-weight: 600; color: var(--text-primary, #0f172a); } .ds-panel-body { list-style: none; margin: 0; padding: 0 20px 8px; } .ds-attn { display: flex; align-items: center; gap: 12px; padding: 12px 0; } .ds-attn + .ds-attn { border-top: 1px solid var(--border-color, #e2e8f0); } .ds-well { display: flex; align-items: center; justify-content: center; width: 36px; height: 36px; flex-shrink: 0; border-radius: 10px; } .ds-well svg { width: 18px; height: 18px; } .ds-well-warning { background: oklch(98.7% 0.022 95.277); color: oklch(55.5% 0.163 48.998); } .ds-well-ok { background: oklch(97.9% 0.021 166.113); color: oklch(50.8% 0.118 165.612); } .ds-attn-text { flex: 1; min-width: 0; } .ds-attn-title { margin: 0; font-size: 14px; line-height: 20px; font-weight: 500; color: var(--text-primary, #0f172a); } .ds-attn-detail { margin: 0; font-size: 14px; line-height: 20px; color: var(--text-secondary, #475569); } .ds-ghost { display: inline-flex; align-items: center; gap: 8px; height: 32px; padding: 0 12px; border: 0; border-radius: 8px; background: transparent; color: var(--text-primary, #0f172a); font: inherit; font-size: 12px; font-weight: 600; cursor: pointer; transition: background-color 150ms; } .ds-ghost svg { width: 16px; height: 16px; } .ds-ghost:hover { background: var(--bg-subtle, #f1f5f9); } .ds-ghost:focus-visible { outline: none; box-shadow: 0 0 0 2px var(--bg-card, #ffffff), 0 0 0 4px var(--ink-blue, #4f46e5); }"
+    },
+    {
+      "name": "Notice",
+      "kind": "custom",
+      "refersTo": null,
+      "description": "Inline status message: state tint, 1px border, 16px Lucide icon; errors announce as alerts.",
+      "html": "<div class=\"ds-notices\"><div class=\"ds-notice ds-notice-success\" role=\"status\"><svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><circle cx=\"12\" cy=\"12\" r=\"10\"/><path d=\"m9 12 2 2 4-4\"/></svg><div>Plan changed to Standard until 18 October.</div></div><div class=\"ds-notice ds-notice-error\" role=\"alert\"><svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><path d=\"m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3\"/><path d=\"M12 9v4\"/><path d=\"M12 17h.01\"/></svg><div>Could not save the center. Check your connection, then try again.</div></div></div>",
+      "css": ".ds-notices { display: flex; flex-direction: column; gap: 12px; max-width: 480px; font-family: Inter, sans-serif; } .ds-notice { display: flex; align-items: flex-start; gap: 10px; padding: 10px 14px; border: 1px solid; border-radius: 10px; font-size: 14px; line-height: 20px; } .ds-notice svg { width: 16px; height: 16px; margin-top: 2px; flex-shrink: 0; } .ds-notice-success { border-color: oklch(90.5% 0.093 164.15); background: oklch(97.9% 0.021 166.113); color: oklch(43.2% 0.095 166.913); } .ds-notice-error { border-color: oklch(88.5% 0.062 18.334); background: oklch(97.1% 0.013 17.38); color: oklch(50.5% 0.213 27.518); }"
+    }
+  ],
+  "narrative": {
+    "northStar": "Ink on Paper",
+    "overview": "WriteReady looks like a well-kept workbook: a pale paper ground, white sheets separated by hairlines, and one indigo ink used for the mark that matters. The token names already say it (`--paper`, `--ink-blue`), and the rest of the system follows. Quiet slate neutrals carry almost everything; indigo marks the primary action, the current selection and keyboard focus; emerald, amber and red appear only when something has a state to report.\n\nOne world serves two kinds of visitor. Students get the fuller expression of it: heavier headings, cards with a soft shadow that lift on hover, entrance motion on the dashboard and landing page. Staff (the owner, learning centers, teachers) get the same materials tuned for operating: a light grouped sidebar, a searchable record list with the selected record open beside it, semibold headings, flat hairline panels, and IBM Plex Mono for every figure. PRODUCT.md makes this binding: the staff panels use the same colors and design language as the student pages.\n\nDensity is comfortable rather than compact: 14px body text, 40px controls, 16 to 24px gaps. Light and dark themes both come from the same semantic tokens, switched by a `.dark` class on `<html>` (light, dark or system, chosen in the theme menu).",
+    "keyCharacteristics": [
+      "Pale paper ground, white panels, 1px slate hairlines.",
+      "A single indigo ink for primary action, selection and focus.",
+      "Emerald, amber and red only for state.",
+      "Inter for words, IBM Plex Mono for numbers.",
+      "One radius family: 8px fields, 10px controls, 14px panels, pills for chips and badges.",
+      "Lucide line icons at 16px in controls and 18px in navigation.",
+      "Full light and dark themes from tokens."
+    ],
+    "rules": [
+      {
+        "name": "The One Ink Rule",
+        "body": "Solid indigo marks exactly three things: the primary action, the current selection and keyboard focus. If a screen shows two solid indigo buttons side by side, one of them should be outline.",
+        "section": "colors"
+      },
+      {
+        "name": "The State-Only Rule",
+        "body": "Emerald, amber and red speak only about state: done, waiting, wrong, or about to be destroyed. Plan tiers and other categories take the secondary, info, purple or outline badges instead.",
+        "section": "colors"
+      },
+      {
+        "name": "The Token Theme Rule",
+        "body": "Surfaces take color from the semantic tokens (`var(--bg-card)`, `var(--text-secondary)`, `var(--border-color)`), so dark mode comes for free. Raw Tailwind hues appear only as state tints, each with its `dark:` counterpart.",
+        "section": "colors"
+      },
+      {
+        "name": "The Mono Figures Rule",
+        "body": "Every count, amount, band score and ID sits in IBM Plex Mono with tabular numerals; words never do. Counts inside Inter text (chip counts, a title's record count) still take `tabular-nums`.",
+        "section": "typography"
+      },
+      {
+        "name": "The Semibold Ceiling Rule",
+        "body": "Staff headings stop at semibold with slightly tight tracking (-0.01 to -0.02em); bold is kept for the WriteReady wordmark. The bold, extrabold and black headings belong to the student dashboard and landing page.",
+        "section": "typography"
+      },
+      {
+        "name": "The Keep Your Place Rule",
+        "body": "Staff never leave a list to see a record. Selecting a row opens it beside the list; on narrow screens it replaces the list with a Back control that returns to the same scroll position.",
+        "section": "layout"
+      },
+      {
+        "name": "The Declared Once Rule",
+        "body": "A staff container in the page flow gets a hairline border or a shadow, never both. Panels, the list pane, the stat strip and the login card are border-only.",
+        "section": "elevation"
+      },
+      {
+        "name": "The One Family Rule",
+        "body": "New UI picks from 8, 10 and 14px or a pill, by role. Nested shapes step down: a 10px row inside a 14px panel, an 8px field inside a 14px card.",
+        "section": "shapes"
+      }
+    ],
+    "dos": [
+      "**Do** keep one solid Ink Blue action per screen and show selection with Ink Wash plus Ink Wash Text.",
+      "**Do** set every count, amount, band score and ID in IBM Plex Mono with tabular numerals.",
+      "**Do** build each staff section as List and Detail: a 340px list pane with search, filter chips and rows beside a detail column capped at 820px.",
+      "**Do** give every data surface three states: skeleton rows while loading, an empty state when there is truly nothing, and a load error with Try again when the request failed.",
+      "**Do** make destructive actions two steps: a Danger Outline button opens the confirm dialog, whose solid destructive button names the action (\"Delete teacher\").",
+      "**Do** write each state hue as a light and `dark:` pair, and add `motion-reduce:` to every pulse, spin and transition.",
+      "**Do** use Lucide line icons (16px in controls, 18px in navigation), `aria-hidden` when a text label is present.",
+      "**Do** write staff copy in English, in sentence case."
+    ],
+    "donts": [
+      "**Don't** use emerald, amber or red for plan tiers, categories or decoration.",
+      "**Don't** put emoji in staff chrome: navigation, headings, buttons, badges, empty states.",
+      "**Don't** use em or en dashes in visible copy; use commas, colons or \"to\".",
+      "**Don't** give a staff container in the page flow both a border and a shadow.",
+      "**Don't** introduce a radius outside 4, 8, 10, 14 and 18px or a pill.",
+      "**Don't** hard-code hex colors in components; dark mode only works through the tokens.",
+      "**Don't** add uppercase, letter-spaced kicker labels above headings. The landing page and dashboard still carry some; they are not a pattern to copy.",
+      "**Don't** add page-load choreography to staff surfaces; staff motion is the 180ms detail swap and 150 to 200ms color transitions."
+    ]
+  }
+}

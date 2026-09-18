@@ -8,7 +8,7 @@ import {
 import { useStopwatch } from "@/hooks/useStopwatch";
 import { auth, db } from "@/firebase/firebase";
 import { collection, doc, getDoc, getDocs } from "firebase/firestore";
-import jsPDF from "jspdf";
+import { downloadEssayPdf } from "@/lib/essayPdf";
 import WritingTask1Preview from "@/components/writingTask1Preview/WritingTask1Preview";
 import { NavLink, useNavigate } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
@@ -159,146 +159,15 @@ function Practice() {
       e.currentTarget.releasePointerCapture(e.pointerId);
   };
 
-  async function loadImgBase64(
-    src: string,
-  ): Promise<{ b64: string; w: number; h: number } | null> {
-    if (!src) return null;
-    if (src.startsWith("data:application/pdf") || /\.pdf(\?|$)/i.test(src))
-      return null;
-    return new Promise((resolve) => {
-      const img = new Image();
-      img.crossOrigin = "anonymous";
-      img.onload = () => {
-        const canvas = document.createElement("canvas");
-        canvas.width = img.naturalWidth;
-        canvas.height = img.naturalHeight;
-        canvas.getContext("2d")!.drawImage(img, 0, 0);
-        resolve({
-          b64: canvas.toDataURL("image/jpeg", 0.85),
-          w: img.naturalWidth,
-          h: img.naturalHeight,
-        });
-      };
-      img.onerror = () => resolve(null);
-      img.src = src;
-    });
-  }
-
   const handleDownloadPDF = async () => {
-    const pdfdoc = new jsPDF();
-    const pageW = pdfdoc.internal.pageSize.getWidth();
-    const pageH = pdfdoc.internal.pageSize.getHeight();
-    const margin = 20;
-    const contentW = pageW - margin * 2;
-
-    pdfdoc.setFillColor(15, 23, 42);
-    pdfdoc.rect(0, 0, pageW, 40, "F");
-    pdfdoc.setFontSize(12);
-    pdfdoc.setTextColor(255, 255, 255);
-    pdfdoc.setFont("helvetica", "bold");
-    pdfdoc.text("WriteReady IELTS", margin, 15);
-    pdfdoc.setFontSize(16);
-    pdfdoc.text("Writing Practice Report", margin, 30);
-    pdfdoc.setFontSize(8);
-    pdfdoc.setFont("helvetica", "normal");
-    pdfdoc.text(
-      new Date().toLocaleDateString("en-GB", {
-        day: "2-digit",
-        month: "short",
-        year: "numeric",
-      }),
-      pageW - margin,
-      15,
-      { align: "right" },
-    );
-
-    let y = 52;
-    const tasks = [
-      {
-        taskNum: 1 as const,
-        question: task1?.report,
-        answer: userText1,
-        minW: 150,
-        imgSrc: task1?.image,
-      },
-      {
-        taskNum: 2 as const,
-        question: task2?.report,
-        answer: userText2,
-        minW: 250,
-        imgSrc: undefined as string | undefined,
-      },
-    ];
-
-    for (let i = 0; i < tasks.length; i++) {
-      const { taskNum, question, answer, minW, imgSrc } = tasks[i];
-      if (i > 0) {
-        pdfdoc.addPage();
-        y = 20;
-      }
-      pdfdoc.setFillColor(240, 244, 255);
-      pdfdoc.roundedRect(margin, y - 5, contentW, 12, 2, 2, "F");
-      pdfdoc.setFontSize(11);
-      pdfdoc.setTextColor(15, 23, 42);
-      pdfdoc.setFont("helvetica", "bold");
-      pdfdoc.text(`TASK ${taskNum} — ${minW} words minimum`, margin + 3, y + 2);
-      y += 16;
-      if (question) {
-        const qLines = pdfdoc.splitTextToSize(question, contentW - 10);
-        const qH = qLines.length * 5.6 + 10;
-        pdfdoc.setFillColor(248, 250, 252);
-        pdfdoc.roundedRect(margin, y, contentW, qH, 2, 2, "FD");
-        pdfdoc.setFontSize(10);
-        pdfdoc.setFont("helvetica", "normal");
-        pdfdoc.text(qLines, margin + 5, y + 7);
-        y += qH + 12;
-      }
-      if (imgSrc) {
-        const imgData = await loadImgBase64(imgSrc);
-        if (imgData) {
-          const imgH = Math.min(contentW * (imgData.h / imgData.w), 100);
-          if (y + imgH > pageH - margin) {
-            pdfdoc.addPage();
-            y = 20;
-          }
-          pdfdoc.addImage(imgData.b64, "JPEG", margin, y, contentW, imgH);
-          y += imgH + 8;
-        }
-      }
-      pdfdoc.setFillColor(233, 245, 255);
-      pdfdoc.roundedRect(margin, y - 5, contentW, 8, 2, 2, "F");
-      pdfdoc.setFont("helvetica", "bold");
-      pdfdoc.text("YOUR ANSWER", margin + 3, y + 1);
-      y += 12;
-      const aLines = pdfdoc.splitTextToSize(
-        answer || "(No answer provided)",
-        contentW - 10,
-      );
-      const aH = aLines.length * 5.6 + 10;
-      if (y + aH > pageH - margin) {
-        pdfdoc.addPage();
-        y = 20;
-      }
-      pdfdoc.setFillColor(245, 252, 245);
-      pdfdoc.roundedRect(margin, y, contentW, aH, 2, 2, "FD");
-      pdfdoc.setFont("helvetica", "normal");
-      pdfdoc.text(aLines, margin + 5, y + 7);
-      y += aH + 12;
-    }
-
-    const pages = pdfdoc.getNumberOfPages();
-    for (let i = 1; i <= pages; i++) {
-      pdfdoc.setPage(i);
-      pdfdoc.setFillColor(15, 23, 42);
-      pdfdoc.rect(0, pageH - 14, pageW, 14, "F");
-      pdfdoc.setFontSize(7);
-      pdfdoc.setTextColor(255, 255, 255);
-      pdfdoc.text("WriteReady — IELTS Writing Practice", margin, pageH - 5);
-      pdfdoc.text(`Page ${i} of ${pages}`, pageW - margin, pageH - 5, {
-        align: "right",
-      });
-    }
-    pdfdoc.save("WriteReady_Practice.pdf");
+    await downloadEssayPdf({
+      mode: "Practice Mode",
+      fileName: "WriteReady_Practice.pdf",
+      tasks: [
+        { taskNum: 1, question: task1?.report, imageSrc: task1?.image, answer: userText1 },
+        { taskNum: 2, question: task2?.report, answer: userText2 },
+      ],
+    });
     setShowFeedbackModal(true);
   };
 

@@ -7,7 +7,7 @@ import {
 } from "react";
 import { auth, db } from "@/firebase/firebase";
 import { collection, doc, getDoc, getDocs } from "firebase/firestore";
-import jsPDF from "jspdf";
+import { downloadEssayPdf } from "@/lib/essayPdf";
 import WritingTask1Preview from "@/components/writingTask1Preview/WritingTask1Preview";
 import { NavLink, useNavigate } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
@@ -22,7 +22,6 @@ import { TeacherPickerModal } from "@/components/ui/TeacherPickerModal";
 import { HumanCheckConfirmModal } from "@/components/ui/HumanCheckConfirmModal";
 import { FullscreenButton } from "@/components/ui/FullscreenButton";
 import { ShuffleBag } from "@/lib/shuffleBag";
-import { loadImgBase64 } from "@/lib/loadImageForPdf";
 import { hasAccess } from "@/lib/reportAccess";
 
 interface Task1 {
@@ -121,102 +120,19 @@ function Quick() {
   };
 
   const handleFinish = async () => {
-    const pdf = new jsPDF();
-    const pageW = pdf.internal.pageSize.getWidth();
-    const pageH = pdf.internal.pageSize.getHeight();
-    const margin = 20;
-    const contentW = pageW - margin * 2;
-
-    // Header
-    pdf.setFillColor(88, 28, 135);
-    pdf.rect(0, 0, pageW, 40, "F");
-    pdf.setFontSize(12);
-    pdf.setTextColor(255, 255, 255);
-    pdf.setFont("helvetica", "bold");
-    pdf.text("WriteReady IELTS", margin, 15);
-    pdf.setFontSize(16);
-    pdf.text(`Quick Write — Task ${selectedTaskType}`, margin, 30);
-    pdf.setFontSize(8);
-    pdf.setFont("helvetica", "normal");
-    pdf.text(
-      new Date().toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" }),
-      pageW - margin,
-      15,
-      { align: "right" }
-    );
-
-    let y = 52;
-    const question = selectedTaskType === 1 ? task1?.report : task2?.report;
-
-    // Task label
-    pdf.setFillColor(240, 232, 255);
-    pdf.roundedRect(margin, y - 5, contentW, 12, 2, 2, "F");
-    pdf.setFontSize(11);
-    pdf.setTextColor(88, 28, 135);
-    pdf.setFont("helvetica", "bold");
-    pdf.text(
-      `TASK ${selectedTaskType} — ${minWords} words minimum`,
-      margin + 3,
-      y + 2
-    );
-    y += 16;
-
-    // Question box
-    if (question) {
-      pdf.setFontSize(10);
-      pdf.setFont("helvetica", "normal");
-      const qLines = pdf.splitTextToSize(question, contentW - 10);
-      const qH = qLines.length * 5.6 + 10;
-      pdf.setFillColor(248, 250, 252);
-      pdf.roundedRect(margin, y, contentW, qH, 2, 2, "FD");
-      pdf.setTextColor(15, 23, 42);
-      pdf.text(qLines, margin + 5, y + 7);
-      y += qH + 12;
-    }
-
-    // Task 1 chart image
-    if (selectedTaskType === 1 && task1?.image) {
-      const imgData = await loadImgBase64(task1.image);
-      if (imgData) {
-        const imgH = Math.min(contentW * (imgData.h / imgData.w), 100);
-        if (y + imgH > pageH - margin) { pdf.addPage(); y = 20; }
-        pdf.addImage(imgData.b64, 'JPEG', margin, y, contentW, imgH);
-        y += imgH + 8;
-      }
-    }
-
-    // Answer label
-    pdf.setFontSize(10);
-    pdf.setFillColor(233, 225, 255);
-    pdf.roundedRect(margin, y - 5, contentW, 8, 2, 2, "F");
-    pdf.setTextColor(88, 28, 135);
-    pdf.setFont("helvetica", "bold");
-    pdf.text("YOUR ANSWER", margin + 3, y + 1);
-    y += 12;
-
-    // Answer text
-    const answerLines = pdf.splitTextToSize(userText || "(No answer provided)", contentW - 10);
-    const totalH = answerLines.length * 5.6 + 10;
-    if (y + totalH > pageH - margin) { pdf.addPage(); y = 20; }
-    pdf.setFillColor(250, 245, 255);
-    pdf.roundedRect(margin, y, contentW, totalH, 2, 2, "FD");
-    pdf.setTextColor(15, 23, 42);
-    pdf.setFont("helvetica", "normal");
-    pdf.text(answerLines, margin + 5, y + 7);
-
-    // Footer on all pages
-    const pages = pdf.getNumberOfPages();
-    for (let i = 1; i <= pages; i++) {
-      pdf.setPage(i);
-      pdf.setFillColor(88, 28, 135);
-      pdf.rect(0, pageH - 14, pageW, 14, "F");
-      pdf.setFontSize(7);
-      pdf.setTextColor(255, 255, 255);
-      pdf.text("WriteReady — IELTS Writing Practice", margin, pageH - 5);
-      pdf.text(`Page ${i} of ${pages}`, pageW - margin, pageH - 5, { align: "right" });
-    }
-
-    pdf.save(`WriteReady_Quick_Task${selectedTaskType}.pdf`);
+    if (selectedTaskType === null) return;
+    await downloadEssayPdf({
+      mode: "Quick Write",
+      fileName: `WriteReady_Quick_Task${selectedTaskType}.pdf`,
+      tasks: [
+        {
+          taskNum: selectedTaskType,
+          question: selectedTaskType === 1 ? task1?.report : task2?.report,
+          imageSrc: selectedTaskType === 1 ? task1?.image : null,
+          answer: userText,
+        },
+      ],
+    });
     setShowFeedbackModal(true);
   };
 

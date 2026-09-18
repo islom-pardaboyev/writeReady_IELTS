@@ -9,7 +9,12 @@ import {
   type MaintenanceUpdate,
 } from '@/hooks/useFeatureFlag';
 import { formatDateTime, formatDuration } from '@/lib/duration';
+import { Power } from 'lucide-react';
+import { cn } from '@/lib/utils';
 import { Input } from '@/components/ui/input';
+import { Button } from '@/components/ui/Button';
+import { Badge } from '@/components/ui/badge';
+import { Field, Notice, selectClass } from '@/components/staff/parts';
 
 const UNITS: MaintenanceUnit[] = ['hours', 'days', 'months'];
 
@@ -27,7 +32,9 @@ export function MaintenanceControl() {
   const [now, setNow] = useState(() => Date.now());
 
   useEffect(() => {
-    getMaintenanceStatus({ fresh: true }).then(setStatus);
+    getMaintenanceStatus({ fresh: true, strict: true })
+      .then(setStatus)
+      .catch(() => setError('Could not check whether maintenance mode is on. Reload the page to try again.'));
   }, []);
 
   useEffect(() => {
@@ -68,48 +75,61 @@ export function MaintenanceControl() {
   const remaining = status.endsAt !== null ? status.endsAt - now : null;
 
   return (
-    <div className={`rounded-xl border p-5 flex flex-col gap-4 ${on ? 'bg-red-50 border-red-200' : 'bg-white border-slate-200'}`}>
-      <div className="flex items-start justify-between gap-4 flex-wrap">
-        <div className="min-w-0">
-          <p className={`text-sm font-semibold ${on ? 'text-red-700' : 'text-slate-800'}`}>
-            {on ? '🛑 Maintenance mode is ON' : 'Maintenance mode'}
-          </p>
-          <p className={`text-xs mt-0.5 max-w-xl ${on ? 'text-red-600' : 'text-slate-500'}`}>
-            {!on && 'Close the site for every visitor except you, with a countdown showing when it reopens.'}
-            {on && remaining === null && (
-              <>
-                Everyone except you sees the maintenance page
-                {status.startedAt ? ` (on for ${formatDuration(now - status.startedAt)})` : ''}. No end time is set, so
-                visitors see how long it has been down. Set one below to show a countdown instead.
-              </>
+    <section className={cn('rounded-xl border bg-[var(--bg-card)]', on ? 'border-red-300 dark:border-red-900/70' : 'border-[var(--border-color)]')}>
+      <header className="flex flex-wrap items-start justify-between gap-4 px-5 pt-4 pb-4">
+        <div className="flex min-w-0 items-start gap-3">
+          <span
+            className={cn(
+              'flex h-9 w-9 shrink-0 items-center justify-center rounded-lg',
+              on ? 'bg-red-50 text-red-600 dark:bg-red-950/50 dark:text-red-400' : 'bg-[var(--bg-subtle)] text-[var(--text-secondary)]',
             )}
-            {on && remaining !== null && remaining > 0 && (
-              <>Reopens in {formatDuration(remaining)}, on {formatDateTime(status.endsAt!)}. You still have full access.</>
-            )}
-            {on && remaining !== null && remaining <= 0 && (
-              <>
-                The planned end ({formatDateTime(status.endsAt!)}) passed {formatDuration(-remaining)} ago. The site stays
-                closed until you turn maintenance off.
-              </>
-            )}
-          </p>
+          >
+            <Power size={18} aria-hidden="true" />
+          </span>
+          <div className="min-w-0">
+            <div className="flex items-center gap-2">
+              <h2 className="text-sm font-semibold text-[var(--text-primary)]">Maintenance mode</h2>
+              <Badge variant={on ? 'danger' : 'secondary'}>{on ? 'On' : 'Off'}</Badge>
+            </div>
+            <p className="mt-0.5 max-w-[62ch] text-sm text-[var(--text-secondary)]">
+              {!on && 'Close the site for every visitor except you. Visitors see a countdown to when it reopens.'}
+              {on && remaining === null && (
+                <>
+                  Everyone except you sees the maintenance page
+                  {status.startedAt ? ` (closed for ${formatDuration(now - status.startedAt)})` : ''}. No end time is set, so
+                  visitors see how long it has been closed. Set one below to show a countdown.
+                </>
+              )}
+              {on && remaining !== null && remaining > 0 && (
+                <>
+                  Reopens in <span className="font-mono tabular-nums text-[var(--text-primary)]">{formatDuration(remaining)}</span>, on{' '}
+                  {formatDateTime(status.endsAt!)}. You still have full access.
+                </>
+              )}
+              {on && remaining !== null && remaining <= 0 && (
+                <>
+                  The planned end ({formatDateTime(status.endsAt!)}) passed {formatDuration(-remaining)} ago. The site stays
+                  closed until you reopen it.
+                </>
+              )}
+            </p>
+          </div>
         </div>
         {on && (
-          <button
-            onClick={() => send({ enabled: false })}
-            disabled={busy}
-            className="shrink-0 px-4 py-2 bg-emerald-600 text-white rounded-lg text-sm font-semibold hover:bg-emerald-700 transition-colors cursor-pointer disabled:opacity-60"
-          >
-            Turn off and reopen site
-          </button>
+          <Button onClick={() => send({ enabled: false })} loading={busy}>
+            Reopen the site
+          </Button>
         )}
-      </div>
+      </header>
 
-      <div className="flex items-end gap-2 flex-wrap">
-        <div>
-          <label htmlFor="maintenance-amount" className="text-xs font-semibold text-slate-600 mb-1.5 block uppercase tracking-wide">
-            {on ? 'New end, counted from now' : 'Close the site for'}
-          </label>
+      <form
+        className="flex flex-wrap items-end gap-2 border-t border-[var(--border-color)] px-5 py-4"
+        onSubmit={(e) => {
+          e.preventDefault();
+          submitDuration();
+        }}
+      >
+        <Field label={on ? 'New end, counted from now' : 'Close the site for'} htmlFor="maintenance-amount">
           <div className="flex gap-2">
             <Input
               id="maintenance-amount"
@@ -119,36 +139,28 @@ export function MaintenanceControl() {
               step={1}
               value={amount}
               onChange={(e) => setAmount(e.target.value)}
-              onKeyDown={(e) => e.key === 'Enter' && submitDuration()}
-              className="w-20 border-slate-200 bg-white text-slate-900"
+              className="w-20 font-mono"
             />
-            <select
-              aria-label="Unit"
-              value={unit}
-              onChange={(e) => setUnit(e.target.value as MaintenanceUnit)}
-              className="h-10 px-3 border border-slate-200 rounded-md text-sm bg-white text-slate-900 outline-none focus:border-[#4F46E5]"
-            >
-              {UNITS.map((u) => <option key={u} value={u}>{u}</option>)}
+            <select aria-label="Unit" value={unit} onChange={(e) => setUnit(e.target.value as MaintenanceUnit)} className={cn(selectClass, 'w-auto')}>
+              {UNITS.map((u) => (
+                <option key={u} value={u}>
+                  {u}
+                </option>
+              ))}
             </select>
           </div>
-        </div>
-        <button
-          onClick={submitDuration}
-          disabled={busy}
-          className={`h-10 px-4 rounded-lg text-sm font-semibold transition-colors cursor-pointer disabled:opacity-60 ${
-            on ? 'bg-white text-red-700 border border-red-200 hover:bg-red-100' : 'bg-red-600 text-white hover:bg-red-700'
-          }`}
-        >
+        </Field>
+        <Button type="submit" variant={on ? 'outline' : 'destructive'} loading={busy}>
           {busy ? 'Saving…' : on ? 'Update end time' : 'Start maintenance'}
-        </button>
-      </div>
+        </Button>
+      </form>
 
       {error && (
-        <div role="alert" aria-live="polite" className="bg-white border border-red-200 rounded-lg px-3.5 py-2.5 text-sm text-red-600">
-          {error}
+        <div className="px-5 pb-4">
+          <Notice tone="error">{error}</Notice>
         </div>
       )}
       {dialog}
-    </div>
+    </section>
   );
 }

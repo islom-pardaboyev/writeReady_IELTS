@@ -7,7 +7,7 @@ import {
 } from "react";
 import { auth, db } from "@/firebase/firebase";
 import { collection, doc, getDoc, getDocs } from "firebase/firestore";
-import jsPDF from "jspdf";
+import { downloadEssayPdf } from "@/lib/essayPdf";
 import WritingTask1Preview from "@/components/writingTask1Preview/WritingTask1Preview";
 import { NavLink, useNavigate } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
@@ -20,6 +20,7 @@ import {
   ChevronRightIcon,
   Bot,
   GraduationCap,
+  ChevronLeftIcon,
 } from "lucide-react";
 import { useHumanCheck } from "@/hooks/useHumanCheck";
 import { FullscreenButton } from "@/components/ui/FullscreenButton";
@@ -180,152 +181,15 @@ function Mock() {
     }
   };
 
-  async function loadImgBase64(
-    src: string,
-  ): Promise<{ b64: string; w: number; h: number } | null> {
-    if (!src) return null;
-    if (src.startsWith("data:application/pdf") || /\.pdf(\?|$)/i.test(src))
-      return null;
-    return new Promise((resolve) => {
-      const img = new Image();
-      img.crossOrigin = "anonymous";
-      img.onload = () => {
-        const canvas = document.createElement("canvas");
-        canvas.width = img.naturalWidth;
-        canvas.height = img.naturalHeight;
-        canvas.getContext("2d")!.drawImage(img, 0, 0);
-        resolve({
-          b64: canvas.toDataURL("image/jpeg", 0.85),
-          w: img.naturalWidth,
-          h: img.naturalHeight,
-        });
-      };
-      img.onerror = () => resolve(null);
-      img.src = src;
-    });
-  }
-
   const handleDownloadPDF = async () => {
-    const pdfdoc = new jsPDF();
-    const pageW = pdfdoc.internal.pageSize.getWidth();
-    const pageH = pdfdoc.internal.pageSize.getHeight();
-    const margin = 20;
-    const contentW = pageW - margin * 2;
-
-    pdfdoc.setFillColor(15, 23, 42);
-    pdfdoc.rect(0, 0, pageW, 40, "F");
-    pdfdoc.setFontSize(12);
-    pdfdoc.setTextColor(255, 255, 255);
-    pdfdoc.setFont("helvetica", "bold");
-    pdfdoc.text("WriteReady IELTS", margin, 15);
-    pdfdoc.setFontSize(16);
-    pdfdoc.text("Mock Exam Report", margin, 30);
-    pdfdoc.setFontSize(8);
-    pdfdoc.setFont("helvetica", "normal");
-    const dateStr = new Date().toLocaleDateString("en-GB", {
-      day: "2-digit",
-      month: "short",
-      year: "numeric",
+    await downloadEssayPdf({
+      mode: "Mock Exam",
+      fileName: "WriteReady_Mock.pdf",
+      tasks: [
+        { taskNum: 1, question: task1?.report, imageSrc: task1?.image, answer: userText1 },
+        { taskNum: 2, question: task2?.report, answer: userText2 },
+      ],
     });
-    pdfdoc.text(dateStr, pageW - margin, 15, { align: "right" });
-
-    let y = 52;
-    const tasks = [
-      {
-        taskNum: 1 as const,
-        question: task1?.report,
-        answer: userText1,
-        minW: 150,
-        imgSrc: task1?.image,
-      },
-      {
-        taskNum: 2 as const,
-        question: task2?.report,
-        answer: userText2,
-        minW: 250,
-        imgSrc: undefined as string | undefined,
-      },
-    ];
-
-    for (let index = 0; index < tasks.length; index++) {
-      const { taskNum, question, answer, minW, imgSrc } = tasks[index];
-      if (index > 0) {
-        pdfdoc.addPage();
-        y = 20;
-      }
-
-      pdfdoc.setFillColor(240, 244, 255);
-      pdfdoc.roundedRect(margin, y - 5, contentW, 12, 2, 2, "F");
-      pdfdoc.setFontSize(11);
-      pdfdoc.setTextColor(15, 23, 42);
-      pdfdoc.setFont("helvetica", "bold");
-      pdfdoc.text(`TASK ${taskNum} — ${minW} words minimum`, margin + 3, y + 2);
-      y += 16;
-
-      if (question) {
-        pdfdoc.setFontSize(10);
-        pdfdoc.setFont("helvetica", "normal");
-        const qLines = pdfdoc.splitTextToSize(question, contentW - 10);
-        const qHeight = qLines.length * 5.6 + 10;
-        pdfdoc.setFillColor(248, 250, 252);
-        pdfdoc.roundedRect(margin, y, contentW, qHeight, 2, 2, "FD");
-        pdfdoc.setTextColor(15, 23, 42);
-        pdfdoc.text(qLines, margin + 5, y + 7);
-        y += qHeight + 12;
-      }
-
-      if (imgSrc) {
-        const imgData = await loadImgBase64(imgSrc);
-        if (imgData) {
-          const imgH = Math.min(contentW * (imgData.h / imgData.w), 100);
-          if (y + imgH > pageH - margin) {
-            pdfdoc.addPage();
-            y = 20;
-          }
-          pdfdoc.addImage(imgData.b64, "JPEG", margin, y, contentW, imgH);
-          y += imgH + 8;
-        }
-      }
-
-      pdfdoc.setFontSize(10);
-      pdfdoc.setFillColor(233, 245, 255);
-      pdfdoc.roundedRect(margin, y - 5, contentW, 8, 2, 2, "F");
-      pdfdoc.setTextColor(15, 23, 42);
-      pdfdoc.setFont("helvetica", "bold");
-      pdfdoc.text("YOUR ANSWER", margin + 3, y + 1);
-      y += 12;
-
-      const answerLines = pdfdoc.splitTextToSize(
-        answer || "(No answer provided)",
-        contentW - 10,
-      );
-      const totalHeight = answerLines.length * 5.6 + 10;
-      if (y + totalHeight > pageH - margin) {
-        pdfdoc.addPage();
-        y = 20;
-      }
-      pdfdoc.setFillColor(245, 252, 245);
-      pdfdoc.roundedRect(margin, y, contentW, totalHeight, 2, 2, "FD");
-      pdfdoc.setTextColor(15, 23, 42);
-      pdfdoc.setFont("helvetica", "normal");
-      pdfdoc.text(answerLines, margin + 5, y + 7);
-      y += totalHeight + 12;
-    }
-
-    const pages = pdfdoc.getNumberOfPages();
-    for (let i = 1; i <= pages; i++) {
-      pdfdoc.setPage(i);
-      pdfdoc.setFillColor(15, 23, 42);
-      pdfdoc.rect(0, pageH - 14, pageW, 14, "F");
-      pdfdoc.setFontSize(7);
-      pdfdoc.setTextColor(255, 255, 255);
-      pdfdoc.text("WriteReady — IELTS Writing Practice", margin, pageH - 5);
-      pdfdoc.text(`Page ${i} of ${pages}`, pageW - margin, pageH - 5, {
-        align: "right",
-      });
-    }
-
-    pdfdoc.save("WriteReady_Mock.pdf");
     setShowFeedbackModal(true);
   };
 
@@ -426,7 +290,10 @@ function Mock() {
         <div className="flex items-center justify-between bg-white gap-4 px-5 py-2.5">
           {/* Left: branding + breadcrumb */}
           <div className="flex items-center gap-2 min-w-0">
-            <span className="hidden sm:block text-xs font-semibold text-black/50 tracking-widest uppercase">
+            <ChevronLeftIcon strokeWidth={3} onClick={() => {
+              navigate(-1);
+            }} aria-hidden="true" className="hidden sm:block size-3 text-black cursor-pointer" />
+            <span onClick={() => {navigate(-1)}} className="hidden cursor-pointer hover:text-black sm:block text-xs font-semibold text-black/50 tracking-widest uppercase">
               WriteReady
             </span>
             <ChevronRightIcon aria-hidden="true" className="hidden sm:block w-3 h-3 text-black/30" />

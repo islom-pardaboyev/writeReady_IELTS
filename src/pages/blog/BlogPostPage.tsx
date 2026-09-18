@@ -66,7 +66,7 @@ export function BlogPostPage() {
       setPost(p);
       setLoading(false);
       if (p) {
-        document.title = p.seo.metaTitle || p.title;
+        document.title = p.seo.metaTitle || `${p.title} | WriteReady IELTS`;
         let metaEl = document.querySelector('meta[name="description"]') as HTMLMetaElement | null;
         if (!metaEl) {
           metaEl = document.createElement('meta');

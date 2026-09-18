@@ -23,7 +23,6 @@ export function BlogIndexPage() {
   const [activeCategory, setActiveCategory] = useState<string>('All');
 
   useEffect(() => {
-    document.title = 'IELTS Blog | WriteReady';
     getBlogPosts('published').then((p) => {
       setPosts(p);
       setLoading(false);

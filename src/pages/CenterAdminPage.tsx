@@ -1,50 +1,26 @@
-import { useState, useEffect, useCallback } from "react";
-import {
-  collection,
-  getDocs,
-  deleteDoc,
-  updateDoc,
-  setDoc,
-  doc,
-  query,
-  where,
-  serverTimestamp,
-} from "firebase/firestore";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { collection, deleteDoc, doc, getDoc, getDocs, query, serverTimestamp, setDoc, updateDoc, where } from "firebase/firestore";
+import { onAuthStateChanged, signInWithCustomToken, signOut as fbSignOut } from "firebase/auth";
+import { ChartColumn, LayoutDashboard, Plus, RefreshCw, Trash2, UserPlus, Users } from "lucide-react";
 import { adminDb as db, adminAuth } from "@/firebase/adminConfig";
 import { createStudentAuthAccount } from "@/firebase/createStudentAccount";
-import { onAuthStateChanged, signInWithCustomToken } from "firebase/auth";
-import { Input } from "@/components/ui/input";
+import { useConfirm } from "@/hooks/useConfirm";
+import { cn } from "@/lib/utils";
+import { Button } from "@/components/ui/Button";
 import { Badge } from "@/components/ui/badge";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
-import {
-  SidebarProvider,
-  Sidebar,
-  SidebarHeader,
-  SidebarContent,
-  SidebarFooter,
-  SidebarGroup,
-  SidebarMenu,
-  SidebarMenuItem,
-  SidebarMenuButton,
-  SidebarTrigger,
-  SidebarInset,
-} from "@/components/ui/sidebar";
-import { useSidebar } from "@/components/ui/sidebar-context";
-import Logo from "/logo.png";
+import { Input } from "@/components/ui/input";
+import { PasswordInput } from "@/components/ui/PasswordInput";
+import { StaffShell, type StaffNavGroup } from "@/components/staff/StaffShell";
+import { StaffLogin } from "@/components/staff/StaffLogin";
+import { ListDetail, ListPane, RowList, ListRow, DetailView, DetailHeader, DetailSection } from "@/components/staff/ListDetail";
+import { EmptyState, Field, Initials, LoadError, Notice, PageHeading, Panel, RowSkeletons, SearchField, StatStrip } from "@/components/staff/parts";
+import { daysUntil, formatDate, inDays, timeAgo } from "@/pages/writing/admin/format";
 
 interface CenterData {
   id: string;
   name: string;
   studentLimit: number;
   expiresAt: string;
-  status: string;
-  paymentAmount: number;
 }
 
 interface Student {
@@ -62,240 +38,65 @@ interface StudentAnalytics {
   monthlyCount: number;
 }
 
-type Section = "dashboard" | "students" | "analytics";
+type Section = "overview" | "students" | "analytics";
 
-function nameColor(name: string): string {
-  const colors = [
-    "bg-rose-500", "bg-orange-500", "bg-amber-500", "bg-lime-600",
-    "bg-emerald-500", "bg-teal-500", "bg-cyan-500", "bg-blue-500",
-    "bg-violet-500", "bg-purple-500", "bg-fuchsia-500", "bg-pink-500",
-  ];
-  let hash = 0;
-  for (let i = 0; i < name.length; i++) hash = name.charCodeAt(i) + ((hash << 5) - hash);
-  return colors[Math.abs(hash) % colors.length];
-}
-
-function initials(name: string): string {
-  return name.split(" ").map((w) => w[0]).join("").slice(0, 2).toUpperCase();
-}
+const MONTHLY_ALLOWANCE = 12;
 
 function mapStudentSnap(docs: { id: string; data: () => Record<string, unknown> }[]): Student[] {
-  return docs.map((d) => {
-    const data = d.data();
-    const addedAt = data.addedAt as { toDate?: () => Date } | undefined;
-    return {
-      id: d.id,
-      fullName: (data.fullName as string) ?? "",
-      login: (data.login as string) ?? "",
-      addedAt: addedAt?.toDate?.()?.toISOString?.() ?? "",
-    };
-  });
+  return docs
+    .map((d) => {
+      const data = d.data();
+      const addedAt = data.addedAt as { toDate?: () => Date } | undefined;
+      return {
+        id: d.id,
+        fullName: (data.fullName as string) ?? "",
+        login: (data.login as string) ?? "",
+        addedAt: addedAt?.toDate?.()?.toISOString?.() ?? "",
+      };
+    })
+    .sort((a, b) => a.fullName.localeCompare(b.fullName));
 }
 
-function formatDate(iso?: string | null): string {
-  if (!iso) return "—";
-  const d = new Date(iso);
-  if (isNaN(d.getTime())) return "—";
-  return d.toLocaleDateString(navigator.language, { day: "2-digit", month: "short", year: "numeric" });
+function contractStatus(expiresAt?: string) {
+  const d = daysUntil(expiresAt);
+  if (d === null) return { label: "No end date", variant: "secondary" as const, days: null };
+  if (d < 0) return { label: "Expired", variant: "danger" as const, days: d };
+  if (d <= 14) return { label: "Ending soon", variant: "warning" as const, days: d };
+  return { label: "Active", variant: "success" as const, days: d };
 }
 
-function Spinner() {
-  return (
-    <span
-      className="motion-reduce:animate-none"
-      style={{
-        display: "inline-block", width: 14, height: 14,
-        border: "2px solid #94a3b8", borderTopColor: "transparent",
-        borderRadius: "50%", animation: "ca-spin 0.7s linear infinite", flexShrink: 0,
-      }}
-    />
-  );
-}
-
-// ── Login ────────────────────────────────────────────────────────────────────
-function CenterLoginScreen({ onLogin }: { onLogin: (id: string, name: string) => void }) {
-  const [username, setUsername] = useState("");
-  const [password, setPassword] = useState("");
-  const [error, setError] = useState("");
-  const [loading, setLoading] = useState(false);
-
-  const handle = async () => {
-    if (!username.trim() || !password.trim()) { setError("Please enter username and password."); return; }
-    setLoading(true); setError("");
-    try {
-      const res = await fetch("/api/staff-login", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ role: "center", login: username.trim(), password }),
-      });
-      const data = await res.json();
-      if (!res.ok) { setError(data.error ?? "Connection error. Please try again."); setLoading(false); return; }
-
-      await signInWithCustomToken(adminAuth, data.customToken);
-      localStorage.setItem("centerAdminLoggedIn", "true");
-      localStorage.setItem("centerAdminId", data.centerId);
-      localStorage.setItem("centerAdminName", data.centerName ?? "Center");
-      onLogin(data.centerId, data.centerName ?? "Center");
-    } catch (e) {
-      console.error(e);
-      setError("Connection error. Please try again.");
-    }
-    setLoading(false);
-  };
-
-  return (
-    <div className="min-h-screen bg-slate-50 flex items-center justify-center p-8">
-      <div className="w-full max-w-[400px]">
-        <div className="bg-[#0f172a] rounded-t-2xl px-8 py-10 text-center text-white">
-          <img width={120} className="mx-auto mb-4" src={Logo} alt="WriteReady" />
-          <p className="text-[0.7rem] font-bold tracking-widest uppercase text-white/40 mb-1">Learning Center</p>
-          <h1 className="text-2xl font-bold m-0">Center Portal</h1>
-        </div>
-        <div className="bg-white rounded-b-2xl border border-t-0 border-slate-200 shadow-sm p-7 flex flex-col gap-4">
-          <div>
-            <label htmlFor="center-username" className="text-xs font-semibold text-slate-600 mb-1.5 block uppercase tracking-wide">Username</label>
-            <Input
-              id="center-username"
-              name="username"
-              autoComplete="username"
-              className="border-slate-200 bg-white text-slate-900"
-              placeholder="Center username"
-              value={username}
-              onChange={(e) => setUsername(e.target.value)}
-              onKeyDown={(e) => e.key === "Enter" && handle()}
-            />
-          </div>
-          <div>
-            <label htmlFor="center-password" className="text-xs font-semibold text-slate-600 mb-1.5 block uppercase tracking-wide">Password</label>
-            <Input
-              id="center-password"
-              name="password"
-              type="password"
-              autoComplete="current-password"
-              className="border-slate-200 bg-white text-slate-900"
-              placeholder="Password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              onKeyDown={(e) => e.key === "Enter" && handle()}
-            />
-          </div>
-          {error && <div role="alert" aria-live="polite" className="bg-red-50 border border-red-200 rounded-lg px-3.5 py-2.5 text-sm text-red-600">{error}</div>}
-          <button
-            className="w-full bg-[#4F46E5] text-white rounded-lg py-2.5 font-semibold text-sm cursor-pointer hover:bg-[#4338CA] transition-colors disabled:opacity-50 border-none"
-            onClick={handle}
-            disabled={loading}
-          >
-            {loading ? "Checking…" : "Sign In"}
-          </button>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-const CENTER_NAV: { id: Section; label: string; icon: string }[] = [
-  { id: "dashboard", label: "Dashboard", icon: "📊" },
-  { id: "students", label: "Students", icon: "👥" },
-  { id: "analytics", label: "Analytics", icon: "📈" },
-];
-
-function CenterSidebar({
-  section,
-  setSection,
-  centerName,
-  signOut,
-}: {
-  section: Section;
-  setSection: (s: Section) => void;
-  centerName: string;
-  signOut: () => void;
-}) {
-  const { open } = useSidebar();
-
-  return (
-    <Sidebar>
-      <SidebarHeader>
-        <div className={open ? "px-2" : "flex justify-center"}>
-          {open ? (
-            <>
-              <img src={Logo} alt="WriteReady" className="h-7 object-contain" />
-              <p className="text-[0.6rem] font-bold tracking-widest text-white/30 uppercase mt-2">Center Portal</p>
-              <p className="text-sm font-semibold text-white truncate mt-0.5">{centerName}</p>
-            </>
-          ) : (
-            <img src={Logo} alt="WriteReady" className="h-7 w-7 object-contain" />
-          )}
-        </div>
-      </SidebarHeader>
-
-      <SidebarContent>
-        <SidebarGroup>
-          <SidebarMenu>
-            {CENTER_NAV.map((item) => (
-              <SidebarMenuItem key={item.id}>
-                <SidebarMenuButton
-                  isActive={section === item.id}
-                  onClick={() => setSection(item.id)}
-                  tooltip={item.label}
-                >
-                  <span className="text-base leading-none shrink-0">{item.icon}</span>
-                  {open && <span>{item.label}</span>}
-                </SidebarMenuButton>
-              </SidebarMenuItem>
-            ))}
-          </SidebarMenu>
-        </SidebarGroup>
-      </SidebarContent>
-
-      <SidebarFooter>
-        <button
-          onClick={signOut}
-          title={!open ? "Sign out" : undefined}
-          aria-label={!open ? "Sign out" : undefined}
-          className={`w-full text-left flex items-center gap-2.5 px-3.5 py-2 rounded-lg text-sm font-medium text-red-400 hover:bg-red-500/10 hover:text-red-300 transition-colors border-none cursor-pointer bg-transparent ${!open ? "justify-center" : ""}`}
-        >
-          <span aria-hidden="true">↩</span>
-          {open && "Sign out"}
-        </button>
-      </SidebarFooter>
-    </Sidebar>
-  );
-}
-
-// ── Dashboard ─────────────────────────────────────────────────────────────────
 export default function CenterAdminPage() {
+  const { confirm, dialog } = useConfirm();
+  const searchRef = useRef<HTMLInputElement>(null);
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [centerId, setCenterId] = useState("");
   const [centerName, setCenterName] = useState("");
-  const [section, setSection] = useState<Section>("dashboard");
+  const [section, setSection] = useState<Section>("overview");
 
-  // Center info
   const [centerData, setCenterData] = useState<CenterData | null>(null);
-
-  // Students
   const [students, setStudents] = useState<Student[]>([]);
   const [studentsLoading, setStudentsLoading] = useState(false);
-  const [addDialog, setAddDialog] = useState(false);
+  const [studentsFailed, setStudentsFailed] = useState(false);
+  const [reportsToday, setReportsToday] = useState<number | null>(null);
+  const [reportsFailed, setReportsFailed] = useState(false);
+
+  const [search, setSearch] = useState("");
+  const [selectedId, setSelectedId] = useState<string | null>(null);
   const [newName, setNewName] = useState("");
   const [newLogin, setNewLogin] = useState("");
   const [newPass, setNewPass] = useState("");
-  const [addingStudent, setAddingStudent] = useState(false);
-  const [addStudentError, setAddStudentError] = useState("");
-
-  // Edit student
-  const [editStudent, setEditStudent] = useState<Student | null>(null);
+  const [adding, setAdding] = useState(false);
+  const [addError, setAddError] = useState("");
   const [editName, setEditName] = useState("");
   const [editLogin, setEditLogin] = useState("");
   const [editPass, setEditPass] = useState("");
   const [savingEdit, setSavingEdit] = useState(false);
-  const [editStudentError, setEditStudentError] = useState("");
+  const [editNotice, setEditNotice] = useState<{ tone: "success" | "error"; text: string } | null>(null);
 
-  // Analytics
   const [analytics, setAnalytics] = useState<StudentAnalytics[]>([]);
   const [analyticsLoading, setAnalyticsLoading] = useState(false);
-
-  // Dashboard stats
-  const [reportsToday, setReportsToday] = useState(0);
+  const [analyticsFailed, setAnalyticsFailed] = useState(false);
+  const [analyticsId, setAnalyticsId] = useState<string | null>(null);
 
   useEffect(() => {
     const saved = localStorage.getItem("centerAdminLoggedIn");
@@ -315,143 +116,146 @@ export default function CenterAdminPage() {
     return unsub;
   }, []);
 
-  const loadCenterData = async (id: string) => {
+  const loadCenterData = useCallback(async (id: string) => {
     try {
-      const snap = await getDocs(query(collection(db, "learningCenters"), where("__name__", "==", id)));
-      if (!snap.empty) {
-        const d = snap.docs[0].data();
-        setCenterData({
-          id: snap.docs[0].id,
-          name: d.name ?? "",
-          studentLimit: d.studentLimit ?? 30,
-          expiresAt: d.expiresAt ?? "",
-          status: d.expiresAt ? (new Date(d.expiresAt) > new Date() ? "active" : "expired") : "pending",
-          paymentAmount: d.paymentAmount ?? 0,
-        });
+      // A direct read of its own record, so the security rules can limit
+      // each center to exactly that document.
+      const snap = await getDoc(doc(db, "learningCenters", id));
+      if (snap.exists()) {
+        const d = snap.data();
+        setCenterData({ id: snap.id, name: d.name ?? "", studentLimit: d.studentLimit ?? 30, expiresAt: d.expiresAt ?? "" });
       }
     } catch (e) { console.error(e); }
-  };
+  }, []);
 
-  const loadStudents = async (id: string) => {
+  const loadStudents = useCallback(async (id: string) => {
     setStudentsLoading(true);
     try {
       const snap = await getDocs(collection(db, "learningCenters", id, "students"));
       setStudents(mapStudentSnap(snap.docs));
-    } catch (e) { console.error(e); }
+      setStudentsFailed(false);
+    } catch (e) {
+      console.error(e);
+      setStudentsFailed(true);
+    }
     setStudentsLoading(false);
-  };
+  }, []);
 
-  const loadReportsToday = async (studentList: Student[]) => {
+  const loadReportsToday = useCallback(async (list: Student[]) => {
     try {
       const todayStart = new Date();
       todayStart.setHours(0, 0, 0, 0);
-      const snap = await getDocs(collection(db, "feedback_reports"));
-      const studentLogins = new Set(studentList.map((s) => s.login).filter(Boolean));
-      const usersSnap = await getDocs(collection(db, "users"));
-      const studentUids = new Set<string>();
+      const [snap, usersSnap] = await Promise.all([getDocs(collection(db, "feedback_reports")), getDocs(collection(db, "users"))]);
+      const logins = new Set(list.map((s) => s.login).filter(Boolean));
+      const uids = new Set<string>();
       usersSnap.docs.forEach((d) => {
         const sLogin = d.data().studentLogin;
-        if (sLogin && studentLogins.has(sLogin)) studentUids.add(d.id);
+        if (sLogin && logins.has(sLogin)) uids.add(d.id);
       });
       let count = 0;
       snap.docs.forEach((d) => {
         const data = d.data();
-        if (!studentUids.has(data.uid)) return;
+        if (!uids.has(data.uid)) return;
         const ts = data.createdAt?.toDate?.() as Date | undefined;
         if (ts && ts >= todayStart) count++;
       });
       setReportsToday(count);
-    } catch (e) { console.error(e); }
-  };
+      setReportsFailed(false);
+    } catch (e) {
+      console.error(e);
+      setReportsFailed(true);
+    }
+  }, []);
 
   useEffect(() => {
     if (isLoggedIn && centerId) {
       loadCenterData(centerId);
-      loadStudents(centerId).then(() => {});
+      loadStudents(centerId);
     }
-  }, [isLoggedIn, centerId]);
+  }, [isLoggedIn, centerId, loadCenterData, loadStudents]);
 
   useEffect(() => {
-    if (students.length > 0) {
-      loadReportsToday(students);
-    }
-  }, [students]);
+    if (students.length > 0) loadReportsToday(students);
+    else setReportsToday(0);
+  }, [students, loadReportsToday]);
 
   const loadAnalytics = useCallback(async () => {
     setAnalyticsLoading(true);
     try {
-      const studSnap = await getDocs(collection(db, "learningCenters", centerId, "students"));
+      const [studSnap, usersSnap, reportsSnap] = await Promise.all([
+        getDocs(collection(db, "learningCenters", centerId, "students")),
+        getDocs(collection(db, "users")),
+        getDocs(collection(db, "feedback_reports")),
+      ]);
       const studs = mapStudentSnap(studSnap.docs);
-
-      // Get uid for each student login
-      const usersSnap = await getDocs(collection(db, "users"));
       const loginToUid: Record<string, string> = {};
       usersSnap.docs.forEach((d) => {
         const sLogin = d.data().studentLogin;
         if (sLogin) loginToUid[sLogin] = d.id;
       });
-
-      const reportsSnap = await getDocs(collection(db, "feedback_reports"));
-
-      const now = new Date();
       const monthKeyFormat = new Intl.DateTimeFormat("en-CA", { year: "numeric", month: "2-digit" });
-      const monthKey = monthKeyFormat.format(now);
+      const monthKey = monthKeyFormat.format(new Date());
 
       const result: StudentAnalytics[] = studs.map((s) => {
         const uid = loginToUid[s.login];
         if (!uid) return { student: s, avgBand: null, reportCount: 0, lastActive: null, monthlyCount: 0 };
-
-        const myReports = reportsSnap.docs.filter((d) => d.data().uid === uid);
+        const mine = reportsSnap.docs.filter((d) => d.data().uid === uid);
         let totalBand = 0; let bandCount = 0; let lastTs: Date | null = null; let monthlyCount = 0;
-
-        myReports.forEach((d) => {
+        mine.forEach((d) => {
           const data = d.data();
-          const scores: Record<string, number> = data.scores ?? {};
-          const vals = Object.values(scores).filter((v) => typeof v === "number") as number[];
+          const vals = Object.values((data.scores ?? {}) as Record<string, number>).filter((v) => typeof v === "number");
           if (vals.length) { totalBand += vals.reduce((a, b) => a + b, 0) / vals.length; bandCount++; }
           const ts = data.createdAt?.toDate?.() as Date | undefined;
           if (ts) {
             if (!lastTs || ts > lastTs) lastTs = ts;
-            const rKey = monthKeyFormat.format(ts);
-            if (rKey === monthKey) monthlyCount++;
+            if (monthKeyFormat.format(ts) === monthKey) monthlyCount++;
           }
         });
-
         return {
           student: s,
           avgBand: bandCount > 0 ? Math.round((totalBand / bandCount) * 10) / 10 : null,
-          reportCount: myReports.length,
+          reportCount: mine.length,
           lastActive: lastTs ? (lastTs as Date).toISOString() : null,
           monthlyCount,
         };
       });
-
       result.sort((a, b) => (b.avgBand ?? 0) - (a.avgBand ?? 0));
       setAnalytics(result);
-    } catch (e) { console.error(e); }
+      setAnalyticsFailed(false);
+    } catch (e) {
+      console.error(e);
+      setAnalyticsFailed(true);
+    }
     setAnalyticsLoading(false);
   }, [centerId]);
 
   useEffect(() => {
-    if (isLoggedIn && section === "analytics" && centerId) {
-      loadAnalytics();
-    }
+    if (isLoggedIn && section === "analytics" && centerId) loadAnalytics();
   }, [isLoggedIn, section, centerId, loadAnalytics]);
 
+  const limit = centerData?.studentLimit ?? 30;
+  const full = students.length >= limit;
+
+  const selectStudent = (id: string | null) => {
+    setSelectedId(id);
+    setAddError("");
+    setEditNotice(null);
+    const s = students.find((x) => x.id === id);
+    setEditName(s?.fullName ?? "");
+    setEditLogin(s?.login ?? "");
+    setEditPass("");
+  };
+
   const addStudent = async () => {
-    if (!newName.trim() || !newLogin.trim() || !newPass.trim()) return;
-    setAddStudentError("");
-    if (newPass.trim().length < 6) { setAddStudentError("Parol kamida 6 ta belgidan iborat bo'lishi kerak."); return; }
-    if (students.length >= (centerData?.studentLimit ?? 30)) {
-      setAddStudentError("Student limit reached.");
-      return;
-    }
-    setAddingStudent(true);
+    if (!newName.trim() || !newLogin.trim() || !newPass.trim()) { setAddError("Fill in the name, login and password."); return; }
+    setAddError("");
+    if (newPass.trim().length < 6) { setAddError("The password needs at least 6 characters."); return; }
+    if (full) { setAddError(`You have used all ${limit} student places.`); return; }
+    setAdding(true);
     try {
       const loginKey = newLogin.trim().toLowerCase();
-      // Check login uniqueness
       const existing = await getDocs(query(collection(db, "learningCenters", centerId, "students"), where("login", "==", loginKey)));
-      if (!existing.empty) { setAddStudentError("Bu login allaqachon mavjud."); setAddingStudent(false); return; }
+      if (!existing.empty) { setAddError("That login is already used by one of your students."); setAdding(false); return; }
 
       // Create the student's Firebase Auth account so they can actually sign in.
       const fakeEmail = `${loginKey}@writeready.student`;
@@ -460,12 +264,12 @@ export default function CenterAdminPage() {
         uid = await createStudentAuthAccount(fakeEmail, newPass.trim());
       } catch (err) {
         const code = (err as { code?: string })?.code;
-        setAddStudentError(code === "auth/email-already-in-use" ? "Bu login allaqachon band." : "Xatolik yuz berdi. Qaytadan urinib ko'ring.");
-        setAddingStudent(false);
+        setAddError(code === "auth/email-already-in-use" ? "That login is already taken. Choose another." : "Could not create the student account. Try again.");
+        setAdding(false);
         return;
       }
 
-      // User profile — grants pro access tied to the center's expiry
+      // User profile: grants pro access tied to the center's contract end.
       await setDoc(doc(db, "users", uid), {
         email: fakeEmail,
         studentLogin: loginKey,
@@ -477,8 +281,7 @@ export default function CenterAdminPage() {
         createdAt: serverTimestamp(),
         bonusAnalyses: 0,
       });
-
-      // Student record under the center (doc id = uid so it maps to the account)
+      // Student record under the center (doc id = uid so it maps to the account).
       await setDoc(doc(db, "learningCenters", centerId, "students", uid), {
         fullName: newName.trim(),
         login: loginKey,
@@ -487,369 +290,376 @@ export default function CenterAdminPage() {
         addedAt: serverTimestamp(),
       });
 
-      setNewName(""); setNewLogin(""); setNewPass(""); setAddDialog(false);
+      setNewName(""); setNewLogin(""); setNewPass("");
       await loadStudents(centerId);
-    } catch (e) { console.error(e); setAddStudentError("Xatolik yuz berdi. Qaytadan urinib ko'ring."); }
-    setAddingStudent(false);
+      setSelectedId(uid);
+      setEditName(newName.trim());
+      setEditLogin(loginKey);
+      setEditNotice({ tone: "success", text: "Student added. They can sign in on writeready.uz with this login and password." });
+    } catch (e) {
+      console.error(e);
+      setAddError("Could not add the student. Try again.");
+    }
+    setAdding(false);
   };
 
-  const removeStudent = async (studentId: string) => {
-    if (!confirm("Bu o'quvchini o'chirishni xohlaysizmi?")) return;
-    await deleteDoc(doc(db, "learningCenters", centerId, "students", studentId));
-    setStudents((prev) => prev.filter((s) => s.id !== studentId));
+  const removeStudent = async (s: Student) => {
+    if (!(await confirm(`Remove ${s.fullName}? They lose the access your center gives them.`, { title: "Remove student?", destructive: true, confirmLabel: "Remove" }))) return;
+    await deleteDoc(doc(db, "learningCenters", centerId, "students", s.id));
+    setStudents((prev) => prev.filter((x) => x.id !== s.id));
+    selectStudent(null);
   };
 
-  const openEditStudent = (s: Student) => {
-    setEditStudent(s); setEditName(s.fullName); setEditLogin(s.login); setEditPass(""); setEditStudentError("");
-  };
-
-  const saveEditStudent = async () => {
-    if (!editStudent || !editName.trim() || !editLogin.trim()) return;
-    setEditStudentError("");
+  const saveStudent = async (s: Student) => {
+    if (!editName.trim() || !editLogin.trim()) { setEditNotice({ tone: "error", text: "Name and login are required." }); return; }
+    setEditNotice(null);
     setSavingEdit(true);
     try {
-      if (editLogin.trim() !== editStudent.login) {
+      if (editLogin.trim() !== s.login) {
         const existing = await getDocs(query(collection(db, "learningCenters", centerId, "students"), where("login", "==", editLogin.trim())));
-        if (!existing.empty) { setEditStudentError("Bu login allaqachon mavjud."); setSavingEdit(false); return; }
+        if (!existing.empty) { setEditNotice({ tone: "error", text: "That login is already used by one of your students." }); setSavingEdit(false); return; }
       }
       const updates: Record<string, string> = { fullName: editName.trim(), login: editLogin.trim() };
       if (editPass.trim()) updates.password = editPass.trim();
-      await updateDoc(doc(db, "learningCenters", centerId, "students", editStudent.id), updates);
+      await updateDoc(doc(db, "learningCenters", centerId, "students", s.id), updates);
       // The student doc's id is the user's uid (see addStudent). Analytics and
       // "reports today" join users.studentLogin -> students.login by value, so
       // an edited login must be mirrored onto the user profile or that student
       // silently disappears from both until this is back in sync.
-      if (editLogin.trim() !== editStudent.login) {
-        await updateDoc(doc(db, "users", editStudent.id), { studentLogin: editLogin.trim() }).catch(() => {});
+      if (editLogin.trim() !== s.login) {
+        await updateDoc(doc(db, "users", s.id), { studentLogin: editLogin.trim() }).catch(() => {});
       }
-      setStudents((prev) => prev.map((s) => s.id === editStudent.id ? { ...s, fullName: editName.trim(), login: editLogin.trim() } : s));
-      setEditStudent(null);
-    } catch (e) { console.error(e); }
+      setStudents((prev) => prev.map((x) => (x.id === s.id ? { ...x, fullName: editName.trim(), login: editLogin.trim() } : x)));
+      setEditPass("");
+      setEditNotice({ tone: "success", text: "Changes saved." });
+    } catch (e) {
+      console.error(e);
+      setEditNotice({ tone: "error", text: "Could not save the changes. Try again." });
+    }
     setSavingEdit(false);
   };
 
-  const signOut = () => {
-    setIsLoggedIn(false);
+  const signOut = async () => {
     localStorage.removeItem("centerAdminLoggedIn");
     localStorage.removeItem("centerAdminId");
     localStorage.removeItem("centerAdminName");
+    await fbSignOut(adminAuth).catch(() => {});
+    setIsLoggedIn(false);
   };
 
-  const onLogin = (id: string, name: string) => {
-    setCenterId(id); setCenterName(name); setIsLoggedIn(true);
+  const login = async (username: string, password: string): Promise<string | null> => {
+    try {
+      const res = await fetch("/api/staff-login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ role: "center", login: username, password }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        return res.status >= 500 ? "The sign-in service had a problem. Try again in a minute." : "That username or password is not right.";
+      }
+      await signInWithCustomToken(adminAuth, data.customToken);
+      localStorage.setItem("centerAdminLoggedIn", "true");
+      localStorage.setItem("centerAdminId", data.centerId);
+      localStorage.setItem("centerAdminName", data.centerName ?? "Center");
+      setCenterId(data.centerId);
+      setCenterName(data.centerName ?? "Center");
+      setIsLoggedIn(true);
+      return null;
+    } catch (e) {
+      console.error(e);
+      return "Could not reach the server. Check your connection and try again.";
+    }
   };
 
-  if (!isLoggedIn) return <CenterLoginScreen onLogin={onLogin} />;
+  const filteredStudents = useMemo(() => {
+    const q = search.trim().toLowerCase();
+    return students.filter((s) => !q || s.fullName.toLowerCase().includes(q) || s.login.toLowerCase().includes(q));
+  }, [students, search]);
+
+  if (!isLoggedIn) {
+    return (
+      <StaffLogin
+        title="Learning center sign-in"
+        description="Add your students and follow their results."
+        loginLabel="Username"
+        onSubmit={login}
+      />
+    );
+  }
+
+  const status = contractStatus(centerData?.expiresAt);
+  const nav: StaffNavGroup<Section>[] = [
+    {
+      items: [
+        { id: "overview", label: "Overview", icon: LayoutDashboard },
+        { id: "students", label: "Students", icon: Users },
+        { id: "analytics", label: "Analytics", icon: ChartColumn },
+      ],
+    },
+  ];
+
+  const selected = students.find((s) => s.id === selectedId) ?? null;
+  const dirty = !!selected && (editName !== selected.fullName || editLogin !== selected.login || !!editPass);
+
+  // ── Overview ─────────────────────────────────────────────────────────────
+  const overview = (
+    <div className="mx-auto w-full max-w-[1040px] px-4 py-8 sm:px-6 lg:px-10">
+      <PageHeading
+        title={centerName || "Overview"}
+        description={new Date().toLocaleDateString("en-GB", { weekday: "long", day: "numeric", month: "long", year: "numeric" })}
+        actions={<Button onClick={() => { setSection("students"); selectStudent("new"); }} disabled={full}><UserPlus aria-hidden="true" /> Add student</Button>}
+      />
+      <StatStrip
+        items={[
+          { label: "Students", value: students.length, onClick: () => setSection("students") },
+          { label: "Places used", value: `${students.length} of ${limit}`, hint: full ? "All places are used" : `${limit - students.length} left` },
+          { label: "AI reports today", value: reportsFailed ? "…" : reportsToday ?? "…", hint: reportsFailed ? "Could not load. Reload the page to retry." : undefined, onClick: () => setSection("analytics") },
+          { label: "Contract ends", value: <span className="text-xl">{formatDate(centerData?.expiresAt) ?? "Not set"}</span> },
+        ]}
+      />
+      <Panel title="Contract" className="mt-6">
+        <div className="flex flex-wrap items-center gap-3">
+          <Badge variant={status.variant}>{status.label}</Badge>
+          <p className="text-sm text-[var(--text-secondary)]">
+            {status.days === null ? "WriteReady has not set an end date for your contract yet." :
+              status.days < 0 ? `Your contract ended ${formatDate(centerData?.expiresAt)}. Students keep access only while it is active.` :
+              `Your students have access until ${formatDate(centerData?.expiresAt)} (${inDays(status.days)}).`}
+          </p>
+        </div>
+        {status.variant !== "success" && status.days !== null && (
+          <Notice tone={status.variant === "danger" ? "error" : "warning"} className="mt-4">
+            Contact WriteReady to renew your contract so your students keep their access.
+          </Notice>
+        )}
+      </Panel>
+    </div>
+  );
+
+  // ── Students ─────────────────────────────────────────────────────────────
+  const studentsList = (
+    <ListPane
+      title="Students"
+      count={students.length}
+      action={<Button size="sm" onClick={() => selectStudent("new")} disabled={full} title={full ? "All places are used" : undefined}><Plus aria-hidden="true" /> Add</Button>}
+      toolbar={
+        <>
+          <SearchField value={search} onChange={setSearch} placeholder="Search by name or login" label="Search students" inputRef={searchRef} />
+          <p className={cn("text-xs tabular-nums", full ? "text-red-600 dark:text-red-400" : "text-[var(--text-secondary)]")}>
+            {students.length} of {limit} places used
+          </p>
+        </>
+      }
+    >
+      {studentsLoading && students.length === 0 ? (
+        <RowSkeletons />
+      ) : studentsFailed && students.length === 0 ? (
+        <LoadError what="your students" onRetry={() => loadStudents(centerId)} />
+      ) : filteredStudents.length === 0 ? (
+        <EmptyState icon={Users} title={students.length ? "No students match" : "No students yet"}>
+          {students.length ? "Try another name or login." : "Add your students so they can use WriteReady."}
+        </EmptyState>
+      ) : (
+        <RowList label="Students">
+          {filteredStudents.map((s) => (
+            <ListRow key={s.id} selected={s.id === selectedId} onSelect={() => selectStudent(s.id)}>
+              <Initials name={s.fullName} size={32} />
+              <div className="min-w-0 flex-1">
+                <p className="truncate text-sm font-medium text-[var(--text-primary)]">{s.fullName}</p>
+                <p className="truncate text-xs text-[var(--text-secondary)]"><span className="font-mono">{s.login || "No login"}</span>{s.addedAt && ` · added ${formatDate(s.addedAt)}`}</p>
+              </div>
+            </ListRow>
+          ))}
+        </RowList>
+      )}
+    </ListPane>
+  );
+
+  let studentDetail;
+  if (selectedId === "new") {
+    studentDetail = (
+      <DetailView
+        footer={
+          <>
+            <Button variant="ghost" onClick={() => selectStudent(null)}>Cancel</Button>
+            <Button onClick={addStudent} loading={adding} disabled={full}>{adding ? "Adding…" : "Add student"}</Button>
+          </>
+        }
+      >
+        <DetailHeader title="Add a student" meta="The student signs in on writeready.uz with this login and password." />
+        <div className="mt-6 grid gap-5 sm:grid-cols-2">
+          <Field label="Full name" htmlFor="ns-name" className="sm:col-span-2">
+            <Input id="ns-name" autoComplete="off" placeholder="Ali Valiyev" value={newName} onChange={(e) => setNewName(e.target.value)} />
+          </Field>
+          <Field label="Login" htmlFor="ns-login" hint="Letters and numbers, no spaces.">
+            <Input id="ns-login" autoComplete="off" placeholder="ali_valiyev" value={newLogin} onChange={(e) => setNewLogin(e.target.value)} />
+          </Field>
+          <Field label="Password" htmlFor="ns-pass" hint="At least 6 characters.">
+            <PasswordInput id="ns-pass" autoComplete="new-password" value={newPass} onChange={(e) => setNewPass(e.target.value)} />
+          </Field>
+        </div>
+        {full && <Notice tone="warning" className="mt-5">All {limit} places are used. Contact WriteReady to raise your limit.</Notice>}
+        {addError && <Notice tone="error" className="mt-5">{addError}</Notice>}
+      </DetailView>
+    );
+  } else if (selected) {
+    studentDetail = (
+      <DetailView
+        footer={
+          dirty ? (
+            <>
+              <Button variant="ghost" onClick={() => selectStudent(selected.id)}>Discard changes</Button>
+              <Button onClick={() => saveStudent(selected)} loading={savingEdit}>{savingEdit ? "Saving…" : "Save changes"}</Button>
+            </>
+          ) : undefined
+        }
+      >
+        <DetailHeader
+          leading={<Initials name={selected.fullName} size={44} />}
+          title={selected.fullName}
+          meta={<>Login <span className="font-mono">{selected.login}</span>{selected.addedAt && `, added ${formatDate(selected.addedAt)}`}</>}
+        />
+        {editNotice && <Notice tone={editNotice.tone} className="mt-5">{editNotice.text}</Notice>}
+        <DetailSection title="Details">
+          <div className="grid gap-5 sm:grid-cols-2">
+            <Field label="Full name" htmlFor="es-name" className="sm:col-span-2">
+              <Input id="es-name" value={editName} onChange={(e) => setEditName(e.target.value)} />
+            </Field>
+            <Field label="Login" htmlFor="es-login">
+              <Input id="es-login" autoComplete="off" value={editLogin} onChange={(e) => setEditLogin(e.target.value)} />
+            </Field>
+            <Field label="New password" htmlFor="es-pass" optional hint="Leave empty to keep the current one.">
+              <PasswordInput id="es-pass" autoComplete="new-password" value={editPass} onChange={(e) => setEditPass(e.target.value)} />
+            </Field>
+          </div>
+        </DetailSection>
+        <DetailSection title="Remove student" description="Frees up a place. The student loses the access your center gives them.">
+          <Button variant="dangerOutline" onClick={() => removeStudent(selected)}><Trash2 aria-hidden="true" /> Remove student</Button>
+        </DetailSection>
+      </DetailView>
+    );
+  } else {
+    studentDetail = (
+      <EmptyState
+        icon={Users}
+        title="Select a student"
+        className="py-24"
+        action={!full && <Button variant="outline" onClick={() => selectStudent("new")}><Plus aria-hidden="true" /> Add student</Button>}
+      >
+        Choose a student on the left to change their name, login or password.
+      </EmptyState>
+    );
+  }
+
+  // ── Analytics ────────────────────────────────────────────────────────────
+  const picked = analytics.find((a) => a.student.id === analyticsId) ?? null;
+  const analyticsList = (
+    <ListPane
+      title="Analytics"
+      action={
+        <Button variant="ghost" size="icon" className="h-8 w-8" onClick={loadAnalytics} disabled={analyticsLoading} aria-label="Reload analytics" title="Reload analytics">
+          <RefreshCw className={cn(analyticsLoading && "animate-spin motion-reduce:animate-none")} aria-hidden="true" />
+        </Button>
+      }
+      toolbar={<p className="text-sm text-[var(--text-secondary)]">Students ranked by average band score, with this month's usage.</p>}
+    >
+      {analyticsLoading && analytics.length === 0 ? (
+        <RowSkeletons />
+      ) : analyticsFailed && analytics.length === 0 ? (
+        <LoadError what="results" onRetry={loadAnalytics} />
+      ) : analytics.length === 0 ? (
+        <EmptyState icon={ChartColumn} title="No results yet">Results appear once your students send essays for AI feedback.</EmptyState>
+      ) : (
+        <RowList label="Students by band score">
+          {analytics.map((a, i) => (
+            <ListRow key={a.student.id} selected={a.student.id === analyticsId} onSelect={() => setAnalyticsId(a.student.id)}>
+              <span className="w-6 shrink-0 pt-0.5 text-right font-mono text-xs tabular-nums text-[var(--text-secondary)]">{i + 1}</span>
+              <div className="min-w-0 flex-1">
+                <p className="truncate text-sm font-medium text-[var(--text-primary)]">{a.student.fullName}</p>
+                <p className="truncate text-xs tabular-nums text-[var(--text-secondary)]">
+                  <span className={cn(a.monthlyCount >= MONTHLY_ALLOWANCE && "font-medium text-red-600 dark:text-red-400")}>{a.monthlyCount} of {MONTHLY_ALLOWANCE} this month</span>
+                  {" · "}{a.lastActive ? `active ${timeAgo(a.lastActive)}` : "not active yet"}
+                </p>
+              </div>
+              <span className="shrink-0 font-mono text-base font-semibold tabular-nums text-[var(--text-primary)]">
+                {a.avgBand !== null ? a.avgBand.toFixed(1) : <span className="text-sm font-normal text-[var(--text-secondary)]">None</span>}
+              </span>
+            </ListRow>
+          ))}
+        </RowList>
+      )}
+    </ListPane>
+  );
+
+  const analyticsDetail = picked ? (
+    <DetailView>
+      <DetailHeader
+        leading={<Initials name={picked.student.fullName} size={44} />}
+        title={picked.student.fullName}
+        meta={<>Login <span className="font-mono">{picked.student.login}</span></>}
+      />
+      <div className="mt-6">
+        <StatStrip
+          items={[
+            { label: "Average band", value: picked.avgBand !== null ? picked.avgBand.toFixed(1) : "None" },
+            { label: "AI reports", value: picked.reportCount },
+            { label: "Last active", value: <span className="text-xl">{formatDate(picked.lastActive) ?? "Never"}</span> },
+          ]}
+        />
+      </div>
+      <DetailSection title="This month" description={`Students get ${MONTHLY_ALLOWANCE} AI reports a month.`}>
+        <div className="flex items-center gap-4">
+          <div className="h-2 flex-1 overflow-hidden rounded-full bg-[var(--bg-subtle)]">
+            <div
+              className={cn("h-full rounded-full", picked.monthlyCount >= MONTHLY_ALLOWANCE ? "bg-red-500" : picked.monthlyCount >= 8 ? "bg-amber-500" : "bg-[var(--ink-blue)]")}
+              style={{ width: `${Math.min(100, (picked.monthlyCount / MONTHLY_ALLOWANCE) * 100)}%` }}
+            />
+          </div>
+          <span className="shrink-0 font-mono text-sm tabular-nums text-[var(--text-primary)]">{picked.monthlyCount} of {MONTHLY_ALLOWANCE} used</span>
+        </div>
+      </DetailSection>
+    </DetailView>
+  ) : (
+    <EmptyState icon={ChartColumn} title="Select a student" className="py-24">
+      Choose a student on the left to see their average band, reports and this month's usage.
+    </EmptyState>
+  );
 
   return (
-    <SidebarProvider>
-      <div className="flex min-h-screen bg-slate-50 font-sans">
-        <style>{`@keyframes ca-spin { to { transform: rotate(360deg); } }`}</style>
-
-        <CenterSidebar
-          section={section}
-          setSection={setSection}
-          centerName={centerName}
-          signOut={signOut}
-        />
-
-        <SidebarInset>
-          <header className="sticky top-0 z-10 flex items-center gap-3 px-6 py-3 bg-white border-b border-slate-200 shrink-0">
-            <SidebarTrigger />
-            <div className="h-5 w-px bg-slate-200" />
-            <div>
-              <p className="text-xs font-bold tracking-widest uppercase text-slate-400">{centerName}</p>
-              <p className="text-sm font-semibold text-slate-800 leading-tight">{CENTER_NAV.find(n => n.id === section)?.label}</p>
-            </div>
-          </header>
-
-          <main className="flex-1 p-6 overflow-y-auto">
-
-          {/* ── DASHBOARD ── */}
-          {section === "dashboard" && (
-            <div className="flex flex-col gap-6">
-              <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-                {[
-                  { label: "Total Students", value: students.length, icon: "👥", color: "text-blue-700", bg: "bg-blue-50", border: "border-blue-100" },
-                  { label: "Student Limit", value: `${students.length}/${centerData?.studentLimit ?? 30}`, icon: "🎯", color: "text-slate-700", bg: "bg-slate-50", border: "border-slate-200" },
-                  { label: "Reports Today", value: reportsToday, icon: "📝", color: "text-emerald-700", bg: "bg-emerald-50", border: "border-emerald-100" },
-                  { label: "Expires", value: formatDate(centerData?.expiresAt), icon: "📅", color: "text-amber-700", bg: "bg-amber-50", border: "border-amber-100" },
-                ].map((s) => (
-                  <div key={s.label} className={`${s.bg} border ${s.border} rounded-xl p-5`}>
-                    <div className="flex items-center gap-2 mb-2">
-                      <span className="text-lg">{s.icon}</span>
-                      <p className={`text-xs font-semibold ${s.color}`}>{s.label}</p>
-                    </div>
-                    <p className={`font-mono text-2xl font-bold ${s.color}`}>{s.value}</p>
-                  </div>
-                ))}
-              </div>
-
-              {/* Payment status */}
-              <div className="bg-white border border-slate-200 rounded-xl p-5 flex items-center gap-4">
-                <div className="flex-1">
-                  <p className="text-sm font-semibold text-slate-700 mb-1">Subscription Status</p>
-                  <p className="text-xs text-slate-500">Contract expires: {formatDate(centerData?.expiresAt)}</p>
-                </div>
-                <Badge variant={centerData?.status === "active" ? "success" : centerData?.status === "expired" ? "destructive" : "warning"} className="capitalize text-sm px-3 py-1">
-                  {centerData?.status ?? "—"}
-                </Badge>
-              </div>
-            </div>
-          )}
-
-          {/* ── STUDENTS ── */}
-          {section === "students" && (
-            <div className="flex flex-col gap-5">
-              <div className="flex items-center justify-between">
-                <p className="text-sm text-slate-600">{students.length} / {centerData?.studentLimit ?? 30} students enrolled</p>
-                <button
-                  onClick={() => setAddDialog(true)}
-                  className="px-4 py-2 bg-teal-600 text-white rounded-lg text-sm font-semibold hover:bg-teal-700 transition-colors cursor-pointer border-none">
-                  + Qo'lda qo'shish
-                </button>
-              </div>
-
-              {studentsLoading ? (
-                <div className="flex items-center justify-center py-12 gap-2 text-slate-400 text-sm"><Spinner /> Loading…</div>
-              ) : students.length === 0 ? (
-                <div className="bg-white rounded-xl border border-dashed border-slate-300 p-12 text-center">
-                  <p className="text-3xl mb-2">👥</p>
-                  <p className="text-slate-500 font-semibold">No students yet</p>
-                </div>
-              ) : (
-                <div className="bg-white rounded-xl border border-slate-200 overflow-hidden">
-                  <table className="w-full text-sm">
-                    <thead>
-                      <tr className="border-b border-slate-100 bg-slate-50">
-                        <th scope="col" className="px-4 py-3 text-left text-xs font-bold text-slate-500 uppercase tracking-wider">Ism</th>
-                        <th scope="col" className="px-4 py-3 text-left text-xs font-bold text-slate-500 uppercase tracking-wider">Login</th>
-                        <th scope="col" className="px-4 py-3 text-left text-xs font-bold text-slate-500 uppercase tracking-wider">Qo'shildi</th>
-                        <th scope="col" className="px-4 py-3 text-right text-xs font-bold text-slate-500 uppercase tracking-wider">Amal</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-slate-100">
-                      {students.map((s) => (
-                        <tr key={s.id} className="hover:bg-slate-50">
-                          <td className="px-4 py-3">
-                            <div className="flex items-center gap-2.5">
-                              <div className={`w-8 h-8 rounded-full ${nameColor(s.fullName)} flex items-center justify-center text-white text-xs font-bold shrink-0`}>
-                                {initials(s.fullName)}
-                              </div>
-                              <span className="font-medium text-slate-800">{s.fullName}</span>
-                            </div>
-                          </td>
-                          <td className="px-4 py-3 text-slate-600 text-xs font-mono">{s.login || '—'}</td>
-                          <td className="px-4 py-3 text-slate-400 text-xs">{formatDate(s.addedAt)}</td>
-                          <td className="px-4 py-3 text-right">
-                            <div className="flex items-center justify-end gap-1.5">
-                              <button
-                                onClick={() => openEditStudent(s)}
-                                className="text-xs px-2.5 py-1 bg-blue-50 text-blue-600 border border-blue-200 rounded-lg hover:bg-blue-100 transition-colors cursor-pointer">
-                                Tahrir
-                              </button>
-                              <button
-                                onClick={() => removeStudent(s.id)}
-                                className="text-xs px-2.5 py-1 bg-red-50 text-red-600 border border-red-200 rounded-lg hover:bg-red-100 transition-colors cursor-pointer">
-                                O'chir
-                              </button>
-                            </div>
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              )}
-
-              {/* Edit student dialog */}
-              <Dialog open={!!editStudent} onOpenChange={(open) => { if (!open) setEditStudent(null); }}>
-                <DialogContent className="bg-white max-w-[440px]">
-                  <DialogHeader>
-                    <DialogTitle className="text-slate-900">O'quvchini tahrirlash</DialogTitle>
-                  </DialogHeader>
-                  <div className="flex flex-col gap-4 mt-2">
-                    <div>
-                      <label htmlFor="edit-student-name" className="text-xs font-semibold text-slate-600 mb-1 block uppercase tracking-wide">Ism Familiya</label>
-                      <Input id="edit-student-name" name="fullName" autoComplete="off" className="border-slate-200 bg-white text-slate-900" value={editName} onChange={(e) => setEditName(e.target.value)} />
-                    </div>
-                    <div>
-                      <label htmlFor="edit-student-login" className="text-xs font-semibold text-slate-600 mb-1 block uppercase tracking-wide">Login</label>
-                      <Input id="edit-student-login" name="username" autoComplete="off" className="border-slate-200 bg-white text-slate-900" value={editLogin} onChange={(e) => setEditLogin(e.target.value)} />
-                    </div>
-                    <div>
-                      <label htmlFor="edit-student-pass" className="text-xs font-semibold text-slate-600 mb-1 block uppercase tracking-wide">Yangi Parol (ixtiyoriy)</label>
-                      <Input id="edit-student-pass" name="new-password" type="password" autoComplete="new-password" placeholder="Bo'sh qoldirsa o'zgarmaydi" className="border-slate-200 bg-white text-slate-900" value={editPass} onChange={(e) => setEditPass(e.target.value)} />
-                    </div>
-                    {editStudentError && <p role="alert" aria-live="polite" className="text-sm text-red-600">{editStudentError}</p>}
-                    <div className="flex gap-3">
-                      <button disabled={savingEdit || !editName.trim() || !editLogin.trim()} onClick={saveEditStudent}
-                        className="flex-1 bg-blue-600 text-white rounded-lg py-2.5 font-semibold text-sm cursor-pointer hover:bg-blue-700 transition-colors disabled:opacity-50 border-none">
-                        {savingEdit ? "Saqlanmoqda…" : "Saqlash"}
-                      </button>
-                      <button onClick={() => setEditStudent(null)}
-                        className="flex-1 bg-white text-slate-700 border border-slate-200 rounded-lg py-2.5 font-semibold text-sm cursor-pointer hover:bg-slate-50 transition-colors">
-                        Bekor
-                      </button>
-                    </div>
-                  </div>
-                </DialogContent>
-              </Dialog>
-
-              {/* Add student dialog */}
-              <Dialog open={addDialog} onOpenChange={(open) => { if (!open) { setAddDialog(false); setNewName(""); setNewLogin(""); setNewPass(""); setAddStudentError(""); } }}>
-                <DialogContent className="bg-white max-w-[440px]">
-                  <DialogHeader>
-                    <DialogTitle className="text-slate-900">O'quvchi qo'shish</DialogTitle>
-                  </DialogHeader>
-                  <div className="flex flex-col gap-4 mt-2">
-                    <div>
-                      <label htmlFor="add-student-name" className="text-xs font-semibold text-slate-600 mb-1 block uppercase tracking-wide">Ism Familiya</label>
-                      <Input id="add-student-name" name="fullName" autoComplete="off" className="border-slate-200 bg-white text-slate-900" placeholder="Ali Valiyev" value={newName} onChange={(e) => setNewName(e.target.value)} />
-                    </div>
-                    <div>
-                      <label htmlFor="add-student-login" className="text-xs font-semibold text-slate-600 mb-1 block uppercase tracking-wide">Login</label>
-                      <Input id="add-student-login" name="username" autoComplete="off" className="border-slate-200 bg-white text-slate-900" placeholder="ali_valiyev" value={newLogin} onChange={(e) => setNewLogin(e.target.value)} />
-                    </div>
-                    <div>
-                      <label htmlFor="add-student-pass" className="text-xs font-semibold text-slate-600 mb-1 block uppercase tracking-wide">Parol</label>
-                      <Input id="add-student-pass" name="new-password" type="password" autoComplete="new-password" placeholder="Kamida 6 ta belgi" className="border-slate-200 bg-white text-slate-900" value={newPass} onChange={(e) => setNewPass(e.target.value)} />
-                    </div>
-                    <p className="text-xs text-slate-400">Bu login va parolni o'quvchi saytga kirish uchun ishlatadi.</p>
-                    {addStudentError && <p role="alert" aria-live="polite" className="text-sm text-red-600">{addStudentError}</p>}
-                    <div className="flex gap-3">
-                      <button
-                        disabled={addingStudent || !newName.trim() || !newLogin.trim() || !newPass.trim()}
-                        onClick={addStudent}
-                        className="flex-1 bg-teal-600 text-white rounded-lg py-2.5 font-semibold text-sm cursor-pointer hover:bg-teal-700 transition-colors disabled:opacity-50 border-none">
-                        {addingStudent ? "Qo'shilmoqda…" : "Qo'shish"}
-                      </button>
-                      <button onClick={() => setAddDialog(false)}
-                        className="flex-1 bg-white text-slate-700 border border-slate-200 rounded-lg py-2.5 font-semibold text-sm cursor-pointer hover:bg-slate-50 transition-colors">
-                        Bekor
-                      </button>
-                    </div>
-                  </div>
-                </DialogContent>
-              </Dialog>
-            </div>
-          )}
-
-          {/* ── ANALYTICS ── */}
-          {section === "analytics" && (
-            <div className="flex flex-col gap-6">
-              <div className="flex items-center justify-between">
-                <p className="text-sm text-slate-600">Performance overview for all students</p>
-                <button onClick={loadAnalytics} disabled={analyticsLoading}
-                  className="px-4 py-2 bg-white border border-slate-200 rounded-lg text-sm font-semibold text-slate-700 hover:bg-slate-50 cursor-pointer transition-colors border border-slate-200">
-                  {analyticsLoading ? "Loading…" : "↻ Refresh"}
-                </button>
-              </div>
-
-              {analyticsLoading ? (
-                <div className="flex items-center justify-center py-16 gap-2 text-slate-400 text-sm"><Spinner /> Analyzing…</div>
-              ) : analytics.length === 0 ? (
-                <div className="bg-white rounded-xl border border-dashed border-slate-300 p-12 text-center">
-                  <p className="text-3xl mb-2">📈</p>
-                  <p className="text-slate-500 font-semibold">No analytics data yet</p>
-                  <p className="text-sm text-slate-400 mt-1">Students need to submit essays first.</p>
-                </div>
-              ) : (
-                <>
-                  {/* Top performers table */}
-                  <div className="bg-white rounded-xl border border-slate-200 overflow-hidden">
-                    <div className="px-5 py-4 border-b border-slate-100">
-                      <p className="text-sm font-bold text-slate-800">Top Performers</p>
-                      <p className="text-xs text-slate-400 mt-0.5">Sorted by average band score</p>
-                    </div>
-                    <table className="w-full text-sm">
-                      <thead>
-                        <tr className="border-b border-slate-100 bg-slate-50">
-                          <th scope="col" className="px-4 py-3 text-left text-xs font-bold text-slate-500 uppercase tracking-wider w-12">Rank</th>
-                          <th scope="col" className="px-4 py-3 text-left text-xs font-bold text-slate-500 uppercase tracking-wider">Student</th>
-                          <th scope="col" className="px-4 py-3 text-center text-xs font-bold text-slate-500 uppercase tracking-wider">Band Score</th>
-                          <th scope="col" className="px-4 py-3 text-center text-xs font-bold text-slate-500 uppercase tracking-wider">Reports</th>
-                          <th scope="col" className="px-4 py-3 text-left text-xs font-bold text-slate-500 uppercase tracking-wider">Last Active</th>
-                        </tr>
-                      </thead>
-                      <tbody className="divide-y divide-slate-100">
-                        {analytics.slice(0, 10).map((a, i) => {
-                          const medal = i === 0 ? "🥇" : i === 1 ? "🥈" : i === 2 ? "🥉" : null;
-                          return (
-                            <tr key={a.student.id} className={`hover:bg-slate-50 transition-colors ${i < 3 ? "bg-amber-50/30" : ""}`}>
-                              <td className="px-4 py-3 text-center">
-                                {medal
-                                  ? <span className="text-xl leading-none">{medal}</span>
-                                  : <span className="font-mono text-xs text-slate-400">#{i + 1}</span>}
-                              </td>
-                              <td className="px-4 py-3">
-                                <div className="flex items-center gap-2.5">
-                                  <Avatar className="w-8 h-8 shrink-0">
-                                    <AvatarFallback className={`${nameColor(a.student.fullName)} text-white text-xs font-bold`}>
-                                      {initials(a.student.fullName)}
-                                    </AvatarFallback>
-                                  </Avatar>
-                                  <div>
-                                    <p className="font-medium text-slate-800 leading-tight">{a.student.fullName}</p>
-                                    <p className="text-xs text-slate-400 font-mono">{a.student.login}</p>
-                                  </div>
-                                </div>
-                              </td>
-                              <td className="px-4 py-3 text-center">
-                                {a.avgBand !== null ? (
-                                  <span className={`font-mono text-base font-bold ${a.avgBand >= 7 ? "text-emerald-600" : a.avgBand >= 6 ? "text-blue-600" : "text-slate-700"}`}>
-                                    {a.avgBand.toFixed(1)}
-                                  </span>
-                                ) : (
-                                  <span className="text-slate-300 text-sm">—</span>
-                                )}
-                              </td>
-                              <td className="px-4 py-3 text-center font-mono text-sm text-slate-600">{a.reportCount}</td>
-                              <td className="px-4 py-3 text-slate-400 text-xs">{formatDate(a.lastActive)}</td>
-                            </tr>
-                          );
-                        })}
-                      </tbody>
-                    </table>
-                  </div>
-
-                  {/* Monthly usage chart */}
-                  <div className="bg-white rounded-xl border border-slate-200 p-5">
-                    <p className="text-sm font-bold text-slate-800 mb-1">Monthly Usage</p>
-                    <p className="text-xs text-slate-400 mb-4">Reports submitted this month (max 12 per student)</p>
-                    <div className="flex flex-col gap-3">
-                      {analytics.map((a) => (
-                        <div key={a.student.id} className="flex items-center gap-3">
-                          <div className={`w-7 h-7 rounded-full ${nameColor(a.student.fullName)} flex items-center justify-center text-white text-xs font-bold shrink-0`}>
-                            {initials(a.student.fullName)}
-                          </div>
-                          <div className="flex-1 min-w-0">
-                            <div className="flex items-center justify-between mb-1">
-                              <span className="text-sm font-medium text-slate-700 truncate">{a.student.fullName}</span>
-                              <span className="text-xs font-mono text-slate-500 shrink-0 ml-2">{a.monthlyCount}/12</span>
-                            </div>
-                            <div className="h-2 bg-slate-100 rounded-full overflow-hidden">
-                              <div
-                                className="h-full rounded-full transition-all"
-                                style={{
-                                  width: `${Math.min(100, (a.monthlyCount / 12) * 100)}%`,
-                                  backgroundColor: a.monthlyCount >= 12 ? "#ef4444" : a.monthlyCount >= 8 ? "#f59e0b" : "#10b981",
-                                }}
-                              />
-                            </div>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                </>
-              )}
-            </div>
-          )}
-
-          </main>
-        </SidebarInset>
-      </div>
-    </SidebarProvider>
+    <>
+      <StaffShell
+        role="Learning center"
+        identity={{ name: centerName, detail: "Learning center" }}
+        nav={nav}
+        active={section}
+        onNavigate={setSection}
+        onSignOut={signOut}
+      >
+        {section === "overview" && overview}
+        {section === "students" && (
+          <ListDetail
+            label="Students"
+            list={studentsList}
+            detail={studentDetail}
+            detailOpen={selectedId !== null}
+            onBack={() => selectStudent(null)}
+            backLabel="All students"
+            detailKey={selectedId ?? "none"}
+          />
+        )}
+        {section === "analytics" && (
+          <ListDetail
+            label="Analytics"
+            list={analyticsList}
+            detail={analyticsDetail}
+            detailOpen={analyticsId !== null}
+            onBack={() => setAnalyticsId(null)}
+            backLabel="All students"
+            detailKey={analyticsId ?? "none"}
+          />
+        )}
+      </StaffShell>
+      {dialog}
+    </>
   );
 }

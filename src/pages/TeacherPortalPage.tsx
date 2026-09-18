@@ -1,103 +1,47 @@
-import { useEffect, useState, type FormEvent } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { onAuthStateChanged, signInWithCustomToken, signOut } from "firebase/auth";
+import { CircleCheck, Download, FileText, Inbox, Loader2, RefreshCw, Upload, Wallet } from "lucide-react";
 import { adminAuth, adminDb } from "@/firebase/adminConfig";
-import { Button } from "@/components/ui/Button";
-import { Input } from "@/components/ui/input";
-import { PasswordInput } from "@/components/ui/PasswordInput";
-import { Label } from "@/components/ui/label";
-import { Badge } from "@/components/ui/badge";
-import { GraduationCap, Download, Upload, LogOut, LayoutDashboard } from "lucide-react";
-import {
-  getHumanReviewsForTeacher,
-  uploadTeacherFeedback,
-  teacherEarningUZS,
-} from "@/firebase/teachers";
+import { getHumanReviewsForTeacher, teacherEarningUZS, uploadTeacherFeedback } from "@/firebase/teachers";
 import { buildReviewDocx, downloadBlob, fileToBase64 } from "@/lib/reviewDocx";
 import type { HumanReview } from "@/types";
-import Logo from "/logo.png";
-import {
-  SidebarProvider,
-  Sidebar,
-  SidebarHeader,
-  SidebarContent,
-  SidebarFooter,
-  SidebarGroup,
-  SidebarMenu,
-  SidebarMenuItem,
-  SidebarMenuButton,
-  SidebarTrigger,
-  SidebarInset,
-} from "@/components/ui/sidebar";
-import { useSidebar } from "@/components/ui/sidebar-context";
+import { cn } from "@/lib/utils";
+import { Button } from "@/components/ui/Button";
+import { Badge } from "@/components/ui/badge";
+import { StaffShell, type StaffNavGroup } from "@/components/staff/StaffShell";
+import { StaffLogin } from "@/components/staff/StaffLogin";
+import { ListDetail, ListPane, RowList, ListRow, DetailView, DetailHeader, DetailSection, KeyValues } from "@/components/staff/ListDetail";
+import { EmptyState, FileButton, FilterChips, LoadError, Notice, PageHeading, Panel, RowSkeletons, SearchField, StatStrip } from "@/components/staff/parts";
+import { formatDate, timeAgo, uzs } from "@/pages/writing/admin/format";
 
-function TeacherSidebar({
-  teacherName,
-  signOut,
-}: {
-  teacherName: string;
-  signOut: () => void;
-}) {
-  const { open } = useSidebar();
+type Section = "reviews" | "earnings";
+type Filter = "pending" | "checked" | "all";
 
-  return (
-    <Sidebar>
-      <SidebarHeader>
-        <div className={open ? "px-2" : "flex justify-center"}>
-          {open ? (
-            <>
-              <img src={Logo} alt="WriteReady" className="h-7 object-contain" />
-              <p className="text-[0.6rem] font-bold tracking-widest text-white/30 uppercase mt-2">Teacher Portal</p>
-              <p className="text-sm font-semibold text-white truncate mt-0.5">{teacherName}</p>
-            </>
-          ) : (
-            <img src={Logo} alt="WriteReady" className="h-7 w-7 object-contain" />
-          )}
-        </div>
-      </SidebarHeader>
+const MODE_LABEL: Record<HumanReview["mode"], string> = { mock: "Mock exam", practice: "Practice", quick: "Quick write", relax: "Relax" };
 
-      <SidebarContent>
-        <SidebarGroup>
-          <SidebarMenu>
-            <SidebarMenuItem>
-              <SidebarMenuButton isActive tooltip="Reviews">
-                <LayoutDashboard size={18} className="shrink-0" />
-                {open && <span>Reviews</span>}
-              </SidebarMenuButton>
-            </SidebarMenuItem>
-          </SidebarMenu>
-        </SidebarGroup>
-      </SidebarContent>
+const tasksOf = (r: HumanReview) => [r.task1 && "Task 1", r.task2 && "Task 2"].filter(Boolean).join(" and ");
 
-      <SidebarFooter>
-        <button
-          onClick={signOut}
-          title={!open ? "Sign out" : undefined}
-          className={`w-full text-left flex items-center gap-2.5 px-3.5 py-2 rounded-lg text-sm font-medium text-red-400 hover:bg-red-500/10 hover:text-red-300 transition-colors border-none cursor-pointer bg-transparent ${!open ? "justify-center" : ""}`}
-        >
-          <LogOut size={16} className="shrink-0" />
-          {open && "Sign out"}
-        </button>
-      </SidebarFooter>
-    </Sidebar>
-  );
-}
+const monthKey = (d: Date) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
+const monthLabel = (key: string) => {
+  const [y, m] = key.split("-").map(Number);
+  return new Date(y, m - 1, 1).toLocaleDateString("en-GB", { month: "long", year: "numeric" });
+};
 
 export default function TeacherPortalPage() {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [teacherId, setTeacherId] = useState("");
   const [teacherName, setTeacherName] = useState("");
-
-  const [login, setLogin] = useState("");
-  const [password, setPassword] = useState("");
-  const [loginError, setLoginError] = useState<string | null>(null);
-  const [loggingIn, setLoggingIn] = useState(false);
+  const [section, setSection] = useState<Section>("reviews");
 
   const [reviews, setReviews] = useState<HumanReview[]>([]);
   const [reviewsLoading, setReviewsLoading] = useState(false);
-  const [busyReviewId, setBusyReviewId] = useState<string | null>(null);
-  const [busyAction, setBusyAction] = useState<"download" | "upload" | null>(null);
-  const [actionError, setActionError] = useState<string | null>(null);
-  const [actionSuccess, setActionSuccess] = useState<string | null>(null);
+  const [reviewsFailed, setReviewsFailed] = useState(false);
+  const [search, setSearch] = useState("");
+  const searchRef = useRef<HTMLInputElement>(null);
+  const [filter, setFilter] = useState<Filter>("pending");
+  const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [busy, setBusy] = useState<"download" | "upload" | null>(null);
+  const [notice, setNotice] = useState<{ tone: "success" | "error"; text: string } | null>(null);
 
   useEffect(() => {
     const saved = localStorage.getItem("teacherLoggedIn");
@@ -117,57 +61,52 @@ export default function TeacherPortalPage() {
     return unsub;
   }, []);
 
-  useEffect(() => {
-    if (!isLoggedIn || !teacherId) return;
-    loadReviews(teacherId);
-  }, [isLoggedIn, teacherId]);
-
-  const loadReviews = async (id: string) => {
+  const loadReviews = useCallback(async (id: string) => {
     setReviewsLoading(true);
     try {
       const data = await getHumanReviewsForTeacher(id, adminDb);
-      setReviews(data);
+      setReviews(data.sort((a, b) => b.requestedAt.getTime() - a.requestedAt.getTime()));
+      setReviewsFailed(false);
     } catch (e) {
       console.error(e);
+      setReviewsFailed(true);
     } finally {
       setReviewsLoading(false);
     }
-  };
+  }, []);
 
-  const handleLogin = async (e: FormEvent) => {
-    e.preventDefault();
-    setLoginError(null);
-    setLoggingIn(true);
+  useEffect(() => {
+    if (!isLoggedIn || !teacherId) return;
+    loadReviews(teacherId);
+  }, [isLoggedIn, teacherId, loadReviews]);
+
+  const login = async (loginValue: string, password: string): Promise<string | null> => {
     try {
       // Credential check happens server-side (api/staff-login.ts) via the
       // Firebase Admin SDK, so the teacher's password never reaches the
-      // browser — it then mints a custom token for this teacher's dedicated
-      // Firebase account, giving us a real authenticated session for reading
-      // assigned reviews.
+      // browser. It mints a custom token for this teacher's own Firebase
+      // account, giving a real authenticated session for their reviews.
       const res = await fetch("/api/staff-login", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ role: "teacher", login: login.trim(), password }),
+        body: JSON.stringify({ role: "teacher", login: loginValue, password }),
       });
-      const data = await res.json();
+      const data = await res.json().catch(() => ({}));
       if (!res.ok) {
-        setLoginError(data.error ?? "Incorrect login or password.");
-        return;
+        if (res.status === 403) return "This account is turned off. Ask the WriteReady admin to turn it back on.";
+        return res.status >= 500 ? "The sign-in service had a problem. Try again in a minute." : "That login or password is not right.";
       }
-
       await signInWithCustomToken(adminAuth, data.customToken);
-
       localStorage.setItem("teacherLoggedIn", "true");
       localStorage.setItem("teacherId", data.teacherId);
       localStorage.setItem("teacherName", data.teacherName);
       setTeacherId(data.teacherId);
       setTeacherName(data.teacherName);
       setIsLoggedIn(true);
+      return null;
     } catch (err) {
       console.error(err);
-      setLoginError("Something went wrong. Please try again.");
-    } finally {
-      setLoggingIn(false);
+      return "Could not reach the server. Check your connection and try again.";
     }
   };
 
@@ -178,260 +117,249 @@ export default function TeacherPortalPage() {
     await signOut(adminAuth).catch(() => {});
     setIsLoggedIn(false);
     setReviews([]);
+    setSelectedId(null);
   };
 
   const handleDownload = async (review: HumanReview) => {
-    setActionError(null);
-    setActionSuccess(null);
-    setBusyReviewId(review.id);
-    setBusyAction("download");
+    setNotice(null);
+    setBusy("download");
     try {
       const blob = await buildReviewDocx(review);
       downloadBlob(blob, `${review.studentName.replace(/\s+/g, "_")}_essay.docx`);
     } catch (err) {
       console.error(err);
-      setActionError("Could not generate the Word file. Please try again.");
+      setNotice({ tone: "error", text: "Could not create the Word file. Try again." });
     } finally {
-      setBusyReviewId(null);
-      setBusyAction(null);
+      setBusy(null);
     }
   };
 
   const handleUpload = async (review: HumanReview, file: File) => {
-    setActionError(null);
-    setActionSuccess(null);
-    setBusyReviewId(review.id);
-    setBusyAction("upload");
+    setNotice(null);
+    setBusy("upload");
     try {
       const base64 = await fileToBase64(file);
       await uploadTeacherFeedback(review.id, base64, file.name, adminDb);
       await loadReviews(teacherId);
-      setActionSuccess(`Feedback uploaded for ${review.studentName} — ${file.name}`);
+      setNotice({ tone: "success", text: `Feedback sent to ${review.studentName} (${file.name}). They were notified.` });
     } catch (err) {
       console.error(err);
-      setActionError("Could not upload your feedback. Please try again.");
+      setNotice({ tone: "error", text: "Could not upload your feedback. Try again." });
     } finally {
-      setBusyReviewId(null);
-      setBusyAction(null);
+      setBusy(null);
     }
   };
 
-  if (!isLoggedIn) {
-    return (
-      <div className="flex items-center justify-center min-h-screen bg-slate-50 px-4">
-        <div className="w-full max-w-sm bg-white rounded-2xl shadow-xl p-8">
-          <div className="flex items-center justify-center w-12 h-12 mx-auto rounded-full bg-emerald-50 mb-4">
-            <GraduationCap className="w-6 h-6 text-emerald-600" />
-          </div>
-          <h1 className="text-lg font-semibold text-center text-slate-900 mb-1">Teacher Portal</h1>
-          <p className="text-sm text-slate-500 text-center mb-6">Sign in to review assigned essays.</p>
+  const counts = useMemo(() => ({
+    pending: reviews.filter((r) => r.status === "pending").length,
+    checked: reviews.filter((r) => r.status === "checked").length,
+    all: reviews.length,
+  }), [reviews]);
 
-          <form onSubmit={handleLogin} className="flex flex-col gap-3">
-            <div>
-              <Label htmlFor="tp-login">Login</Label>
-              <Input id="tp-login" autoComplete="username" className="mt-1.5" value={login} onChange={(e) => setLogin(e.target.value)} required />
-            </div>
-            <div>
-              <Label htmlFor="tp-password">Password</Label>
-              <PasswordInput id="tp-password" autoComplete="current-password" className="mt-1.5" value={password} onChange={(e) => setPassword(e.target.value)} required />
-            </div>
-            {loginError && <p className="text-sm text-red-500">{loginError}</p>}
-            <Button type="submit" disabled={loggingIn} className="w-full mt-2 bg-emerald-600 hover:bg-emerald-700 text-white">
-              {loggingIn ? "Signing in…" : "Sign in"}
-            </Button>
-          </form>
-        </div>
-      </div>
-    );
+  const earnings = useMemo(() => {
+    const byMonth = new Map<string, { count: number; total: number }>();
+    reviews
+      .filter((r) => r.status === "checked" && r.checkedAt)
+      .forEach((r) => {
+        const key = monthKey(r.checkedAt!);
+        const entry = byMonth.get(key) ?? { count: 0, total: 0 };
+        entry.count += 1;
+        entry.total += teacherEarningUZS(r);
+        byMonth.set(key, entry);
+      });
+    const rows = Array.from(byMonth.entries()).map(([month, v]) => ({ month, ...v })).sort((a, b) => b.month.localeCompare(a.month));
+    const now = new Date();
+    return {
+      rows,
+      thisMonth: byMonth.get(monthKey(now)) ?? { count: 0, total: 0 },
+      lastMonth: byMonth.get(monthKey(new Date(now.getFullYear(), now.getMonth() - 1, 1))) ?? { count: 0, total: 0 },
+      total: rows.reduce((s, r) => s + r.total, 0),
+    };
+  }, [reviews]);
+
+  if (!isLoggedIn) {
+    return <StaffLogin title="Teacher sign-in" description="Review the essays students send you for Human Check." onSubmit={login} />;
   }
 
-  const pendingCount = reviews.filter((r) => r.status === "pending").length;
-  const checkedCount = reviews.filter((r) => r.status === "checked").length;
+  const nav: StaffNavGroup<Section>[] = [
+    {
+      items: [
+        { id: "reviews", label: "Reviews", icon: Inbox, badge: counts.pending || undefined },
+        { id: "earnings", label: "Earnings", icon: Wallet },
+      ],
+    },
+  ];
 
-  // Earnings broken down by the month each review was checked
-  const monthKey = (d: Date) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
-  const now = new Date();
-  const thisMonthKey = monthKey(now);
-  const lastMonthKey = monthKey(new Date(now.getFullYear(), now.getMonth() - 1, 1));
+  const q = search.trim().toLowerCase();
+  const filtered = reviews
+    .filter((r) => filter === "all" || r.status === filter)
+    .filter((r) => !q || r.studentName.toLowerCase().includes(q) || (r.studentEmail ?? "").toLowerCase().includes(q));
+  const selected = reviews.find((r) => r.id === selectedId) ?? null;
 
-  const earningsByMonth = new Map<string, { count: number; total: number }>();
-  reviews
-    .filter((r) => r.status === "checked" && r.checkedAt)
-    .forEach((r) => {
-      const key = monthKey(r.checkedAt!);
-      const entry = earningsByMonth.get(key) ?? { count: 0, total: 0 };
-      entry.count += 1;
-      entry.total += teacherEarningUZS(r);
-      earningsByMonth.set(key, entry);
-    });
-
-  const earningsRows = Array.from(earningsByMonth.entries())
-    .map(([month, v]) => ({ month, ...v }))
-    .sort((a, b) => b.month.localeCompare(a.month));
-
-  const thisMonth = earningsByMonth.get(thisMonthKey) ?? { count: 0, total: 0 };
-  const lastMonth = earningsByMonth.get(lastMonthKey) ?? { count: 0, total: 0 };
-  const totalEarned = earningsRows.reduce((s, r) => s + r.total, 0);
-
-  const monthLabel = (key: string) => {
-    const [y, m] = key.split("-").map(Number);
-    return new Date(y, m - 1, 1).toLocaleDateString("en-US", { month: "long", year: "numeric" });
-  };
-
-  return (
-    <SidebarProvider>
-      <div className="flex min-h-screen bg-slate-50 font-sans">
-        <TeacherSidebar teacherName={teacherName} signOut={handleLogout} />
-
-        <SidebarInset>
-          <header className="sticky top-0 z-10 flex items-center gap-3 px-6 py-3 bg-white border-b border-slate-200 shrink-0">
-            <SidebarTrigger />
-            <div className="h-5 w-px bg-slate-200" />
-            <div className="flex items-center gap-2">
-              <GraduationCap className="w-4 h-4 text-emerald-600" />
-              <p className="text-sm font-semibold text-slate-800 leading-tight">Reviews</p>
-            </div>
-          </header>
-
-          <main className="max-w-4xl mx-auto px-5 py-8 w-full">
-        <div className="grid grid-cols-2 gap-4 mb-4">
-          <div className="bg-white rounded-2xl border border-slate-200 p-5">
-            <div className="text-2xl font-bold text-amber-600">{pendingCount}</div>
-            <div className="text-sm text-slate-500 mt-1">Unchecked reports</div>
-          </div>
-          <div className="bg-white rounded-2xl border border-slate-200 p-5">
-            <div className="text-2xl font-bold text-emerald-600">{checkedCount}</div>
-            <div className="text-sm text-slate-500 mt-1">Checked reports</div>
-          </div>
-        </div>
-
-        {/* Earnings summary */}
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
-          <div className="bg-white rounded-2xl border border-slate-200 p-5">
-            <div className="text-xs font-semibold text-slate-400 uppercase tracking-wide mb-1">This month</div>
-            <div className="text-2xl font-bold text-emerald-600 font-mono">{thisMonth.total.toLocaleString()} <span className="text-sm font-semibold">UZS</span></div>
-            <div className="text-xs text-slate-500 mt-1">{thisMonth.count} review{thisMonth.count === 1 ? "" : "s"} checked</div>
-          </div>
-          <div className="bg-white rounded-2xl border border-slate-200 p-5">
-            <div className="text-xs font-semibold text-slate-400 uppercase tracking-wide mb-1">Last month</div>
-            <div className="text-2xl font-bold text-slate-700 font-mono">{lastMonth.total.toLocaleString()} <span className="text-sm font-semibold">UZS</span></div>
-            <div className="text-xs text-slate-500 mt-1">{lastMonth.count} review{lastMonth.count === 1 ? "" : "s"} checked</div>
-          </div>
-          <div className="bg-white rounded-2xl border border-slate-200 p-5">
-            <div className="text-xs font-semibold text-slate-400 uppercase tracking-wide mb-1">All time</div>
-            <div className="text-2xl font-bold text-slate-700 font-mono">{totalEarned.toLocaleString()} <span className="text-sm font-semibold">UZS</span></div>
-            <div className="text-xs text-slate-500 mt-1">{checkedCount} review{checkedCount === 1 ? "" : "s"} total</div>
-          </div>
-        </div>
-
-        {/* Earnings by month */}
-        {earningsRows.length > 0 && (
-          <div className="bg-white rounded-2xl border border-slate-200 overflow-hidden mb-6">
-            <div className="px-5 py-3 border-b border-slate-100 text-sm font-semibold text-slate-700">Earnings by month</div>
-            <div className="overflow-x-auto">
-              <table className="w-full text-sm">
-                <thead>
-                  <tr className="bg-slate-50 border-b border-slate-100">
-                    <th scope="col" className="px-5 py-2.5 text-left text-xs font-bold text-slate-500 uppercase tracking-wider">Month</th>
-                    <th scope="col" className="px-5 py-2.5 text-center text-xs font-bold text-slate-500 uppercase tracking-wider">Reviews</th>
-                    <th scope="col" className="px-5 py-2.5 text-right text-xs font-bold text-slate-500 uppercase tracking-wider">Earned</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-100">
-                  {earningsRows.map((row) => (
-                    <tr key={row.month}>
-                      <td className="px-5 py-3 font-medium text-slate-800">{monthLabel(row.month)}</td>
-                      <td className="px-5 py-3 text-center text-slate-600">{row.count}</td>
-                      <td className="px-5 py-3 text-right font-mono font-semibold text-emerald-700">{row.total.toLocaleString()} UZS</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </div>
-        )}
-
-        {actionError && (
-          <div className="bg-red-50 border border-red-200 text-red-600 text-sm rounded-lg px-4 py-2.5 mb-4" role="alert" aria-live="polite">{actionError}</div>
-        )}
-        {actionSuccess && (
-          <div className="bg-emerald-50 border border-emerald-200 text-emerald-700 text-sm rounded-lg px-4 py-2.5 mb-4" aria-live="polite">✓ {actionSuccess}</div>
-        )}
-
-        {reviewsLoading ? (
-          <div className="flex justify-center py-16">
-            <div className="animate-spin w-6 h-6 border-2 border-emerald-600 border-t-transparent rounded-full" />
-          </div>
-        ) : reviews.length === 0 ? (
-          <p className="text-sm text-slate-500 text-center py-16">No essays assigned to you yet.</p>
-        ) : (
-          <div className="flex flex-col gap-3">
-            {reviews.map((r) => (
-              <div key={r.id} className="bg-white rounded-2xl border border-slate-200 p-5">
-                <div className="flex items-center justify-between gap-4 flex-wrap">
-                  <div className="min-w-0">
-                    <div className="text-sm font-semibold text-slate-900">{r.studentName}</div>
-                    <div className="text-xs text-slate-500 mt-0.5">
-                      {r.studentEmail} · {r.mode} · {[r.task1 && "Task 1", r.task2 && "Task 2"].filter(Boolean).join(" & ")} · {r.requestedAt.toLocaleDateString()}
-                    </div>
-                  </div>
-                  <Badge variant={r.status === "checked" ? "info" : "warning"} className="shrink-0 uppercase tracking-wide">
-                    {r.status === "checked" ? "Checked" : "Unchecked"}
+  const list = (
+    <ListPane
+      title="Reviews"
+      action={
+        <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => loadReviews(teacherId)} disabled={reviewsLoading} aria-label="Reload reviews" title="Reload reviews">
+          <RefreshCw className={cn(reviewsLoading && "animate-spin motion-reduce:animate-none")} aria-hidden="true" />
+        </Button>
+      }
+      toolbar={
+        <>
+          <SearchField value={search} onChange={setSearch} placeholder="Search by student" label="Search reviews" inputRef={searchRef} />
+          <FilterChips
+            label="Filter reviews"
+            value={filter}
+            onChange={setFilter}
+            options={[
+              { id: "pending", label: "Waiting", count: counts.pending },
+              { id: "checked", label: "Checked", count: counts.checked },
+              { id: "all", label: "All", count: counts.all },
+            ]}
+          />
+        </>
+      }
+    >
+      {reviewsLoading && reviews.length === 0 ? (
+        <RowSkeletons />
+      ) : reviewsFailed && reviews.length === 0 ? (
+        <LoadError what="your reviews" onRetry={() => loadReviews(teacherId)} />
+      ) : filtered.length === 0 && q ? (
+        <EmptyState icon={Inbox} title="No reviews match" action={<Button variant="outline" size="sm" onClick={() => setSearch("")}>Clear search</Button>}>
+          No student matches “{search}”.
+        </EmptyState>
+      ) : filtered.length === 0 ? (
+        <EmptyState icon={filter === "pending" ? CircleCheck : Inbox} title={filter === "pending" ? "Nothing waiting" : "No reviews here"}>
+          {filter === "pending" ? "You have checked every essay sent to you. New requests appear here." : "Essays students send you for Human Check appear here."}
+        </EmptyState>
+      ) : (
+        <RowList label="Reviews">
+          {filtered.map((r) => (
+            <ListRow key={r.id} selected={r.id === selectedId} onSelect={() => { setSelectedId(r.id); setNotice(null); }}>
+              <div className="min-w-0 flex-1">
+                <div className="flex items-center gap-2">
+                  <span className="min-w-0 flex-1 truncate text-sm font-medium text-[var(--text-primary)]">{r.studentName}</span>
+                  <Badge variant={r.status === "checked" ? "success" : "warning"} className="shrink-0 text-[0.7rem]">
+                    {r.status === "checked" ? "Checked" : "Waiting"}
                   </Badge>
                 </div>
-
-                <div className="flex items-center gap-2 mt-4">
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    disabled={busyReviewId === r.id}
-                    onClick={() => handleDownload(r)}
-                  >
-                    {busyReviewId === r.id && busyAction === "download" ? (
-                      <span className="animate-spin w-3.5 h-3.5 mr-1.5 border-2 border-slate-400 border-t-transparent rounded-full" />
-                    ) : (
-                      <Download className="w-3.5 h-3.5 mr-1.5" />
-                    )}
-                    {busyReviewId === r.id && busyAction === "download" ? "Preparing…" : "Download essay (.docx)"}
-                  </Button>
-
-                  <label className={`inline-flex ${busyReviewId === r.id ? "pointer-events-none" : ""}`}>
-                    <input
-                      type="file"
-                      accept=".docx"
-                      className="sr-only peer"
-                      disabled={busyReviewId === r.id}
-                      onChange={(e) => {
-                        const file = e.target.files?.[0];
-                        if (file) handleUpload(r, file);
-                        e.target.value = "";
-                      }}
-                    />
-                    <span
-                      className={`inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-md border cursor-pointer peer-focus-visible:outline-none peer-focus-visible:ring-2 peer-focus-visible:ring-emerald-500 peer-focus-visible:ring-offset-1 ${
-                        busyReviewId === r.id && busyAction === "upload"
-                          ? "border-emerald-200 bg-emerald-50 text-emerald-700"
-                          : "border-slate-200 text-slate-700 hover:bg-slate-50"
-                      } ${busyReviewId === r.id ? "opacity-70 cursor-not-allowed" : ""}`}
-                    >
-                      {busyReviewId === r.id && busyAction === "upload" ? (
-                        <span className="animate-spin w-3.5 h-3.5 border-2 border-emerald-500 border-t-transparent rounded-full" />
-                      ) : (
-                        <Upload className="w-3.5 h-3.5" />
-                      )}
-                      {busyReviewId === r.id && busyAction === "upload"
-                        ? "Uploading…"
-                        : r.status === "checked" ? "Replace feedback" : "Upload feedback"}
-                    </span>
-                  </label>
-                </div>
+                <p className="mt-0.5 truncate text-xs text-[var(--text-secondary)]">{tasksOf(r)} · {timeAgo(r.requestedAt)}</p>
               </div>
-            ))}
-          </div>
+            </ListRow>
+          ))}
+        </RowList>
+      )}
+    </ListPane>
+  );
+
+  const detail = selected ? (
+    <DetailView>
+      <DetailHeader
+        title={selected.studentName}
+        badges={<Badge variant={selected.status === "checked" ? "success" : "warning"}>{selected.status === "checked" ? "Checked" : "Waiting for you"}</Badge>}
+        meta={`${MODE_LABEL[selected.mode] ?? selected.mode}, ${tasksOf(selected)}`}
+      />
+      {notice && <Notice tone={notice.tone} className="mt-5">{notice.text}</Notice>}
+
+      <DetailSection title="1. Download the essay" description="A Word file with the question and the student's essay, ready for your comments.">
+        <Button onClick={() => handleDownload(selected)} loading={busy === "download"} disabled={busy !== null}>
+          {busy !== "download" && <Download aria-hidden="true" />}
+          {busy === "download" ? "Preparing…" : "Download essay (.docx)"}
+        </Button>
+      </DetailSection>
+
+      <DetailSection
+        title="2. Upload your feedback"
+        description={selected.status === "checked" ? "Uploading again replaces the file the student has now." : "Send back the marked-up Word file. The student is notified right away."}
+      >
+        <div className="flex flex-wrap items-center gap-3">
+          <FileButton accept=".docx" onFile={(f) => handleUpload(selected, f)} disabled={busy !== null}>
+            {busy === "upload" ? <Loader2 size={16} className="animate-spin" aria-hidden="true" /> : <Upload size={16} aria-hidden="true" />}
+            {busy === "upload" ? "Uploading…" : selected.status === "checked" ? "Replace feedback" : "Upload feedback (.docx)"}
+          </FileButton>
+          {selected.feedbackFileName && (
+            <span className="inline-flex items-center gap-1.5 text-sm text-[var(--text-secondary)]">
+              <FileText size={14} aria-hidden="true" /> {selected.feedbackFileName}
+            </span>
+          )}
+        </div>
+      </DetailSection>
+
+      <DetailSection title="Request">
+        <KeyValues
+          items={[
+            { label: "Student email", value: selected.studentEmail || "Not given" },
+            { label: "Requested", value: `${formatDate(selected.requestedAt)} (${timeAgo(selected.requestedAt)})` },
+            { label: "Checked", value: selected.checkedAt ? formatDate(selected.checkedAt) : "Not yet" },
+            { label: "You earn", value: <span className="font-mono tabular-nums">{uzs(teacherEarningUZS(selected))}</span> },
+          ]}
+        />
+      </DetailSection>
+    </DetailView>
+  ) : (
+    <EmptyState icon={Inbox} title="Select an essay" className="py-24">
+      {counts.pending ? `You have ${counts.pending} ${counts.pending === 1 ? "essay" : "essays"} waiting. Pick one on the left to download it and send your feedback.` : "Pick a review on the left to see it."}
+    </EmptyState>
+  );
+
+  const earningsPage = (
+    <div className="mx-auto w-full max-w-[860px] px-4 py-8 sm:px-6 lg:px-10">
+      <PageHeading title="Earnings" description="What you earned for checked reviews, after the WriteReady fee." />
+      <StatStrip
+        items={[
+          { label: "This month", value: earnings.thisMonth.total.toLocaleString("en-US"), hint: `UZS, ${earnings.thisMonth.count} ${earnings.thisMonth.count === 1 ? "review" : "reviews"}` },
+          { label: "Last month", value: earnings.lastMonth.total.toLocaleString("en-US"), hint: `UZS, ${earnings.lastMonth.count} ${earnings.lastMonth.count === 1 ? "review" : "reviews"}` },
+          { label: "All time", value: earnings.total.toLocaleString("en-US"), hint: `UZS, ${counts.checked} ${counts.checked === 1 ? "review" : "reviews"}` },
+        ]}
+      />
+      <Panel title="By month" className="mt-6" bodyClassName="px-0 pb-0">
+        {earnings.rows.length === 0 ? (
+          <p className="px-5 pb-5 text-sm text-[var(--text-secondary)]">No checked reviews yet. Your earnings appear here once you send feedback.</p>
+        ) : (
+          <table className="w-full text-sm">
+            <thead className="border-y border-[var(--border-color)] bg-[var(--bg-subtle)] text-left text-[var(--text-secondary)]">
+              <tr>
+                <th scope="col" className="px-5 py-2.5 font-medium">Month</th>
+                <th scope="col" className="px-5 py-2.5 text-right font-medium">Reviews</th>
+                <th scope="col" className="px-5 py-2.5 text-right font-medium">Earned</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-[var(--border-color)]">
+              {earnings.rows.map((r) => (
+                <tr key={r.month}>
+                  <td className="px-5 py-3 text-[var(--text-primary)]">{monthLabel(r.month)}</td>
+                  <td className="px-5 py-3 text-right tabular-nums">{r.count}</td>
+                  <td className="px-5 py-3 text-right font-mono tabular-nums">{uzs(r.total)}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
         )}
-          </main>
-        </SidebarInset>
-      </div>
-    </SidebarProvider>
+      </Panel>
+    </div>
+  );
+
+  return (
+    <StaffShell
+      role="Teacher"
+      identity={{ name: teacherName, detail: "Teacher" }}
+      nav={nav}
+      active={section}
+      onNavigate={setSection}
+      onSignOut={handleLogout}
+    >
+      {section === "reviews" && (
+        <ListDetail
+          label="Reviews"
+          list={list}
+          detail={detail}
+          detailOpen={selectedId !== null}
+          onBack={() => setSelectedId(null)}
+          backLabel="All reviews"
+          detailKey={selectedId ?? "none"}
+        />
+      )}
+      {section === "earnings" && earningsPage}
+    </StaffShell>
   );
 }

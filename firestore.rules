@@ -1,0 +1,264 @@
+rules_version = '2';
+
+// WriteReady IELTS Firestore rules. The live copy is the one in the Firebase
+// console (Firestore > Rules); keep this file in step with it.
+//
+// The api/ functions use the Admin SDK and skip these rules entirely, so
+// anything written only by the server (feedback reports, usage counters,
+// maintenance mode) has no client write rule here on purpose.
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // ── Who is asking ─────────────────────────────────────────────────────
+
+    function signedIn() {
+      return request.auth != null;
+    }
+
+    // Staff sign in through /api/staff-login, which mints custom tokens for
+    // fixed internal emails. Students sign in with a password or Google, so
+    // they can never pass these checks, even with a look-alike email.
+    function isStaff() {
+      return signedIn() && request.auth.token.firebase.sign_in_provider == 'custom';
+    }
+
+    function staffEmail() {
+      return request.auth.token.get('email', '').lower();
+    }
+
+    function isAdmin() {
+      return isStaff() && staffEmail() == 'admin@writeready.internal';
+    }
+
+    function isCenter() {
+      return isStaff() && staffEmail().matches('center_[^@]+@writeready[.]internal');
+    }
+
+    function isCenterFor(centerId) {
+      return isStaff() && staffEmail() == ('center_' + centerId + '@writeready.internal').lower();
+    }
+
+    function isTeacher() {
+      return isStaff() && staffEmail().matches('teacher_[^@]+@writeready[.]internal');
+    }
+
+    function isTeacherFor(teacherId) {
+      return isStaff() && staffEmail() == ('teacher_' + teacherId + '@writeready.internal').lower();
+    }
+
+    function isStudent() {
+      return signedIn() && !isStaff();
+    }
+
+    function isSelf(uid) {
+      return isStudent() && request.auth.uid == uid;
+    }
+
+    // ── Helpers ───────────────────────────────────────────────────────────
+
+    function changed() {
+      return request.resource.data.diff(resource.data).affectedKeys();
+    }
+
+    // Like and comment counters may only move by one, or reset to zero.
+    function counterStepOk(field) {
+      let before = resource.data.get(field, 0);
+      let after = request.resource.data.get(field, 0);
+      return after is number
+        && (after == before || after == before + 1 || after == before - 1 || after == 0);
+    }
+
+    function flags() {
+      return get(/databases/$(database)/documents/config/featureFlags).data;
+    }
+
+    // Same defaults as src/hooks/useFeatureFlag.ts.
+    function humanCheckPrice() {
+      let price = flags().get('humanCheckPriceUZS', 0);
+      return (price is number && price > 0) ? price : 20000;
+    }
+
+    function humanCheckFee() {
+      let fee = flags().get('humanCheckPlatformFeeUZS', -1);
+      return (fee is number && fee >= 0) ? fee : 5000;
+    }
+
+    // ── Admin: everything ─────────────────────────────────────────────────
+
+    match /{document=**} {
+      allow read, write: if isAdmin();
+    }
+
+    // ── Users ─────────────────────────────────────────────────────────────
+
+    match /users/{uid} {
+      // Centers still read every profile: the center portal filters in the
+      // browser. Narrow to their own students once it queries per student.
+      allow read: if isSelf(uid) || isCenter();
+
+      allow create: if
+        // A new sign-up always starts on the free plan.
+        (isSelf(uid)
+          && request.resource.data.keys().hasOnly(['email', 'plan', 'subscriptionExpiresAt', 'createdAt', 'notification'])
+          && request.resource.data.plan == 'free'
+          && request.resource.data.subscriptionExpiresAt == null)
+        // A learning center adds one of its own students.
+        || (isCenterFor(request.resource.data.centerId)
+          && request.resource.data.keys().hasOnly(['email', 'studentLogin', 'fullName', 'plan', 'subscriptionExpiresAt', 'centerId', 'centerName', 'createdAt', 'bonusAnalyses'])
+          && request.resource.data.plan == 'pro'
+          && request.resource.data.bonusAnalyses == 0
+          && (request.resource.data.subscriptionExpiresAt == null
+            || request.resource.data.subscriptionExpiresAt == get(/databases/$(database)/documents/learningCenters/$(request.resource.data.centerId)).data.get('expiresAt', null)));
+
+      allow update: if
+        // Students can clear their welcome message, and pay for a Human
+        // Check. The balance can only go down; the review itself is checked
+        // under humanReviews.
+        (isSelf(uid)
+          && (changed().hasOnly(['notification'])
+            || (changed().hasOnly(['balanceUZS'])
+              && request.resource.data.balanceUZS is number
+              && request.resource.data.balanceUZS >= 0
+              && request.resource.data.balanceUZS < resource.data.get('balanceUZS', 0))))
+        // A center renames one of its own students' logins.
+        || (isCenterFor(resource.data.get('centerId', '')) && changed().hasOnly(['studentLogin']));
+    }
+
+    // ── Writing ───────────────────────────────────────────────────────────
+
+    // Task 1 and Task 2 prompts.
+    match /task1_reports/{id} {
+      allow read: if signedIn();
+    }
+
+    match /task2_reports/{id} {
+      allow read: if signedIn();
+    }
+
+    match /questions/{id} {
+      allow read: if signedIn();
+    }
+
+    match /submissions/{id} {
+      allow read: if isStudent() && resource.data.uid == request.auth.uid;
+      allow create: if isStudent() && request.resource.data.uid == request.auth.uid;
+    }
+
+    // AI feedback reports are written by api/feedback.ts only. Centers read
+    // them for their analytics page (same narrowing as users, later).
+    match /feedback_reports/{id} {
+      allow read: if (isStudent() && resource.data.uid == request.auth.uid) || isCenter();
+    }
+
+    // ── Human Check ───────────────────────────────────────────────────────
+
+    // Students pick a teacher from this list.
+    // These documents still hold teachers' login passwords; move them out.
+    match /teachers/{teacherId} {
+      allow read: if signedIn();
+    }
+
+    match /humanReviews/{reviewId} {
+      allow get: if (isStudent() && resource.data.uid == request.auth.uid)
+        || isTeacherFor(resource.data.teacherId);
+
+      // Lists: students query by their own uid. Teachers query by their own
+      // teacherId, but Firestore can't reliably match that against the token
+      // (the token's email may be lowercased, document IDs aren't), so for
+      // now any teacher may list reviews, full content included. Changing a
+      // review still needs the assigned teacher. To close this, store a
+      // lowercase teacher key on each review and compare against that.
+      allow list: if (isStudent() && resource.data.uid == request.auth.uid)
+        || isTeacher();
+
+      // Created in the same transaction that takes the price off the
+      // student's balance, at the price and fee the admin set.
+      allow create: if isStudent()
+        && request.resource.data.uid == request.auth.uid
+        && request.resource.data.keys().hasOnly(['uid', 'studentName', 'studentEmail', 'teacherId', 'teacherName', 'mode', 'status', 'priceUZS', 'platformFeeUZS', 'requestedAt', 'task1', 'task2'])
+        && request.resource.data.status == 'pending'
+        && request.resource.data.priceUZS == humanCheckPrice()
+        && request.resource.data.platformFeeUZS == humanCheckFee()
+        && get(/databases/$(database)/documents/teachers/$(request.resource.data.teacherId)).data.get('active', true) != false
+        && getAfter(/databases/$(database)/documents/users/$(request.auth.uid)).data.balanceUZS
+          == get(/databases/$(database)/documents/users/$(request.auth.uid)).data.get('balanceUZS', 0) - request.resource.data.priceUZS;
+
+      // The assigned teacher uploads the checked essay.
+      allow update: if isTeacherFor(resource.data.teacherId)
+        && changed().hasOnly(['status', 'feedbackDocBase64', 'feedbackFileName', 'checkedAt'])
+        && request.resource.data.status == 'checked';
+    }
+
+    // ── Learning centers ──────────────────────────────────────────────────
+
+    match /learningCenters/{centerId} {
+      allow get: if isCenterFor(centerId);
+
+      match /students/{studentId} {
+        allow read, write: if isCenterFor(centerId);
+      }
+    }
+
+    // ── Notifications ─────────────────────────────────────────────────────
+
+    match /notifications/{uid}/items/{itemId} {
+      allow read: if isSelf(uid);
+      allow update: if isSelf(uid) && changed().hasOnly(['read']);
+
+      // A student who just liked a comment tells its author.
+      allow create: if isStudent()
+        && uid != request.auth.uid
+        && request.resource.data.type == 'like'
+        && request.resource.data.read == false
+        && request.resource.data.keys().hasOnly(['type', 'fromUserName', 'postId', 'postSlug', 'commentId', 'preview', 'read', 'createdAt'])
+        && exists(/databases/$(database)/documents/blogPosts/$(request.resource.data.postId)/comments/$(request.resource.data.commentId)/likes/$(request.auth.uid))
+        && get(/databases/$(database)/documents/blogPosts/$(request.resource.data.postId)/comments/$(request.resource.data.commentId)).data.userId == uid;
+
+      // A teacher tells the student that their essay has been checked.
+      allow create: if request.resource.data.type == 'human_feedback'
+        && isTeacherFor(get(/databases/$(database)/documents/humanReviews/$(request.resource.data.reviewId)).data.teacherId)
+        && get(/databases/$(database)/documents/humanReviews/$(request.resource.data.reviewId)).data.uid == uid;
+    }
+
+    // ── Public content ────────────────────────────────────────────────────
+
+    match /config/featureFlags {
+      allow read: if signedIn();
+    }
+
+    match /announcements/{id} {
+      allow read: if true;
+    }
+
+    // The blog is public. Drafts are readable too, because the post page
+    // looks posts up by slug without a status filter.
+    match /blogPosts/{postId} {
+      allow read: if true;
+      allow update: if isStudent()
+        && changed().hasOnly(['likeCount', 'commentCount'])
+        && counterStepOk('likeCount')
+        && counterStepOk('commentCount');
+
+      match /likes/{userId} {
+        allow read: if true;
+        allow create, delete: if isSelf(userId);
+      }
+
+      match /comments/{commentId} {
+        allow read: if true;
+        allow create: if isStudent()
+          && request.resource.data.userId == request.auth.uid
+          && request.resource.data.likeCount == 0
+          && request.resource.data.text is string;
+        allow update: if isStudent() && changed().hasOnly(['likeCount']) && counterStepOk('likeCount');
+        allow delete: if isStudent() && resource.data.userId == request.auth.uid;
+
+        match /likes/{userId} {
+          allow read: if true;
+          allow create, delete: if isSelf(userId);
+        }
+      }
+    }
+  }
+}

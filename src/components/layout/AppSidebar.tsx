@@ -117,7 +117,8 @@ export function AppSidebar() {
 
         <div className={collapsed ? "flex flex-col items-center gap-2" : "flex items-center gap-2"}>
           <ThemeToggle />
-          <NotificationBell />
+          {/* Beside the sidebar on desktop; above the bell in the phone drawer. */}
+          <NotificationBell side={isMobile ? "top" : "right"} />
           <button
             onClick={handleLogout}
             aria-label="Log out"

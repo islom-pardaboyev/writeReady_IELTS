@@ -77,6 +77,8 @@ export function CommentSection({ postId }: Props) {
     setComments((prev) =>
       prev.map((c) => (c.id === comment.id ? { ...c, likeCount: newCount } : c)),
     );
+    // Only a new like tells the author; taking a like back stays silent.
+    if (newCount <= comment.likeCount) return;
     await createLikeNotification(
       postId,
       '',
@@ -85,7 +87,7 @@ export function CommentSection({ postId }: Props) {
       user.uid,
       user.displayName || user.email?.split('@')[0] || 'User',
       comment.text.slice(0, 60),
-    );
+    ).catch(() => {});
   };
 
   return (

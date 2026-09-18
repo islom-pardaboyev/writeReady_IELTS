@@ -6,7 +6,7 @@ import {
   type CSSProperties,
 } from "react";
 import { useStopwatch } from "@/hooks/useStopwatch";
-import jsPDF from "jspdf";
+import { downloadEssayPdf } from "@/lib/essayPdf";
 import { NavLink, useNavigate } from "react-router-dom";
 import { doc, getDoc } from "firebase/firestore";
 import { auth, db } from "@/firebase/firebase";
@@ -27,7 +27,7 @@ import { useFeatureFlag } from "@/hooks/useFeatureFlag";
 import { TeacherPickerModal } from "@/components/ui/TeacherPickerModal";
 import { HumanCheckConfirmModal } from "@/components/ui/HumanCheckConfirmModal";
 import { FullscreenButton } from "@/components/ui/FullscreenButton";
-import { loadImgBase64, isPdfSrc as isPdf } from "@/lib/loadImageForPdf";
+import { isPdfSrc as isPdf } from "@/lib/loadImageForPdf";
 import { hasAccess } from "@/lib/reportAccess";
 
 function readFileAsDataUrl(file: File): Promise<string> {
@@ -123,83 +123,19 @@ function Relax() {
   };
 
   const handleDownloadPDF = async () => {
-    const pdfdoc = new jsPDF();
-    const pageW = pdfdoc.internal.pageSize.getWidth();
-    const pageH = pdfdoc.internal.pageSize.getHeight();
-    const margin = 20;
-    const contentW = pageW - margin * 2;
-
-    pdfdoc.setFillColor(15, 23, 42);
-    pdfdoc.rect(0, 0, pageW, 40, "F");
-    pdfdoc.setFontSize(12);
-    pdfdoc.setTextColor(255, 255, 255);
-    pdfdoc.setFont("helvetica", "bold");
-    pdfdoc.text("WriteReady Relax", margin, 15);
-    pdfdoc.setFontSize(16);
-    pdfdoc.text(`Task ${activeTask} Notes`, margin, 30);
-    pdfdoc.setFontSize(8);
-    pdfdoc.setFont("helvetica", "normal");
-    pdfdoc.text(
-      new Date().toLocaleDateString("en-GB", {
-        day: "2-digit",
-        month: "short",
-        year: "numeric",
-      }),
-      pageW - margin,
-      15,
-      { align: "right" },
-    );
-
-    let y = 52;
-    const question = activeTask === 1 ? prompt : task2Prompt;
-    if (question) {
-      pdfdoc.setFontSize(10);
-      pdfdoc.setTextColor(20, 20, 20);
-      pdfdoc.setFont("helvetica", "bold");
-      pdfdoc.text("Question prompt", margin, y);
-      y += 8;
-      const pLines = pdfdoc.splitTextToSize(question, contentW);
-      pdfdoc.setFont("helvetica", "normal");
-      pdfdoc.text(pLines, margin, y + 5);
-      y += pLines.length * 5.5 + 12;
-    }
-
-    if (activeTask === 1 && imageUrl) {
-      const imgData = await loadImgBase64(imageUrl);
-      if (imgData) {
-        const imgH = Math.min(contentW * (imgData.h / imgData.w), 100);
-        if (y + imgH > pageH - margin) {
-          pdfdoc.addPage();
-          y = 20;
-        }
-        pdfdoc.addImage(imgData.b64, "JPEG", margin, y, contentW, imgH);
-        y += imgH + 8;
-      }
-    }
-
-    pdfdoc.setFont("helvetica", "bold");
-    pdfdoc.text("Answer", margin, y);
-    y += 8;
-    const aLines = pdfdoc.splitTextToSize(
-      userText || "(No answer provided)",
-      contentW,
-    );
-    pdfdoc.setFont("helvetica", "normal");
-    pdfdoc.text(aLines, margin, y + 5);
-
-    const pages = pdfdoc.getNumberOfPages();
-    for (let i = 1; i <= pages; i++) {
-      pdfdoc.setPage(i);
-      pdfdoc.setFillColor(15, 23, 42);
-      pdfdoc.rect(0, pageH - 14, pageW, 14, "F");
-      pdfdoc.setFontSize(7);
-      pdfdoc.setTextColor(255, 255, 255);
-      pdfdoc.text("WriteReady Relax", margin, pageH - 5);
-      pdfdoc.text(`Page ${i} of ${pages}`, pageW - margin, pageH - 5, {
-        align: "right",
-      });
-    }
-    pdfdoc.save(`WriteReady_Relax_Task${activeTask}.pdf`);
+    if (activeTask === null) return;
+    await downloadEssayPdf({
+      mode: "Relax Mode",
+      fileName: `WriteReady_Relax_Task${activeTask}.pdf`,
+      tasks: [
+        {
+          taskNum: activeTask,
+          question: activeTask === 1 ? prompt : task2Prompt,
+          imageSrc: activeTask === 1 ? imageUrl : null,
+          answer: userText,
+        },
+      ],
+    });
     setShowFeedbackModal(true);
   };
 
