@@ -32,8 +32,8 @@ import {
   teacherEarningUZS,
 } from "../../firebase/teachers";
 import type { Teacher } from "../../types";
-import { getFeatureFlag, setFeatureFlag, getHumanCheckPrice, setHumanCheckPrice, getHumanCheckPlatformFee, setHumanCheckPlatformFee, getMaintenanceStatus, setMaintenanceMode } from "../../hooks/useFeatureFlag";
-import { formatElapsed } from "../../lib/formatElapsed";
+import { getFeatureFlag, setFeatureFlag, getHumanCheckPrice, setHumanCheckPrice, getHumanCheckPlatformFee, setHumanCheckPlatformFee } from "../../hooks/useFeatureFlag";
+import { MaintenanceControl } from "@/components/admin/MaintenanceControl";
 import { deleteUserAccount } from "../../firebase/firestore";
 import { Badge } from "@/components/ui/badge";
 import { RichEditor } from "@/components/ui/RichEditor";
@@ -334,12 +334,6 @@ export default function Admin() {
   const [adminUser, setAdminUser] = useState("Admin");
   const [section, setSection] = useState<NavSection>("dashboard");
 
-  // Maintenance mode (site-wide kill switch)
-  const [maintenanceOn, setMaintenanceOn] = useState(false);
-  const [maintenanceStartedAt, setMaintenanceStartedAt] = useState<number | null>(null);
-  const [maintenanceLoading, setMaintenanceLoading] = useState(false);
-  const [maintenanceTick, setMaintenanceTick] = useState(() => Date.now());
-
   // Task 1
   const [task1List, setTask1List] = useState<Task1[]>([]);
   const [task1Search, setTask1Search] = useState("");
@@ -481,46 +475,6 @@ export default function Admin() {
       } catch (e) { console.error(e); }
     })();
   }, [isLoggedIn]);
-
-  useEffect(() => {
-    if (!isLoggedIn) return;
-    (async () => {
-      try {
-        const { enabled, startedAt } = await getMaintenanceStatus();
-        setMaintenanceOn(enabled);
-        setMaintenanceStartedAt(startedAt);
-      } catch (e) { console.error(e); }
-    })();
-  }, [isLoggedIn]);
-
-  useEffect(() => {
-    if (!maintenanceOn) return;
-    const id = setInterval(() => setMaintenanceTick(Date.now()), 1000);
-    return () => clearInterval(id);
-  }, [maintenanceOn]);
-
-  const toggleMaintenance = async () => {
-    const next = !maintenanceOn;
-    if (next && !(await confirm(
-      "This immediately hides the entire site behind a maintenance page for every visitor except you. Turn it off from this same switch once you're done.",
-      { title: "Enable maintenance mode?", confirmLabel: "Enable", destructive: true },
-    ))) return;
-
-    setMaintenanceLoading(true);
-    const prevStartedAt = maintenanceStartedAt;
-    setMaintenanceOn(next);
-    setMaintenanceStartedAt(next ? Date.now() : null);
-    try {
-      const idToken = await adminAuth.currentUser?.getIdToken();
-      if (!idToken) throw new Error('Not signed in.');
-      await setMaintenanceMode(next, idToken);
-    } catch (e) {
-      console.error(e);
-      setMaintenanceOn(!next);
-      setMaintenanceStartedAt(prevStartedAt);
-    }
-    setMaintenanceLoading(false);
-  };
 
   const loadUsers = async () => {
     setUsersLoading(true);
@@ -1215,26 +1169,7 @@ export default function Admin() {
                   <h1 className="text-2xl font-bold text-slate-900 m-0">Dashboard</h1>
                 </div>
 
-                <div className={`rounded-xl border p-5 flex items-center justify-between gap-4 flex-wrap ${maintenanceOn ? "bg-red-50 border-red-200" : "bg-white border-slate-200"}`}>
-                  <div>
-                    <p className={`text-sm font-semibold ${maintenanceOn ? "text-red-700" : "text-slate-800"}`}>
-                      {maintenanceOn ? "🛑 Maintenance mode is ON" : "Maintenance mode"}
-                    </p>
-                    <p className={`text-xs mt-0.5 max-w-md ${maintenanceOn ? "text-red-600" : "text-slate-500"}`}>
-                      {maintenanceOn
-                        ? `Everyone but you sees the maintenance page right now${maintenanceStartedAt ? ` — up for ${formatElapsed(maintenanceTick - maintenanceStartedAt)}` : ""}. Flip this off once the fix is live.`
-                        : "Hide the site behind a maintenance page for every visitor but you — flip this on while you fix a live bug."}
-                    </p>
-                  </div>
-                  <button
-                    onClick={toggleMaintenance}
-                    disabled={maintenanceLoading}
-                    aria-label="Toggle maintenance mode"
-                    className={`shrink-0 relative w-12 h-7 rounded-full transition-colors cursor-pointer ${maintenanceOn ? "bg-red-600" : "bg-slate-300"}`}
-                  >
-                    <span className={`absolute top-1 w-5 h-5 rounded-full bg-white transition-transform ${maintenanceOn ? "translate-x-6" : "translate-x-1"}`} />
-                  </button>
-                </div>
+                <MaintenanceControl />
 
                 <div className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4">
                   {[

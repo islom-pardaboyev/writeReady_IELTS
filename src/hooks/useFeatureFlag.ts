@@ -44,31 +44,40 @@ export async function setHumanCheckPlatformFee(feeUZS: number): Promise<void> {
 // anonymous visitor on the public site can check status without needing a
 // Firestore rule that opens `config/featureFlags` to public reads — every
 // other flag on that doc is only ever read by logged-in students or admins.
+export type MaintenanceUnit = 'hours' | 'days' | 'months';
+
 export interface MaintenanceStatus {
   enabled: boolean;
   startedAt: number | null; // epoch ms
+  endsAt: number | null; // epoch ms; planned reopening, shown to visitors as a countdown
 }
 
-export async function getMaintenanceStatus(): Promise<MaintenanceStatus> {
+export type MaintenanceUpdate =
+  | { enabled: false }
+  | { enabled: true; amount: number; unit: MaintenanceUnit };
+
+const MAINTENANCE_OFF: MaintenanceStatus = { enabled: false, startedAt: null, endsAt: null };
+
+export async function getMaintenanceStatus({ fresh = false } = {}): Promise<MaintenanceStatus> {
   try {
-    const res = await fetch('/api/maintenance');
-    if (!res.ok) return { enabled: false, startedAt: null };
+    // The CDN caches this response for a few seconds; a unique query string skips that cache.
+    const res = await fetch(fresh ? `/api/maintenance?fresh=${Date.now()}` : '/api/maintenance');
+    if (!res.ok) return MAINTENANCE_OFF;
     return await res.json();
   } catch {
-    return { enabled: false, startedAt: null };
+    return MAINTENANCE_OFF;
   }
 }
 
-export async function setMaintenanceMode(enabled: boolean, idToken: string): Promise<void> {
+export async function updateMaintenance(update: MaintenanceUpdate, idToken: string): Promise<MaintenanceStatus> {
   const res = await fetch('/api/maintenance', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${idToken}` },
-    body: JSON.stringify({ enabled }),
+    body: JSON.stringify(update),
   });
-  if (!res.ok) {
-    const data = await res.json().catch(() => ({}));
-    throw new Error(data.error ?? 'Failed to update maintenance mode.');
-  }
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error(data.error ?? 'Could not update maintenance mode.');
+  return data;
 }
 
 /**

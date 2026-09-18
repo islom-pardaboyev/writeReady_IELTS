@@ -42,6 +42,6 @@ export function MaintenanceGate({ children }: { children: ReactNode }) {
   if (location.pathname === '/admin') return <>{children}</>;
   if (isAdmin) return <>{children}</>;
   if (status === null) return PageSpinner;
-  if (status.enabled) return <MaintenancePage startedAt={status.startedAt} />;
+  if (status.enabled) return <MaintenancePage startedAt={status.startedAt} endsAt={status.endsAt} />;
   return <>{children}</>;
 }
