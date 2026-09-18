@@ -286,7 +286,7 @@ function Practice() {
       y += aH + 12;
     }
 
-    const pages = (pdfdoc.internal as any).getNumberOfPages();
+    const pages = pdfdoc.getNumberOfPages();
     for (let i = 1; i <= pages; i++) {
       pdfdoc.setPage(i);
       pdfdoc.setFillColor(15, 23, 42);

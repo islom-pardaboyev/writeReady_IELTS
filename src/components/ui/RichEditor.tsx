@@ -24,6 +24,8 @@ function ToolbarBtn({ onClick, active, title, children }: {
       type="button"
       onMouseDown={(e) => { e.preventDefault(); onClick(); }}
       title={title}
+      aria-label={title}
+      aria-pressed={active}
       className={`px-2 py-1 rounded text-sm font-medium transition-colors cursor-pointer border-none ${
         active
           ? 'bg-[var(--ink-blue)] text-white'

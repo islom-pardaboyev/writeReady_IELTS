@@ -1,8 +1,9 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { getFirestore, FieldValue } from 'firebase-admin/firestore';
-import { getApps, initializeApp, cert } from 'firebase-admin/app';
+import { getApps } from 'firebase-admin/app';
 import { createHmac } from 'crypto';
 import Anthropic from '@anthropic-ai/sdk';
+import { initFirebase, currentMonthKey, currentWeekKey } from './_lib/shared.js';
 
 const ALLOWED_MODEL = 'claude-sonnet-4-6';
 const MAX_TOKENS = 12000;
@@ -19,34 +20,6 @@ function verifyToken(raw: string): { uid: string; isBonus: boolean } {
   if (Date.now() - Number(ts) > TOKEN_MAX_AGE_MS) throw new Error('TOKEN_EXPIRED');
   const uid = Buffer.from(b64uid, 'base64url').toString();
   return { uid, isBonus: bonus === '1' };
-}
-
-function initFirebase() {
-  if (getApps().length) return;
-  const projectId = process.env.FIREBASE_PROJECT_ID;
-  const clientEmail = process.env.FIREBASE_CLIENT_EMAIL;
-  const privateKey = process.env.FIREBASE_PRIVATE_KEY?.replace(/\\n/g, '\n');
-  if (!projectId || !clientEmail || !privateKey) return;
-  initializeApp({ credential: cert({ projectId, clientEmail, privateKey }) });
-}
-
-function currentMonthKey(): string {
-  const now = new Date();
-  return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
-}
-
-// Monday-start ISO week key, e.g. "2026-W28". Duplicated in api/pre-check.ts
-// and src/lib/weeklyFree.ts (separate builds — api/ and src/ can't share).
-function currentWeekKey(): string {
-  const now = new Date();
-  const d = new Date(Date.UTC(now.getFullYear(), now.getMonth(), now.getDate()));
-  const dayNum = (d.getUTCDay() + 6) % 7;
-  d.setUTCDate(d.getUTCDate() - dayNum + 3);
-  const firstThursday = new Date(Date.UTC(d.getUTCFullYear(), 0, 4));
-  const weekNum = 1 + Math.round(
-    ((d.getTime() - firstThursday.getTime()) / 86400000 - 3 + ((firstThursday.getUTCDay() + 6) % 7)) / 7
-  );
-  return `${d.getUTCFullYear()}-W${String(weekNum).padStart(2, '0')}`;
 }
 
 // Reverse the credit that pre-check deducted, so a failed/truncated report

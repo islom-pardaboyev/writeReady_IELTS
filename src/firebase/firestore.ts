@@ -29,6 +29,7 @@ export async function getUserProfile(uid: string): Promise<UserProfile | null> {
   const d = snap.data();
   const subscription: string = d.subscription ?? '';
   const centerId: string | undefined = typeof d.centerId === 'string' ? d.centerId : undefined;
+  const expiresAt: string = d.expiresAt ?? '';
 
   // Derive effective plan from plan field stored directly in Firestore
   let plan: Plan = 'free';
@@ -40,6 +41,14 @@ export async function getUserProfile(uid: string): Promise<UserProfile | null> {
     plan = 'standard';
   } else if (d.plan === 'basic') {
     plan = 'basic';
+  }
+
+  // A paid plan whose expiresAt has passed reverts to free — matches the
+  // downgrade already applied in useUsage.ts (and, server-side, in
+  // api/pre-check.ts's consumeCredit()) so all three agree on what "active"
+  // means. Lifetime plans never expire.
+  if (plan !== 'forever' && expiresAt && new Date(expiresAt) < new Date()) {
+    plan = 'free';
   }
 
   // Learning-center students always get premium access — even after the
@@ -54,7 +63,7 @@ export async function getUserProfile(uid: string): Promise<UserProfile | null> {
     email: d.email,
     plan,
     subscription,
-    subscriptionExpiresAt: d.subscriptionExpiresAt ? toDate(d.subscriptionExpiresAt) : null,
+    subscriptionExpiresAt: expiresAt ? toDate(expiresAt) : null,
     createdAt: toDate(d.createdAt),
     bonusAnalyses: typeof d.bonusAnalyses === 'number' ? d.bonusAnalyses : 0,
     freeUsage: d.freeUsage && typeof d.freeUsage === 'object'
@@ -105,13 +114,17 @@ export async function getUsage(uid: string): Promise<UsageRecord | null> {
   const yearMonth = new Date().toISOString().slice(0, 7);
   const snap = await getDoc(doc(db, 'users', uid));
   if (!snap.exists()) return null;
-  const usage = snap.data()?.usage;
+  const data = snap.data();
+  const usage = data?.usage;
   const count = usage?.monthKey === yearMonth ? (usage?.count ?? 0) : 0;
-  const plan: string = snap.data()?.plan ?? 'free';
-  const hasCenter = typeof snap.data()?.centerId === 'string' && snap.data()!.centerId.length > 0;
+  const plan: string = data?.plan ?? 'free';
+  const expiresAt: string = data?.expiresAt ?? '';
+  const isExpired = plan !== 'forever' && !!expiresAt && new Date(expiresAt) < new Date();
+  const effectivePlan = isExpired ? 'free' : plan;
+  const hasCenter = typeof data?.centerId === 'string' && data.centerId.length > 0;
   const planLimits: Record<string, number> = { forever: 9999, premium: 25, standard: 12, basic: 5 };
   // Center students always get at least the premium (25) allowance.
-  const limit = Math.max(planLimits[plan] ?? 0, hasCenter ? 25 : 0);
+  const limit = Math.max(planLimits[effectivePlan] ?? 0, hasCenter ? 25 : 0);
   return { uid, yearMonth, count, limit, updatedAt: new Date() };
 }
 

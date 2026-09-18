@@ -12,6 +12,11 @@ import { notifyNewAccount } from '@/lib/notifySignup';
 
 type Mode = 'login' | 'signup' | 'student';
 
+function cleanAuthError(err: unknown, fallback: string): string {
+  const msg = err instanceof Error ? err.message : fallback;
+  return msg.replace('Firebase: ', '').replace(/\(auth\/.*\)\.?/, '').trim();
+}
+
 export function AuthPage() {
   const [params] = useSearchParams();
   const initialMode: Mode = params.get('mode') === 'signup' ? 'signup' : params.get('mode') === 'student' ? 'student' : 'login';
@@ -56,8 +61,7 @@ export function AuthPage() {
       }
       navigate('/dashboard');
     } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : 'Authentication failed';
-      setError(msg.replace('Firebase: ', '').replace(/\(auth\/.*\)\.?/, '').trim());
+      setError(cleanAuthError(err, 'Authentication failed'));
     } finally {
       setLoading(false);
     }
@@ -85,30 +89,28 @@ export function AuthPage() {
       await refreshProfile();
       navigate('/dashboard');
     } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : 'An error occurred';
-      setError(msg.replace('Firebase: ', '').replace(/\(auth\/.*\)\.?/, '').trim());
+      setError(cleanAuthError(err, 'An error occurred'));
     } finally {
       setLoading(false);
     }
   };
 
-const handleGoogle = async () => {
-  setError('');
-  setLoading(true);
-  try {
-    const result = await signInWithGoogle() as any;
-    const isNewUser = getAdditionalUserInfo(result)?.isNewUser;
-    if (isNewUser && result.user.email) {
-      notifyNewAccount(result.user.email, 'google');
+  const handleGoogle = async () => {
+    setError('');
+    setLoading(true);
+    try {
+      const result = await signInWithGoogle();
+      const isNewUser = getAdditionalUserInfo(result)?.isNewUser;
+      if (isNewUser && result.user.email) {
+        notifyNewAccount(result.user.email, 'google');
+      }
+      navigate('/dashboard');
+    } catch (err: unknown) {
+      setError(cleanAuthError(err, 'Google sign-in failed'));
+    } finally {
+      setLoading(false);
     }
-    navigate('/dashboard');
-  } catch (err: unknown) {
-    const msg = err instanceof Error ? err.message : 'Google sign-in failed';
-    setError(msg);
-  } finally {
-    setLoading(false);
-  }
-};
+  };
 
   return (
     <div
@@ -126,10 +128,12 @@ const handleGoogle = async () => {
         <div className="gs-auth-card">
           <Card className="p-8">
             {/* Mode tabs */}
-            <div className="flex rounded-[10px] bg-[var(--bg-subtle)] p-1 mb-6 gap-1">
+            <div role="tablist" aria-label="Sign-in method" className="flex rounded-[10px] bg-[var(--bg-subtle)] p-1 mb-6 gap-1">
               {(['login', 'signup', 'student'] as Mode[]).map((m) => (
                 <button
                   key={m}
+                  role="tab"
+                  aria-selected={mode === m}
                   onClick={() => { setMode(m); setError(''); }}
                   className={`flex-1 text-xs font-semibold py-1.5 rounded-[8px] transition-colors border-0 cursor-pointer ${
                     mode === m

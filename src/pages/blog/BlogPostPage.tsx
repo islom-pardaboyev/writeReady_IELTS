@@ -54,7 +54,15 @@ export function BlogPostPage() {
 
   useEffect(() => {
     if (!slug) return;
+    // Guards against a stale response overwriting the page: if the user
+    // navigates to another post (e.g. via a related-post link) while this
+    // fetch is still in flight, an out-of-order response must not replace
+    // the newer post's data.
+    let cancelled = false;
+    setLoading(true);
+
     getBlogPost(slug).then(async (p) => {
+      if (cancelled) return;
       setPost(p);
       setLoading(false);
       if (p) {
@@ -68,13 +76,17 @@ export function BlogPostPage() {
         metaEl.content = p.seo.metaDescription || p.excerpt;
         setLikeCount(p.likeCount);
         const all = await getBlogPosts('published');
+        if (cancelled) return;
         setRelated(all.filter((r) => r.category === p.category && r.id !== p.id).slice(0, 3));
         if (user) {
           const isLiked = await isPostLiked(p.id, user.uid);
+          if (cancelled) return;
           setLiked(isLiked);
         }
       }
     });
+
+    return () => { cancelled = true; };
   }, [slug, user]);
 
   const handleLike = async () => {

@@ -23,11 +23,11 @@ import {
 } from "lucide-react";
 import { useHumanCheck } from "@/hooks/useHumanCheck";
 import { FullscreenButton } from "@/components/ui/FullscreenButton";
-import { hasFreeReportThisWeek, type FreeUsage } from "@/lib/weeklyFree";
 import { useFeatureFlag } from "@/hooks/useFeatureFlag";
 import { ShuffleBag } from "@/lib/shuffleBag";
 import { TeacherPickerModal } from "@/components/ui/TeacherPickerModal";
 import { HumanCheckConfirmModal } from "@/components/ui/HumanCheckConfirmModal";
+import { hasAccess } from "@/lib/reportAccess";
 
 interface Task1 {
   image: string;
@@ -35,23 +35,6 @@ interface Task1 {
 }
 interface Task2 {
   report: string;
-}
-
-function hasAccess(data: Record<string, unknown>): boolean {
-  // Learning-center students always have access (free premium).
-  if (typeof data.centerId === "string" && data.centerId.length > 0)
-    return true;
-  const plan = data.plan as string | undefined;
-  if (
-    plan === "forever" ||
-    plan === "premium" ||
-    plan === "standard" ||
-    plan === "basic"
-  )
-    return true;
-  const bonus = typeof data.bonusAnalyses === "number" ? data.bonusAnalyses : 0;
-  if (bonus > 0) return true;
-  return hasFreeReportThisWeek(data.freeUsage as FreeUsage | undefined);
 }
 
 const TIMER_SECONDS = 3600;
@@ -77,6 +60,7 @@ function Mock() {
   const [showFeedbackModal, setShowFeedbackModal] = useState(false);
   const [checkingAccess, setCheckingAccess] = useState(false);
   const [autoSubmittedByTimer, setAutoSubmittedByTimer] = useState(false);
+  const [timerAnnouncement, setTimerAnnouncement] = useState("");
   const autoSubmitRef = useRef(false);
   const humanCheck = useHumanCheck("mock");
   const humanCheckEnabled = useFeatureFlag("humanCheck");
@@ -154,6 +138,16 @@ function Mock() {
   // Colour shifts to amber in the last 10 minutes
   const isLowTime = timeLeft <= 600 && timeLeft > 0;
   const isTimeUp = timeLeft === 0;
+
+  // Screen-reader-only announcements at key thresholds — announcing every
+  // second would be unusable with a screen reader, so we only speak up when
+  // it matters.
+  useEffect(() => {
+    if (timeLeft === 600) setTimerAnnouncement("10 minutes remaining.");
+    else if (timeLeft === 60) setTimerAnnouncement("1 minute remaining.");
+    else if (timeLeft === 0)
+      setTimerAnnouncement("Time's up. Your answers have been saved.");
+  }, [timeLeft]);
 
   const handleGetAnother = () => {
     if (activeTask === 1) {
@@ -318,7 +312,7 @@ function Mock() {
       y += totalHeight + 12;
     }
 
-    const pages = (pdfdoc.internal as any).getNumberOfPages();
+    const pages = pdfdoc.getNumberOfPages();
     for (let i = 1; i <= pages; i++) {
       pdfdoc.setPage(i);
       pdfdoc.setFillColor(15, 23, 42);
@@ -415,6 +409,10 @@ function Mock() {
       data-theme="light"
       className="flex flex-col min-h-screen bg-slate-50 font-sans"
     >
+      <div role="status" aria-live="polite" className="sr-only">
+        {timerAnnouncement}
+      </div>
+
       {/* ── Top bar ── */}
       <div
         className={`sticky top-0 z-30 border-b bg-white transition-colors duration-500 ${

@@ -1,5 +1,5 @@
 import { createContext } from 'react';
-import type { User } from 'firebase/auth';
+import type { User, UserCredential } from 'firebase/auth';
 import type { UserProfile } from '../types';
 
 export interface AuthContextValue {
@@ -8,7 +8,7 @@ export interface AuthContextValue {
   loading: boolean;
   signUp: (email: string, password: string) => Promise<void>;
   signIn: (email: string, password: string) => Promise<void>;
-  signInWithGoogle: () => Promise<void>;
+  signInWithGoogle: () => Promise<UserCredential>;
   logOut: () => Promise<void>;
   refreshProfile: () => Promise<void>;
   updateDisplayName: (name: string) => Promise<void>;

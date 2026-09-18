@@ -4,7 +4,17 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 
-    <!-- Primary Meta -->
+    <!-- Fonts: preconnect + direct stylesheet link (not a CSS @import) so the
+         browser can fetch font CSS in parallel with the app bundle instead of
+         discovering it only after index.css has loaded. -->
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=Inter:wght@300;400;500;600;700&display=swap"
+      rel="stylesheet"
+    />
+
+    <!-- Primary Meta --> 
     <title>WriteReady IELTS — AI Writing Coach for Uzbek Students</title>
     <meta
       name="description"
@@ -45,6 +55,10 @@
     <!-- logo -->
     <link rel="icon" type="image/png" href="/logo.png" />
     <link rel="apple-touch-icon" href="/logo.png" />
+
+    <!-- Mobile browser chrome color (matches --ink-blue brand color) -->
+    <meta name="theme-color" content="#4f46e5" media="(prefers-color-scheme: light)" />
+    <meta name="theme-color" content="#0f172a" media="(prefers-color-scheme: dark)" />
 
     <!-- Structured Data (JSON-LD) -->
     <script type="application/ld+json">

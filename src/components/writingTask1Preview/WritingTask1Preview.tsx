@@ -1,3 +1,5 @@
+import { isPdfSrc as isPdf } from "@/lib/loadImageForPdf";
+
 interface Task1 {
   image: string;
   report: string;
@@ -5,10 +7,6 @@ interface Task1 {
 
 interface Props {
   task1: Task1;
-}
-
-function isPdf(src: string) {
-  return src.startsWith('data:application/pdf') || /\.pdf(\?|$)/i.test(src);
 }
 
 export default function WritingTask1Preview({ task1 }: Props) {

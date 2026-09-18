@@ -1,7 +1,8 @@
-import { useRef, useLayoutEffect, useEffect, useState } from "react";
+import { useRef, useLayoutEffect, useEffect, useState, useId } from "react";
 import gsap from "gsap";
 import { ScrollTrigger } from "gsap/ScrollTrigger";
 import { Link } from "react-router-dom";
+import { X, CreditCard, Copy, Send, Check, Sparkles } from "lucide-react";
 import { Layout } from "../components/layout/Layout";
 import { Button } from "../components/ui/Button";
 import { Card } from "../components/ui/Card";
@@ -54,118 +55,15 @@ const PLANS: SelectedPlan[] = [
   },
 ];
 
-function CloseIcon() {
-  return (
-    <svg
-      width="20"
-      height="20"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-    >
-      <line x1="18" y1="6" x2="6" y2="18" />
-      <line x1="6" y1="6" x2="18" y2="18" />
-    </svg>
-  );
-}
-
-function CardIcon() {
-  return (
-    <svg
-      width="16"
-      height="16"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-    >
-      <rect x="2" y="5" width="20" height="14" rx="2" />
-      <line x1="2" y1="10" x2="22" y2="10" />
-    </svg>
-  );
-}
-
-function CopyIcon() {
-  return (
-    <svg
-      width="15"
-      height="15"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-    >
-      <rect x="9" y="9" width="13" height="13" rx="2" />
-      <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" />
-    </svg>
-  );
-}
-
-function SendIcon() {
-  return (
-    <svg
-      width="18"
-      height="18"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-    >
-      <line x1="22" y1="2" x2="11" y2="13" />
-      <polygon points="22 2 15 22 11 13 2 9 22 2" />
-    </svg>
-  );
-}
-
-function CheckIcon() {
-  return (
-    <svg
-      width="13"
-      height="13"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="3"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-    >
-      <polyline points="20 6 9 17 4 12" />
-    </svg>
-  );
-}
-
-function PlanGlyphIcon() {
-  return (
-    <svg
-      width="18"
-      height="18"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-    >
-      <path d="M12 2l3 6 6.5.9-4.7 4.6 1.1 6.5L12 17l-5.9 3 1.1-6.5L2.5 8.9 9 8z" />
-    </svg>
-  );
-}
-
 export function PricingPage() {
   const { user, profile } = useAuth();
   const rootRef = useRef<HTMLDivElement>(null);
   const [paymentTarget, setPaymentTarget] = useState<PaymentTarget | null>(null);
   const [copied, setCopied] = useState(false);
   const [topUpAmount, setTopUpAmount] = useState("");
+  const modalTitleId = useId();
+  const modalRef = useRef<HTMLDivElement>(null);
+  const lastFocusedRef = useRef<HTMLElement | null>(null);
 
   useEffect(() => {
     if (!paymentTarget) return;
@@ -174,6 +72,15 @@ export function PricingPage() {
     };
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
+  }, [paymentTarget]);
+
+  useEffect(() => {
+    if (paymentTarget) {
+      lastFocusedRef.current = document.activeElement as HTMLElement | null;
+      modalRef.current?.focus();
+    } else {
+      lastFocusedRef.current?.focus();
+    }
   }, [paymentTarget]);
 
   const currentPlan = profile?.plan ?? "free";
@@ -515,12 +422,18 @@ export function PricingPage() {
         >
           <div
             onClick={(e) => e.stopPropagation()}
-            className="bg-[var(--bg-card)] rounded-3xl max-w-[480px] w-full max-h-[90vh] overflow-y-auto shadow-[var(--shadow-lg)] p-8"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby={modalTitleId}
+            ref={modalRef}
+            tabIndex={-1}
+            className="bg-[var(--bg-card)] rounded-3xl max-w-[480px] w-full max-h-[90vh] overflow-y-auto shadow-[var(--shadow-lg)] p-8 outline-none"
             style={{ overscrollBehavior: "contain" }}
           >
             <div className="flex justify-between items-start mb-6">
               <div>
                 <h2
+                  id={modalTitleId}
                   className={`text-2xl font-extrabold text-[var(--text-primary)] mb-1`}
                 >
                   Complete payment
@@ -536,7 +449,7 @@ export function PricingPage() {
                 className="bg-transparent border-0 cursor-pointer text-[var(--text-secondary)] p-1 hover:text-[var(--text-primary)] transition-colors"
                 aria-label="Close"
               >
-                <CloseIcon />
+                <X size={20} />
               </button>
             </div>
 
@@ -547,7 +460,7 @@ export function PricingPage() {
               <div className="flex items-center justify-between gap-4">
                 <div className="flex items-center gap-3">
                   <span className="w-10 h-10 rounded-xl bg-indigo-50 text-[var(--ink-blue)] flex items-center justify-center shrink-0 dark:bg-indigo-900/30 dark:text-indigo-400">
-                    <PlanGlyphIcon />
+                    <Sparkles size={18} />
                   </span>
                   <div>
                     <div className="text-xs text-[var(--text-secondary)] mb-0.5">
@@ -573,7 +486,7 @@ export function PricingPage() {
               <div className="border-t border-[var(--border-color)] my-4" />
 
               <div className="flex items-center gap-2 text-sm text-[var(--text-secondary)]">
-                <CheckIcon />
+                <Check size={13} strokeWidth={3} />
                 {paymentTarget.kind === "balance" ? "One-time balance top-up" : paymentTarget.plan.billingNote}
               </div>
             </div>
@@ -590,7 +503,7 @@ export function PricingPage() {
 
             <div className="bg-[var(--bg-subtle)] rounded-2xl px-6 py-5 mb-7">
               <div className="flex items-center gap-2 text-[var(--text-secondary)] text-sm mb-3">
-                <CardIcon />
+                <CreditCard size={16} />
                 Card number
               </div>
               <div className="flex items-center justify-between gap-4 mb-4">
@@ -603,7 +516,7 @@ export function PricingPage() {
                   onClick={handleCopyCard}
                   className="flex items-center gap-1.5 border border-[var(--border-color)] rounded-[20px] px-4 py-2 bg-[var(--bg-card)] text-sm font-semibold text-[var(--text-primary)] cursor-pointer whitespace-nowrap hover:bg-[var(--bg-subtle)] transition-colors"
                 >
-                  <CopyIcon />
+                  <Copy size={15} />
                   {copied ? "Copied!" : "Copy"}
                 </button>
               </div>
@@ -641,7 +554,7 @@ export function PricingPage() {
               rel="noopener noreferrer"
               className="flex items-center justify-center gap-2 bg-[var(--ink-blue)] text-white rounded-[14px] p-3.5 font-bold text-base no-underline mb-5 hover:opacity-90 transition-colors"
             >
-              <SendIcon />
+              <Send size={18} />
               Open Telegram
             </a>
           </div>

@@ -1,8 +1,7 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
-import { initializeApp, getApps, cert } from 'firebase-admin/app';
-import { getAuth } from 'firebase-admin/auth';
 import { getFirestore } from 'firebase-admin/firestore';
 import { createHmac } from 'crypto';
+import { initFirebase, getUid, currentMonthKey, currentWeekKey } from './_lib/shared.js';
 
 // Learning-center students get the premium allowance for free.
 const CENTER_MONTHLY_LIMIT = 25;
@@ -14,44 +13,6 @@ const FREE_WEEKLY_LIMIT = 1;
 type CreditErrorCode = 'USER_NOT_FOUND' | 'NOT_PRO' | 'LIMIT_REACHED' | 'FREE_LIMIT_REACHED';
 class CreditError extends Error {
   constructor(public code: CreditErrorCode) { super(code); }
-}
-
-function initFirebase() {
-  if (getApps().length) return;
-  const projectId = process.env.FIREBASE_PROJECT_ID;
-  const clientEmail = process.env.FIREBASE_CLIENT_EMAIL;
-  const privateKey = process.env.FIREBASE_PRIVATE_KEY?.replace(/\\n/g, '\n');
-  if (!projectId || !clientEmail || !privateKey) {
-    throw new Error(`Missing Firebase env vars.`);
-  }
-  initializeApp({ credential: cert({ projectId, clientEmail, privateKey }) });
-}
-
-function currentMonthKey(): string {
-  const now = new Date();
-  return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
-}
-
-// Monday-start ISO week key, e.g. "2026-W28". Duplicated in api/feedback.ts
-// and src/lib/weeklyFree.ts (separate builds — api/ and src/ can't share).
-function currentWeekKey(): string {
-  const now = new Date();
-  const d = new Date(Date.UTC(now.getFullYear(), now.getMonth(), now.getDate()));
-  const dayNum = (d.getUTCDay() + 6) % 7;
-  d.setUTCDate(d.getUTCDate() - dayNum + 3);
-  const firstThursday = new Date(Date.UTC(d.getUTCFullYear(), 0, 4));
-  const weekNum = 1 + Math.round(
-    ((d.getTime() - firstThursday.getTime()) / 86400000 - 3 + ((firstThursday.getUTCDay() + 6) % 7)) / 7
-  );
-  return `${d.getUTCFullYear()}-W${String(weekNum).padStart(2, '0')}`;
-}
-
-async function getUid(req: VercelRequest): Promise<string> {
-  const auth = req.headers.authorization ?? '';
-  const token = auth.startsWith('Bearer ') ? auth.slice(7) : null;
-  if (!token) throw new Error('MISSING_TOKEN');
-  const decoded = await getAuth().verifyIdToken(token);
-  return decoded.uid;
 }
 
 function signToken(uid: string, isBonus: boolean): string {
@@ -74,8 +35,21 @@ async function consumeCredit(uid: string, monthKey: string): Promise<boolean> {
     if (!snap.exists) throw new CreditError('USER_NOT_FOUND');
 
     const data = snap.data()!;
-    const plan: string = data.plan ?? 'free';
+    let plan: string = data.plan ?? 'free';
     const isCenterStudent = typeof data.centerId === 'string' && data.centerId.length > 0;
+
+    // A paid plan whose expiresAt has passed reverts to free — without this,
+    // a user whose subscription lapsed would keep getting their full paid
+    // quota forever, since nothing else ever downgrades the stored `plan`
+    // field back down. Matches the same rule the client applies for display
+    // in src/hooks/useUsage.ts and src/firebase/firestore.ts's getUserProfile
+    // (lifetime plans never expire; center students keep premium access
+    // below regardless of their own plan's expiry).
+    const expiresAt: string = data.expiresAt ?? '';
+    if (plan !== 'forever' && expiresAt && new Date(expiresAt) < new Date()) {
+      plan = 'free';
+    }
+
     const isPaidPlan = ['basic', 'standard', 'premium', 'forever'].includes(plan);
 
     if (!isPaidPlan && !isCenterStudent) {

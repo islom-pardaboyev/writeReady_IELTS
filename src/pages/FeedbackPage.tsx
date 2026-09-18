@@ -539,7 +539,15 @@ export function FeedbackPage() {
 
   const applyLtFix = (match: LTMatch, replacement: string) => {
     setLtCorrected((prev) => prev.slice(0, match.offset) + replacement + prev.slice(match.offset + match.length));
-    setLtMatches((prev) => prev.filter((m) => m !== match));
+    // Every other match's offset was computed against the pre-edit text. If the
+    // replacement is a different length than the original (the normal case),
+    // matches after this one now point at the wrong characters unless shifted.
+    const delta = replacement.length - match.length;
+    setLtMatches((prev) =>
+      prev
+        .filter((m) => m !== match)
+        .map((m) => (m.offset > match.offset ? { ...m, offset: m.offset + delta } : m))
+    );
     setLtPopover(null);
   };
 
@@ -606,7 +614,7 @@ export function FeedbackPage() {
 
     // page footer helper
     const addFooters = () => {
-      const total = (pdf.internal as any).getNumberOfPages() as number;
+      const total = pdf.getNumberOfPages();
       for (let i = 1; i <= total; i++) {
         pdf.setPage(i);
         pdf.setFillColor(30, 58, 95);
@@ -1150,13 +1158,17 @@ export function FeedbackPage() {
 
               {/* Tab bar */}
               <div className="sticky top-14 z-10 -mx-4 sm:-mx-6 mb-6 bg-[var(--bg-base)]/95 backdrop-blur-md border-b border-[var(--border-color)]">
-                <div className="mock-question-scroll flex overflow-x-auto px-4 sm:px-6">
+                <div role="tablist" aria-label="Feedback report sections" className="mock-question-scroll flex overflow-x-auto px-4 sm:px-6">
                   {TABS.map((tab) => {
                     const Icon = tab.icon;
                     const active = activeTab === tab.id;
                     return (
                       <button
                         key={tab.id}
+                        id={`fp-tab-${tab.id}`}
+                        role="tab"
+                        aria-selected={active}
+                        aria-controls={`fp-panel-${tab.id}`}
                         onClick={() => setActiveTab(tab.id)}
                         className={`flex items-center gap-1.5 mt-1.5 px-3.5 py-2.5 rounded-lg text-[0.8125rem] font-semibold whitespace-nowrap cursor-pointer border-none bg-transparent relative transition-colors duration-150 shrink-0 ${
                           active
@@ -1177,7 +1189,7 @@ export function FeedbackPage() {
 
               {/* ── OVERVIEW ── */}
               {activeTab === 'overview' && (
-                <div className="fp-tab-panel">
+                <div id="fp-panel-overview" role="tabpanel" aria-labelledby="fp-tab-overview" className="fp-tab-panel">
                   <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-6">
                     {CATEGORY_META.map((cat) => {
                       const score = feedback.scores[cat.key as keyof typeof feedback.scores];
@@ -1226,7 +1238,7 @@ export function FeedbackPage() {
 
               {/* ── PRIORITY FIXES ── */}
               {activeTab === 'priority' && (
-                <div className="fp-tab-panel flex flex-col gap-4">
+                <div id="fp-panel-priority" role="tabpanel" aria-labelledby="fp-tab-priority" className="fp-tab-panel flex flex-col gap-4">
                   {feedback.priorityFixes.map((fix, i) => {
                     const accent = i === 0 ? '#b91c1c' : i === 1 ? '#D97706' : '#16A34A';
                     const label = i === 0 ? 'High priority' : i === 1 ? 'Medium priority' : 'Also consider';
@@ -1258,7 +1270,7 @@ export function FeedbackPage() {
 
               {/* ── DETAILED FEEDBACK ── */}
               {activeTab === 'detailed' && (feedback.limited ? <UpgradePrompt /> :(
-                <div className="fp-tab-panel flex flex-col gap-3">
+                <div id="fp-panel-detailed" role="tabpanel" aria-labelledby="fp-tab-detailed" className="fp-tab-panel flex flex-col gap-3">
                   {(Object.entries(feedback.feedback) as [string, { strengths: string[]; issues: string[] }][]).map(
                     ([key, cat]) => {
                       const isOpen = expandedCats.has(key);
@@ -1337,7 +1349,7 @@ export function FeedbackPage() {
 
               {/* ── VOCABULARY ── */}
               {activeTab === 'vocabulary' && (feedback.limited ? <UpgradePrompt /> :(
-                <div className="fp-tab-panel">
+                <div id="fp-panel-vocabulary" role="tabpanel" aria-labelledby="fp-tab-vocabulary" className="fp-tab-panel">
                   <p className="text-sm text-[var(--text-muted)] mb-5">
                     Tap a card to flip it and see the meaning and example sentence.
                   </p>
@@ -1346,6 +1358,8 @@ export function FeedbackPage() {
                       <button
                         key={i}
                         type="button"
+                        aria-pressed={!!flipped[i]}
+                        aria-label={`${v.word} — tap to ${flipped[i] ? 'hide' : 'show'} translation`}
                         className="fp-flip-card h-[185px] text-left bg-transparent border-0 p-0 cursor-pointer transition-transform duration-200 hover:scale-[1.03]"
                         onClick={() => setFlipped((prev) => ({ ...prev, [i]: !prev[i] }))}
                       >
@@ -1384,7 +1398,7 @@ export function FeedbackPage() {
 
               {/* ── GRAMMAR ── */}
               {activeTab === 'grammar' && (feedback.limited ? <UpgradePrompt /> :(
-                <div className="fp-tab-panel flex flex-col gap-3">
+                <div id="fp-panel-grammar" role="tabpanel" aria-labelledby="fp-tab-grammar" className="fp-tab-panel flex flex-col gap-3">
                   {feedback.grammar.map((g, i) => (
                     <div key={i} className="bg-[var(--bg-card)] rounded-2xl px-6 py-5 border border-[var(--border-color)] shadow-sm transition-all duration-200 hover:shadow-md hover:-translate-y-0.5">
                       <div className="flex gap-4 items-start">
@@ -1417,7 +1431,7 @@ export function FeedbackPage() {
                   ok:          { bg: 'bg-green-50 dark:bg-green-900/20',  border: 'border-green-200 dark:border-green-800',  label: 'Good',        dot: 'bg-green-500',  text: 'text-green-900 dark:text-green-200'  },
                 };
                 return (
-                  <div className="fp-tab-panel">
+                  <div id="fp-panel-essay" role="tabpanel" aria-labelledby="fp-tab-essay" className="fp-tab-panel">
                     <div className="flex flex-wrap gap-2 mb-5">
                       {Object.entries(typeColor).map(([type, style]) => (
                         <span key={type} className={`flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold border ${style.bg} ${style.border} ${style.text}`}>
@@ -1487,7 +1501,7 @@ export function FeedbackPage() {
 
               {/* ── SAMPLE RESPONSE ── */}
               {activeTab === 'sample' && (feedback.limited ? <UpgradePrompt /> : (
-                <div className="fp-tab-panel relative overflow-hidden bg-[var(--bg-card)] rounded-2xl border border-[var(--border-color)] border-l-4 border-l-[var(--gold)] px-6 py-6 shadow-sm transition-shadow duration-200 hover:shadow-md">
+                <div id="fp-panel-sample" role="tabpanel" aria-labelledby="fp-tab-sample" className="fp-tab-panel relative overflow-hidden bg-[var(--bg-card)] rounded-2xl border border-[var(--border-color)] border-l-4 border-l-[var(--gold)] px-6 py-6 shadow-sm transition-shadow duration-200 hover:shadow-md">
                   <div className="absolute inset-0 bg-gradient-to-br from-[var(--gold)]/[0.05] via-transparent to-transparent pointer-events-none" />
                   <p className="relative flex items-center gap-2 text-xs font-bold tracking-widest uppercase text-[var(--gold)] mb-4">
                     <span className="inline-flex items-center justify-center w-6 h-6 rounded-md bg-[var(--gold)]/15">
@@ -1505,7 +1519,7 @@ export function FeedbackPage() {
               {activeTab === 'spelling' && (() => {
                 const essayText = selectedTask === 'task1' ? reportData.userText1 : reportData.userText2;
                 return (
-                <div className="fp-tab-panel">
+                <div id="fp-panel-spelling" role="tabpanel" aria-labelledby="fp-tab-spelling" className="fp-tab-panel">
                   {!ltChecked ? (
                     <div className="bg-[var(--bg-card)] rounded-2xl border border-[var(--border-color)] overflow-hidden shadow-sm">
                       <div className="flex items-center justify-between px-5 py-3 border-b border-[var(--border-color)] bg-[var(--bg-subtle)]">
@@ -1637,7 +1651,7 @@ export function FeedbackPage() {
 
               {/* ── WRITING PRACTICE ── */}
               {activeTab === 'quiz' && (feedback.limited ? <UpgradePrompt /> : (
-                <div className="fp-tab-panel">
+                <div id="fp-panel-quiz" role="tabpanel" aria-labelledby="fp-tab-quiz" className="fp-tab-panel">
                   <p className="text-sm text-[var(--text-muted)] mb-5">
                     Write a sentence using each word or grammar rule. Tap <strong>Show example</strong> to check.
                   </p>

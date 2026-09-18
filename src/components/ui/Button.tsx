@@ -34,29 +34,35 @@ const buttonVariants = cva(
 )
 
 export interface ButtonProps
-  extends React.ButtonHTMLAttributes<HTMLButtonElement>,
+  extends React.ComponentProps<"button">,
     VariantProps<typeof buttonVariants> {
   asChild?: boolean
   loading?: boolean
 }
 
-const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
-  ({ className, variant, size, asChild = false, loading, disabled, children, ...props }, ref) => {
-    const Comp = asChild ? Slot : "button"
-    return (
-      <Comp
-        className={cn(buttonVariants({ variant, size, className }))}
-        ref={ref}
-        disabled={disabled || loading}
-        {...props}
-      >
-        {loading ? <Spinner /> : null}
-        {children}
-      </Comp>
-    )
-  }
-)
-Button.displayName = "Button"
+function Button({
+  className,
+  variant,
+  size,
+  asChild = false,
+  loading,
+  disabled,
+  children,
+  ...props
+}: ButtonProps) {
+  const Comp = asChild ? Slot : "button"
+  return (
+    <Comp
+      data-slot="button"
+      className={cn(buttonVariants({ variant, size, className }))}
+      disabled={disabled || loading}
+      {...props}
+    >
+      {loading ? <Spinner /> : null}
+      {children}
+    </Comp>
+  )
+}
 
 function Spinner() {
   return (

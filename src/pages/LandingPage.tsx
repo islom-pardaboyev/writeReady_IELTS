@@ -2,7 +2,6 @@ import { useRef, useLayoutEffect } from 'react';
 import gsap from 'gsap';
 import { ScrollTrigger } from 'gsap/ScrollTrigger';
 import { Link } from 'react-router-dom';
-import { useAuth } from '../hooks/useAuth';
 import { Header } from '@/components/layout/Header';
 import { ChatBot } from '../components/ui/ChatBot';
 import { AnnouncementPopup } from '../components/ui/AnnouncementPopup';
@@ -10,7 +9,6 @@ import { AnnouncementPopup } from '../components/ui/AnnouncementPopup';
 gsap.registerPlugin(ScrollTrigger);
 
 export function LandingPage() {
-  useAuth();
   const rootRef = useRef<HTMLDivElement>(null);
 
   useLayoutEffect(() => {
@@ -74,6 +72,7 @@ export function LandingPage() {
       <Header />
       <AnnouncementPopup />
 
+      <main>
       {/* ── Hero ── */}
       <section className="max-w-[1160px] mx-auto px-6 pt-20 pb-16 grid grid-cols-2 gap-16 items-center max-[768px]:grid-cols-1">
         {/* Left */}
@@ -253,6 +252,7 @@ export function LandingPage() {
           </Link>
         </div>
       </section>
+      </main>
 
       {/* ── Footer ── */}
       <footer className="bg-slate-900 border-t border-white/[0.06] px-6 py-6 text-center dark:bg-slate-950">

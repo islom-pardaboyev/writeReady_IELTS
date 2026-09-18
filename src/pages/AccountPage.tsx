@@ -303,7 +303,7 @@ export function AccountPage() {
 
           {/* Actions */}
           <Card className="gs-account-actions px-6 py-4 flex items-center justify-between">
-            <Link to="/writing" className="text-sm text-blue-600 dark:text-blue-400 font-medium">
+            <Link to="/writing/mock" className="text-sm text-blue-600 dark:text-blue-400 font-medium">
               Go to Writing →
             </Link>
             <Button

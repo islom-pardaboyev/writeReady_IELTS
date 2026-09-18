@@ -1,36 +1,16 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
-import { initializeApp, getApps, cert } from 'firebase-admin/app';
-import { getAuth } from 'firebase-admin/auth';
 import { getFirestore } from 'firebase-admin/firestore';
 import Anthropic from '@anthropic-ai/sdk';
+import { initFirebase, getUid } from './_lib/shared.js';
 
 const ALLOWED_MODEL = 'claude-haiku-4-5';
 const MAX_TOKENS = 512;
-
-function initFirebase() {
-  if (getApps().length) return;
-  const projectId = process.env.FIREBASE_PROJECT_ID;
-  const clientEmail = process.env.FIREBASE_CLIENT_EMAIL;
-  const privateKey = process.env.FIREBASE_PRIVATE_KEY?.replace(/\\n/g, '\n');
-  if (!projectId || !clientEmail || !privateKey) {
-    throw new Error(`Missing Firebase env vars.`);
-  }
-  initializeApp({ credential: cert({ projectId, clientEmail, privateKey }) });
-}
 
 function isProUser(subscription: unknown): boolean {
   if (subscription === 'forever') return true;
   if (typeof subscription !== 'string') return false;
   const expiry = new Date(subscription);
   return !Number.isNaN(expiry.getTime()) && expiry > new Date();
-}
-
-async function getUid(req: VercelRequest): Promise<string> {
-  const auth = req.headers.authorization ?? '';
-  const token = auth.startsWith('Bearer ') ? auth.slice(7) : null;
-  if (!token) throw new Error('MISSING_TOKEN');
-  const decoded = await getAuth().verifyIdToken(token);
-  return decoded.uid;
 }
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {

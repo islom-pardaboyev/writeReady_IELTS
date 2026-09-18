@@ -12,7 +12,7 @@ import {
 } from "firebase/firestore";
 import { adminDb as db, adminAuth } from "@/firebase/adminConfig";
 import { createStudentAuthAccount } from "@/firebase/createStudentAccount";
-import { signInAnonymously, signInWithEmailAndPassword, createUserWithEmailAndPassword } from "firebase/auth";
+import { onAuthStateChanged, signInWithCustomToken } from "firebase/auth";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
@@ -79,6 +79,19 @@ function initials(name: string): string {
   return name.split(" ").map((w) => w[0]).join("").slice(0, 2).toUpperCase();
 }
 
+function mapStudentSnap(docs: { id: string; data: () => Record<string, unknown> }[]): Student[] {
+  return docs.map((d) => {
+    const data = d.data();
+    const addedAt = data.addedAt as { toDate?: () => Date } | undefined;
+    return {
+      id: d.id,
+      fullName: (data.fullName as string) ?? "",
+      login: (data.login as string) ?? "",
+      addedAt: addedAt?.toDate?.()?.toISOString?.() ?? "",
+    };
+  });
+}
+
 function formatDate(iso?: string | null): string {
   if (!iso) return "—";
   const d = new Date(iso);
@@ -109,31 +122,20 @@ function CenterLoginScreen({ onLogin }: { onLogin: (id: string, name: string) =>
   const handle = async () => {
     if (!username.trim() || !password.trim()) { setError("Please enter username and password."); return; }
     setLoading(true); setError("");
-    const auth = adminAuth;
-    // Need auth to read Firestore
-    try { await signInAnonymously(auth); } catch { /* already signed in */ }
     try {
-      const snap = await getDocs(
-        query(collection(db, "learningCenters"), where("login", "==", username.trim()))
-      );
-      if (snap.empty) { setError("Center not found."); setLoading(false); return; }
-      const centerDoc = snap.docs[0];
-      const data = centerDoc.data();
-      if (data.password !== password) { setError("Incorrect password."); setLoading(false); return; }
-      // Sign in with dedicated Firebase account for this center
-      const centerEmail = `center_${centerDoc.id}@writeready.internal`;
-      const centerFbPass = `CENTER_${centerDoc.id}_internal`;
-      try {
-        try {
-          await signInWithEmailAndPassword(auth, centerEmail, centerFbPass);
-        } catch {
-          await createUserWithEmailAndPassword(auth, centerEmail, centerFbPass);
-        }
-      } catch { /* keep anonymous if fails */ }
+      const res = await fetch("/api/staff-login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ role: "center", login: username.trim(), password }),
+      });
+      const data = await res.json();
+      if (!res.ok) { setError(data.error ?? "Connection error. Please try again."); setLoading(false); return; }
+
+      await signInWithCustomToken(adminAuth, data.customToken);
       localStorage.setItem("centerAdminLoggedIn", "true");
-      localStorage.setItem("centerAdminId", centerDoc.id);
-      localStorage.setItem("centerAdminName", data.name ?? "Center");
-      onLogin(centerDoc.id, data.name ?? "Center");
+      localStorage.setItem("centerAdminId", data.centerId);
+      localStorage.setItem("centerAdminName", data.centerName ?? "Center");
+      onLogin(data.centerId, data.centerName ?? "Center");
     } catch (e) {
       console.error(e);
       setError("Connection error. Please try again.");
@@ -299,15 +301,18 @@ export default function CenterAdminPage() {
     const saved = localStorage.getItem("centerAdminLoggedIn");
     const id = localStorage.getItem("centerAdminId");
     const name = localStorage.getItem("centerAdminName");
-    if (saved === "true" && id) {
-      setIsLoggedIn(true);
-      setCenterId(id);
-      setCenterName(name ?? "Center");
-      // Re-authenticate adminAuth so Firestore queries work after page reload
-      const centerEmail = `center_${id}@writeready.internal`;
-      const centerFbPass = `CENTER_${id}_internal`;
-      signInWithEmailAndPassword(adminAuth, centerEmail, centerFbPass).catch(() => {});
-    }
+    if (saved !== "true" || !id) return;
+    // Firebase Auth persists the signed-in session across reloads on its
+    // own; wait for it to report a real user before trusting the localStorage
+    // flag, so Firestore queries never race ahead of the restored session.
+    const unsub = onAuthStateChanged(adminAuth, (fbUser) => {
+      if (fbUser) {
+        setIsLoggedIn(true);
+        setCenterId(id);
+        setCenterName(name ?? "Center");
+      }
+    });
+    return unsub;
   }, []);
 
   const loadCenterData = async (id: string) => {
@@ -331,13 +336,7 @@ export default function CenterAdminPage() {
     setStudentsLoading(true);
     try {
       const snap = await getDocs(collection(db, "learningCenters", id, "students"));
-      const rows: Student[] = snap.docs.map((d) => ({
-        id: d.id,
-        fullName: d.data().fullName ?? "",
-        login: d.data().login ?? "",
-        addedAt: d.data().addedAt?.toDate?.()?.toISOString?.() ?? "",
-      }));
-      setStudents(rows);
+      setStudents(mapStudentSnap(snap.docs));
     } catch (e) { console.error(e); }
     setStudentsLoading(false);
   };
@@ -382,12 +381,7 @@ export default function CenterAdminPage() {
     setAnalyticsLoading(true);
     try {
       const studSnap = await getDocs(collection(db, "learningCenters", centerId, "students"));
-      const studs: Student[] = studSnap.docs.map((d) => ({
-        id: d.id,
-        fullName: d.data().fullName ?? "",
-        login: d.data().login ?? "",
-        addedAt: d.data().addedAt?.toDate?.()?.toISOString?.() ?? "",
-      }));
+      const studs = mapStudentSnap(studSnap.docs);
 
       // Get uid for each student login
       const usersSnap = await getDocs(collection(db, "users"));
@@ -521,6 +515,13 @@ export default function CenterAdminPage() {
       const updates: Record<string, string> = { fullName: editName.trim(), login: editLogin.trim() };
       if (editPass.trim()) updates.password = editPass.trim();
       await updateDoc(doc(db, "learningCenters", centerId, "students", editStudent.id), updates);
+      // The student doc's id is the user's uid (see addStudent). Analytics and
+      // "reports today" join users.studentLogin -> students.login by value, so
+      // an edited login must be mirrored onto the user profile or that student
+      // silently disappears from both until this is back in sync.
+      if (editLogin.trim() !== editStudent.login) {
+        await updateDoc(doc(db, "users", editStudent.id), { studentLogin: editLogin.trim() }).catch(() => {});
+      }
       setStudents((prev) => prev.map((s) => s.id === editStudent.id ? { ...s, fullName: editName.trim(), login: editLogin.trim() } : s));
       setEditStudent(null);
     } catch (e) { console.error(e); }
@@ -621,10 +622,10 @@ export default function CenterAdminPage() {
                   <table className="w-full text-sm">
                     <thead>
                       <tr className="border-b border-slate-100 bg-slate-50">
-                        <th className="px-4 py-3 text-left text-xs font-bold text-slate-500 uppercase tracking-wider">Ism</th>
-                        <th className="px-4 py-3 text-left text-xs font-bold text-slate-500 uppercase tracking-wider">Login</th>
-                        <th className="px-4 py-3 text-left text-xs font-bold text-slate-500 uppercase tracking-wider">Qo'shildi</th>
-                        <th className="px-4 py-3 text-right text-xs font-bold text-slate-500 uppercase tracking-wider">Amal</th>
+                        <th scope="col" className="px-4 py-3 text-left text-xs font-bold text-slate-500 uppercase tracking-wider">Ism</th>
+                        <th scope="col" className="px-4 py-3 text-left text-xs font-bold text-slate-500 uppercase tracking-wider">Login</th>
+                        <th scope="col" className="px-4 py-3 text-left text-xs font-bold text-slate-500 uppercase tracking-wider">Qo'shildi</th>
+                        <th scope="col" className="px-4 py-3 text-right text-xs font-bold text-slate-500 uppercase tracking-wider">Amal</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-slate-100">
@@ -764,11 +765,11 @@ export default function CenterAdminPage() {
                     <table className="w-full text-sm">
                       <thead>
                         <tr className="border-b border-slate-100 bg-slate-50">
-                          <th className="px-4 py-3 text-left text-xs font-bold text-slate-500 uppercase tracking-wider w-12">Rank</th>
-                          <th className="px-4 py-3 text-left text-xs font-bold text-slate-500 uppercase tracking-wider">Student</th>
-                          <th className="px-4 py-3 text-center text-xs font-bold text-slate-500 uppercase tracking-wider">Band Score</th>
-                          <th className="px-4 py-3 text-center text-xs font-bold text-slate-500 uppercase tracking-wider">Reports</th>
-                          <th className="px-4 py-3 text-left text-xs font-bold text-slate-500 uppercase tracking-wider">Last Active</th>
+                          <th scope="col" className="px-4 py-3 text-left text-xs font-bold text-slate-500 uppercase tracking-wider w-12">Rank</th>
+                          <th scope="col" className="px-4 py-3 text-left text-xs font-bold text-slate-500 uppercase tracking-wider">Student</th>
+                          <th scope="col" className="px-4 py-3 text-center text-xs font-bold text-slate-500 uppercase tracking-wider">Band Score</th>
+                          <th scope="col" className="px-4 py-3 text-center text-xs font-bold text-slate-500 uppercase tracking-wider">Reports</th>
+                          <th scope="col" className="px-4 py-3 text-left text-xs font-bold text-slate-500 uppercase tracking-wider">Last Active</th>
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-slate-100">

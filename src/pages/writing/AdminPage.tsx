@@ -17,10 +17,10 @@ import {
 } from "firebase/firestore";
 import { adminDb as db, adminAuth } from "@/firebase/adminConfig";
 import { createStudentAuthAccount } from "@/firebase/createStudentAccount";
-import { signInAnonymously, signInWithEmailAndPassword, createUserWithEmailAndPassword } from "firebase/auth";
+import { onAuthStateChanged, signInWithCustomToken } from "firebase/auth";
 import useUpload from "@/hooks/useUploadImage";
 import Logo from "/logo.png";
-import { getBlogPosts, saveBlogPost, updateBlogPost, deleteBlogPost } from "../../firebase/blog";
+import { getBlogPosts, saveBlogPost, updateBlogPost, deleteBlogPost, getBlogPostById } from "../../firebase/blog";
 import type { BlogPost } from "../../types/blog";
 import {
   getTeachers,
@@ -116,58 +116,43 @@ function LoginScreen({ onLogin }: { onLogin: (user: string) => void }) {
     if (!login.trim() || !password.trim()) return;
     setLoading(true); setError("");
 
-    const auth = adminAuth;
-    const ADMIN_FB_EMAIL = "admin@writeready.internal";
-    const CENTER_FB_PREFIX = "center_";
+    try {
+      const res = await fetch("/api/staff-login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ login: login.trim(), password }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        setError(data.error ?? "Login yoki parol noto'g'ri!");
+        setLoading(false);
+        return;
+      }
 
-    // Check main admin credentials
-    if (login.trim() === import.meta.env.VITE_LOGIN && password === import.meta.env.VITE_PASSWORD) {
-      try {
-        try {
-          await signInWithEmailAndPassword(auth, ADMIN_FB_EMAIL, `ADMIN_${import.meta.env.VITE_PASSWORD}_internal`);
-        } catch {
-          await createUserWithEmailAndPassword(auth, ADMIN_FB_EMAIL, `ADMIN_${import.meta.env.VITE_PASSWORD}_internal`);
-        }
+      await signInWithCustomToken(adminAuth, data.customToken);
+
+      if (data.role === "admin") {
         localStorage.setItem("adminLoggedIn", "true");
         localStorage.setItem("adminUser", login.trim());
         setLoading(false);
         onLogin(login.trim());
         return;
-      } catch (e) { console.error(e); }
-    }
-
-    // Check if it's a learning center login
-    try {
-      // Need anonymous auth first to read Firestore
-      try { await signInAnonymously(auth); } catch { /* already signed in */ }
-      const snap = await getDocs(
-        query(collection(db, "learningCenters"), where("login", "==", login.trim()))
-      );
-      if (!snap.empty) {
-        const centerDoc = snap.docs[0];
-        const data = centerDoc.data();
-        if (data.password === password) {
-          // Sign in as center admin with dedicated Firebase account
-          const centerEmail = `${CENTER_FB_PREFIX}${centerDoc.id}@writeready.internal`;
-          const centerFbPass = `CENTER_${centerDoc.id}_internal`;
-          try {
-            try {
-              await signInWithEmailAndPassword(auth, centerEmail, centerFbPass);
-            } catch {
-              await createUserWithEmailAndPassword(auth, centerEmail, centerFbPass);
-            }
-          } catch { /* use anonymous if email fails */ }
-          localStorage.setItem("centerAdminLoggedIn", "true");
-          localStorage.setItem("centerAdminId", centerDoc.id);
-          localStorage.setItem("centerAdminName", data.name ?? "Center");
-          setLoading(false);
-          navigate("/center-admin");
-          return;
-        }
       }
-    } catch (e) { console.error(e); }
-    setLoading(false);
-    setError("Login yoki parol noto'g'ri!");
+      if (data.role === "center") {
+        localStorage.setItem("centerAdminLoggedIn", "true");
+        localStorage.setItem("centerAdminId", data.centerId);
+        localStorage.setItem("centerAdminName", data.centerName ?? "Center");
+        setLoading(false);
+        navigate("/center-admin");
+        return;
+      }
+      setLoading(false);
+      setError("Login yoki parol noto'g'ri!");
+    } catch (e) {
+      console.error(e);
+      setLoading(false);
+      setError("Connection error. Please try again.");
+    }
   };
 
   return (
@@ -463,13 +448,17 @@ export default function Admin() {
   useEffect(() => {
     const saved = localStorage.getItem("adminLoggedIn");
     const u = localStorage.getItem("adminUser");
-    if (saved === "true") {
-      setIsLoggedIn(true);
-      if (u) setAdminUser(u);
-      // Re-authenticate adminAuth so Firestore queries work after page reload
-      const ADMIN_FB_EMAIL = "admin@writeready.internal";
-      signInWithEmailAndPassword(adminAuth, ADMIN_FB_EMAIL, `ADMIN_${import.meta.env.VITE_PASSWORD}_internal`).catch(() => {});
-    }
+    if (saved !== "true") return;
+    // Firebase Auth persists the signed-in session across reloads on its
+    // own; wait for it to report a real user before trusting the localStorage
+    // flag, so Firestore queries never race ahead of the restored session.
+    const unsub = onAuthStateChanged(adminAuth, (fbUser) => {
+      if (fbUser) {
+        setIsLoggedIn(true);
+        if (u) setAdminUser(u);
+      }
+    });
+    return unsub;
   }, []);
 
   useEffect(() => {
@@ -817,6 +806,9 @@ export default function Admin() {
         ieltsWriting: Number(teacherEditor.ieltsWriting) || 0,
         login: teacherEditor.login ?? '',
         password: teacherEditor.password ?? '',
+        // Editing an existing teacher must persist the Active toggle — createTeacher
+        // ignores this and always sets active:true for new teachers, so it's a no-op there.
+        active: teacherEditor.active ?? true,
       };
       if (teacherEditor.id) {
         await updateTeacher(teacherEditor.id, payload, db);
@@ -2036,44 +2028,44 @@ export default function Admin() {
                         )}
                         <div className="grid grid-cols-2 gap-3">
                           <div className="col-span-2">
-                            <label className="text-xs font-semibold text-slate-600 mb-1 block uppercase tracking-wide">Center Name *</label>
-                            <Input className="border-slate-200 bg-white text-slate-900" value={centerEditor.name ?? ''} onChange={(e) => setCenterEditor(p => ({ ...p, name: e.target.value }))} />
+                            <label htmlFor="center-name" className="text-xs font-semibold text-slate-600 mb-1 block uppercase tracking-wide">Center Name *</label>
+                            <Input id="center-name" className="border-slate-200 bg-white text-slate-900" value={centerEditor.name ?? ''} onChange={(e) => setCenterEditor(p => ({ ...p, name: e.target.value }))} />
                           </div>
                           <div>
-                            <label className="text-xs font-semibold text-slate-600 mb-1 block uppercase tracking-wide">Contact Person</label>
-                            <Input className="border-slate-200 bg-white text-slate-900" value={centerEditor.contactPerson ?? ''} onChange={(e) => setCenterEditor(p => ({ ...p, contactPerson: e.target.value }))} />
+                            <label htmlFor="center-contact" className="text-xs font-semibold text-slate-600 mb-1 block uppercase tracking-wide">Contact Person</label>
+                            <Input id="center-contact" className="border-slate-200 bg-white text-slate-900" value={centerEditor.contactPerson ?? ''} onChange={(e) => setCenterEditor(p => ({ ...p, contactPerson: e.target.value }))} />
                           </div>
                           <div>
-                            <label className="text-xs font-semibold text-slate-600 mb-1 block uppercase tracking-wide">Phone</label>
-                            <Input className="border-slate-200 bg-white text-slate-900" value={centerEditor.phone ?? ''} onChange={(e) => setCenterEditor(p => ({ ...p, phone: e.target.value }))} />
+                            <label htmlFor="center-phone" className="text-xs font-semibold text-slate-600 mb-1 block uppercase tracking-wide">Phone</label>
+                            <Input id="center-phone" className="border-slate-200 bg-white text-slate-900" value={centerEditor.phone ?? ''} onChange={(e) => setCenterEditor(p => ({ ...p, phone: e.target.value }))} />
                           </div>
                           <div>
-                            <label className="text-xs font-semibold text-slate-600 mb-1 block uppercase tracking-wide">Login Username *</label>
-                            <Input className="border-slate-200 bg-white text-slate-900" value={centerEditor.login ?? ''} onChange={(e) => setCenterEditor(p => ({ ...p, login: e.target.value }))} />
+                            <label htmlFor="center-login" className="text-xs font-semibold text-slate-600 mb-1 block uppercase tracking-wide">Login Username *</label>
+                            <Input id="center-login" className="border-slate-200 bg-white text-slate-900" value={centerEditor.login ?? ''} onChange={(e) => setCenterEditor(p => ({ ...p, login: e.target.value }))} />
                           </div>
                           <div>
-                            <label className="text-xs font-semibold text-slate-600 mb-1 block uppercase tracking-wide">Password *</label>
-                            <Input type="password" className="border-slate-200 bg-white text-slate-900" value={centerEditor.password ?? ''} onChange={(e) => setCenterEditor(p => ({ ...p, password: e.target.value }))} />
+                            <label htmlFor="center-password" className="text-xs font-semibold text-slate-600 mb-1 block uppercase tracking-wide">Password *</label>
+                            <Input id="center-password" type="password" className="border-slate-200 bg-white text-slate-900" value={centerEditor.password ?? ''} onChange={(e) => setCenterEditor(p => ({ ...p, password: e.target.value }))} />
                           </div>
                           <div>
-                            <label className="text-xs font-semibold text-slate-600 mb-1 block uppercase tracking-wide">Contract Number</label>
-                            <Input className="border-slate-200 bg-white text-slate-900" value={centerEditor.contractNumber ?? ''} onChange={(e) => setCenterEditor(p => ({ ...p, contractNumber: e.target.value }))} />
+                            <label htmlFor="center-contract" className="text-xs font-semibold text-slate-600 mb-1 block uppercase tracking-wide">Contract Number</label>
+                            <Input id="center-contract" className="border-slate-200 bg-white text-slate-900" value={centerEditor.contractNumber ?? ''} onChange={(e) => setCenterEditor(p => ({ ...p, contractNumber: e.target.value }))} />
                           </div>
                           <div>
-                            <label className="text-xs font-semibold text-slate-600 mb-1 block uppercase tracking-wide">Payment (UZS)</label>
-                            <Input type="number" className="border-slate-200 bg-white text-slate-900" value={centerEditor.paymentAmount ?? 0} onChange={(e) => setCenterEditor(p => ({ ...p, paymentAmount: Number(e.target.value) }))} />
+                            <label htmlFor="center-payment" className="text-xs font-semibold text-slate-600 mb-1 block uppercase tracking-wide">Payment (UZS)</label>
+                            <Input id="center-payment" type="number" className="border-slate-200 bg-white text-slate-900" value={centerEditor.paymentAmount ?? 0} onChange={(e) => setCenterEditor(p => ({ ...p, paymentAmount: Number(e.target.value) }))} />
                           </div>
                           <div>
-                            <label className="text-xs font-semibold text-slate-600 mb-1 block uppercase tracking-wide">Student Limit</label>
-                            <Input type="number" className="border-slate-200 bg-white text-slate-900" value={centerEditor.studentLimit ?? 30} onChange={(e) => setCenterEditor(p => ({ ...p, studentLimit: Number(e.target.value) }))} />
+                            <label htmlFor="center-limit" className="text-xs font-semibold text-slate-600 mb-1 block uppercase tracking-wide">Student Limit</label>
+                            <Input id="center-limit" type="number" className="border-slate-200 bg-white text-slate-900" value={centerEditor.studentLimit ?? 30} onChange={(e) => setCenterEditor(p => ({ ...p, studentLimit: Number(e.target.value) }))} />
                           </div>
                           <div>
-                            <label className="text-xs font-semibold text-slate-600 mb-1 block uppercase tracking-wide">Expires At *</label>
-                            <Input type="date" className="border-slate-200 bg-white text-slate-900" value={centerEditor.expiresAt ?? ''} onChange={(e) => setCenterEditor(p => ({ ...p, expiresAt: e.target.value }))} />
+                            <label htmlFor="center-expires" className="text-xs font-semibold text-slate-600 mb-1 block uppercase tracking-wide">Expires At *</label>
+                            <Input id="center-expires" type="date" className="border-slate-200 bg-white text-slate-900" value={centerEditor.expiresAt ?? ''} onChange={(e) => setCenterEditor(p => ({ ...p, expiresAt: e.target.value }))} />
                           </div>
                           <div>
-                            <label className="text-xs font-semibold text-slate-600 mb-1 block uppercase tracking-wide">Status</label>
-                            <select className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm outline-none focus:border-teal-500 bg-white text-slate-900"
+                            <label htmlFor="center-status" className="text-xs font-semibold text-slate-600 mb-1 block uppercase tracking-wide">Status</label>
+                            <select id="center-status" className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm outline-none focus:border-teal-500 bg-white text-slate-900"
                               value={centerEditor.status ?? 'pending'}
                               onChange={(e) => setCenterEditor(p => ({ ...p, status: e.target.value }))}>
                               <option value="active">Active</option>
@@ -2382,39 +2374,39 @@ export default function Admin() {
                           </p>
                         )}
                         <div>
-                          <label className="text-xs font-semibold text-slate-600 mb-1 block uppercase tracking-wide">Name *</label>
-                          <Input className="border-slate-200 bg-white text-slate-900" value={teacherEditor.name ?? ''} onChange={(e) => setTeacherEditor((p) => ({ ...p, name: e.target.value }))} />
+                          <label htmlFor="teacher-name" className="text-xs font-semibold text-slate-600 mb-1 block uppercase tracking-wide">Name *</label>
+                          <Input id="teacher-name" className="border-slate-200 bg-white text-slate-900" value={teacherEditor.name ?? ''} onChange={(e) => setTeacherEditor((p) => ({ ...p, name: e.target.value }))} />
                         </div>
                         <div className="grid grid-cols-2 gap-3">
                           <div>
-                            <label className="text-xs font-semibold text-slate-600 mb-1 block uppercase tracking-wide">IELTS Overall</label>
-                            <Input type="number" step="0.5" min="0" max="9" className="border-slate-200 bg-white text-slate-900" value={teacherEditor.ieltsOverall ?? 8} onChange={(e) => setTeacherEditor((p) => ({ ...p, ieltsOverall: Number(e.target.value) }))} />
+                            <label htmlFor="teacher-overall" className="text-xs font-semibold text-slate-600 mb-1 block uppercase tracking-wide">IELTS Overall</label>
+                            <Input id="teacher-overall" type="number" step="0.5" min="0" max="9" className="border-slate-200 bg-white text-slate-900" value={teacherEditor.ieltsOverall ?? 8} onChange={(e) => setTeacherEditor((p) => ({ ...p, ieltsOverall: Number(e.target.value) }))} />
                           </div>
                           <div>
-                            <label className="text-xs font-semibold text-slate-600 mb-1 block uppercase tracking-wide">IELTS Writing</label>
-                            <Input type="number" step="0.5" min="0" max="9" className="border-slate-200 bg-white text-slate-900" value={teacherEditor.ieltsWriting ?? 8} onChange={(e) => setTeacherEditor((p) => ({ ...p, ieltsWriting: Number(e.target.value) }))} />
-                          </div>
-                        </div>
-                        <div className="grid grid-cols-2 gap-3">
-                          <div>
-                            <label className="text-xs font-semibold text-slate-600 mb-1 block uppercase tracking-wide">Login *</label>
-                            <Input className="border-slate-200 bg-white text-slate-900" value={teacherEditor.login ?? ''} onChange={(e) => setTeacherEditor((p) => ({ ...p, login: e.target.value }))} />
-                          </div>
-                          <div>
-                            <label className="text-xs font-semibold text-slate-600 mb-1 block uppercase tracking-wide">Password *</label>
-                            <Input type="password" className="border-slate-200 bg-white text-slate-900" value={teacherEditor.password ?? ''} onChange={(e) => setTeacherEditor((p) => ({ ...p, password: e.target.value }))} />
+                            <label htmlFor="teacher-writing" className="text-xs font-semibold text-slate-600 mb-1 block uppercase tracking-wide">IELTS Writing</label>
+                            <Input id="teacher-writing" type="number" step="0.5" min="0" max="9" className="border-slate-200 bg-white text-slate-900" value={teacherEditor.ieltsWriting ?? 8} onChange={(e) => setTeacherEditor((p) => ({ ...p, ieltsWriting: Number(e.target.value) }))} />
                           </div>
                         </div>
                         <div className="grid grid-cols-2 gap-3">
                           <div>
-                            <label className="text-xs font-semibold text-slate-600 mb-1 block uppercase tracking-wide">Photo</label>
-                            {teacherEditor.photoBase64 && <img src={teacherEditor.photoBase64} alt="Photo" className="w-16 h-16 rounded-full object-cover mb-2" />}
-                            <input type="file" accept="image/*" onChange={(e) => { const f = e.target.files?.[0]; if (f) handleTeacherPhotoUpload(f, 'photoBase64'); }} className="text-xs" />
+                            <label htmlFor="teacher-login" className="text-xs font-semibold text-slate-600 mb-1 block uppercase tracking-wide">Login *</label>
+                            <Input id="teacher-login" className="border-slate-200 bg-white text-slate-900" value={teacherEditor.login ?? ''} onChange={(e) => setTeacherEditor((p) => ({ ...p, login: e.target.value }))} />
                           </div>
                           <div>
-                            <label className="text-xs font-semibold text-slate-600 mb-1 block uppercase tracking-wide">IELTS Certificate</label>
-                            {teacherEditor.certificateBase64 && <img src={teacherEditor.certificateBase64} alt="Certificate" className="w-16 h-16 rounded-lg object-cover mb-2" />}
-                            <input type="file" accept="image/*" onChange={(e) => { const f = e.target.files?.[0]; if (f) handleTeacherPhotoUpload(f, 'certificateBase64'); }} className="text-xs" />
+                            <label htmlFor="teacher-password" className="text-xs font-semibold text-slate-600 mb-1 block uppercase tracking-wide">Password *</label>
+                            <Input id="teacher-password" type="password" className="border-slate-200 bg-white text-slate-900" value={teacherEditor.password ?? ''} onChange={(e) => setTeacherEditor((p) => ({ ...p, password: e.target.value }))} />
+                          </div>
+                        </div>
+                        <div className="grid grid-cols-2 gap-3">
+                          <div>
+                            <label htmlFor="teacher-photo" className="text-xs font-semibold text-slate-600 mb-1 block uppercase tracking-wide">Photo</label>
+                            {teacherEditor.photoBase64 && <img src={teacherEditor.photoBase64} alt="Teacher" className="w-16 h-16 rounded-full object-cover mb-2" />}
+                            <input id="teacher-photo" type="file" accept="image/*" onChange={(e) => { const f = e.target.files?.[0]; if (f) handleTeacherPhotoUpload(f, 'photoBase64'); }} className="text-xs" />
+                          </div>
+                          <div>
+                            <label htmlFor="teacher-certificate" className="text-xs font-semibold text-slate-600 mb-1 block uppercase tracking-wide">IELTS Certificate</label>
+                            {teacherEditor.certificateBase64 && <img src={teacherEditor.certificateBase64} alt="IELTS certificate" className="w-16 h-16 rounded-lg object-cover mb-2" />}
+                            <input id="teacher-certificate" type="file" accept="image/*" onChange={(e) => { const f = e.target.files?.[0]; if (f) handleTeacherPhotoUpload(f, 'certificateBase64'); }} className="text-xs" />
                           </div>
                         </div>
                         {teacherEditor.id && (
@@ -2789,7 +2781,6 @@ export default function Admin() {
                                 <button
                                   className="text-xs px-3 py-1 border border-slate-200 rounded-lg hover:bg-slate-100 text-slate-700 transition-colors"
                                   onClick={async () => {
-                                    const { getBlogPostById } = await import('../../firebase/blog');
                                     const full = await getBlogPostById(p.id);
                                     if (full) setBlogEditor(full);
                                   }}

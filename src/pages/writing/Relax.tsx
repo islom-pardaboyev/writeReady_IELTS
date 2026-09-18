@@ -27,7 +27,8 @@ import { useFeatureFlag } from "@/hooks/useFeatureFlag";
 import { TeacherPickerModal } from "@/components/ui/TeacherPickerModal";
 import { HumanCheckConfirmModal } from "@/components/ui/HumanCheckConfirmModal";
 import { FullscreenButton } from "@/components/ui/FullscreenButton";
-import { hasFreeReportThisWeek, type FreeUsage } from "@/lib/weeklyFree";
+import { loadImgBase64, isPdfSrc as isPdf } from "@/lib/loadImageForPdf";
+import { hasAccess } from "@/lib/reportAccess";
 
 function readFileAsDataUrl(file: File): Promise<string> {
   return new Promise((resolve, reject) => {
@@ -37,54 +38,6 @@ function readFileAsDataUrl(file: File): Promise<string> {
       reject(reader.error ?? new Error("File read failed"));
     reader.readAsDataURL(file);
   });
-}
-
-function isPdf(src: string) {
-  return src.startsWith("data:application/pdf") || /\.pdf(\?|$)/i.test(src);
-}
-
-async function loadImgBase64(
-  src: string,
-): Promise<{ b64: string; w: number; h: number } | null> {
-  if (isPdf(src)) return null;
-  try {
-    let dataUrl = src;
-    if (!src.startsWith("data:")) {
-      const res = await fetch(src);
-      const blob = await res.blob();
-      dataUrl = await new Promise<string>((resolve) => {
-        const reader = new FileReader();
-        reader.onload = () => resolve(reader.result as string);
-        reader.readAsDataURL(blob);
-      });
-    }
-    const { w, h } = await new Promise<{ w: number; h: number }>((resolve) => {
-      const img = new Image();
-      img.onload = () => resolve({ w: img.naturalWidth, h: img.naturalHeight });
-      img.onerror = () => resolve({ w: 4, h: 3 });
-      img.src = dataUrl;
-    });
-    return { b64: dataUrl, w, h };
-  } catch {
-    return null;
-  }
-}
-
-function hasAccess(data: Record<string, unknown>): boolean {
-  // Learning-center students always have access (free premium).
-  if (typeof data.centerId === "string" && data.centerId.length > 0)
-    return true;
-  const plan = data.plan as string | undefined;
-  if (
-    plan === "forever" ||
-    plan === "premium" ||
-    plan === "standard" ||
-    plan === "basic"
-  )
-    return true;
-  const bonus = typeof data.bonusAnalyses === "number" ? data.bonusAnalyses : 0;
-  if (bonus > 0) return true;
-  return hasFreeReportThisWeek(data.freeUsage as FreeUsage | undefined);
 }
 
 function Relax() {
@@ -234,7 +187,7 @@ function Relax() {
     pdfdoc.setFont("helvetica", "normal");
     pdfdoc.text(aLines, margin, y + 5);
 
-    const pages = (pdfdoc.internal as any).getNumberOfPages();
+    const pages = pdfdoc.getNumberOfPages();
     for (let i = 1; i <= pages; i++) {
       pdfdoc.setPage(i);
       pdfdoc.setFillColor(15, 23, 42);
@@ -677,7 +630,11 @@ function Relax() {
         </div>
 
         <div className="flex flex-col flex-1 bg-slate-50">
+          <label htmlFor="relax-answer" className="sr-only">
+            Your answer for Task {activeTask}
+          </label>
           <textarea
+            id="relax-answer"
             value={userText}
             onChange={(e) => setUserText(e.target.value)}
             placeholder="Start writing your response here…"

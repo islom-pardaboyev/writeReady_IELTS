@@ -6,6 +6,7 @@ import {
   Dialog,
   DialogContent,
   DialogTitle,
+  DialogDescription,
 } from './dialog';
 
 const CATEGORY_META: Record<
@@ -79,12 +80,14 @@ export function AnnouncementPopup() {
         </div>
 
         {/* Body */}
-        {hasBody && (
+        {hasBody ? (
           <div className="px-6 pt-5 pb-1">
-            <p className="text-slate-600 dark:text-slate-300 text-[0.925rem] leading-relaxed m-0">
+            <DialogDescription className="text-slate-600 dark:text-slate-300 text-[0.925rem] leading-relaxed m-0">
               {announcement.text}
-            </p>
+            </DialogDescription>
           </div>
+        ) : (
+          <DialogDescription className="sr-only">{title}</DialogDescription>
         )}
 
         {/* Footer */}

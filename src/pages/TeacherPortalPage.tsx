@@ -1,5 +1,5 @@
 import { useEffect, useState, type FormEvent } from "react";
-import { signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut } from "firebase/auth";
+import { onAuthStateChanged, signInWithCustomToken, signOut } from "firebase/auth";
 import { adminAuth, adminDb } from "@/firebase/adminConfig";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/input";
@@ -8,7 +8,6 @@ import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { GraduationCap, Download, Upload, LogOut, LayoutDashboard } from "lucide-react";
 import {
-  findTeacherByLogin,
   getHumanReviewsForTeacher,
   uploadTeacherFeedback,
   teacherEarningUZS,
@@ -30,15 +29,6 @@ import {
   SidebarInset,
 } from "@/components/ui/sidebar";
 import { useSidebar } from "@/components/ui/sidebar-context";
-
-const TEACHER_FB_PREFIX = "teacher_";
-
-function teacherCredentials(teacherId: string) {
-  return {
-    email: `${TEACHER_FB_PREFIX}${teacherId}@writeready.internal`,
-    password: `TEACHER_${teacherId}_internal`,
-  };
-}
 
 function TeacherSidebar({
   teacherName,
@@ -113,13 +103,18 @@ export default function TeacherPortalPage() {
     const saved = localStorage.getItem("teacherLoggedIn");
     const id = localStorage.getItem("teacherId");
     const name = localStorage.getItem("teacherName");
-    if (saved === "true" && id) {
-      setIsLoggedIn(true);
-      setTeacherId(id);
-      setTeacherName(name ?? "Teacher");
-      const { email, password: fbPass } = teacherCredentials(id);
-      signInWithEmailAndPassword(adminAuth, email, fbPass).catch(() => {});
-    }
+    if (saved !== "true" || !id) return;
+    // Firebase Auth persists the signed-in session across reloads on its
+    // own; wait for it to report a real user before trusting the localStorage
+    // flag, so Firestore queries never race ahead of the restored session.
+    const unsub = onAuthStateChanged(adminAuth, (fbUser) => {
+      if (fbUser) {
+        setIsLoggedIn(true);
+        setTeacherId(id);
+        setTeacherName(name ?? "Teacher");
+      }
+    });
+    return unsub;
   }, []);
 
   useEffect(() => {
@@ -144,40 +139,29 @@ export default function TeacherPortalPage() {
     setLoginError(null);
     setLoggingIn(true);
     try {
-      // The `teachers` collection is publicly readable (see Firestore rules), so
-      // we can verify the login here without anonymous auth. After the password
-      // check we sign in with the teacher's dedicated Firebase account, which
-      // gives us a real authenticated session for reading assigned reviews.
-      let teacher;
-      try {
-        teacher = await findTeacherByLogin(login.trim(), adminDb);
-      } catch (readErr) {
-        console.error("[TeacherPortal] reading teachers collection failed:", readErr);
-        setLoginError("Could not reach the server. Check your connection and try again.");
+      // Credential check happens server-side (api/staff-login.ts) via the
+      // Firebase Admin SDK, so the teacher's password never reaches the
+      // browser — it then mints a custom token for this teacher's dedicated
+      // Firebase account, giving us a real authenticated session for reading
+      // assigned reviews.
+      const res = await fetch("/api/staff-login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ role: "teacher", login: login.trim(), password }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        setLoginError(data.error ?? "Incorrect login or password.");
         return;
       }
 
-      if (!teacher || teacher.password !== password) {
-        setLoginError("Incorrect login or password.");
-        return;
-      }
-      if (!teacher.active) {
-        setLoginError("This account is inactive. Please contact the admin.");
-        return;
-      }
-
-      const { email, password: fbPass } = teacherCredentials(teacher.id);
-      try {
-        await signInWithEmailAndPassword(adminAuth, email, fbPass);
-      } catch {
-        await createUserWithEmailAndPassword(adminAuth, email, fbPass);
-      }
+      await signInWithCustomToken(adminAuth, data.customToken);
 
       localStorage.setItem("teacherLoggedIn", "true");
-      localStorage.setItem("teacherId", teacher.id);
-      localStorage.setItem("teacherName", teacher.name);
-      setTeacherId(teacher.id);
-      setTeacherName(teacher.name);
+      localStorage.setItem("teacherId", data.teacherId);
+      localStorage.setItem("teacherName", data.teacherName);
+      setTeacherId(data.teacherId);
+      setTeacherName(data.teacherName);
       setIsLoggedIn(true);
     } catch (err) {
       console.error(err);
@@ -348,9 +332,9 @@ export default function TeacherPortalPage() {
               <table className="w-full text-sm">
                 <thead>
                   <tr className="bg-slate-50 border-b border-slate-100">
-                    <th className="px-5 py-2.5 text-left text-xs font-bold text-slate-500 uppercase tracking-wider">Month</th>
-                    <th className="px-5 py-2.5 text-center text-xs font-bold text-slate-500 uppercase tracking-wider">Reviews</th>
-                    <th className="px-5 py-2.5 text-right text-xs font-bold text-slate-500 uppercase tracking-wider">Earned</th>
+                    <th scope="col" className="px-5 py-2.5 text-left text-xs font-bold text-slate-500 uppercase tracking-wider">Month</th>
+                    <th scope="col" className="px-5 py-2.5 text-center text-xs font-bold text-slate-500 uppercase tracking-wider">Reviews</th>
+                    <th scope="col" className="px-5 py-2.5 text-right text-xs font-bold text-slate-500 uppercase tracking-wider">Earned</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100">

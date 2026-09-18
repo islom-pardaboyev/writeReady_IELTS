@@ -1,7 +1,8 @@
 import { useEffect, useState } from 'react';
-import { GraduationCap, X } from 'lucide-react';
+import { GraduationCap } from 'lucide-react';
 import { getActiveTeachers } from '../../firebase/teachers';
 import type { Teacher } from '../../types';
+import { Dialog, DialogContent, DialogTitle, DialogDescription } from './dialog';
 
 interface TeacherPickerModalProps {
   open: boolean;
@@ -25,30 +26,23 @@ export function TeacherPickerModal({ open, onClose, onSelect, submitting }: Teac
       .finally(() => setLoading(false));
   }, [open]);
 
-  if (!open) return null;
-
   return (
-    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-4 bg-black/40 backdrop-blur-sm">
-      <div className="w-full max-w-md bg-white rounded-2xl shadow-2xl overflow-hidden">
+    <Dialog open={open} onOpenChange={(v) => { if (!v) onClose(); }}>
+      <DialogContent className="max-w-md p-0 overflow-hidden gap-0 rounded-2xl">
         <div className="h-1.5 bg-gradient-to-r from-emerald-500 to-teal-500" />
         <div className="p-6">
-          <div className="flex items-center justify-between mb-4">
-            <div className="flex items-center gap-2">
-              <GraduationCap className="w-5 h-5 text-emerald-600" />
-              <h2 className="text-base font-semibold text-slate-900">Choose a teacher</h2>
-            </div>
-            <button onClick={onClose} className="text-slate-400 hover:text-slate-700" aria-label="Close">
-              <X className="w-5 h-5" />
-            </button>
+          <div className="flex items-center gap-2 mb-4">
+            <GraduationCap className="w-5 h-5 text-emerald-600" />
+            <DialogTitle className="text-base font-semibold text-slate-900">Choose a teacher</DialogTitle>
           </div>
 
-          <p className="text-sm text-slate-500 mb-4">
+          <DialogDescription className="text-sm text-slate-500 mb-4">
             Your essay (and Task 1 image, if included) will be sent to the teacher you choose for a real, human review.
-          </p>
+          </DialogDescription>
 
           {loading ? (
             <div className="flex justify-center py-10">
-              <div className="animate-spin w-6 h-6 border-2 border-emerald-600 border-t-transparent rounded-full" />
+              <div className="animate-spin w-6 h-6 border-2 border-emerald-600 border-t-transparent rounded-full" role="status" aria-label="Loading teachers" />
             </div>
           ) : error ? (
             <p className="text-sm text-red-500 py-6 text-center">{error}</p>
@@ -90,7 +84,7 @@ export function TeacherPickerModal({ open, onClose, onSelect, submitting }: Teac
             <p className="text-sm text-emerald-600 text-center mt-4">Sending your essay…</p>
           )}
         </div>
-      </div>
-    </div>
+      </DialogContent>
+    </Dialog>
   );
 }

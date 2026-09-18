@@ -23,17 +23,17 @@ function toDate(val: unknown): Date {
   return new Date();
 }
 
-function mapTeacher(id: string, data: Record<string, any>): Teacher {
+function mapTeacher(id: string, data: Record<string, unknown>): Teacher {
   return {
     id,
-    name: data.name ?? '',
-    photoBase64: data.photoBase64 ?? undefined,
-    certificateBase64: data.certificateBase64 ?? undefined,
-    ieltsOverall: data.ieltsOverall ?? 0,
-    ieltsWriting: data.ieltsWriting ?? 0,
-    login: data.login ?? '',
-    password: data.password ?? '',
-    active: data.active ?? true,
+    name: (data.name as string) ?? '',
+    photoBase64: (data.photoBase64 as string) ?? undefined,
+    certificateBase64: (data.certificateBase64 as string) ?? undefined,
+    ieltsOverall: (data.ieltsOverall as number) ?? 0,
+    ieltsWriting: (data.ieltsWriting as number) ?? 0,
+    login: (data.login as string) ?? '',
+    password: (data.password as string) ?? '',
+    active: (data.active as boolean) ?? true,
     createdAt: toDate(data.createdAt),
   };
 }
@@ -99,24 +99,24 @@ export async function deleteTeacher(teacherId: string, dbInstance: Firestore = d
 
 // ── Human reviews ───────────────────────────────────────────────────────────
 
-function mapReview(id: string, data: Record<string, any>): HumanReview {
+function mapReview(id: string, data: Record<string, unknown>): HumanReview {
   return {
     id,
-    uid: data.uid ?? '',
-    studentName: data.studentName ?? '',
-    studentEmail: data.studentEmail ?? '',
-    teacherId: data.teacherId ?? '',
-    teacherName: data.teacherName ?? '',
-    mode: data.mode ?? 'quick',
-    task1: data.task1 ?? undefined,
-    task2: data.task2 ?? undefined,
-    status: data.status ?? 'pending',
+    uid: (data.uid as string) ?? '',
+    studentName: (data.studentName as string) ?? '',
+    studentEmail: (data.studentEmail as string) ?? '',
+    teacherId: (data.teacherId as string) ?? '',
+    teacherName: (data.teacherName as string) ?? '',
+    mode: (data.mode as HumanReview['mode']) ?? 'quick',
+    task1: (data.task1 as HumanReviewTaskPart) ?? undefined,
+    task2: (data.task2 as HumanReviewTaskPart) ?? undefined,
+    status: (data.status as HumanReview['status']) ?? 'pending',
     priceUZS: typeof data.priceUZS === 'number' ? data.priceUZS : 0,
     // Legacy reviews created before the platform-fee feature default to the
     // standard 5,000 UZS fee so historical teacher earnings stay consistent.
     platformFeeUZS: typeof data.platformFeeUZS === 'number' ? data.platformFeeUZS : 5000,
-    feedbackDocBase64: data.feedbackDocBase64 ?? undefined,
-    feedbackFileName: data.feedbackFileName ?? undefined,
+    feedbackDocBase64: (data.feedbackDocBase64 as string) ?? undefined,
+    feedbackFileName: (data.feedbackFileName as string) ?? undefined,
     requestedAt: toDate(data.requestedAt),
     checkedAt: data.checkedAt ? toDate(data.checkedAt) : undefined,
   };

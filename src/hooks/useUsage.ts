@@ -27,7 +27,10 @@ export function useUsage(uid: string | null) {
       const expiresAt: string = data?.expiresAt ?? '';
       const isExpired = plan !== 'forever' && !!expiresAt && new Date(expiresAt) < new Date();
       const effectivePlan = isExpired ? 'free' : plan;
-      const limit = planLimits[effectivePlan] ?? 0;
+      const hasCenter = typeof data?.centerId === 'string' && data.centerId.length > 0;
+      // Learning-center students always get at least the premium (25) allowance,
+      // matching src/firebase/firestore.ts's getUsage().
+      const limit = Math.max(planLimits[effectivePlan] ?? 0, hasCenter ? 25 : 0);
       setUsage({ uid, yearMonth, count, limit, updatedAt: new Date() });
     }, () => {
       setLoading(false);

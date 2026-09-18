@@ -21,31 +21,9 @@ import { useFeatureFlag } from "@/hooks/useFeatureFlag";
 import { TeacherPickerModal } from "@/components/ui/TeacherPickerModal";
 import { HumanCheckConfirmModal } from "@/components/ui/HumanCheckConfirmModal";
 import { FullscreenButton } from "@/components/ui/FullscreenButton";
-import { hasFreeReportThisWeek, type FreeUsage } from "@/lib/weeklyFree";
 import { ShuffleBag } from "@/lib/shuffleBag";
-
-async function loadImgBase64(src: string): Promise<{ b64: string; w: number; h: number } | null> {
-  if (src.startsWith('data:application/pdf') || /\.pdf(\?|$)/i.test(src)) return null;
-  try {
-    let dataUrl = src;
-    if (!src.startsWith('data:')) {
-      const res = await fetch(src);
-      const blob = await res.blob();
-      dataUrl = await new Promise<string>((resolve) => {
-        const reader = new FileReader();
-        reader.onload = () => resolve(reader.result as string);
-        reader.readAsDataURL(blob);
-      });
-    }
-    const { w, h } = await new Promise<{ w: number; h: number }>((resolve) => {
-      const img = new Image();
-      img.onload = () => resolve({ w: img.naturalWidth, h: img.naturalHeight });
-      img.onerror = () => resolve({ w: 4, h: 3 });
-      img.src = dataUrl;
-    });
-    return { b64: dataUrl, w, h };
-  } catch { return null; }
-}
+import { loadImgBase64 } from "@/lib/loadImageForPdf";
+import { hasAccess } from "@/lib/reportAccess";
 
 interface Task1 {
   image: string;
@@ -53,16 +31,6 @@ interface Task1 {
 }
 interface Task2 {
   report: string;
-}
-
-function hasAccess(data: Record<string, unknown>): boolean {
-  // Learning-center students always have access (free premium).
-  if (typeof data.centerId === "string" && data.centerId.length > 0) return true;
-  const plan = data.plan as string | undefined;
-  if (plan === 'forever' || plan === 'premium' || plan === 'standard' || plan === 'basic') return true;
-  const bonus = typeof data.bonusAnalyses === 'number' ? data.bonusAnalyses : 0;
-  if (bonus > 0) return true;
-  return hasFreeReportThisWeek(data.freeUsage as FreeUsage | undefined);
 }
 
 function Quick() {
@@ -237,7 +205,7 @@ function Quick() {
     pdf.text(answerLines, margin + 5, y + 7);
 
     // Footer on all pages
-    const pages = (pdf.internal as any).getNumberOfPages();
+    const pages = pdf.getNumberOfPages();
     for (let i = 1; i <= pages; i++) {
       pdf.setPage(i);
       pdf.setFillColor(88, 28, 135);
@@ -497,7 +465,11 @@ function Quick() {
 
         {/* Answer panel */}
         <div className="flex flex-col flex-1 bg-slate-50">
+          <label htmlFor="quick-answer" className="sr-only">
+            Your answer for Task {selectedTaskType}
+          </label>
           <textarea
+            id="quick-answer"
             value={userText}
             onChange={(e) => setUserText(e.target.value)}
             placeholder="Start writing your response here…"

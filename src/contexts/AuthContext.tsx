@@ -55,7 +55,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const signInWithGoogle = async () => {
     const provider = new GoogleAuthProvider();
-    await signInWithPopup(auth, provider);
+    return signInWithPopup(auth, provider);
   };
 
   const logOut = async () => {
