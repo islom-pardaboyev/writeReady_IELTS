@@ -1,6 +1,7 @@
 import { lazy, Suspense } from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider } from './contexts/AuthContext';
+import { useAuth } from './hooks/useAuth';
 import { LandingPage } from './pages/LandingPage';
 import { AuthPage } from './pages/AuthPage';
 
@@ -30,12 +31,25 @@ function withSuspense(element: React.ReactNode) {
   return <Suspense fallback={PageSpinner}>{element}</Suspense>;
 }
 
+// Signed-in students never see the landing page — "/" sends them to the dashboard.
+// Internal (@writeready.internal) accounts are excluded: DashboardPage bounces them
+// back to "/" when no admin session is active, which would otherwise loop.
+function HomeRoute() {
+  const { user, loading } = useAuth();
+  if (user && !user.email?.endsWith('@writeready.internal')) {
+    return <Navigate to="/dashboard" replace />;
+  }
+  // Wait for Firebase to restore the session so signed-in users don't see a flash of the landing page.
+  if (loading) return null;
+  return <LandingPage />;
+}
+
 export default function App() {
   return (
     <AuthProvider>
       <BrowserRouter>
         <Routes>
-          <Route path="/" element={<LandingPage />} />
+          <Route path="/" element={<HomeRoute />} />
           <Route path="/auth" element={<AuthPage />} />
           <Route path="/dashboard" element={withSuspense(<DashboardPage />)} />
           <Route path="/workspace/:id" element={withSuspense(<WorkspacePage />)} />
