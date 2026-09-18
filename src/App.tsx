@@ -3,6 +3,7 @@ import { BrowserRouter, Routes, Route, Navigate } from 'react-router';
 import { AuthProvider } from './contexts/AuthContext';
 import { MaintenanceGate } from './components/layout/MaintenanceGate';
 import { RouteTitle } from './components/layout/RouteTitle';
+import { RouteFocus } from './components/layout/RouteFocus';
 import { LandingPage } from './pages/LandingPage';
 import { AuthPage } from './pages/AuthPage';
 
@@ -38,6 +39,7 @@ export default function App() {
       <BrowserRouter>
         <MaintenanceGate>
           <RouteTitle />
+          <RouteFocus />
           <Routes>
             <Route path="/" element={<LandingPage />} />
             <Route path="/auth" element={<AuthPage />} />

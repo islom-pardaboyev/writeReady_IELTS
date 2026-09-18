@@ -3,6 +3,7 @@ import gsap from 'gsap';
 import { ScrollTrigger } from 'gsap/ScrollTrigger';
 import { Link } from 'react-router';
 import { Header } from '@/components/layout/Header';
+import { SkipLink } from '@/components/layout/SkipLink';
 import { ChatBot } from '../components/ui/ChatBot';
 import { AnnouncementPopup } from '../components/ui/AnnouncementPopup';
 
@@ -68,11 +69,13 @@ export function LandingPage() {
   return (
     <div ref={rootRef} className="font-sans bg-[var(--bg-base)] text-[var(--text-primary)]">
 
+      <SkipLink />
+
       {/* ── Nav ── */}
       <Header />
       <AnnouncementPopup />
 
-      <main>
+      <main id="main-content" tabIndex={-1} className="outline-none">
       {/* ── Hero ── */}
       <section className="max-w-[1160px] mx-auto px-6 pt-20 pb-16 grid grid-cols-2 gap-16 items-center max-[768px]:grid-cols-1">
         {/* Left */}

@@ -20,6 +20,7 @@ import { useStopwatch } from "@/hooks/useStopwatch";
 import { useHumanCheck } from "@/hooks/useHumanCheck";
 import { useFeatureFlag } from "@/hooks/useFeatureFlag";
 import { TeacherPickerModal } from "@/components/ui/TeacherPickerModal";
+import { ModalCard, ModalTitle, ModalDescription } from "@/components/ui/ModalCard";
 import { HumanCheckConfirmModal } from "@/components/ui/HumanCheckConfirmModal";
 import { FullscreenButton } from "@/components/ui/FullscreenButton";
 import { ShuffleBag } from "@/lib/shuffleBag";
@@ -437,20 +438,19 @@ function Quick() {
       </div>
 
       {/* ── Feedback modal ── */}
-      {showFeedbackModal && (
-        <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-4 bg-black/40 backdrop-blur-sm">
+      <ModalCard open={showFeedbackModal} onClose={() => { if (!checkingAccess) setShowFeedbackModal(false); }}>
           <div className="w-full max-w-sm bg-white rounded-2xl shadow-2xl overflow-hidden">
             <div className="h-1.5 bg-linear-to-r from-violet-500 to-purple-500" />
             <div className="p-7">
               <div className="flex items-center justify-center w-11 h-11 mx-auto rounded-full bg-violet-50">
                 <CheckIcon className="w-5 h-5 text-violet-600" />
               </div>
-              <h2 className="mt-4 text-base font-semibold text-center text-slate-900">
+              <ModalTitle className="mt-4 text-base font-semibold text-center text-slate-900">
                 Essay saved!
-              </h2>
-              <p className="mt-2 text-sm leading-6 text-center text-slate-500">
+              </ModalTitle>
+              <ModalDescription className="mt-2 text-sm leading-6 text-center text-slate-500">
                 Would you like in-depth AI feedback on your writing? We'll analyse grammar, vocabulary, coherence, and task achievement.
-              </p>
+              </ModalDescription>
               <div className="flex flex-col gap-2.5 mt-6">
                 <Button
                   onClick={handleAcceptFeedback}
@@ -481,8 +481,7 @@ function Quick() {
               </div>
             </div>
           </div>
-        </div>
-      )}
+        </ModalCard>
 
       <HumanCheckConfirmModal
         open={humanCheck.showCostConfirm}
@@ -501,25 +500,23 @@ function Quick() {
         submitting={humanCheck.submitting}
       />
 
-      {humanCheck.success && (
-        <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-4 bg-black/40 backdrop-blur-sm">
+      <ModalCard open={humanCheck.success} onClose={() => humanCheck.setSuccess(false)}>
           <div className="w-full max-w-sm bg-white rounded-2xl shadow-2xl overflow-hidden">
             <div className="h-1.5 bg-linear-to-r from-emerald-500 to-teal-500" />
             <div className="p-7 text-center">
               <div className="flex items-center justify-center w-11 h-11 mx-auto rounded-full bg-emerald-50">
                 <CheckIcon className="w-5 h-5 text-emerald-600" />
               </div>
-              <h2 className="mt-4 text-base font-semibold text-slate-900">Sent for human review</h2>
-              <p className="mt-2 text-sm leading-6 text-slate-500">
+              <ModalTitle className="mt-4 text-base font-semibold text-slate-900">Sent for human review</ModalTitle>
+              <ModalDescription className="mt-2 text-sm leading-6 text-slate-500">
                 You'll get a notification once your teacher has reviewed your essay.
-              </p>
+              </ModalDescription>
               <Button onClick={() => humanCheck.setSuccess(false)} className="w-full mt-6 bg-violet-600 hover:bg-violet-700 text-white">
                 Done
               </Button>
             </div>
           </div>
-        </div>
-      )}
+        </ModalCard>
 
       {humanCheck.error && (
         <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 bg-red-600 text-white text-sm px-4 py-2.5 rounded-lg shadow-lg">

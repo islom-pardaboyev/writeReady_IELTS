@@ -4,6 +4,7 @@ import { LogOut } from "lucide-react";
 import Logo from "/logo.png";
 import { ChatBot } from "../ui/ChatBot";
 import { AppSidebar } from "./AppSidebar";
+import { SkipLink } from "./SkipLink";
 import { SidebarProvider, SidebarInset, SidebarTrigger } from "@/components/ui/sidebar";
 import { ThemeToggle } from "@/components/ui/ThemeToggle";
 import { NotificationBell } from "@/components/ui/NotificationBell";
@@ -52,14 +53,9 @@ export function AppShell({ children, minimal = false }: AppShellProps) {
   if (minimal) {
     return (
       <div className="min-h-screen bg-[var(--bg-base)] text-[var(--text-primary)]">
-        <a
-          href="#main-content"
-          className="sr-only focus:not-sr-only focus:fixed focus:top-2 focus:left-2 focus:z-50 focus:px-4 focus:py-2 focus:rounded-lg focus:bg-[var(--bg-card)] focus:text-[var(--text-primary)] focus:shadow-lg"
-        >
-          Skip to main content
-        </a>
+        <SkipLink />
         <MinimalTopBar />
-        <main id="main-content" className="bg-[var(--bg-base)]">{children}</main>
+        <main id="main-content" tabIndex={-1} className="outline-none bg-[var(--bg-base)]">{children}</main>
         <ChatBot />
       </div>
     );
@@ -67,19 +63,14 @@ export function AppShell({ children, minimal = false }: AppShellProps) {
 
   return (
     <SidebarProvider>
-      <a
-        href="#main-content"
-        className="sr-only focus:not-sr-only focus:fixed focus:top-2 focus:left-2 focus:z-50 focus:px-4 focus:py-2 focus:rounded-lg focus:bg-[var(--bg-card)] focus:text-[var(--text-primary)] focus:shadow-lg"
-      >
-        Skip to main content
-      </a>
+      <SkipLink />
       <div className="flex min-h-screen bg-[var(--bg-base)] text-[var(--text-primary)]">
         <AppSidebar />
         <SidebarInset>
           <div className="md:hidden sticky top-0 z-20 flex items-center px-3 py-2 bg-[var(--bg-card)]/95 backdrop-blur-[8px] border-b border-[var(--border-color)]">
             <SidebarTrigger />
           </div>
-          <main id="main-content" className="flex-1 bg-[var(--bg-base)]">{children}</main>
+          <main id="main-content" tabIndex={-1} className="outline-none flex-1 bg-[var(--bg-base)]">{children}</main>
         </SidebarInset>
       </div>
       <ChatBot />

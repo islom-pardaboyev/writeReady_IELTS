@@ -88,6 +88,13 @@ export function ChatBot() {
   const [loading, setLoading] = useState(false);
   const bottomRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
+  const toggleRef = useRef<HTMLButtonElement>(null);
+
+  // Hand focus back to the launcher so keyboard users don't land on <body>.
+  const close = () => {
+    setOpen(false);
+    toggleRef.current?.focus();
+  };
 
   useEffect(() => {
     if (open) {
@@ -134,8 +141,11 @@ export function ChatBot() {
     <>
       {/* Floating button */}
       <button
+        ref={toggleRef}
         type="button"
         onClick={() => setOpen((o) => !o)}
+        aria-expanded={open}
+        aria-controls="ielts-assistant"
         className="fixed bottom-6 right-6 z-[200] w-14 h-14 rounded-full bg-[var(--ink-blue)] text-white shadow-lg flex items-center justify-center hover:opacity-90 transition-colors"
         aria-label={open ? 'Close IELTS assistant' : 'Open IELTS assistant'}
       >
@@ -144,7 +154,17 @@ export function ChatBot() {
 
       {/* Chat window */}
       {open && (
-        <div className="fixed bottom-24 right-6 z-[200] w-[360px] max-w-[calc(100vw-2rem)] flex flex-col rounded-2xl shadow-[0_8px_40px_rgba(0,0,0,0.18)] border border-[var(--border-color)] bg-[var(--bg-card)] overflow-hidden"
+        <div
+          id="ielts-assistant"
+          role="dialog"
+          aria-label="IELTS assistant"
+          onKeyDown={(e) => {
+            if (e.key === 'Escape') {
+              e.stopPropagation();
+              close();
+            }
+          }}
+          className="fixed bottom-24 right-6 z-[200] w-[360px] max-w-[calc(100vw-2rem)] flex flex-col rounded-2xl shadow-[0_8px_40px_rgba(0,0,0,0.18)] border border-[var(--border-color)] bg-[var(--bg-card)] overflow-hidden"
           style={{ height: '480px' }}
         >
           {/* Header */}
@@ -156,7 +176,7 @@ export function ChatBot() {
               <p className="text-sm font-bold text-white leading-tight">IELTS Assistant</p>
               <p className="text-[0.65rem] text-white/70">Powered by AI · Ask me anything</p>
             </div>
-            <button type="button" onClick={() => setOpen(false)} className="text-white/70 hover:text-white transition-colors bg-transparent border-0 cursor-pointer p-1" aria-label="Close IELTS assistant">
+            <button type="button" onClick={close} className="text-white/70 hover:text-white transition-colors bg-transparent border-0 cursor-pointer p-1" aria-label="Close IELTS assistant">
               <CloseIcon />
             </button>
           </div>

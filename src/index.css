@@ -222,6 +222,12 @@ button:disabled {
   * {
     @apply border-border outline-ring/50;
   }
+  /* A clear ring for keyboard focus everywhere. It sits in the base layer, so
+     components that draw their own focus ring still override it. */
+  :focus-visible {
+    outline: 2px solid var(--ring);
+    outline-offset: 2px;
+  }
   html {
     transition:
       background-color 0.2s ease,
