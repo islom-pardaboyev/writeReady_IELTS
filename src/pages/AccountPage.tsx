@@ -11,6 +11,7 @@ import { Avatar, AvatarImage, AvatarFallback } from '../components/ui/avatar';
 import { Input } from '../components/ui/input';
 import { Label } from '../components/ui/label';
 import { PasswordInput } from '../components/ui/PasswordInput';
+import { ShortcutSettings } from '../components/shortcuts/ShortcutSettings';
 
 function friendlyAuthError(err: unknown, fallback: string): string {
   const msg = err instanceof Error ? err.message : fallback;
@@ -305,6 +306,8 @@ export function AccountPage() {
               </p>
             )}
           </Card>
+
+          <ShortcutSettings className="gs-edit-card mb-4" />
 
           {/* Actions */}
           <Card className="gs-account-actions px-6 py-4 flex items-center justify-between">

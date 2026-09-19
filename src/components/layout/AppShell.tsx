@@ -8,6 +8,7 @@ import { SkipLink } from "./SkipLink";
 import { SidebarProvider, SidebarInset, SidebarTrigger } from "@/components/ui/sidebar";
 import { ThemeToggle } from "@/components/ui/ThemeToggle";
 import { NotificationBell } from "@/components/ui/NotificationBell";
+import { ShortcutsButton } from "@/components/shortcuts/ShortcutsButton";
 import { useAuth } from "../../hooks/useAuth";
 
 interface AppShellProps {
@@ -36,6 +37,7 @@ function MinimalTopBar() {
       <div className="flex items-center gap-2">
         <ThemeToggle />
         <NotificationBell />
+        <ShortcutsButton />
         <button
           onClick={handleLogout}
           aria-label="Log out"

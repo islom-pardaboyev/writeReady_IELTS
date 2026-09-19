@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect, type ReactNode } from 'react';
+import { TOGGLE_ASSISTANT_EVENT } from '@/lib/shortcuts';
 
 function renderMarkdown(text: string): ReactNode[] {
   const lines = text.split('\n');
@@ -95,6 +96,26 @@ export function ChatBot() {
     setOpen(false);
     toggleRef.current?.focus();
   };
+
+  // The "open or close the AI assistant" keyboard shortcut. Cancelling the
+  // event tells the shortcut this page has an assistant.
+  const openRef = useRef(open);
+  useEffect(() => {
+    openRef.current = open;
+  }, [open]);
+  useEffect(() => {
+    const onToggle = (e: Event) => {
+      e.preventDefault();
+      if (openRef.current) {
+        setOpen(false);
+        toggleRef.current?.focus();
+      } else {
+        setOpen(true);
+      }
+    };
+    window.addEventListener(TOGGLE_ASSISTANT_EVENT, onToggle);
+    return () => window.removeEventListener(TOGGLE_ASSISTANT_EVENT, onToggle);
+  }, []);
 
   useEffect(() => {
     if (open) {

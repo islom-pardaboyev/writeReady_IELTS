@@ -12,6 +12,7 @@ import { useAuth } from "../../hooks/useAuth";
 import { SubscriptionBadge } from "./Header";
 import { ThemeToggle } from "@/components/ui/ThemeToggle";
 import { NotificationBell } from "@/components/ui/NotificationBell";
+import { ShortcutsButton } from "@/components/shortcuts/ShortcutsButton";
 import {
   Sidebar,
   SidebarHeader,
@@ -119,6 +120,7 @@ export function AppSidebar() {
           <ThemeToggle />
           {/* Beside the sidebar on desktop; above the bell in the phone drawer. */}
           <NotificationBell side={isMobile ? "top" : "right"} />
+          <ShortcutsButton />
           <button
             onClick={handleLogout}
             aria-label="Log out"

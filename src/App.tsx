@@ -4,6 +4,7 @@ import { AuthProvider } from './contexts/AuthContext';
 import { MaintenanceGate } from './components/layout/MaintenanceGate';
 import { RouteTitle } from './components/layout/RouteTitle';
 import { RouteFocus } from './components/layout/RouteFocus';
+import { GlobalShortcuts } from './components/shortcuts/GlobalShortcuts';
 import { LandingPage } from './pages/LandingPage';
 import { AuthPage } from './pages/AuthPage';
 
@@ -40,6 +41,7 @@ export default function App() {
         <MaintenanceGate>
           <RouteTitle />
           <RouteFocus />
+          <GlobalShortcuts />
           <Routes>
             <Route path="/" element={<LandingPage />} />
             <Route path="/auth" element={<AuthPage />} />
