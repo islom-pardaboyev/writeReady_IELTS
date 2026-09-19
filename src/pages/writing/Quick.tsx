@@ -15,7 +15,7 @@ import { useUnsavedWork } from "@/hooks/useUnsavedWork";
 import { Button } from "@/components/ui/Button";
 import WritingTask2Preview from "@/components/writingTask2Preview/WritingTask2Preview";
 import { encodeReport } from "@/lib/reportEncoding";
-import { CheckIcon, ChevronRightIcon, ClockIcon, ZapIcon, Bot, GraduationCap } from "lucide-react";
+import { CheckIcon, ChevronRightIcon, ClockIcon, ZapIcon, Bot, GraduationCap, ChevronLeftIcon } from "lucide-react";
 import { useStopwatch } from "@/hooks/useStopwatch";
 import { useHumanCheck } from "@/hooks/useHumanCheck";
 import { useFeatureFlag } from "@/hooks/useFeatureFlag";
@@ -263,7 +263,17 @@ function Quick() {
         <div className="flex items-center justify-between gap-4 px-5 py-2.5">
           {/* Left */}
           <div className="flex items-center gap-2 min-w-0">
-            <span className="hidden sm:block text-xs font-semibold text-white/50 tracking-widest uppercase">WriteReady</span>
+            <button
+              type="button"
+              onClick={(e) => {
+                confirmLeave(e);
+                if (!e.defaultPrevented) navigate(-1);
+              }}
+              className="hidden sm:flex items-center gap-2 rounded text-xs font-semibold text-black/50 tracking-widest uppercase hover:text-black focus-visible:ring-2 focus-visible:ring-blue-500"
+            >
+              <ChevronLeftIcon strokeWidth={3} aria-hidden="true" className="size-3 text-black" />
+              WriteReady
+            </button>
             <ChevronRightIcon className="hidden sm:block w-3 h-3 text-white/30" />
             <span className="text-sm font-medium text-white">Quick Write — Task {selectedTaskType}</span>
           </div>

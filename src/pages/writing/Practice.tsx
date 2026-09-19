@@ -16,7 +16,7 @@ import { useUnsavedWork } from "@/hooks/useUnsavedWork";
 import { Button } from "@/components/ui/Button";
 import WritingTask2Preview from "@/components/writingTask2Preview/WritingTask2Preview";
 import { encodeReport } from "@/lib/reportEncoding";
-import { CheckIcon, ChevronRightIcon, ClockIcon, Bot, GraduationCap } from "lucide-react";
+import { CheckIcon, ChevronRightIcon, ClockIcon, Bot, GraduationCap, ChevronLeftIcon } from "lucide-react";
 import { useHumanCheck } from "@/hooks/useHumanCheck";
 import { useFeatureFlag } from "@/hooks/useFeatureFlag";
 import { TeacherPickerModal } from "@/components/ui/TeacherPickerModal";
@@ -234,9 +234,17 @@ function Practice() {
       <div className="sticky top-0 z-30 bg-white border-b border-slate-800">
         <div className="flex items-center justify-between gap-4 px-5 py-2.5">
           <div className="flex items-center gap-2 min-w-0">
-            <span className="hidden sm:block text-xs font-semibold text-black/50 tracking-widest uppercase">
+            <button
+              type="button"
+              onClick={(e) => {
+                confirmLeave(e);
+                if (!e.defaultPrevented) navigate(-1);
+              }}
+              className="hidden sm:flex items-center gap-2 rounded text-xs font-semibold text-black/50 tracking-widest uppercase hover:text-black focus-visible:ring-2 focus-visible:ring-blue-500"
+            >
+              <ChevronLeftIcon strokeWidth={3} aria-hidden="true" className="size-3 text-black" />
               WriteReady
-            </span>
+            </button>
             <ChevronRightIcon aria-hidden="true" className="hidden sm:block w-3 h-3 text-black/30" />
             <span className="text-sm font-medium text-black truncate">
               Practice Mode
