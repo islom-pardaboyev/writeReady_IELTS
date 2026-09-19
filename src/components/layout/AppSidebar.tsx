@@ -6,9 +6,13 @@ import {
   Wallet,
   User as UserIcon,
   LogOut,
+  Send,
+  ArrowUpRight,
 } from "lucide-react";
 import Logo from "/logo.svg";
 import { useAuth } from "../../hooks/useAuth";
+import { TELEGRAM_CHANNEL_URL } from "@/lib/links";
+import { cn } from "@/lib/utils";
 import { SubscriptionBadge } from "./Header";
 import { ThemeToggle } from "@/components/ui/ThemeToggle";
 import { NotificationBell } from "@/components/ui/NotificationBell";
@@ -91,6 +95,33 @@ export function AppSidebar() {
                 </SidebarMenuItem>
               );
             })}
+            {/* Leaves the site, so it sits apart from the pages above. */}
+            <SidebarMenuItem className="mt-2 border-t border-[var(--border-color)] pt-2">
+              <a
+                href={TELEGRAM_CHANNEL_URL}
+                target="_blank"
+                rel="noopener noreferrer"
+                title={collapsed ? "Telegram channel" : undefined}
+                onClick={handleNavClick}
+                className={cn(
+                  "group flex w-full items-center gap-3 rounded-lg px-3.5 py-2.5 text-sm font-medium no-underline transition-colors",
+                  "text-[var(--sidebar-foreground)]/70 hover:bg-[var(--sidebar-accent)]/60 hover:text-[var(--sidebar-foreground)]",
+                  "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ink-blue)]",
+                  collapsed ? "justify-center px-2" : "pr-2.5",
+                )}
+              >
+                <Send size={18} className="shrink-0" aria-hidden="true" />
+                {collapsed ? (
+                  <span className="sr-only">Telegram channel (opens in a new tab)</span>
+                ) : (
+                  <>
+                    <span className="flex-1 truncate">Telegram channel</span>
+                    <ArrowUpRight size={14} className="-ml-1.5 shrink-0 opacity-60 transition-opacity group-hover:opacity-100" aria-hidden="true" />
+                    <span className="sr-only">(opens in a new tab)</span>
+                  </>
+                )}
+              </a>
+            </SidebarMenuItem>
           </SidebarMenu>
         </SidebarGroup>
       </SidebarContent>

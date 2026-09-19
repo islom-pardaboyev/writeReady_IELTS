@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState, type ComponentType, type ReactNode } from 'react';
 import { Link } from 'react-router';
 import { Popover } from 'radix-ui';
-import { Bell, ExternalLink, Gift, GraduationCap, Heart, MessageCircle, Newspaper } from 'lucide-react';
+import { ArrowUpRight, Bell, ExternalLink, Gift, GraduationCap, Heart, MessageCircle, Newspaper, Send } from 'lucide-react';
 import { useAuth } from '../../hooks/useAuth';
 import { getUnreadNotificationCount, getNotifications, markNotificationsRead } from '../../firebase/blog';
 import type { Announcement } from '../../firebase/firestore';
@@ -13,6 +13,7 @@ import {
   sitePath,
   useSeenAnnouncements,
 } from '@/lib/announcements';
+import { TELEGRAM_CHANNEL_URL } from '@/lib/links';
 import { cn } from '@/lib/utils';
 
 function relativeTime(d: Date | null): string {
@@ -343,6 +344,23 @@ export function NotificationBell({ side = 'bottom', align = 'end' }: Notificatio
                 )}
               </ul>
             )}
+          </div>
+
+          {/* Always here, so news stays one click away after an announcement is closed. */}
+          <div className="shrink-0 border-t border-[var(--border-color)] bg-[var(--bg-subtle)]/60">
+            <Popover.Close asChild>
+              <a
+                href={TELEGRAM_CHANNEL_URL}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="group flex items-center gap-2.5 px-4 py-2.5 text-sm no-underline text-[var(--text-secondary)] transition-colors hover:bg-[var(--bg-subtle)] hover:text-[var(--text-primary)] focus-visible:bg-[var(--bg-subtle)] focus-visible:outline-none"
+              >
+                <Send size={15} className="shrink-0 text-[var(--ink-blue)]" aria-hidden />
+                <span className="flex-1">Follow our Telegram channel for news</span>
+                <ArrowUpRight size={14} className="shrink-0 opacity-60 transition-opacity group-hover:opacity-100" aria-hidden />
+                <span className="sr-only">(opens in a new tab)</span>
+              </a>
+            </Popover.Close>
           </div>
         </Popover.Content>
       </Popover.Portal>

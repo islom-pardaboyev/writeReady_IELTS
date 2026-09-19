@@ -2,6 +2,8 @@ import { useRef, useLayoutEffect } from 'react';
 import gsap from 'gsap';
 import { ScrollTrigger } from 'gsap/ScrollTrigger';
 import { Link } from 'react-router';
+import { ArrowUpRight, Send } from 'lucide-react';
+import { TELEGRAM_CHANNEL_URL } from '@/lib/links';
 import { Header } from '@/components/layout/Header';
 import { SkipLink } from '@/components/layout/SkipLink';
 import { ChatBot } from '../components/ui/ChatBot';
@@ -257,6 +259,17 @@ export function LandingPage() {
 
       {/* ── Footer ── */}
       <footer className="bg-slate-900 border-t border-white/[0.06] px-6 py-6 text-center dark:bg-slate-950">
+        <a
+          href={TELEGRAM_CHANNEL_URL}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="group mb-3 inline-flex items-center gap-2 rounded-lg px-3 py-1.5 text-sm font-medium text-white/70 no-underline transition-colors hover:bg-white/[0.06] hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-400"
+        >
+          <Send size={15} aria-hidden="true" />
+          Follow us on Telegram
+          <ArrowUpRight size={14} className="opacity-60 transition-opacity group-hover:opacity-100" aria-hidden="true" />
+          <span className="sr-only">(opens in a new tab)</span>
+        </a>
         <p className="text-[0.8125rem] text-white/30">
           © {new Date().getFullYear()} WriteReady IELTS · AI-powered writing coach
         </p>

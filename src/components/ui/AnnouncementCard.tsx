@@ -2,6 +2,7 @@ import { useEffect, useId, useState, type KeyboardEvent } from "react";
 import { useLocation, useNavigate } from "react-router";
 import { ArrowRight, ExternalLink, X } from "lucide-react";
 import type { Announcement } from "@/firebase/firestore";
+import { useAuth } from "@/hooks/useAuth";
 import {
   categoryOf,
   loadAnnouncements,
@@ -22,7 +23,8 @@ const EXIT_MS = 200;
 
 /**
  * The newest announcement this browser hasn't read yet, as a card in the
- * bottom-left corner. It never blocks the page or takes focus, stays across
+ * bottom-left corner, for signed-in students only; visitors without an
+ * account never see it. It never blocks the page or takes focus, stays across
  * page changes until it's dismissed, and remains in the notification bell
  * afterwards. After one is dismissed, the next unread one waits for the next
  * visit, so students aren't handed a queue.
@@ -30,6 +32,8 @@ const EXIT_MS = 200;
 export function AnnouncementCard() {
   const { pathname } = useLocation();
   const navigate = useNavigate();
+  const { user } = useAuth();
+  const signedIn = !!user;
   const seen = useSeenAnnouncements();
   const titleId = useId();
   const [items, setItems] = useState<Announcement[]>([]);
@@ -38,6 +42,7 @@ export function AnnouncementCard() {
   const [dismissedThisVisit, setDismissedThisVisit] = useState(false);
 
   useEffect(() => {
+    if (!signedIn) return;
     let cancelled = false;
     loadAnnouncements()
       .then((list) => {
@@ -49,7 +54,7 @@ export function AnnouncementCard() {
       cancelled = true;
       window.clearTimeout(timer);
     };
-  }, []);
+  }, [signedIn]);
 
   const current = items.find((a) => !seen.has(a.id));
 
@@ -65,7 +70,7 @@ export function AnnouncementCard() {
   }, [closing, current]);
 
   const hidden = HIDDEN_ON.some((p) => pathname === p || pathname.startsWith(`${p}/`));
-  const visible = ready && !!current && !hidden && !dismissedThisVisit;
+  const visible = signedIn && ready && !!current && !hidden && !dismissedThisVisit;
 
   const dismiss = () => setClosing(true);
 
