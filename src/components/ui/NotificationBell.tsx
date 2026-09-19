@@ -1,10 +1,18 @@
 import { useEffect, useRef, useState, type ComponentType, type ReactNode } from 'react';
 import { Link } from 'react-router';
 import { Popover } from 'radix-ui';
-import { Bell, Gift, GraduationCap, Heart, MessageCircle, Newspaper } from 'lucide-react';
+import { Bell, ExternalLink, Gift, GraduationCap, Heart, MessageCircle, Newspaper } from 'lucide-react';
 import { useAuth } from '../../hooks/useAuth';
 import { getUnreadNotificationCount, getNotifications, markNotificationsRead } from '../../firebase/blog';
+import type { Announcement } from '../../firebase/firestore';
 import type { Notification } from '../../types/blog';
+import {
+  categoryOf,
+  loadAnnouncements,
+  markAnnouncementsSeen,
+  sitePath,
+  useSeenAnnouncements,
+} from '@/lib/announcements';
 import { cn } from '@/lib/utils';
 
 function relativeTime(d: Date | null): string {
@@ -103,6 +111,72 @@ function NotificationRow({ n }: { n: Notification }) {
   );
 }
 
+// News the admin posted for everyone, alongside the student's own notifications.
+function AnnouncementRow({ a, unread }: { a: Announcement; unread: boolean }) {
+  const meta = categoryOf(a);
+  const Icon = meta.icon;
+  const title = a.title || a.text;
+  // One line of preview text; the panel clamps it.
+  const body = a.title ? a.text.replace(/\s*\n\s*/g, ' ') : '';
+  const link = a.link?.trim() ?? '';
+  const path = link ? sitePath(link) : null;
+  const content = (
+    <>
+      <span className={cn('mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-full', meta.tint)}>
+        <Icon size={15} aria-hidden />
+      </span>
+      <span className="min-w-0 flex-1">
+        <strong className="block break-words text-sm font-semibold leading-5 text-[var(--text-primary)]">{title}</strong>
+        {body && (
+          <span className="mt-0.5 line-clamp-3 break-words text-xs leading-[18px] text-[var(--text-secondary)]">
+            {body}
+          </span>
+        )}
+        <span className="mt-1 flex items-center gap-1 text-xs text-[var(--text-secondary)]">
+          <span title={a.createdAt?.toLocaleString('en-GB')}>
+            {meta.label} · {relativeTime(a.createdAt)}
+          </span>
+          {link && !path && (
+            <>
+              <ExternalLink size={12} aria-hidden />
+              <span className="sr-only">(opens in a new tab)</span>
+            </>
+          )}
+        </span>
+      </span>
+      {unread && (
+        <span className="mt-2 h-2 w-2 shrink-0 rounded-full bg-[var(--ink-blue)]">
+          <span className="sr-only">New</span>
+        </span>
+      )}
+    </>
+  );
+  const rowClass = cn('flex gap-3 px-4 py-3', unread && 'bg-[var(--accent)]/40');
+  const linkClass = cn(
+    rowClass,
+    'no-underline transition-colors hover:bg-[var(--bg-subtle)] focus-visible:bg-[var(--bg-subtle)] focus-visible:outline-none',
+  );
+
+  if (!link) return <div className={rowClass}>{content}</div>;
+  return (
+    <Popover.Close asChild>
+      {path ? (
+        <Link to={path} className={linkClass}>
+          {content}
+        </Link>
+      ) : (
+        <a href={link} target="_blank" rel="noopener noreferrer" className={linkClass}>
+          {content}
+        </a>
+      )}
+    </Popover.Close>
+  );
+}
+
+type Entry =
+  | { kind: 'notification'; date: number; n: Notification }
+  | { kind: 'announcement'; date: number; a: Announcement; unread: boolean };
+
 interface NotificationBellProps {
   /** Which side of the bell the panel opens on; it flips if there's no room. */
   side?: 'top' | 'right' | 'bottom' | 'left';
@@ -113,6 +187,11 @@ export function NotificationBell({ side = 'bottom', align = 'end' }: Notificatio
   const { user } = useAuth();
   const [unreadCount, setUnreadCount] = useState(0);
   const [items, setItems] = useState<Notification[]>([]);
+  const [announcements, setAnnouncements] = useState<Announcement[]>([]);
+  // Which announcements were unread when the panel opened; opening marks them
+  // read, but they keep their "new" look until it's opened again.
+  const [newAnnouncementIds, setNewAnnouncementIds] = useState<Set<string>>(new Set());
+  const seen = useSeenAnnouncements();
   const [status, setStatus] = useState<'idle' | 'loading' | 'error'>('idle');
   const [sideOffset, setSideOffset] = useState(10);
   const triggerRef = useRef<HTMLButtonElement>(null);
@@ -124,6 +203,9 @@ export function NotificationBell({ side = 'bottom', align = 'end' }: Notificatio
     getUnreadNotificationCount(user.uid)
       .then((count) => { if (!cancelled) setUnreadCount(count); })
       .catch(() => {});
+    loadAnnouncements()
+      .then((list) => { if (!cancelled) setAnnouncements(list); })
+      .catch(() => {});
     return () => { cancelled = true; };
   }, [user]);
 
@@ -131,8 +213,14 @@ export function NotificationBell({ side = 'bottom', align = 'end' }: Notificatio
     if (!user) return;
     setStatus('loading');
     try {
-      const list = await getNotifications(user.uid);
+      const [list, news] = await Promise.all([
+        getNotifications(user.uid),
+        loadAnnouncements().catch(() => [] as Announcement[]),
+      ]);
       setItems(list);
+      setAnnouncements(news);
+      setNewAnnouncementIds(new Set(news.filter((a) => !seen.has(a.id)).map((a) => a.id)));
+      markAnnouncementsSeen(news.map((a) => a.id));
       setStatus('idle');
       // The rows keep their "new" look until the panel is opened again.
       if (unreadCount > 0 || list.some((n) => !n.read)) {
@@ -146,7 +234,18 @@ export function NotificationBell({ side = 'bottom', align = 'end' }: Notificatio
 
   if (!user) return null;
 
-  const newCount = items.filter((n) => !n.read).length;
+  const unreadAnnouncements = announcements.filter((a) => !seen.has(a.id)).length;
+  const badgeCount = unreadCount + unreadAnnouncements;
+  const entries: Entry[] = [
+    ...items.map((n): Entry => ({ kind: 'notification', date: n.createdAt?.getTime() ?? 0, n })),
+    ...announcements.map((a): Entry => ({
+      kind: 'announcement',
+      date: a.createdAt?.getTime() ?? 0,
+      a,
+      unread: newAnnouncementIds.has(a.id),
+    })),
+  ].sort((x, y) => y.date - x.date);
+  const newCount = items.filter((n) => !n.read).length + newAnnouncementIds.size;
 
   return (
     <Popover.Root
@@ -164,16 +263,16 @@ export function NotificationBell({ side = 'bottom', align = 'end' }: Notificatio
         <button
           ref={triggerRef}
           type="button"
-          aria-label={unreadCount > 0 ? `Notifications, ${unreadCount} unread` : 'Notifications'}
+          aria-label={badgeCount > 0 ? `Notifications, ${badgeCount} unread` : 'Notifications'}
           className="relative inline-flex h-9 w-9 shrink-0 cursor-pointer items-center justify-center rounded-lg border border-[var(--border-color)] bg-[var(--bg-card)] text-[var(--text-secondary)] transition-colors hover:bg-[var(--bg-subtle)] hover:text-[var(--text-primary)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ring)] focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--bg-card)] data-[state=open]:bg-[var(--bg-subtle)] data-[state=open]:text-[var(--text-primary)]"
         >
           <Bell size={16} aria-hidden="true" />
-          {unreadCount > 0 && (
+          {badgeCount > 0 && (
             <span
               aria-hidden="true"
               className="absolute -right-1.5 -top-1.5 h-[18px] min-w-[18px] rounded-full bg-red-600 px-1 text-center text-[10px] font-semibold leading-[18px] tabular-nums text-white ring-2 ring-[var(--bg-card)]"
             >
-              {unreadCount > 9 ? '9+' : unreadCount}
+              {badgeCount > 9 ? '9+' : badgeCount}
             </span>
           )}
         </button>
@@ -219,23 +318,29 @@ export function NotificationBell({ side = 'bottom', align = 'end' }: Notificatio
                   Try again
                 </button>
               </div>
-            ) : items.length === 0 ? (
+            ) : entries.length === 0 ? (
               <div className="flex flex-col items-center px-6 py-10 text-center">
                 <span className="mb-3 flex h-11 w-11 items-center justify-center rounded-xl bg-[var(--bg-subtle)] text-[var(--text-secondary)]">
                   <Bell size={18} aria-hidden="true" />
                 </span>
                 <p className="text-sm font-semibold text-[var(--text-primary)]">You're all caught up</p>
                 <p className="mt-1 max-w-[34ch] text-xs leading-[18px] text-[var(--text-secondary)]">
-                  Likes on your comments, teacher feedback and new blog posts will show up here.
+                  Likes on your comments, teacher feedback, new blog posts and news from WriteReady will show up here.
                 </p>
               </div>
             ) : (
               <ul className="divide-y divide-[var(--border-color)]">
-                {items.map((n) => (
-                  <li key={n.id}>
-                    <NotificationRow n={n} />
-                  </li>
-                ))}
+                {entries.map((e) =>
+                  e.kind === 'notification' ? (
+                    <li key={`n-${e.n.id}`}>
+                      <NotificationRow n={e.n} />
+                    </li>
+                  ) : (
+                    <li key={`a-${e.a.id}`}>
+                      <AnnouncementRow a={e.a} unread={e.unread} />
+                    </li>
+                  ),
+                )}
               </ul>
             )}
           </div>

@@ -5,6 +5,7 @@ import { MaintenanceGate } from './components/layout/MaintenanceGate';
 import { RouteTitle } from './components/layout/RouteTitle';
 import { RouteFocus } from './components/layout/RouteFocus';
 import { GlobalShortcuts } from './components/shortcuts/GlobalShortcuts';
+import { AnnouncementCard } from './components/ui/AnnouncementCard';
 import { LandingPage } from './pages/LandingPage';
 import { AuthPage } from './pages/AuthPage';
 
@@ -42,6 +43,7 @@ export default function App() {
           <RouteTitle />
           <RouteFocus />
           <GlobalShortcuts />
+          <AnnouncementCard />
           <Routes>
             <Route path="/" element={<LandingPage />} />
             <Route path="/auth" element={<AuthPage />} />

@@ -5,7 +5,6 @@ import { Link } from 'react-router';
 import { Header } from '@/components/layout/Header';
 import { SkipLink } from '@/components/layout/SkipLink';
 import { ChatBot } from '../components/ui/ChatBot';
-import { AnnouncementPopup } from '../components/ui/AnnouncementPopup';
 
 gsap.registerPlugin(ScrollTrigger);
 
@@ -73,7 +72,6 @@ export function LandingPage() {
 
       {/* ── Nav ── */}
       <Header />
-      <AnnouncementPopup />
 
       <main id="main-content" tabIndex={-1} className="outline-none">
       {/* ── Hero ── */}

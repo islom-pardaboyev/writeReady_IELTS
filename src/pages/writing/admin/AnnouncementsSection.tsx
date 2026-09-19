@@ -1,7 +1,10 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { addDoc, collection, deleteDoc, doc, getDocs, orderBy, query, updateDoc } from "firebase/firestore";
-import { ExternalLink, Gift, Lightbulb, Megaphone, Plus, Rocket, Trash2, Wrench, type LucideIcon } from "lucide-react";
+import { ArrowRight, ExternalLink, Megaphone, Pencil, Plus, Trash2 } from "lucide-react";
+import { Link } from "react-router";
 import { adminDb as db } from "@/firebase/adminConfig";
+import type { AnnouncementCategory as Category } from "@/firebase/firestore";
+import { ANNOUNCEMENT_CATEGORIES as CATEGORIES, sitePath } from "@/lib/announcements";
 import { useConfirm } from "@/hooks/useConfirm";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/Button";
@@ -13,8 +16,6 @@ import { EmptyState, Field, LoadError, Notice, RowSkeletons, SearchField, Switch
 import { formatDate } from "./format";
 import type { SectionProps } from "./types";
 
-type Category = "announcement" | "update" | "maintenance" | "tip" | "offer";
-
 interface Announcement {
   id: string;
   title: string;
@@ -24,15 +25,36 @@ interface Announcement {
   linkLabel: string;
   active: boolean;
   createdAt?: string;
+  updatedAt?: string;
 }
 
-const CATEGORIES: Record<Category, { label: string; icon: LucideIcon; tint: string }> = {
-  announcement: { label: "Announcement", icon: Megaphone, tint: "bg-indigo-50 text-indigo-700 dark:bg-indigo-950/50 dark:text-indigo-300" },
-  update: { label: "Update", icon: Rocket, tint: "bg-emerald-50 text-emerald-700 dark:bg-emerald-950/50 dark:text-emerald-300" },
-  maintenance: { label: "Maintenance", icon: Wrench, tint: "bg-amber-50 text-amber-700 dark:bg-amber-950/50 dark:text-amber-300" },
-  tip: { label: "Tip", icon: Lightbulb, tint: "bg-violet-50 text-violet-700 dark:bg-violet-950/50 dark:text-violet-300" },
-  offer: { label: "Offer", icon: Gift, tint: "bg-rose-50 text-rose-700 dark:bg-rose-950/50 dark:text-rose-300" },
-};
+/** What the form edits: a new announcement (no id) or an existing one. */
+interface Draft {
+  id?: string;
+  category: Category;
+  title: string;
+  text: string;
+  link: string;
+  linkLabel: string;
+}
+
+const EMPTY_DRAFT: Draft = { category: "announcement", title: "", text: "", link: "", linkLabel: "" };
+
+const draftOf = (a: Announcement): Draft => ({
+  id: a.id,
+  category: a.category,
+  title: a.title,
+  text: a.text,
+  link: a.link,
+  linkLabel: a.linkLabel,
+});
+
+const sameDraft = (a: Draft, b: Draft) =>
+  a.category === b.category &&
+  a.title.trim() === b.title.trim() &&
+  a.text.trim() === b.text.trim() &&
+  a.link.trim() === b.link.trim() &&
+  a.linkLabel.trim() === b.linkLabel.trim();
 
 function CategoryIcon({ category, size = 36 }: { category: Category; size?: number }) {
   const c = CATEGORIES[category] ?? CATEGORIES.announcement;
@@ -52,11 +74,7 @@ export function AnnouncementsSection({ intent, clearIntent }: SectionProps) {
   const [search, setSearch] = useState("");
   const searchRef = useRef<HTMLInputElement>(null);
   const [selectedId, setSelectedId] = useState<string | null>(null);
-  const [category, setCategory] = useState<Category>("announcement");
-  const [title, setTitle] = useState("");
-  const [text, setText] = useState("");
-  const [link, setLink] = useState("");
-  const [linkLabel, setLinkLabel] = useState("");
+  const [draft, setDraft] = useState<Draft | null>(null);
   const [saving, setSaving] = useState(false);
   const [formError, setFormError] = useState("");
 
@@ -75,6 +93,7 @@ export function AnnouncementsSection({ intent, clearIntent }: SectionProps) {
           linkLabel: data.linkLabel ?? "",
           active: data.active ?? false,
           createdAt: data.createdAt?.toDate?.()?.toISOString?.(),
+          updatedAt: data.updatedAt?.toDate?.()?.toISOString?.(),
         };
       }));
       setLoadFailed(false);
@@ -87,36 +106,68 @@ export function AnnouncementsSection({ intent, clearIntent }: SectionProps) {
 
   useEffect(() => { load(); }, [load]);
 
+  const original = draft?.id ? items.find((a) => a.id === draft.id) : undefined;
+  const dirty = draft !== null && !sameDraft(draft, original ? draftOf(original) : EMPTY_DRAFT);
+
+  // Leaving the form with unsaved edits asks first.
+  const leaveForm = async () =>
+    !dirty ||
+    confirm("Your changes to this announcement haven't been saved.", {
+      title: "Discard changes?",
+      confirmLabel: "Discard",
+      destructive: true,
+    });
+
+  const select = async (id: string | null) => {
+    if (!(await leaveForm())) return;
+    setSelectedId(id);
+    setDraft(id === "new" ? { ...EMPTY_DRAFT } : null);
+    setFormError("");
+  };
+
   useEffect(() => {
     if (!intent) return;
-    if (intent.action === "new") setSelectedId("new");
+    if (intent.action === "new") {
+      setSelectedId("new");
+      setDraft({ ...EMPTY_DRAFT });
+    }
     clearIntent();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [intent]);
 
-  const publish = async () => {
-    if (!title.trim() || !text.trim()) {
+  const set = (patch: Partial<Draft>) => setDraft((d) => (d ? { ...d, ...patch } : d));
+
+  const save = async () => {
+    if (!draft) return;
+    if (!draft.title.trim() || !draft.text.trim()) {
       setFormError("Add a title and a message.");
       return;
     }
+    const fields = {
+      title: draft.title.trim(),
+      text: draft.text.trim(),
+      category: draft.category,
+      link: draft.link.trim(),
+      linkLabel: draft.linkLabel.trim(),
+    };
     setSaving(true);
     setFormError("");
     try {
-      const ref = await addDoc(collection(db, "announcements"), {
-        title: title.trim(),
-        text: text.trim(),
-        category,
-        link: link.trim(),
-        linkLabel: linkLabel.trim(),
-        active: true,
-        createdAt: new Date(),
-      });
-      setTitle(""); setText(""); setCategory("announcement"); setLink(""); setLinkLabel("");
-      await load();
-      setSelectedId(ref.id);
+      if (draft.id) {
+        const id = draft.id;
+        const updatedAt = new Date();
+        await updateDoc(doc(db, "announcements", id), { ...fields, updatedAt });
+        setItems((prev) => prev.map((x) => (x.id === id ? { ...x, ...fields, updatedAt: updatedAt.toISOString() } : x)));
+        setDraft(null);
+      } else {
+        const ref = await addDoc(collection(db, "announcements"), { ...fields, active: true, createdAt: new Date() });
+        await load();
+        setDraft(null);
+        setSelectedId(ref.id);
+      }
     } catch (e) {
       console.error(e);
-      setFormError("Could not publish the announcement. Try again.");
+      setFormError(draft.id ? "Could not save your changes. Try again." : "Could not publish the announcement. Try again.");
     }
     setSaving(false);
   };
@@ -131,6 +182,7 @@ export function AnnouncementsSection({ intent, clearIntent }: SectionProps) {
     await deleteDoc(doc(db, "announcements", a.id));
     setItems((prev) => prev.filter((x) => x.id !== a.id));
     setSelectedId(null);
+    setDraft(null);
   };
 
   const selected = items.find((a) => a.id === selectedId) ?? null;
@@ -142,7 +194,7 @@ export function AnnouncementsSection({ intent, clearIntent }: SectionProps) {
     <ListPane
       title="Announcements"
       count={items.length}
-      action={<Button size="sm" onClick={() => setSelectedId("new")}><Plus aria-hidden="true" /> New</Button>}
+      action={<Button size="sm" onClick={() => select("new")}><Plus aria-hidden="true" /> New</Button>}
       toolbar={
         <>
           <SearchField value={search} onChange={setSearch} placeholder="Search announcements…" label="Search announcements" inputRef={searchRef} />
@@ -163,7 +215,7 @@ export function AnnouncementsSection({ intent, clearIntent }: SectionProps) {
       ) : (
         <RowList label="Announcements">
           {shown.map((a) => (
-            <ListRow key={a.id} selected={a.id === selectedId} onSelect={() => setSelectedId(a.id)}>
+            <ListRow key={a.id} selected={a.id === selectedId} onSelect={() => { if (a.id !== selectedId) select(a.id); }}>
               <CategoryIcon category={a.category} size={32} />
               <div className="min-w-0 flex-1">
                 <p className={cn("truncate text-sm font-medium", a.active ? "text-[var(--text-primary)]" : "text-[var(--text-secondary)]")}>{a.title || a.text}</p>
@@ -179,30 +231,40 @@ export function AnnouncementsSection({ intent, clearIntent }: SectionProps) {
   );
 
   let detail;
-  if (selectedId === "new") {
+  if (draft) {
+    const isNew = !draft.id;
     detail = (
       <DetailView
         footer={
           <>
-            <Button variant="ghost" onClick={() => setSelectedId(null)}>Cancel</Button>
-            <Button onClick={publish} loading={saving}>{saving ? "Publishing…" : "Publish"}</Button>
+            <Button variant="ghost" onClick={() => (isNew ? select(null) : setDraft(null))}>Cancel</Button>
+            <Button onClick={save} loading={saving} disabled={!isNew && !dirty}>
+              {saving ? (isNew ? "Publishing…" : "Saving…") : isNew ? "Publish" : "Save changes"}
+            </Button>
           </>
         }
       >
-        <DetailHeader title="New announcement" meta="Students see it as soon as you publish. You can hide it again at any time." />
+        <DetailHeader
+          title={isNew ? "New announcement" : "Edit announcement"}
+          meta={
+            isNew
+              ? "Students see it as soon as you publish. You can hide it again at any time."
+              : "Changes show the next time students open the site. Students who already closed it won't get it again."
+          }
+        />
         <div className="mt-6 flex flex-col gap-5">
           <Field label="Type">
             <div role="radiogroup" aria-label="Type" className="flex flex-wrap gap-2">
               {(Object.keys(CATEGORIES) as Category[]).map((c) => {
                 const { label, icon: Icon } = CATEGORIES[c];
-                const on = c === category;
+                const on = c === draft.category;
                 return (
                   <button
                     key={c}
                     type="button"
                     role="radio"
                     aria-checked={on}
-                    onClick={() => setCategory(c)}
+                    onClick={() => set({ category: c })}
                     className={cn(
                       "inline-flex h-9 items-center gap-2 rounded-lg border px-3 text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ring)]",
                       on ? "border-[var(--ink-blue)] bg-[var(--accent)] text-[var(--accent-foreground)]" : "border-[var(--border-color)] bg-[var(--bg-card)] text-[var(--text-secondary)] hover:bg-[var(--bg-subtle)] hover:text-[var(--text-primary)]",
@@ -215,17 +277,17 @@ export function AnnouncementsSection({ intent, clearIntent }: SectionProps) {
             </div>
           </Field>
           <Field label="Title" htmlFor="ann-title">
-            <Input name="ann-title" autoComplete="off" id="ann-title" value={title} onChange={(e) => setTitle(e.target.value)} />
+            <Input name="ann-title" autoComplete="off" id="ann-title" value={draft.title} onChange={(e) => set({ title: e.target.value })} />
           </Field>
-          <Field label="Message" htmlFor="ann-text">
-            <Textarea name="ann-text" autoComplete="off" id="ann-text" rows={4} value={text} onChange={(e) => setText(e.target.value)} />
+          <Field label="Message" htmlFor="ann-text" hint="Leave a blank line between paragraphs.">
+            <Textarea name="ann-text" autoComplete="off" id="ann-text" rows={5} value={draft.text} onChange={(e) => set({ text: e.target.value })} />
           </Field>
           <div className="grid gap-4 sm:grid-cols-[1fr_200px]">
-            <Field label="Link" htmlFor="ann-link" optional hint="Where the button takes students.">
-              <Input name="ann-link" autoComplete="off" id="ann-link" type="url" placeholder="https://example.com…" value={link} onChange={(e) => setLink(e.target.value)} />
+            <Field label="Link" htmlFor="ann-link" optional hint="A page on this site, like /account, or a full web address.">
+              <Input name="ann-link" autoComplete="off" id="ann-link" inputMode="url" spellCheck={false} placeholder="/account or https://…" value={draft.link} onChange={(e) => set({ link: e.target.value })} />
             </Field>
             <Field label="Button text" htmlFor="ann-link-label" optional>
-              <Input name="ann-link-label" autoComplete="off" id="ann-link-label" value={linkLabel} onChange={(e) => setLinkLabel(e.target.value)} />
+              <Input name="ann-link-label" autoComplete="off" id="ann-link-label" placeholder="Learn more" value={draft.linkLabel} onChange={(e) => set({ linkLabel: e.target.value })} />
             </Field>
           </div>
           {formError && <Notice tone="error">{formError}</Notice>}
@@ -234,17 +296,34 @@ export function AnnouncementsSection({ intent, clearIntent }: SectionProps) {
     );
   } else if (selected) {
     const cat = CATEGORIES[selected.category] ?? CATEGORIES.announcement;
+    const posted = formatDate(selected.createdAt);
+    const edited = formatDate(selected.updatedAt);
+    const path = selected.link ? sitePath(selected.link) : null;
     detail = (
       <DetailView>
         <DetailHeader
           leading={<CategoryIcon category={selected.category} size={44} />}
           title={selected.title || cat.label}
           badges={<Badge variant={selected.active ? "success" : "secondary"}>{selected.active ? "Showing" : "Hidden"}</Badge>}
-          meta={`${cat.label}${selected.createdAt ? `, posted ${formatDate(selected.createdAt)}` : ""}`}
-          actions={<Button variant="dangerOutline" size="sm" onClick={() => remove(selected)}><Trash2 aria-hidden="true" /> Delete</Button>}
+          meta={`${cat.label}${posted ? `, posted ${posted}` : ""}${edited ? `, edited ${edited}` : ""}`}
+          actions={
+            <div className="flex items-center gap-2">
+              <Button variant="outline" size="sm" onClick={() => { setDraft(draftOf(selected)); setFormError(""); }}>
+                <Pencil aria-hidden="true" /> Edit
+              </Button>
+              <Button variant="dangerOutline" size="sm" onClick={() => remove(selected)}><Trash2 aria-hidden="true" /> Delete</Button>
+            </div>
+          }
         />
         <p className="mt-6 max-w-[65ch] whitespace-pre-line text-[0.9375rem] leading-relaxed text-[var(--text-primary)]">{selected.text}</p>
-        {selected.link && (
+        {selected.link && (path ? (
+          <Link
+            to={path}
+            className="mt-4 inline-flex items-center gap-1.5 text-sm font-medium text-[var(--ink-blue)] underline underline-offset-2"
+          >
+            {selected.linkLabel || "Learn more"} <ArrowRight size={14} aria-hidden="true" />
+          </Link>
+        ) : (
           <a
             href={selected.link}
             target="_blank"
@@ -253,7 +332,7 @@ export function AnnouncementsSection({ intent, clearIntent }: SectionProps) {
           >
             {selected.linkLabel || selected.link} <ExternalLink size={14} aria-hidden="true" />
           </a>
-        )}
+        ))}
         <DetailSection title="Visibility">
           <div className="flex items-center justify-between gap-4 rounded-lg border border-[var(--border-color)] px-4 py-3">
             <div>
@@ -271,9 +350,9 @@ export function AnnouncementsSection({ intent, clearIntent }: SectionProps) {
         icon={Megaphone}
         title="Select an announcement"
         className="py-24"
-        action={<Button variant="outline" onClick={() => setSelectedId("new")}><Plus aria-hidden="true" /> New announcement</Button>}
+        action={<Button variant="outline" onClick={() => select("new")}><Plus aria-hidden="true" /> New announcement</Button>}
       >
-        Choose one on the left to read, hide or delete it, or post a new one.
+        Choose one on the left to read, edit, hide or delete it, or post a new one.
       </EmptyState>
     );
   }
@@ -285,9 +364,9 @@ export function AnnouncementsSection({ intent, clearIntent }: SectionProps) {
         list={listPane}
         detail={detail}
         detailOpen={selectedId !== null}
-        onBack={() => setSelectedId(null)}
+        onBack={() => select(null)}
         backLabel="All announcements"
-        detailKey={selectedId ?? "none"}
+        detailKey={draft ? `${selectedId ?? "none"}:form` : selectedId ?? "none"}
       />
       {dialog}
     </>

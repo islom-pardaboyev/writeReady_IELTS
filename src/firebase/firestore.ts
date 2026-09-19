@@ -272,28 +272,30 @@ export interface Announcement {
   active: boolean;
 }
 
-export async function getActiveAnnouncement(): Promise<Announcement | null> {
+// Every announcement the admin has switched on, newest first. Filtered here
+// rather than in the query so it needs no composite index.
+export async function getActiveAnnouncements(): Promise<Announcement[]> {
   const q = query(
     collection(db, 'announcements'),
     orderBy('createdAt', 'desc'),
     limit(50)
   );
   const snap = await getDocs(q);
-  const activeDocs = snap.docs.filter((d) => d.data().active === true);
-  if (activeDocs.length === 0) return null;
-  // Pick a random active announcement each visit
-  const picked = activeDocs[Math.floor(Math.random() * activeDocs.length)];
-  const data = picked.data();
-  return {
-    id: picked.id,
-    title: data.title ?? '',
-    text: data.text ?? '',
-    category: data.category ?? 'announcement',
-    link: data.link ?? '',
-    linkLabel: data.linkLabel ?? '',
-    createdAt: toDate(data.createdAt),
-    active: true,
-  };
+  return snap.docs
+    .filter((d) => d.data().active === true)
+    .map((d) => {
+      const data = d.data();
+      return {
+        id: d.id,
+        title: data.title ?? '',
+        text: data.text ?? '',
+        category: data.category ?? 'announcement',
+        link: data.link ?? '',
+        linkLabel: data.linkLabel ?? '',
+        createdAt: toDate(data.createdAt),
+        active: true,
+      };
+    });
 }
 
 // ── Questions ──────────────────────────────────────────────────────────────
