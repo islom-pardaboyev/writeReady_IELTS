@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <title>WriteReady IELTS</title>
+  <rect width="512" height="512" rx="112" fill="#4f46e5"/>
+  <polyline points="104,176 180,368 256,216 332,368" fill="none" stroke="#ffffff" stroke-width="56" stroke-linecap="round" stroke-linejoin="round"/>
+  <polyline points="332,368 416,120" fill="none" stroke="#f59e0b" stroke-width="56" stroke-linecap="round"/>
+</svg>

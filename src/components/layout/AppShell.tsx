@@ -1,7 +1,7 @@
 import type { ReactNode } from "react";
 import { Link, useNavigate } from "react-router";
 import { LogOut } from "lucide-react";
-import Logo from "/logo.png";
+import Logo from "/logo.svg";
 import { ChatBot } from "../ui/ChatBot";
 import { AppSidebar } from "./AppSidebar";
 import { SkipLink } from "./SkipLink";

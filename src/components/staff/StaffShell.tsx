@@ -1,6 +1,6 @@
 import type { ReactNode } from "react";
 import { LogOut, type LucideIcon } from "lucide-react";
-import Logo from "/logo.png";
+import Logo from "/logo.svg";
 import {
   SidebarProvider,
   Sidebar,

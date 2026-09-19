@@ -1,5 +1,5 @@
 import { useState, type FormEvent, type ReactNode } from "react";
-import Logo from "/logo.png";
+import Logo from "/logo.svg";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/input";
 import { PasswordInput } from "@/components/ui/PasswordInput";

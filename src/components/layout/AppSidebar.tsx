@@ -7,7 +7,7 @@ import {
   User as UserIcon,
   LogOut,
 } from "lucide-react";
-import Logo from "/logo.png";
+import Logo from "/logo.svg";
 import { useAuth } from "../../hooks/useAuth";
 import { SubscriptionBadge } from "./Header";
 import { ThemeToggle } from "@/components/ui/ThemeToggle";

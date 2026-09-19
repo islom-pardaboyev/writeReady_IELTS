@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router';
 import { formatDuration, splitDuration } from '@/lib/duration';
-import Logo from '/logo.png';
+import Logo from '/logo.svg';
 
 const TELEGRAM_URL = 'https://t.me/writeready_admin';
 

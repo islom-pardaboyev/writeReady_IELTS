@@ -1,6 +1,6 @@
 import { Link, useNavigate } from "react-router";
 import { useAuth } from "../../hooks/useAuth";
-import Logo from "/logo.png";
+import Logo from "/logo.svg";
 import {
   DropdownMenu,
   DropdownMenuContent,
