@@ -2,6 +2,7 @@ import { lazy, Suspense } from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router';
 import { AuthProvider } from './contexts/AuthContext';
 import { MaintenanceGate } from './components/layout/MaintenanceGate';
+import { ErrorBoundary } from './components/layout/ErrorBoundary';
 import { RouteTitle } from './components/layout/RouteTitle';
 import { RouteFocus } from './components/layout/RouteFocus';
 import { GlobalShortcuts } from './components/shortcuts/GlobalShortcuts';
@@ -39,6 +40,9 @@ export default function App() {
   return (
     <AuthProvider>
       <BrowserRouter>
+        {/* Inside the router so a crashed page can still offer a way back,
+            and so the report carries the route the user was actually on. */}
+        <ErrorBoundary>
         <MaintenanceGate>
           <RouteTitle />
           <RouteFocus />
@@ -65,6 +69,7 @@ export default function App() {
             <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>
         </MaintenanceGate>
+        </ErrorBoundary>
       </BrowserRouter>
     </AuthProvider>
   );

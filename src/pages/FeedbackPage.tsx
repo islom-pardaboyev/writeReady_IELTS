@@ -14,6 +14,7 @@ import { getFeedbackReportHistory } from '../firebase/firestore';
 import type { EnhancedFeedbackResult } from '../types';
 import { hasFreeReportThisWeek } from '../lib/weeklyFree';
 import { downloadFeedbackPdf } from '../lib/feedbackPdf';
+import { FeedbackRating } from '@/components/ui/FeedbackRating';
 
 type Tab = 'overview' | 'priority' | 'detailed' | 'essay' | 'sample' | 'vocabulary' | 'grammar' | 'spelling' | 'quiz';
 
@@ -1524,7 +1525,13 @@ export function FeedbackPage() {
             </div>
           )}
 
-          <div className="text-center mt-10">
+          {feedback && (
+            <div className="mt-10 pt-5 border-t border-[var(--border-color)] flex justify-center">
+              <FeedbackRating reportId={id ?? 'report'} />
+            </div>
+          )}
+
+          <div className="text-center mt-6">
             <Link to="/dashboard">
               <Button variant="secondary"><ChevronLeft className="w-4 h-4" /> Try another question</Button>
             </Link>
