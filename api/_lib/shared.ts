@@ -41,3 +41,65 @@ export function currentWeekKey(): string {
   );
   return `${d.getUTCFullYear()}-W${String(weekNum).padStart(2, '0')}`;
 }
+
+// Local-date day key, e.g. "2026-09-20". Matches how currentMonthKey reads the
+// clock, so a daily quota rolls over at the same local midnight the month does.
+export function currentDayKey(): string {
+  const now = new Date();
+  return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+}
+
+const PAID_PLANS = ['basic', 'standard', 'premium', 'forever'];
+
+export interface PaidStatus {
+  /** The plan after expiry is applied — 'free' once a paid plan has lapsed. */
+  plan: string;
+  isCenterStudent: boolean;
+  /**
+   * `plan` is one of the metered tiers. This is the one that drives the monthly
+   * report quota, because only these have a number in planLimits.
+   */
+  isPaidPlan: boolean;
+  /**
+   * Any paid signal at all, including a legacy `subscription` date. Use this to
+   * gate a FEATURE on/off — never to pick a quota, since a legacy account can
+   * be `isPaid` with `plan: 'free'` and so has no monthly limit to look up.
+   */
+  isPaid: boolean;
+}
+
+/**
+ * The single definition of "this user has paid", shared by every API route.
+ *
+ * It exists because there used to be two: pre-check.ts read `plan`, while
+ * check-practice.ts read `subscription` — a field the admin panel writes as ""
+ * for Basic/Standard/Premium. That mismatch locked every paying customer out
+ * of the vocabulary checker. Add new gated routes here, not beside it.
+ *
+ * `subscription` is still honoured (as 'forever' or as a future date) so that
+ * older accounts written before `plan` existed keep working.
+ */
+export function resolvePaidStatus(data: Record<string, unknown>): PaidStatus {
+  let plan = typeof data.plan === 'string' ? data.plan : 'free';
+  const isCenterStudent = typeof data.centerId === 'string' && data.centerId.length > 0;
+
+  // A paid plan past its expiry reverts to free; nothing else downgrades the
+  // stored `plan` field. Lifetime plans and centre students never expire here.
+  const expiresAt = typeof data.expiresAt === 'string' ? data.expiresAt : '';
+  if (plan !== 'forever' && expiresAt && new Date(expiresAt) < new Date()) {
+    plan = 'free';
+  }
+
+  const subscription = typeof data.subscription === 'string' ? data.subscription : '';
+  const subscriptionActive =
+    subscription === 'forever' ||
+    (subscription !== '' && !Number.isNaN(new Date(subscription).getTime()) && new Date(subscription) > new Date());
+
+  const isPaidPlan = PAID_PLANS.includes(plan);
+  return {
+    plan,
+    isCenterStudent,
+    isPaidPlan,
+    isPaid: isPaidPlan || isCenterStudent || subscriptionActive,
+  };
+}

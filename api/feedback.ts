@@ -5,7 +5,7 @@ import { createHmac } from 'crypto';
 import Anthropic from '@anthropic-ai/sdk';
 import { initFirebase, currentMonthKey, currentWeekKey } from './_lib/shared.js';
 
-const ALLOWED_MODEL = 'claude-sonnet-4-6';
+const ALLOWED_MODEL = 'claude-sonnet-5';
 const MAX_TOKENS = 12000;
 const TOKEN_MAX_AGE_MS = 3 * 60 * 1000; // 3 minutes
 
@@ -104,6 +104,14 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     const stream = await anthropic.messages.stream({
       model: ALLOWED_MODEL,
       max_tokens: isBonus ? 800 : MAX_TOKENS,
+      // Sonnet 5 runs adaptive thinking when `thinking` is omitted, unlike
+      // Sonnet 4.6, which ran without it. Leaving this off would silently
+      // turn thinking on: thinking tokens bill as output, and they share the
+      // MAX_TOKENS budget with the JSON report, so long essays would start
+      // hitting the cap and getting refunded as "Feedback incomplete".
+      // Disabled keeps grading behaviour and cost in line with 4.6; turn it
+      // on deliberately (with a raised max_tokens) if band accuracy needs it.
+      thinking: { type: 'disabled' },
       messages: [{ role: 'user', content: prompt }],
     });
 
@@ -262,7 +270,9 @@ Return ONLY this JSON structure:
 }`;
 }
 
-function buildPrompt(essay: string, question: string, taskType: string, wordCount: number): string {
+// Exported so scripts/compare-band-scores.ts grades against the REAL prompt
+// rather than a copy that would drift out of sync with this one.
+export function buildPrompt(essay: string, question: string, taskType: string, wordCount: number): string {
   return `You are a certified, experienced IELTS examiner. Score this essay accurately using the official IELTS best-fit method and the band descriptors below — not your own idea of "good writing." Be fair and calibrated: award high bands (8.0–9.0) to genuinely strong essays and low bands to weak ones. Under-scoring a strong essay is just as wrong as over-scoring a weak one. Return ONLY valid JSON — no markdown, no backticks, no extra text.
 
 TASK TYPE: ${taskType}

@@ -1,7 +1,7 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { getFirestore } from 'firebase-admin/firestore';
 import { createHmac } from 'crypto';
-import { initFirebase, getUid, currentMonthKey, currentWeekKey } from './_lib/shared.js';
+import { initFirebase, getUid, currentMonthKey, currentWeekKey, resolvePaidStatus } from './_lib/shared.js';
 
 // Learning-center students get the premium allowance for free.
 const CENTER_MONTHLY_LIMIT = 25;
@@ -35,22 +35,12 @@ async function consumeCredit(uid: string, monthKey: string): Promise<boolean> {
     if (!snap.exists) throw new CreditError('USER_NOT_FOUND');
 
     const data = snap.data()!;
-    let plan: string = data.plan ?? 'free';
-    const isCenterStudent = typeof data.centerId === 'string' && data.centerId.length > 0;
-
-    // A paid plan whose expiresAt has passed reverts to free — without this,
-    // a user whose subscription lapsed would keep getting their full paid
-    // quota forever, since nothing else ever downgrades the stored `plan`
-    // field back down. Matches the same rule the client applies for display
-    // in src/hooks/useUsage.ts and src/firebase/firestore.ts's getUserProfile
-    // (lifetime plans never expire; center students keep premium access
-    // below regardless of their own plan's expiry).
-    const expiresAt: string = data.expiresAt ?? '';
-    if (plan !== 'forever' && expiresAt && new Date(expiresAt) < new Date()) {
-      plan = 'free';
-    }
-
-    const isPaidPlan = ['basic', 'standard', 'premium', 'forever'].includes(plan);
+    // One shared definition of "has paid" across every route — see
+    // resolvePaidStatus in ./_lib/shared.ts. It applies the expiresAt rule (a
+    // lapsed paid plan reverts to free, because nothing else ever downgrades
+    // the stored `plan` field; lifetime plans and centre students never
+    // expire), matching what src/hooks/useUsage.ts shows the user.
+    const { plan, isCenterStudent, isPaidPlan } = resolvePaidStatus(data);
 
     if (!isPaidPlan && !isCenterStudent) {
       // Admin-granted bonus reports are consumed first (separate from the
