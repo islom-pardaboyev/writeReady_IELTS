@@ -139,10 +139,10 @@ function PracticeResult({ result, accentClass }: {
             <XCircle className="w-3.5 h-3.5" /> Error found
           </span>
         )}
-        <span className="ml-auto text-xs font-mono font-bold text-gray-500 dark:text-gray-400">{result.score}/100</span>
+        <span className="ml-auto text-xs font-mono font-bold text-gray-500 dark:text-neutral-400">{result.score}/100</span>
       </div>
       {result.feedback && (
-        <p className="text-sm text-gray-800 dark:text-gray-200 leading-relaxed m-0 mb-2">{result.feedback}</p>
+        <p className="text-sm text-gray-800 dark:text-neutral-200 leading-relaxed m-0 mb-2">{result.feedback}</p>
       )}
       {improved && (
         <div className={`bg-white/80 dark:bg-black/20 rounded-lg px-3 py-2.5 border ${result.correct ? 'border-green-200 dark:border-green-800' : 'border-red-200 dark:border-red-800'}`}>
@@ -1230,7 +1230,7 @@ export function FeedbackPage() {
                               <div className="flex items-start gap-3">
                                 <span className={`mt-1.5 w-2 h-2 rounded-full shrink-0 ${style.dot}`} />
                                 <div className="flex-1 min-w-0">
-                                  <p className="text-[0.9375rem] text-gray-800 dark:text-gray-100 leading-relaxed m-0">
+                                  <p className="text-[0.9375rem] text-gray-800 dark:text-neutral-100 leading-relaxed m-0">
                                     {s.sentence}
                                   </p>
                                   <div className={`grid transition-[grid-template-rows] duration-300 ease-in-out ${isOpen ? 'grid-rows-[1fr]' : 'grid-rows-[0fr]'}`}>
@@ -1240,7 +1240,7 @@ export function FeedbackPage() {
                                           <span className={`text-[0.65rem] font-bold uppercase tracking-widest mr-2 ${style.dot.replace('bg-', 'text-')}`}>
                                             {style.label}
                                           </span>
-                                          <span className="text-sm text-gray-700 dark:text-gray-300">{s.feedback}</span>
+                                          <span className="text-sm text-gray-700 dark:text-neutral-300">{s.feedback}</span>
                                         </div>
                                         {s.improved && s.type !== 'ok' && (
                                           <div className="bg-[var(--ink-blue)]/6 border border-[var(--ink-blue)]/20 rounded-lg px-3 py-2.5">
@@ -1372,11 +1372,11 @@ export function FeedbackPage() {
                         })}
                         {ltPopover && (
                           <div
-                            className="absolute z-30 bg-[#0f172a] border border-[#1E293B] rounded-xl p-3.5 max-w-[280px] shadow-xl"
+                            className="absolute z-30 bg-[#171717] border border-[#262626] rounded-xl p-3.5 max-w-[280px] shadow-xl"
                             style={{ left: ltPopover.x, top: ltPopover.y }}
                             onClick={(e) => e.stopPropagation()}
                           >
-                            <p className="text-[0.8rem] text-slate-300 mb-2.5 leading-snug">{ltPopover.match.message}</p>
+                            <p className="text-[0.8rem] text-neutral-300 mb-2.5 leading-snug">{ltPopover.match.message}</p>
                             {ltPopover.match.replacements.length > 0 && (
                               <div className="flex flex-wrap gap-1.5">
                                 {ltPopover.match.replacements.slice(0, 5).map((r, i) => (

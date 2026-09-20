@@ -46,7 +46,7 @@ export function Sidebar({
 
   const colors =
     variant === "dark"
-      ? "bg-[var(--sidebar-bg-dark,#0f172a)]"
+      ? "bg-[var(--sidebar-bg-dark,#0a0a0a)]"
       : "bg-[var(--sidebar)] border-r border-[var(--sidebar-border)]"
   const hairlineStyle = {
     "--sidebar-hairline": variant === "dark" ? "rgba(255,255,255,0.1)" : "var(--sidebar-border)",
@@ -264,7 +264,7 @@ export function SidebarTrigger({ className }: { className?: string }) {
       <button
         onClick={() => setMobileOpen(!mobileOpen)}
         className={cn(
-          "inline-flex items-center justify-center w-8 h-8 rounded-lg text-slate-600 hover:bg-slate-100 transition-colors border-none cursor-pointer bg-transparent",
+          "inline-flex items-center justify-center w-8 h-8 rounded-lg text-slate-600 dark:text-neutral-300 hover:bg-slate-100 dark:hover:bg-neutral-800 transition-colors border-none cursor-pointer bg-transparent",
           className
         )}
         aria-label={mobileOpen ? "Close sidebar" : "Open sidebar"}
@@ -278,7 +278,7 @@ export function SidebarTrigger({ className }: { className?: string }) {
     <button
       onClick={toggle}
       className={cn(
-        "inline-flex items-center justify-center w-8 h-8 rounded-lg text-slate-600 hover:bg-slate-100 transition-colors border-none cursor-pointer bg-transparent",
+        "inline-flex items-center justify-center w-8 h-8 rounded-lg text-slate-600 dark:text-neutral-300 hover:bg-slate-100 dark:hover:bg-neutral-800 transition-colors border-none cursor-pointer bg-transparent",
         className
       )}
       aria-label={open ? "Collapse sidebar" : "Expand sidebar"}

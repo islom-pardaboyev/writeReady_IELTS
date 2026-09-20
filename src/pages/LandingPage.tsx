@@ -242,7 +242,7 @@ export function LandingPage() {
       </section>
 
       {/* ── CTA ── */}
-      <section className="gs-cta bg-slate-900 px-6 py-20 text-center dark:bg-slate-950">
+      <section className="gs-cta bg-slate-900 px-6 py-20 text-center dark:bg-black">
         <div className="gs-cta-content max-w-[600px] mx-auto">
           <h2 className="text-[clamp(1.75rem,4vw,2.5rem)] font-black text-white tracking-[-0.02em] mb-4">
             Ready to reach your target band?
@@ -258,7 +258,7 @@ export function LandingPage() {
       </main>
 
       {/* ── Footer ── */}
-      <footer className="bg-slate-900 border-t border-white/[0.06] px-6 py-6 text-center dark:bg-slate-950">
+      <footer className="bg-slate-900 border-t border-white/[0.06] px-6 py-6 text-center dark:bg-black">
         <a
           href={TELEGRAM_CHANNEL_URL}
           target="_blank"

@@ -438,7 +438,7 @@ export function PricingPage() {
       {paymentTarget && (
         <div
           onClick={() => setPaymentTarget(null)}
-          className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-6 z-[1000]"
+          className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center p-6 z-[1000]"
         >
           <div
             onClick={(e) => e.stopPropagation()}

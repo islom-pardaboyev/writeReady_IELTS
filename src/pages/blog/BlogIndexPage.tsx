@@ -85,7 +85,7 @@ export function BlogIndexPage() {
                       className="w-full h-48 object-cover"
                     />
                   ) : (
-                    <div className="w-full h-48 bg-slate-100 dark:bg-slate-800 flex items-center justify-center">
+                    <div className="w-full h-48 bg-slate-100 dark:bg-neutral-900 flex items-center justify-center">
                       <span className="text-4xl">📝</span>
                     </div>
                   )}

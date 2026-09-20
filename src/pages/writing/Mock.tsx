@@ -248,10 +248,10 @@ function Mock() {
   /* ── Loading ── */
   if (loading) {
     return (
-      <div className="flex items-center justify-center min-h-screen bg-slate-50">
+      <div className="flex items-center justify-center min-h-screen bg-slate-50 dark:bg-neutral-950">
         <div className="flex flex-col items-center gap-4">
           <div className="w-8 h-8 border-2 border-blue-600 border-t-transparent rounded-full animate-spin" />
-          <p className="text-sm text-slate-500 tracking-wide">
+          <p className="text-sm text-slate-500 dark:text-neutral-400 tracking-wide">
             Setting up your exam…
           </p>
         </div>
@@ -275,8 +275,7 @@ function Mock() {
 
   return (
     <div
-      data-theme="light"
-      className="flex flex-col min-h-screen bg-slate-50 font-sans"
+      className="flex flex-col min-h-screen bg-slate-50 dark:bg-neutral-950 font-sans"
     >
       <div role="status" aria-live="polite" className="sr-only">
         {timerAnnouncement}
@@ -284,15 +283,15 @@ function Mock() {
 
       {/* ── Top bar ── */}
       <div
-        className={`sticky top-0 z-30 border-b bg-white transition-colors duration-500 ${
+        className={`sticky top-0 z-30 border-b bg-white dark:bg-neutral-900 transition-colors duration-500 ${
           isTimeUp
             ? "bg-red-600 border-red-700"
             : isLowTime
               ? "bg-amber-500 border-amber-600"
-              : "bg-slate-900 border-slate-800"
+              : "bg-slate-900 border-slate-800 dark:border-neutral-800"
         }`}
       >
-        <div className="flex items-center justify-between bg-white gap-4 px-5 py-2.5">
+        <div className="flex items-center justify-between bg-white dark:bg-neutral-900 gap-4 px-5 py-2.5">
           {/* Left: branding + breadcrumb */}
           <div className="flex items-center gap-2 min-w-0">
             <button
@@ -301,13 +300,13 @@ function Mock() {
                 confirmLeave(e);
                 if (!e.defaultPrevented) navigate(-1);
               }}
-              className="hidden sm:flex items-center gap-2 rounded text-xs font-semibold text-black/50 tracking-widest uppercase hover:text-black focus-visible:ring-2 focus-visible:ring-blue-500"
+              className="hidden sm:flex items-center gap-2 rounded text-xs font-semibold text-black/50 dark:text-neutral-400 tracking-widest uppercase hover:text-black dark:hover:text-white focus-visible:ring-2 focus-visible:ring-blue-500"
             >
-              <ChevronLeftIcon strokeWidth={3} aria-hidden="true" className="size-3 text-black" />
+              <ChevronLeftIcon strokeWidth={3} aria-hidden="true" className="size-3 text-black dark:text-neutral-100" />
               WriteReady
             </button>
-            <ChevronRightIcon aria-hidden="true" className="hidden sm:block w-3 h-3 text-black/30" />
-            <span className="text-sm font-medium text-black truncate">
+            <ChevronRightIcon aria-hidden="true" className="hidden sm:block w-3 h-3 text-black/30 dark:text-neutral-500" />
+            <span className="text-sm font-medium text-black dark:text-neutral-100 truncate">
               Mock Exam
             </span>
           </div>
@@ -316,15 +315,15 @@ function Mock() {
           <div className="flex items-center gap-2">
             <ClockIcon
               aria-hidden="true"
-              className={`w-3.5 h-3.5 ${isLowTime || isTimeUp ? "text-black" : "text-black/60"}`}
+              className={`w-3.5 h-3.5 ${isLowTime || isTimeUp ? "text-black dark:text-neutral-100" : "text-black/60 dark:text-neutral-400"}`}
             />
             <span
               className={`text-sm font-mono font-semibold tabular-nums ${
                 isTimeUp
-                  ? "text-black"
+                  ? "text-black dark:text-neutral-100"
                   : isLowTime
-                    ? "text-black"
-                    : "text-black/90"
+                    ? "text-black dark:text-neutral-100"
+                    : "text-black/90 dark:text-neutral-100"
               }`}
             >
               {isTimeUp ? "Time's up" : timerLabel}
@@ -333,16 +332,16 @@ function Mock() {
 
           {/* Right: actions */}
           <div id="right-actions" className="flex items-center gap-2">
-            <FullscreenButton className="inline-flex items-center justify-center p-1.5 text-black/70 hover:text-black border border-black/20 hover:border-black/40 rounded-md transition-colors" />
+            <FullscreenButton className="inline-flex items-center justify-center p-1.5 text-black/70 dark:text-neutral-300 hover:text-black dark:hover:text-white border border-black/20 dark:border-neutral-700 hover:border-black/40 dark:hover:border-neutral-600 rounded-md transition-colors" />
             <button
               onClick={() => setShowHeader((p) => !p)}
-              className="hidden sm:inline-flex items-center gap-1 px-3 py-1.5 text-xs text-black/70 hover:text-black border border-black/20 hover:border-black/40 rounded-md transition-colors"
+              className="hidden sm:inline-flex items-center gap-1 px-3 py-1.5 text-xs text-black/70 dark:text-neutral-300 hover:text-black dark:hover:text-white border border-black/20 dark:border-neutral-700 hover:border-black/40 dark:hover:border-neutral-600 rounded-md transition-colors"
             >
               {showHeader ? "Hide panel" : "Show panel"}
             </button>
             <button
               onClick={handleGetAnother}
-              className="hidden sm:inline-flex items-center gap-1 px-3 py-1.5 text-xs text-black/70 hover:text-black border border-black/20 hover:border-black/40 rounded-md transition-colors"
+              className="hidden sm:inline-flex items-center gap-1 px-3 py-1.5 text-xs text-black/70 dark:text-neutral-300 hover:text-black dark:hover:text-white border border-black/20 dark:border-neutral-700 hover:border-black/40 dark:hover:border-neutral-600 rounded-md transition-colors"
             >
               New question
             </button>
@@ -366,7 +365,7 @@ function Mock() {
 
       {/* ── Collapsible secondary header ── */}
       {showHeader && (
-        <div className="sticky top-[45px] z-20 bg-white border-b border-slate-200 shadow-sm">
+        <div className="sticky top-[45px] z-20 bg-white dark:bg-neutral-900 border-b border-slate-200 dark:border-neutral-800 shadow-sm">
           <div className="flex items-center justify-between gap-4 px-5 py-3">
             {/* Task tabs */}
             <div className="flex items-center gap-1">
@@ -380,7 +379,7 @@ function Mock() {
                     className={`relative flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-lg transition-[color,background-color,box-shadow] ${
                       activeTask === t
                         ? "bg-blue-600 text-white shadow-sm"
-                        : "text-slate-600 hover:bg-slate-100"
+                        : "text-slate-600 dark:text-neutral-300 hover:bg-slate-100 dark:hover:bg-neutral-800"
                     }`}
                   >
                     Task {t}
@@ -389,7 +388,7 @@ function Mock() {
                         className={`flex items-center justify-center w-4 h-4 rounded-full text-[10px] ${
                           activeTask === t
                             ? "bg-white/20 text-white"
-                            : "bg-emerald-100 text-emerald-700"
+                            : "bg-emerald-100 dark:bg-emerald-900/40 text-emerald-700 dark:text-emerald-300"
                         }`}
                       >
                         <CheckIcon className="w-2.5 h-2.5" />
@@ -401,28 +400,28 @@ function Mock() {
             </div>
 
             {/* Nav links */}
-            <nav className="hidden md:flex items-center gap-1 text-xs text-slate-500">
+            <nav className="hidden md:flex items-center gap-1 text-xs text-slate-500 dark:text-neutral-400">
               <NavLink onClick={confirmLeave}
                 to="/"
-                className="px-2 py-1 hover:text-slate-900 hover:bg-slate-100 rounded transition-colors"
+                className="px-2 py-1 hover:text-slate-900 dark:hover:text-neutral-100 hover:bg-slate-100 dark:hover:bg-neutral-800 rounded transition-colors"
               >
                 Home
               </NavLink>
               <NavLink onClick={confirmLeave}
                 to="/writing/practice"
-                className="px-2 py-1 hover:text-slate-900 hover:bg-slate-100 rounded transition-colors"
+                className="px-2 py-1 hover:text-slate-900 dark:hover:text-neutral-100 hover:bg-slate-100 dark:hover:bg-neutral-800 rounded transition-colors"
               >
                 Practice
               </NavLink>
               <NavLink onClick={confirmLeave}
                 to="/writing/quick"
-                className="px-2 py-1 hover:text-slate-900 hover:bg-slate-100 rounded transition-colors"
+                className="px-2 py-1 hover:text-slate-900 dark:hover:text-neutral-100 hover:bg-slate-100 dark:hover:bg-neutral-800 rounded transition-colors"
               >
                 Quick Write
               </NavLink>
               <NavLink onClick={confirmLeave}
                 to="/writing/relax"
-                className="px-2 py-1 hover:text-slate-900 hover:bg-slate-100 rounded transition-colors"
+                className="px-2 py-1 hover:text-slate-900 dark:hover:text-neutral-100 hover:bg-slate-100 dark:hover:bg-neutral-800 rounded transition-colors"
               >
                 Relax
               </NavLink>
@@ -430,11 +429,11 @@ function Mock() {
           </div>
 
           {/* Task instruction banner */}
-          <div className="flex items-center gap-3 px-5 py-2.5 bg-slate-50 border-t border-slate-100">
+          <div className="flex items-center gap-3 px-5 py-2.5 bg-slate-50 dark:bg-neutral-950 border-t border-slate-100 dark:border-neutral-800">
             <span className="shrink-0 inline-flex items-center justify-center w-6 h-6 rounded-full bg-blue-600 text-white text-[10px] font-bold">
               {activeTask}
             </span>
-            <p className="text-xs text-slate-600">
+            <p className="text-xs text-slate-600 dark:text-neutral-300">
               Spend about{" "}
               <strong>{activeTask === 1 ? "20" : "40"} minutes</strong> on this
               task. Write at least <strong>{minWords} words</strong>.
@@ -445,7 +444,7 @@ function Mock() {
 
       {/* If header is hidden, show a minimal task pill */}
       {!showHeader && (
-        <div className="flex items-center gap-3 px-5 py-2 bg-slate-50 border-b border-slate-200">
+        <div className="flex items-center gap-3 px-5 py-2 bg-slate-50 dark:bg-neutral-950 border-b border-slate-200 dark:border-neutral-800">
           <div className="flex gap-1">
             {([1, 2] as const).map((t) => (
               <button
@@ -454,14 +453,14 @@ function Mock() {
                 className={`px-3 py-1 text-xs font-medium rounded-md transition-colors ${
                   activeTask === t
                     ? "bg-blue-600 text-white"
-                    : "text-slate-500 hover:bg-slate-100"
+                    : "text-slate-500 dark:text-neutral-400 hover:bg-slate-100 dark:hover:bg-neutral-800"
                 }`}
               >
                 Task {t}
               </button>
             ))}
           </div>
-          <span className="text-xs text-slate-400">
+          <span className="text-xs text-slate-400 dark:text-neutral-400">
             {minWords} words minimum
           </span>
         </div>
@@ -474,14 +473,14 @@ function Mock() {
         style={{ "--split": splitRatio } as unknown as CSSProperties}
       >
         {/* Question panel */}
-        <div className="w-full overflow-y-auto bg-white border-b border-slate-200 md:w-[calc(var(--split)*100%)] md:border-b-0 md:border-r max-h-[42vh] md:max-h-none">
+        <div className="w-full overflow-y-auto bg-white dark:bg-neutral-900 border-b border-slate-200 dark:border-neutral-800 md:w-[calc(var(--split)*100%)] md:border-b-0 md:border-r max-h-[42vh] md:max-h-none">
           <div className="mock-question-scroll p-6 w-full h-full overflow-y-auto min-h-0">
             {activeTask === 1 && task1 ? (
               <WritingTask1Preview task1={task1} />
             ) : activeTask === 2 && task2 ? (
               <WritingTask2Preview task2={task2.report} />
             ) : (
-              <p className="text-sm text-slate-400">
+              <p className="text-sm text-slate-400 dark:text-neutral-400">
                 No question available yet.
               </p>
             )}
@@ -509,7 +508,7 @@ function Mock() {
               setSplitRatio((r) => Math.min(0.72, r + 0.02));
             }
           }}
-          className="relative hidden w-1.5 shrink-0 cursor-col-resize select-none touch-none bg-slate-100 hover:bg-blue-200 active:bg-blue-300 transition-colors md:flex items-center justify-center group focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
+          className="relative hidden w-1.5 shrink-0 cursor-col-resize select-none touch-none bg-slate-100 dark:bg-neutral-800 hover:bg-blue-200 dark:hover:bg-blue-900 active:bg-blue-300 dark:active:bg-blue-800 transition-colors md:flex items-center justify-center group focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
         >
           <div className="flex flex-col gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
             <span className="w-1 h-1 rounded-full bg-blue-400" />
@@ -519,7 +518,7 @@ function Mock() {
         </div>
 
         {/* Answer panel */}
-        <div className="flex flex-col flex-1 bg-slate-50">
+        <div className="flex flex-col flex-1 bg-slate-50 dark:bg-neutral-950">
           <label htmlFor={`answer-task-${activeTask}`} className="sr-only">
             Your answer for Task {activeTask}
           </label>
@@ -540,14 +539,14 @@ function Mock() {
             data-gramm="false"
             data-gramm_editor="false"
             data-enable-grammarly="false"
-            className="flex-1 w-full p-6 text-sm text-slate-800 outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-inset resize-none placeholder:text-slate-300 focus:bg-white bg-white transition-colors duration-200 min-h-[300px] [scrollbar-gutter:stable]"
+            className="flex-1 w-full p-6 text-sm text-slate-800 dark:text-neutral-200 outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-inset resize-none placeholder:text-slate-300 dark:placeholder:text-neutral-600 focus:bg-white dark:focus:bg-neutral-900 bg-white dark:bg-neutral-900 transition-colors duration-200 min-h-[300px] [scrollbar-gutter:stable]"
           />
 
           {/* Status bar */}
-          <div className="flex items-center justify-between gap-4 px-5 py-3 border-t border-slate-200 bg-white">
+          <div className="flex items-center justify-between gap-4 px-5 py-3 border-t border-slate-200 dark:border-neutral-800 bg-white dark:bg-neutral-900">
             <div className="flex items-center gap-3">
               {/* Mini word-count progress bar */}
-              <div className="w-24 h-1.5 bg-slate-100 rounded-full overflow-hidden">
+              <div className="w-24 h-1.5 bg-slate-100 dark:bg-neutral-800 rounded-full overflow-hidden">
                 <div
                   className={`h-full rounded-full transition-[width,background-color] duration-300 ${
                     meetsMinWords ? "bg-emerald-500" : "bg-blue-400"
@@ -556,7 +555,7 @@ function Mock() {
                 />
               </div>
               <span
-                className={`text-xs font-medium ${meetsMinWords ? "text-emerald-600" : "text-slate-400"}`}
+                className={`text-xs font-medium ${meetsMinWords ? "text-emerald-600 dark:text-emerald-400" : "text-slate-400 dark:text-neutral-400"}`}
               >
                 {wordCount} / {minWords} words
                 {meetsMinWords && <span className="ml-1.5">✓</span>}
@@ -566,14 +565,14 @@ function Mock() {
             <div className="flex items-center gap-2">
               <button
                 onClick={handleGetAnother}
-                className="text-xs text-slate-400 hover:text-slate-700 transition-colors"
+                className="text-xs text-slate-400 dark:text-neutral-400 hover:text-slate-700 dark:hover:text-neutral-200 transition-colors"
               >
                 New question
               </button>
-              <span className="text-slate-200">|</span>
+              <span className="text-slate-200 dark:text-neutral-700">|</span>
               <button
                 onClick={handleDownloadPDF}
-                className="text-xs font-medium text-blue-600 hover:text-blue-800 transition-colors"
+                className="text-xs font-medium text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300 transition-colors"
               >
                 Finish & save PDF
               </button>
@@ -584,25 +583,25 @@ function Mock() {
 
       {/* ── Feedback modal ── */}
       <ModalCard open={showFeedbackModal} onClose={() => { if (!checkingAccess) setShowFeedbackModal(false); }}>
-          <div className="w-full max-w-sm bg-white rounded-2xl shadow-2xl overflow-hidden">
+          <div className="w-full max-w-sm bg-white dark:bg-neutral-900 rounded-2xl shadow-2xl overflow-hidden">
             {/* Coloured accent top */}
             <div className="h-1.5 bg-linear-to-r from-blue-500 to-indigo-500" />
 
             <div className="p-7">
-              <div className="flex items-center justify-center w-11 h-11 mx-auto rounded-full bg-blue-50">
+              <div className="flex items-center justify-center w-11 h-11 mx-auto rounded-full bg-blue-50 dark:bg-blue-950/40">
                 {autoSubmittedByTimer ? (
-                  <ClockIcon aria-hidden="true" className="w-5 h-5 text-blue-600" />
+                  <ClockIcon aria-hidden="true" className="w-5 h-5 text-blue-600 dark:text-blue-400" />
                 ) : (
-                  <CheckIcon aria-hidden="true" className="w-5 h-5 text-blue-600" />
+                  <CheckIcon aria-hidden="true" className="w-5 h-5 text-blue-600 dark:text-blue-400" />
                 )}
               </div>
 
-              <ModalTitle className="mt-4 text-base font-semibold text-center text-slate-900">
+              <ModalTitle className="mt-4 text-base font-semibold text-center text-slate-900 dark:text-neutral-100">
                 {autoSubmittedByTimer
                   ? "Time's up — exam complete"
                   : "Exam saved"}
               </ModalTitle>
-              <ModalDescription className="mt-2 text-sm leading-6 text-center text-slate-500">
+              <ModalDescription className="mt-2 text-sm leading-6 text-center text-slate-500 dark:text-neutral-400">
                 {autoSubmittedByTimer &&
                   "Your answers were automatically saved. "}
                 Would you like in-depth AI feedback on your writing? We'll
@@ -659,16 +658,16 @@ function Mock() {
       />
 
       <ModalCard open={humanCheck.success} onClose={() => humanCheck.setSuccess(false)}>
-          <div className="w-full max-w-sm bg-white rounded-2xl shadow-2xl overflow-hidden">
+          <div className="w-full max-w-sm bg-white dark:bg-neutral-900 rounded-2xl shadow-2xl overflow-hidden">
             <div className="h-1.5 bg-linear-to-r from-emerald-500 to-teal-500" />
             <div className="p-7 text-center">
-              <div className="flex items-center justify-center w-11 h-11 mx-auto rounded-full bg-emerald-50">
-                <CheckIcon className="w-5 h-5 text-emerald-600" />
+              <div className="flex items-center justify-center w-11 h-11 mx-auto rounded-full bg-emerald-50 dark:bg-emerald-950/40">
+                <CheckIcon className="w-5 h-5 text-emerald-600 dark:text-emerald-400" />
               </div>
-              <ModalTitle className="mt-4 text-base font-semibold text-slate-900">
+              <ModalTitle className="mt-4 text-base font-semibold text-slate-900 dark:text-neutral-100">
                 Sent for human review
               </ModalTitle>
-              <ModalDescription className="mt-2 text-sm leading-6 text-slate-500">
+              <ModalDescription className="mt-2 text-sm leading-6 text-slate-500 dark:text-neutral-400">
                 You'll get a notification once your teacher has reviewed your
                 essay.
               </ModalDescription>

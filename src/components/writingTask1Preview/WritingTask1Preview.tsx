@@ -12,12 +12,12 @@ interface Props {
 export default function WritingTask1Preview({ task1 }: Props) {
   return (
     <div className="space-y-4 text-sm">
-      <div className="border-gray-200 font-bold border p-4 text-gray-900 leading-relaxed">
+      <div className="border-gray-200 dark:border-neutral-800 font-bold border p-4 text-gray-900 dark:text-neutral-100 leading-relaxed">
         <p className="mb-4">{task1.report}</p>
         <p>Summarise the information by selecting and reporting the main features, and make comparisons where relevant.</p>
       </div>
       {task1.image && (
-        <div className="overflow-hidden rounded-xl border border-gray-200 bg-white">
+        <div className="overflow-hidden rounded-xl border border-gray-200 dark:border-neutral-800 bg-white">
           {isPdf(task1.image) ? (
             <object data={task1.image} type="application/pdf" className="w-full h-[520px]">
               <iframe src={task1.image} className="w-full h-[520px] border-0" title="Task 1 chart" />

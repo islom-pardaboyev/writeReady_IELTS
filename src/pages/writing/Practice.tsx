@@ -214,10 +214,10 @@ function Practice() {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center min-h-screen bg-slate-50">
+      <div className="flex items-center justify-center min-h-screen bg-slate-50 dark:bg-neutral-950">
         <div className="flex flex-col items-center gap-4">
           <div className="w-8 h-8 border-2 border-blue-600 border-t-transparent rounded-full animate-spin" />
-          <p className="text-sm text-slate-500 tracking-wide">
+          <p className="text-sm text-slate-500 dark:text-neutral-400 tracking-wide">
             Preparing your practice session…
           </p>
         </div>
@@ -227,11 +227,10 @@ function Practice() {
 
   return (
     <div
-      data-theme="light"
-      className="flex flex-col min-h-screen bg-slate-50 font-sans"
+      className="flex flex-col min-h-screen bg-slate-50 dark:bg-neutral-950 font-sans"
     >
       {/* ── Top bar ── */}
-      <div className="sticky top-0 z-30 bg-white border-b border-slate-800">
+      <div className="sticky top-0 z-30 bg-white dark:bg-neutral-900 border-b border-slate-800 dark:border-neutral-800">
         <div className="flex items-center justify-between gap-4 px-5 py-2.5">
           <div className="flex items-center gap-2 min-w-0">
             <button
@@ -240,36 +239,36 @@ function Practice() {
                 confirmLeave(e);
                 if (!e.defaultPrevented) navigate(-1);
               }}
-              className="hidden sm:flex items-center gap-2 rounded text-xs font-semibold text-black/50 tracking-widest uppercase hover:text-black focus-visible:ring-2 focus-visible:ring-blue-500"
+              className="hidden sm:flex items-center gap-2 rounded text-xs font-semibold text-black/50 dark:text-neutral-400 tracking-widest uppercase hover:text-black dark:hover:text-white focus-visible:ring-2 focus-visible:ring-blue-500"
             >
-              <ChevronLeftIcon strokeWidth={3} aria-hidden="true" className="size-3 text-black" />
+              <ChevronLeftIcon strokeWidth={3} aria-hidden="true" className="size-3 text-black dark:text-neutral-100" />
               WriteReady
             </button>
-            <ChevronRightIcon aria-hidden="true" className="hidden sm:block w-3 h-3 text-black/30" />
-            <span className="text-sm font-medium text-black truncate">
+            <ChevronRightIcon aria-hidden="true" className="hidden sm:block w-3 h-3 text-black/30 dark:text-neutral-500" />
+            <span className="text-sm font-medium text-black dark:text-neutral-100 truncate">
               Practice Mode
             </span>
           </div>
 
           {/* Centre: timer */}
           <div className="flex items-center gap-2">
-            <ClockIcon aria-hidden="true" className="w-3.5 h-3.5 text-black/60" />
-            <span className="text-sm font-mono font-semibold tabular-nums text-black/90">
+            <ClockIcon aria-hidden="true" className="w-3.5 h-3.5 text-black/60 dark:text-neutral-400" />
+            <span className="text-sm font-mono font-semibold tabular-nums text-black/90 dark:text-neutral-100">
               {elapsed}
             </span>
           </div>
 
           <div id="right-actions" className="flex items-center gap-2">
-            <FullscreenButton className="inline-flex items-center justify-center p-1.5 text-black/70 hover:text-black border border-black/20 hover:border-black/40 rounded-md transition-colors" />
+            <FullscreenButton className="inline-flex items-center justify-center p-1.5 text-black/70 dark:text-neutral-300 hover:text-black dark:hover:text-white border border-black/20 dark:border-neutral-700 hover:border-black/40 dark:hover:border-neutral-600 rounded-md transition-colors" />
             <button
               onClick={() => setShowHeader((p) => !p)}
-              className="hidden sm:inline-flex items-center gap-1 px-3 py-1.5 text-xs text-black/70 hover:text-black border border-black/20 hover:border-black/40 rounded-md transition-colors"
+              className="hidden sm:inline-flex items-center gap-1 px-3 py-1.5 text-xs text-black/70 dark:text-neutral-300 hover:text-black dark:hover:text-white border border-black/20 dark:border-neutral-700 hover:border-black/40 dark:hover:border-neutral-600 rounded-md transition-colors"
             >
               {showHeader ? "Hide panel" : "Show panel"}
             </button>
             <button
               onClick={handleGetAnother}
-              className="hidden sm:inline-flex items-center gap-1 px-3 py-1.5 text-xs text-black/70 hover:text-black border border-black/20 hover:border-black/40 rounded-md transition-colors"
+              className="hidden sm:inline-flex items-center gap-1 px-3 py-1.5 text-xs text-black/70 dark:text-neutral-300 hover:text-black dark:hover:text-white border border-black/20 dark:border-neutral-700 hover:border-black/40 dark:hover:border-neutral-600 rounded-md transition-colors"
             >
               New question
             </button>
@@ -283,9 +282,9 @@ function Practice() {
         </div>
 
         {/* Progress bar */}
-        <div className="h-0.5 bg-black/10">
+        <div className="h-0.5 bg-black/10 dark:bg-white/10">
           <div
-            className="h-full bg-black/60 transition-[width] duration-500"
+            className="h-full bg-black/60 dark:bg-white/50 transition-[width] duration-500"
             style={{ width: `${currentProgress}%` }}
           />
         </div>
@@ -293,7 +292,7 @@ function Practice() {
 
       {/* ── Collapsible secondary header ── */}
       {showHeader && (
-        <div className="sticky top-[45px] z-20 bg-white border-b border-slate-200 shadow-sm">
+        <div className="sticky top-[45px] z-20 bg-white dark:bg-neutral-900 border-b border-slate-200 dark:border-neutral-800 shadow-sm">
           <div className="flex items-center justify-between gap-4 px-5 py-3">
             <div className="flex items-center gap-1">
               {([1, 2] as const).map((t) => {
@@ -306,13 +305,13 @@ function Practice() {
                     className={`relative flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-lg transition-[color,background-color,box-shadow] ${
                       activeTask === t
                         ? "bg-blue-600 text-white shadow-sm"
-                        : "text-slate-600 hover:bg-slate-100"
+                        : "text-slate-600 dark:text-neutral-300 hover:bg-slate-100 dark:hover:bg-neutral-800"
                     }`}
                   >
                     Task {t}
                     {done && (
                       <span
-                        className={`flex items-center justify-center w-4 h-4 rounded-full text-[10px] ${activeTask === t ? "bg-white/20 text-white" : "bg-emerald-100 text-emerald-700"}`}
+                        className={`flex items-center justify-center w-4 h-4 rounded-full text-[10px] ${activeTask === t ? "bg-white/20 text-white" : "bg-emerald-100 dark:bg-emerald-900/40 text-emerald-700 dark:text-emerald-300"}`}
                       >
                         <CheckIcon aria-hidden="true" className="w-2.5 h-2.5" />
                       </span>
@@ -322,39 +321,39 @@ function Practice() {
               })}
             </div>
 
-            <nav className="hidden md:flex items-center gap-1 text-xs text-slate-500">
+            <nav className="hidden md:flex items-center gap-1 text-xs text-slate-500 dark:text-neutral-400">
               <NavLink onClick={confirmLeave}
                 to="/"
-                className="px-2 py-1 hover:text-slate-900 hover:bg-slate-100 rounded transition-colors"
+                className="px-2 py-1 hover:text-slate-900 dark:hover:text-neutral-100 hover:bg-slate-100 dark:hover:bg-neutral-800 rounded transition-colors"
               >
                 Home
               </NavLink>
               <NavLink onClick={confirmLeave}
                 to="/writing/mock"
-                className="px-2 py-1 hover:text-slate-900 hover:bg-slate-100 rounded transition-colors"
+                className="px-2 py-1 hover:text-slate-900 dark:hover:text-neutral-100 hover:bg-slate-100 dark:hover:bg-neutral-800 rounded transition-colors"
               >
                 Mock Test
               </NavLink>
               <NavLink onClick={confirmLeave}
                 to="/writing/quick"
-                className="px-2 py-1 hover:text-slate-900 hover:bg-slate-100 rounded transition-colors"
+                className="px-2 py-1 hover:text-slate-900 dark:hover:text-neutral-100 hover:bg-slate-100 dark:hover:bg-neutral-800 rounded transition-colors"
               >
                 Quick Write
               </NavLink>
               <NavLink onClick={confirmLeave}
                 to="/writing/relax"
-                className="px-2 py-1 hover:text-slate-900 hover:bg-slate-100 rounded transition-colors"
+                className="px-2 py-1 hover:text-slate-900 dark:hover:text-neutral-100 hover:bg-slate-100 dark:hover:bg-neutral-800 rounded transition-colors"
               >
                 Relax
               </NavLink>
             </nav>
           </div>
 
-          <div className="flex items-center gap-3 px-5 py-2.5 bg-slate-50 border-t border-slate-100">
+          <div className="flex items-center gap-3 px-5 py-2.5 bg-slate-50 dark:bg-neutral-950 border-t border-slate-100 dark:border-neutral-800">
             <span className="shrink-0 inline-flex items-center justify-center w-6 h-6 rounded-full bg-blue-600 text-white text-[10px] font-bold">
               {activeTask}
             </span>
-            <p className="text-xs text-slate-600">
+            <p className="text-xs text-slate-600 dark:text-neutral-300">
               Spend about{" "}
               <strong>{activeTask === 1 ? "20" : "40"} minutes</strong> on this
               task. Write at least <strong>{minWords} words</strong>.
@@ -364,19 +363,19 @@ function Practice() {
       )}
 
       {!showHeader && (
-        <div className="flex items-center gap-3 px-5 py-2 bg-slate-50 border-b border-slate-200">
+        <div className="flex items-center gap-3 px-5 py-2 bg-slate-50 dark:bg-neutral-950 border-b border-slate-200 dark:border-neutral-800">
           <div className="flex gap-1">
             {([1, 2] as const).map((t) => (
               <button
                 key={t}
                 onClick={() => setActiveTask(t)}
-                className={`px-3 py-1 text-xs font-medium rounded-md transition-colors ${activeTask === t ? "bg-blue-600 text-white" : "text-slate-500 hover:bg-slate-100"}`}
+                className={`px-3 py-1 text-xs font-medium rounded-md transition-colors ${activeTask === t ? "bg-blue-600 text-white" : "text-slate-500 dark:text-neutral-400 hover:bg-slate-100 dark:hover:bg-neutral-800"}`}
               >
                 Task {t}
               </button>
             ))}
           </div>
-          <span className="text-xs text-slate-400">
+          <span className="text-xs text-slate-400 dark:text-neutral-400">
             {minWords} words minimum
           </span>
         </div>
@@ -388,14 +387,14 @@ function Practice() {
         className="flex flex-col flex-1 overflow-hidden md:flex-row"
         style={{ "--split": splitRatio } as unknown as CSSProperties}
       >
-        <div className="w-full overflow-y-auto bg-white border-b border-slate-200 md:w-[calc(var(--split)*100%)] md:border-b-0 md:border-r max-h-[42vh] md:max-h-none">
+        <div className="w-full overflow-y-auto bg-white dark:bg-neutral-900 border-b border-slate-200 dark:border-neutral-800 md:w-[calc(var(--split)*100%)] md:border-b-0 md:border-r max-h-[42vh] md:max-h-none">
           <div className="p-6 w-full">
             {activeTask === 1 && task1 ? (
               <WritingTask1Preview task1={task1} />
             ) : activeTask === 2 && task2 ? (
               <WritingTask2Preview task2={task2.report} />
             ) : (
-              <p className="text-sm text-slate-400">
+              <p className="text-sm text-slate-400 dark:text-neutral-400">
                 No question available yet.
               </p>
             )}
@@ -422,7 +421,7 @@ function Practice() {
               setSplitRatio((r) => Math.min(0.72, r + 0.02));
             }
           }}
-          className="relative hidden w-1.5 shrink-0 cursor-col-resize select-none touch-none bg-slate-100 hover:bg-blue-200 active:bg-blue-300 transition-colors md:flex items-center justify-center group focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
+          className="relative hidden w-1.5 shrink-0 cursor-col-resize select-none touch-none bg-slate-100 dark:bg-neutral-800 hover:bg-blue-200 dark:hover:bg-blue-900 active:bg-blue-300 dark:active:bg-blue-800 transition-colors md:flex items-center justify-center group focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
         >
           <div className="flex flex-col gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
             <span className="w-1 h-1 rounded-full bg-blue-400" />
@@ -431,7 +430,7 @@ function Practice() {
           </div>
         </div>
 
-        <div className="flex flex-col flex-1 bg-slate-50">
+        <div className="flex flex-col flex-1 bg-slate-50 dark:bg-neutral-950">
           <label htmlFor={`answer-task-${activeTask}`} className="sr-only">
             Your answer for Task {activeTask}
           </label>
@@ -454,19 +453,19 @@ function Practice() {
             data-gramm="false"
             data-gramm_editor="false"
             data-enable-grammarly="false"
-            className="flex-1 w-full p-6 text-[15px] leading-relaxed text-slate-800 bg-white outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-inset resize-none placeholder:text-slate-300 focus:bg-white transition-colors duration-200 min-h-[300px] [scrollbar-gutter:stable]"
+            className="flex-1 w-full p-6 text-[15px] leading-relaxed text-slate-800 dark:text-neutral-200 bg-white dark:bg-neutral-900 outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-inset resize-none placeholder:text-slate-300 dark:placeholder:text-neutral-600 focus:bg-white dark:focus:bg-neutral-900 transition-colors duration-200 min-h-[300px] [scrollbar-gutter:stable]"
           />
 
-          <div className="flex items-center justify-between gap-4 px-5 py-3 border-t border-slate-200 bg-white">
+          <div className="flex items-center justify-between gap-4 px-5 py-3 border-t border-slate-200 dark:border-neutral-800 bg-white dark:bg-neutral-900">
             <div className="flex items-center gap-3">
-              <div className="w-24 h-1.5 bg-slate-100 rounded-full overflow-hidden">
+              <div className="w-24 h-1.5 bg-slate-100 dark:bg-neutral-800 rounded-full overflow-hidden">
                 <div
                   className={`h-full rounded-full transition-[width,background-color] duration-300 ${meetsMinWords ? "bg-emerald-500" : "bg-blue-400"}`}
                   style={{ width: `${currentProgress}%` }}
                 />
               </div>
               <span
-                className={`text-xs font-medium ${meetsMinWords ? "text-emerald-600" : "text-slate-400"}`}
+                className={`text-xs font-medium ${meetsMinWords ? "text-emerald-600 dark:text-emerald-400" : "text-slate-400 dark:text-neutral-400"}`}
               >
                 {wordCount} / {minWords} words
                 {meetsMinWords && <span className="ml-1.5">✓</span>}
@@ -476,14 +475,14 @@ function Practice() {
             <div className="flex items-center gap-2">
               <button
                 onClick={handleGetAnother}
-                className="text-xs text-slate-400 hover:text-slate-700 transition-colors"
+                className="text-xs text-slate-400 dark:text-neutral-400 hover:text-slate-700 dark:hover:text-neutral-200 transition-colors"
               >
                 New question
               </button>
-              <span className="text-slate-200">|</span>
+              <span className="text-slate-200 dark:text-neutral-700">|</span>
               <button
                 onClick={handleDownloadPDF}
-                className="text-xs font-medium text-blue-600 hover:text-blue-800 transition-colors"
+                className="text-xs font-medium text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300 transition-colors"
               >
                 Save PDF
               </button>
@@ -494,16 +493,16 @@ function Practice() {
 
       {/* ── Feedback modal ── */}
       <ModalCard open={showFeedbackModal} onClose={() => { if (!checkingAccess) setShowFeedbackModal(false); }}>
-          <div className="w-full max-w-sm bg-white rounded-2xl shadow-2xl overflow-hidden">
+          <div className="w-full max-w-sm bg-white dark:bg-neutral-900 rounded-2xl shadow-2xl overflow-hidden">
             <div className="h-1.5 bg-linear-to-r from-blue-500 to-indigo-500" />
             <div className="p-7">
-              <div className="flex items-center justify-center w-11 h-11 mx-auto rounded-full bg-blue-50">
-                <CheckIcon aria-hidden="true" className="w-5 h-5 text-blue-600" />
+              <div className="flex items-center justify-center w-11 h-11 mx-auto rounded-full bg-blue-50 dark:bg-blue-950/40">
+                <CheckIcon aria-hidden="true" className="w-5 h-5 text-blue-600 dark:text-blue-400" />
               </div>
-              <ModalTitle className="mt-4 text-base font-semibold text-center text-slate-900">
+              <ModalTitle className="mt-4 text-base font-semibold text-center text-slate-900 dark:text-neutral-100">
                 Session saved
               </ModalTitle>
-              <ModalDescription className="mt-2 text-sm leading-6 text-center text-slate-500">
+              <ModalDescription className="mt-2 text-sm leading-6 text-center text-slate-500 dark:text-neutral-400">
                 Would you like in-depth AI feedback on your writing? We'll
                 analyse grammar, vocabulary, coherence, and task achievement.
               </ModalDescription>
@@ -557,14 +556,14 @@ function Practice() {
       />
 
       <ModalCard open={humanCheck.success} onClose={() => humanCheck.setSuccess(false)}>
-          <div className="w-full max-w-sm bg-white rounded-2xl shadow-2xl overflow-hidden">
+          <div className="w-full max-w-sm bg-white dark:bg-neutral-900 rounded-2xl shadow-2xl overflow-hidden">
             <div className="h-1.5 bg-linear-to-r from-emerald-500 to-teal-500" />
             <div className="p-7 text-center">
-              <div className="flex items-center justify-center w-11 h-11 mx-auto rounded-full bg-emerald-50">
-                <CheckIcon aria-hidden="true" className="w-5 h-5 text-emerald-600" />
+              <div className="flex items-center justify-center w-11 h-11 mx-auto rounded-full bg-emerald-50 dark:bg-emerald-950/40">
+                <CheckIcon aria-hidden="true" className="w-5 h-5 text-emerald-600 dark:text-emerald-400" />
               </div>
-              <ModalTitle className="mt-4 text-base font-semibold text-slate-900">Sent for human review</ModalTitle>
-              <ModalDescription className="mt-2 text-sm leading-6 text-slate-500">
+              <ModalTitle className="mt-4 text-base font-semibold text-slate-900 dark:text-neutral-100">Sent for human review</ModalTitle>
+              <ModalDescription className="mt-2 text-sm leading-6 text-slate-500 dark:text-neutral-400">
                 You'll get a notification once your teacher has reviewed your essay.
               </ModalDescription>
               <Button onClick={() => humanCheck.setSuccess(false)} className="w-full mt-6 bg-blue-600 hover:bg-blue-700 text-white">

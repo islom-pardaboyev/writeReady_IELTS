@@ -48,7 +48,7 @@ export function SubscriptionBadge({
     );
   }
   return (
-    <span className="inline-flex items-center gap-1 text-[0.65rem] font-bold uppercase tracking-wider bg-slate-100 text-slate-500 border border-slate-200 rounded-full px-2 py-0.5 dark:bg-slate-700 dark:text-slate-400 dark:border-slate-600">
+    <span className="inline-flex items-center gap-1 text-[0.65rem] font-bold uppercase tracking-wider bg-slate-100 text-slate-500 border border-slate-200 rounded-full px-2 py-0.5 dark:bg-neutral-800 dark:text-neutral-400 dark:border-neutral-700">
       Free
     </span>
   );

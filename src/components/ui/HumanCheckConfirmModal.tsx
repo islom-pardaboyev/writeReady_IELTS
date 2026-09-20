@@ -19,7 +19,7 @@ export function HumanCheckConfirmModal({ open, priceLoading, price, balance, can
       <DialogContent className="max-w-sm p-0 overflow-hidden gap-0 rounded-2xl">
         <div className="h-1.5 bg-linear-to-r from-emerald-500 to-teal-500" />
         <div className="p-7">
-          <div className="flex items-center justify-center w-11 h-11 rounded-full bg-emerald-50 mb-4">
+          <div className="flex items-center justify-center w-11 h-11 rounded-full bg-emerald-50 dark:bg-emerald-950/40 mb-4">
             <Wallet className="w-5 h-5 text-emerald-600" />
           </div>
 
@@ -32,13 +32,13 @@ export function HumanCheckConfirmModal({ open, priceLoading, price, balance, can
             </>
           ) : canAfford ? (
             <>
-              <DialogTitle className="text-base font-semibold text-slate-900 mb-1">
+              <DialogTitle className="text-base font-semibold text-slate-900 dark:text-neutral-100 mb-1">
                 Human Check costs {price?.toLocaleString()} UZS
               </DialogTitle>
-              <DialogDescription className="text-sm text-slate-500 leading-6 mb-1">
+              <DialogDescription className="text-sm text-slate-500 dark:text-neutral-400 leading-6 mb-1">
                 This amount will be deducted from your balance once you choose a teacher.
               </DialogDescription>
-              <p className="text-xs text-slate-400 mb-6">Your balance: {balance.toLocaleString()} UZS</p>
+              <p className="text-xs text-slate-400 dark:text-neutral-500 mb-6">Your balance: {balance.toLocaleString()} UZS</p>
               <div className="flex flex-col gap-2.5">
                 <Button onClick={onConfirm} className="w-full bg-emerald-600 hover:bg-emerald-700 text-white">
                   Continue
@@ -50,11 +50,11 @@ export function HumanCheckConfirmModal({ open, priceLoading, price, balance, can
             </>
           ) : (
             <>
-              <DialogTitle className="text-base font-semibold text-slate-900 mb-1">Not enough balance</DialogTitle>
-              <DialogDescription className="text-sm text-slate-500 leading-6 mb-1">
+              <DialogTitle className="text-base font-semibold text-slate-900 dark:text-neutral-100 mb-1">Not enough balance</DialogTitle>
+              <DialogDescription className="text-sm text-slate-500 dark:text-neutral-400 leading-6 mb-1">
                 Human Check costs {price?.toLocaleString()} UZS, but your balance is only {balance.toLocaleString()} UZS.
               </DialogDescription>
-              <p className="text-xs text-slate-400 mb-6">Top up your balance to use Human Check.</p>
+              <p className="text-xs text-slate-400 dark:text-neutral-500 mb-6">Top up your balance to use Human Check.</p>
               <div className="flex flex-col gap-2.5">
                 <Link to="/pricing">
                   <Button className="w-full bg-emerald-600 hover:bg-emerald-700 text-white">

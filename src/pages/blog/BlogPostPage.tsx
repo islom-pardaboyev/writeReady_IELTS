@@ -224,7 +224,7 @@ export function BlogPostPage() {
                       className="w-20 h-16 object-cover rounded-lg shrink-0"
                     />
                   ) : (
-                    <div className="w-20 h-16 bg-slate-100 dark:bg-slate-800 rounded-lg shrink-0 flex items-center justify-center text-2xl">📝</div>
+                    <div className="w-20 h-16 bg-slate-100 dark:bg-neutral-900 rounded-lg shrink-0 flex items-center justify-center text-2xl">📝</div>
                   )}
                   <div>
                     <p className="text-sm font-semibold text-[var(--text-primary)] group-hover:text-indigo-600 transition-colors line-clamp-2">{r.title}</p>

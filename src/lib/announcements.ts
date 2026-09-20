@@ -11,7 +11,7 @@ export const ANNOUNCEMENT_CATEGORIES: Record<AnnouncementCategory, { label: stri
   announcement: {
     label: "Announcement",
     icon: Megaphone,
-    tint: "bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-200",
+    tint: "bg-slate-100 text-slate-700 dark:bg-neutral-900 dark:text-neutral-200",
   },
   update: {
     label: "Update",
