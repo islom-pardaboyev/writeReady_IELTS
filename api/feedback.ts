@@ -286,9 +286,9 @@ ${bandDescriptors(taskType)}
 === SCORING METHOD (official IELTS best-fit) ===
 For EACH of the 4 criteria, choose the band whose descriptor BEST matches the essay's overall profile — exactly as a real IELTS examiner does. Best-fit means matching the closest overall description; NOT every feature of a band must be present, and one or two features sitting slightly higher or lower does not change the best-fit band.
 
-Do NOT demand perfection. The top bands explicitly tolerate minor errors: Band 9 allows "rare errors only, as slips"; Band 8 allows "occasional inaccuracies" that don't detract. So a fluent, well-organised essay with a wide, natural vocabulary and mostly error-free complex sentences is a genuine Band 8 or 9 — score it that way. A few small slips must NOT drag such an essay down to Band 5–6.
+Apply the band descriptors exactly as written, in both directions. The top bands tolerate minor errors — Band 9 allows "rare errors only, as slips" and Band 8 allows "occasional inaccuracies" — so do not withhold a high band over a handful of small mistakes. Equally, the lower bands exist and must be used: frequent errors, a narrow range, or underdeveloped ideas belong at Band 5 or 6, however hard the student has clearly worked.
 
-Use the FULL range 4.0–9.0. Use half bands (e.g. 7.5) when the essay sits between two whole bands; if it does, pick the closer fit — do NOT reflexively round down.
+Use the FULL range 4.0–9.0. Use half bands (e.g. 7.5) when the essay sits between two whole bands; pick the closer fit, rounding up or down as the evidence points rather than by habit.
 
 Calibration anchors — score each criterion independently against these:
 - Band 9.0: near-native — precise, wide, natural vocabulary; varied structures that are virtually all error-free; fully developed, well-supported ideas; effortless, seamless cohesion. Errors are rare slips only.
@@ -296,7 +296,7 @@ Calibration anchors — score each criterion independently against these:
 - Band 7.0–7.5: good but with visible limits — sufficient range with some less-common vocabulary; frequent error-free complex sentences BUT errors that clearly persist; clear, organised argument that may lack full development in places.
 - Band 5.0–6.0: adequate but limited range; noticeable or frequent errors; ideas underdeveloped, mechanical, or repetitive.
 
-Do NOT cluster essays at Band 7. Band 7 means "good, but with visible limitations." If an essay reads as fluent and natural, uses a wide and precise vocabulary, keeps its complex sentences mostly error-free, and fully develops its ideas, it is a Band 8 or 9 — do NOT cap such an essay at 7. A genuinely excellent essay and a merely competent one must receive clearly different scores. Point to specific evidence from the essay for the band you award.
+Do NOT cluster essays at Band 7. Band 7 means "good, but with visible limitations." Judge each essay against the descriptors and award what it has earned: a fluent, precise, fully developed essay is a Band 8 or 9, and an essay with persistent errors, narrow vocabulary or thin ideas is a Band 5 or 6. Excellent, competent and weak essays must all end up with clearly different scores. Point to specific evidence from the essay for the band you award.
 
 Return this EXACT JSON structure:
 {
@@ -375,8 +375,8 @@ STRICT RULES:
 - Every issue should reference the essay where possible
 - Score each of the 4 criteria INDEPENDENTLY. It is uncommon for all four to land on the exact same band — most essays are stronger in some areas than others. Do NOT default to giving every criterion 7.0; give matching scores only when each criterion genuinely best-fits that band on its own.
 - scores.* must be internally consistent with bandRationale.* — the score must reflect the best-fit band you described
-- Award Band 8.0–9.0 whenever the essay's overall profile best matches those descriptors; do NOT withhold a high band just because a few minor slips exist — the top-band descriptors explicitly allow occasional slips
-- Do NOT compress scores toward the middle or cluster essays at Band 7 — differentiate genuinely strong essays (8.0–9.0) from merely competent ones (7.0), and do NOT systematically under-award strong essays`;
+- Award the band the evidence supports, in either direction: give Band 8.0–9.0 when the essay's profile genuinely matches those descriptors, and give Band 4.0–6.0 when it does not. Occasional slips do not block a high band; persistent errors and undeveloped ideas do.
+- Do NOT compress scores toward the middle. Never inflate a score to encourage the student, and never deflate one to appear rigorous. This student is preparing for a real exam where a stranger will mark them — a score that is too generous does more harm than one that is too harsh, because it tells them they are ready when they are not. The same applies to the written feedback: name the real weaknesses plainly instead of softening them.`;
 }
 
 type CategoryFeedback = { strengths: string[]; issues: string[] };

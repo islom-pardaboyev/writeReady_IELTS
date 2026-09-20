@@ -1,21 +1,20 @@
 /**
- * Compare how different models + prompts score the same IELTS essays.
+ * Compare how the live scoring prompt behaves against the one it replaced.
  *
- * Why this exists: api/feedback.ts was tuned against claude-sonnet-4-6, and its
- * scoring section pushes the band UP in five separate places (see HONEST_EDITS
- * below) with nothing pushing it down. That correction was written for one
- * model's bias. On a model that already scores fairly it inflates instead.
+ * History: api/feedback.ts was tuned against claude-sonnet-4-6, and its scoring
+ * section pushed the band UP in five places with nothing pushing it down. Those
+ * five rules were replaced with two-sided ones on 2026-09-20. LEGACY_EDITS puts
+ * the old wording back, in memory only, so the two can still be graded side by
+ * side and the change can be judged on evidence rather than opinion.
  *
- * Three variants are graded side by side:
- *   old     claude-sonnet-4-6 + current prompt  — what students got before
- *   new     claude-sonnet-5   + current prompt  — what students get now
- *   honest  claude-sonnet-5   + two-sided prompt — the proposed fix
+ *   live     claude-sonnet-5 + the prompt in api/feedback.ts right now
+ *   legacy   claude-sonnet-5 + the old push-up-only wording
  *
  * It imports buildPrompt from api/feedback.ts, so it always grades the REAL
  * prompt. It never writes to Firestore and never touches a student record.
  *
- *   npx tsx scripts/compare-band-scores.ts --dry    # no API calls, shows cost
- *   npx tsx scripts/compare-band-scores.ts          # runs it (~10-20 cents)
+ *   npx tsx scripts/compare-band-scores.ts --dry            # no API calls
+ *   npx tsx scripts/compare-band-scores.ts --runs=3         # ~$1 for 18 calls
  */
 
 import { readFileSync } from 'node:fs';
@@ -27,43 +26,43 @@ import { TEST_ESSAYS, expectedOverall, type TestEssay } from './test-essays.js';
  * Each entry finds the line containing `find` and swaps the whole line. A
  * marker that no longer matches is a hard error, so this can never silently
  * grade the same prompt twice and report it as a difference.            */
-const HONEST_EDITS: { find: string; replace: string }[] = [
+const LEGACY_EDITS: { find: string; replace: string }[] = [
   {
-    find: 'Do NOT demand perfection',
+    find: 'Apply the band descriptors exactly as written',
     replace:
-      'Apply the band descriptors exactly as written, in both directions. The top bands tolerate minor errors — Band 9 allows "rare errors only, as slips" and Band 8 allows "occasional inaccuracies" — so do not withhold a high band over a handful of small mistakes. Equally, the lower bands exist and must be used: frequent errors, a narrow range, or underdeveloped ideas belong at Band 5 or 6, however hard the student has clearly worked.',
+      'Do NOT demand perfection. The top bands explicitly tolerate minor errors: Band 9 allows "rare errors only, as slips"; Band 8 allows "occasional inaccuracies" that don\'t detract. So a fluent, well-organised essay with a wide, natural vocabulary and mostly error-free complex sentences is a genuine Band 8 or 9 — score it that way. A few small slips must NOT drag such an essay down to Band 5–6.',
   },
   {
-    find: 'do NOT reflexively round down',
+    find: 'rounding up or down as the evidence points',
     replace:
-      'Use the FULL range 4.0–9.0. Use half bands (e.g. 7.5) when the essay sits between two whole bands; pick the closer fit, rounding up or down as the evidence points rather than by habit.',
+      'Use the FULL range 4.0–9.0. Use half bands (e.g. 7.5) when the essay sits between two whole bands; if it does, pick the closer fit — do NOT reflexively round down.',
   },
   {
-    find: 'Do NOT cluster essays at Band 7. Band 7 means',
+    find: 'Judge each essay against the descriptors and award what it has earned',
     replace:
-      'Do NOT cluster essays at Band 7. Band 7 means "good, but with visible limitations." Judge each essay against the descriptors and award what it has earned: a fluent, precise, fully developed essay is a Band 8 or 9, and an essay with persistent errors, narrow vocabulary or thin ideas is a Band 5 or 6. Excellent, competent and weak essays must all end up with clearly different scores. Point to specific evidence from the essay for the band you award.',
+      'Do NOT cluster essays at Band 7. Band 7 means "good, but with visible limitations." If an essay reads as fluent and natural, uses a wide and precise vocabulary, keeps its complex sentences mostly error-free, and fully develops its ideas, it is a Band 8 or 9 — do NOT cap such an essay at 7. A genuinely excellent essay and a merely competent one must receive clearly different scores. Point to specific evidence from the essay for the band you award.',
   },
   {
-    find: 'do NOT withhold a high band',
+    find: 'Award the band the evidence supports, in either direction',
     replace:
-      "- Award the band the evidence supports, in either direction: give Band 8.0–9.0 when the essay's profile genuinely matches those descriptors, and give Band 4.0–6.0 when it does not. Occasional slips do not block a high band; persistent errors and undeveloped ideas do.",
+      '- Award Band 8.0–9.0 whenever the essay\'s overall profile best matches those descriptors; do NOT withhold a high band just because a few minor slips exist — the top-band descriptors explicitly allow occasional slips',
   },
   {
-    find: 'Do NOT compress scores toward the middle',
+    find: 'Never inflate a score to encourage the student',
     replace:
-      '- Do NOT compress scores toward the middle. Never inflate a score to encourage the student, and never deflate one to appear rigorous. This student is preparing for a real exam where a stranger will mark them — a score that is too generous does more harm than one that is too harsh, because it tells them they are ready when they are not. The same applies to the written feedback: name the real weaknesses plainly instead of softening them.',
+      '- Do NOT compress scores toward the middle or cluster essays at Band 7 — differentiate genuinely strong essays (8.0–9.0) from merely competent ones (7.0), and do NOT systematically under-award strong essays',
   },
 ];
 
-function makeHonest(prompt: string): string {
+function makeLegacy(prompt: string): string {
   const lines = prompt.split('\n');
-  for (const { find, replace } of HONEST_EDITS) {
+  for (const { find, replace } of LEGACY_EDITS) {
     const i = lines.findIndex((l) => l.includes(find));
     if (i === -1) {
       throw new Error(
         `Prompt rule not found: "${find}"\n` +
           `api/feedback.ts changed since this script was written. Re-check ` +
-          `HONEST_EDITS against the current buildPrompt before trusting a run.`,
+          `LEGACY_EDITS against the current buildPrompt before trusting a run.`,
       );
     }
     lines[i] = replace;
@@ -84,9 +83,8 @@ interface Variant {
 }
 
 const VARIANTS: Variant[] = [
-  { key: 'old', label: 'sonnet-4-6 · current prompt', model: 'claude-sonnet-4-6', price: { in: 3, out: 15 } },
-  { key: 'new', label: 'sonnet-5 · current prompt', model: 'claude-sonnet-5', price: { in: 2, out: 10 }, thinking: { type: 'disabled' } },
-  { key: 'honest', label: 'sonnet-5 · honest prompt', model: 'claude-sonnet-5', price: { in: 2, out: 10 }, thinking: { type: 'disabled' }, transform: makeHonest },
+  { key: 'live', label: 'live prompt (two-sided)', model: 'claude-sonnet-5', price: { in: 2, out: 10 }, thinking: { type: 'disabled' } },
+  { key: 'legacy', label: 'old prompt (push-up only)', model: 'claude-sonnet-5', price: { in: 2, out: 10 }, thinking: { type: 'disabled' }, transform: makeLegacy },
 ];
 
 const MAX_TOKENS = 12000; // same as api/feedback.ts
@@ -166,8 +164,8 @@ async function main() {
 
   // Fail loudly before spending anything if the prompt has moved on.
   const sample = TEST_ESSAYS[0];
-  makeHonest(buildPrompt(sample.essay, sample.question, sample.taskType, 100));
-  console.log(`✓ all ${HONEST_EDITS.length} scoring rules found in the live prompt\n`);
+  makeLegacy(buildPrompt(sample.essay, sample.question, sample.taskType, 100));
+  console.log(`✓ all ${LEGACY_EDITS.length} scoring rules found in the live prompt\n`);
 
   if (dry) {
     const p = buildPrompt(sample.essay, sample.question, sample.taskType, 100);
