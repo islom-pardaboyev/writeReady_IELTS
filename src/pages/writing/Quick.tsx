@@ -18,7 +18,8 @@ import { useUnsavedWork } from "@/hooks/useUnsavedWork";
 import { Button } from "@/components/ui/Button";
 import WritingTask2Preview from "@/components/writingTask2Preview/WritingTask2Preview";
 import { encodeReport } from "@/lib/reportEncoding";
-import { CheckIcon, ChevronRightIcon, ClockIcon, ZapIcon, Bot, GraduationCap, ChevronLeftIcon } from "lucide-react";
+import { CheckIcon, ChevronRightIcon, ClockIcon, ZapIcon, Bot, GraduationCap } from "lucide-react";
+import { ModeBrand } from "@/components/writing/ModeBrand";
 import { useStopwatch } from "@/hooks/useStopwatch";
 import { useHumanCheck } from "@/hooks/useHumanCheck";
 import { useFeatureFlag } from "@/hooks/useFeatureFlag";
@@ -270,51 +271,41 @@ function Quick() {
     <div className="flex flex-col min-h-screen bg-slate-50 dark:bg-neutral-950 font-sans">
 
       {/* ── Top bar ── */}
-      <div className="sticky top-0 z-30 border-b bg-violet-700 border-violet-800">
+      <div className="sticky top-0 z-30 border-b border-slate-200 bg-white text-slate-900 dark:border-neutral-800 dark:bg-neutral-900 dark:text-neutral-100">
         <div className="flex items-center justify-between gap-4 px-5 py-2.5">
           {/* Left */}
-          <div className="flex items-center gap-2 min-w-0">
-            <button
-              type="button"
-              onClick={(e) => {
-                confirmLeave(e);
-                if (!e.defaultPrevented) navigate(-1);
-              }}
-              className="hidden sm:flex items-center gap-2 rounded text-xs font-semibold text-black/50 tracking-widest uppercase hover:text-black focus-visible:ring-2 focus-visible:ring-blue-500"
-            >
-              <ChevronLeftIcon strokeWidth={3} aria-hidden="true" className="size-3 text-black" />
-              WriteReady
-            </button>
-            <ChevronRightIcon className="hidden sm:block w-3 h-3 text-white/30" />
-            <span className="text-sm font-medium text-white">Quick Write — Task {selectedTaskType}</span>
-          </div>
+          <ModeBrand
+            label="Quick Write"
+            sub={`Task ${selectedTaskType}`}
+            confirmLeave={confirmLeave}
+          />
 
           {/* Centre: timer */}
-          <div className="flex items-center gap-2">
-            <ClockIcon className="w-3.5 h-3.5 text-white/60" />
-            <span className="text-sm font-mono font-semibold tabular-nums text-white/90">
+          <div className="flex items-center gap-2 text-slate-600 dark:text-neutral-300">
+            <ClockIcon aria-hidden="true" className="w-3.5 h-3.5" />
+            <span className="text-sm font-mono font-semibold tabular-nums">
               {elapsed}
             </span>
           </div>
 
           {/* Right: actions */}
           <div className="flex items-center gap-2">
-            <FullscreenButton className="inline-flex items-center justify-center p-1.5 text-white/70 hover:text-white border border-white/20 hover:border-white/40 rounded-md transition-colors" />
+            <FullscreenButton className="inline-flex items-center justify-center p-1.5 text-slate-500 dark:text-neutral-400 hover:text-slate-900 dark:hover:text-white border border-slate-200 dark:border-neutral-700 hover:border-slate-300 dark:hover:border-neutral-600 rounded-md transition-colors" />
             <button
               onClick={() => setShowHeader((p) => !p)}
-              className="hidden sm:inline-flex items-center gap-1 px-3 py-1.5 text-xs text-white/70 hover:text-white border border-white/20 hover:border-white/40 rounded-md transition-colors"
+              className="hidden sm:inline-flex items-center gap-1 px-3 py-1.5 text-xs text-slate-600 dark:text-neutral-300 hover:text-slate-900 dark:hover:text-white border border-slate-200 dark:border-neutral-700 hover:border-slate-300 dark:hover:border-neutral-600 rounded-md transition-colors"
             >
               {showHeader ? "Hide panel" : "Show panel"}
             </button>
             <button
               onClick={handleGetAnother}
-              className="hidden sm:inline-flex items-center gap-1 px-3 py-1.5 text-xs text-white/70 hover:text-white border border-white/20 hover:border-white/40 rounded-md transition-colors"
+              className="hidden sm:inline-flex items-center gap-1 px-3 py-1.5 text-xs text-slate-600 dark:text-neutral-300 hover:text-slate-900 dark:hover:text-white border border-slate-200 dark:border-neutral-700 hover:border-slate-300 dark:hover:border-neutral-600 rounded-md transition-colors"
             >
               New question
             </button>
             <button
               onClick={() => setSelectedTaskType(null)}
-              className="hidden sm:inline-flex items-center gap-1 px-3 py-1.5 text-xs text-white/70 hover:text-white border border-white/20 hover:border-white/40 rounded-md transition-colors"
+              className="hidden sm:inline-flex items-center gap-1 px-3 py-1.5 text-xs text-slate-600 dark:text-neutral-300 hover:text-slate-900 dark:hover:text-white border border-slate-200 dark:border-neutral-700 hover:border-slate-300 dark:hover:border-neutral-600 rounded-md transition-colors"
             >
               Change task
             </button>
@@ -322,7 +313,7 @@ function Quick() {
               onClick={handleFinish}
               disabled={finishing}
               aria-busy={finishing}
-              className="flex items-center gap-1.5 px-4 py-1.5 text-xs font-semibold text-violet-900 bg-white hover:bg-violet-50 rounded-md transition-colors disabled:opacity-60"
+              className="flex items-center gap-1.5 px-4 py-1.5 text-xs font-semibold text-white bg-violet-600 hover:bg-violet-500 rounded-md transition-colors disabled:opacity-60"
             >
               <BusyLabel busy={finishing} busyText="Saving PDF…">Finish & save PDF</BusyLabel>
             </button>
@@ -330,9 +321,9 @@ function Quick() {
         </div>
 
         {/* Word count progress stripe */}
-        <div className="h-0.5 bg-white/10">
+        <div className="h-0.5 bg-slate-100 dark:bg-neutral-800">
           <div
-            className="h-full bg-white/60 transition-[width] duration-500"
+            className="h-full bg-violet-600 transition-[width] duration-500"
             style={{ width: `${progress}%` }}
           />
         </div>

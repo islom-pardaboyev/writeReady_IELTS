@@ -1,5 +1,5 @@
 import { lazy, Suspense } from 'react';
-import { BrowserRouter, Routes, Route, Navigate } from 'react-router';
+import { BrowserRouter, Routes, Route } from 'react-router';
 import { AuthProvider } from './contexts/AuthContext';
 import { MaintenanceGate } from './components/layout/MaintenanceGate';
 import { ErrorBoundary } from './components/layout/ErrorBoundary';
@@ -8,6 +8,7 @@ import { RouteFocus } from './components/layout/RouteFocus';
 import { GlobalShortcuts } from './components/shortcuts/GlobalShortcuts';
 import { AnnouncementCard } from './components/ui/AnnouncementCard';
 import { LandingPage } from './pages/LandingPage';
+import { NotFoundPage } from './pages/NotFoundPage';
 import { AuthPage } from './pages/AuthPage';
 import { LogoLoader } from '@/components/ui/LogoLoader';
 
@@ -49,6 +50,8 @@ export default function App() {
           <RouteFocus />
           <GlobalShortcuts />
           <AnnouncementCard />
+          {/* vercel.json lists these same paths, so unknown addresses can be
+              served with a real 404 status. Add a route there too. */}
           <Routes>
             <Route path="/" element={<LandingPage />} />
             <Route path="/auth" element={<AuthPage />} />
@@ -67,7 +70,7 @@ export default function App() {
             <Route path="/writing/quick" element={withSuspense(<Quick />)} />
             <Route path="/blog" element={withSuspense(<BlogIndexPage />)} />
             <Route path="/blog/:slug" element={withSuspense(<BlogPostPage />)} />
-            <Route path="*" element={<Navigate to="/" replace />} />
+            <Route path="*" element={<NotFoundPage />} />
           </Routes>
         </MaintenanceGate>
         </ErrorBoundary>
