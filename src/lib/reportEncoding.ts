@@ -1,5 +1,8 @@
 interface Task1Data {
   report: string;
+  /** Finds a prompt's chart in Firestore. That chart never goes in the URL. */
+  id?: string;
+  /** A chart the student uploaded themselves, as a data URL. */
   image?: string;
 }
 

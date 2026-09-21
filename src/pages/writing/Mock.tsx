@@ -30,13 +30,14 @@ import { useHumanCheck } from "@/hooks/useHumanCheck";
 import { FullscreenButton } from "@/components/ui/FullscreenButton";
 import { useFeatureFlag } from "@/hooks/useFeatureFlag";
 import { ShuffleBag } from "@/lib/shuffleBag";
+import { useTask1Chart } from "@/lib/task1Chart";
 import { TeacherPickerModal } from "@/components/ui/TeacherPickerModal";
 import { ModalCard, ModalTitle, ModalDescription } from "@/components/ui/ModalCard";
 import { HumanCheckConfirmModal } from "@/components/ui/HumanCheckConfirmModal";
 import { hasAccess } from "@/lib/reportAccess";
 
 interface Task1 {
-  image: string;
+  id: string;
   report: string;
 }
 interface Task2 {
@@ -84,6 +85,9 @@ function Mock() {
   const isDraggingSplit = useRef(false);
   const task1BagRef = useRef(new ShuffleBag<Task1>());
   const task2BagRef = useRef(new ShuffleBag<Task2>());
+  // Charts live in their own Firestore documents, so only the one on screen is
+  // fetched — the shuffle bag holds prompts, not pictures.
+  const task1Chart = useTask1Chart(db, task1);
 
   useEffect(() => {
     if (!user) return;
@@ -91,7 +95,7 @@ function Mock() {
       setLoading(true);
       try {
         const t1Snap = await getDocs(collection(db, "task1_reports"));
-        const t1Docs = t1Snap.docs.map((d) => d.data() as Task1);
+        const t1Docs = t1Snap.docs.map((d) => ({ id: d.id, ...(d.data() as Omit<Task1, "id">) }));
         setTask1List(t1Docs);
         task1BagRef.current.setItems(t1Docs);
         setTask1(task1BagRef.current.next());
@@ -196,7 +200,7 @@ function Mock() {
         mode: "Mock Exam",
         fileName: "WriteReady_Mock.pdf",
         tasks: [
-          { taskNum: 1, question: task1?.report, imageSrc: task1?.image, answer: userText1 },
+          { taskNum: 1, question: task1?.report, imageSrc: task1Chart, answer: userText1 },
           { taskNum: 2, question: task2?.report, answer: userText2 },
         ],
       });
@@ -241,7 +245,7 @@ function Mock() {
           ? {
               questionText: task1.report,
               essayText: userText1,
-              imageBase64: task1.image,
+              imagePromptId: task1.id,
             }
           : undefined,
       task2:
@@ -484,7 +488,7 @@ function Mock() {
         <div className="w-full overflow-y-auto bg-white dark:bg-neutral-900 border-b border-slate-200 dark:border-neutral-800 md:w-[calc(var(--split)*100%)] md:border-b-0 md:border-r max-h-[42vh] md:max-h-none">
           <div className="mock-question-scroll p-6 w-full h-full overflow-y-auto min-h-0">
             {activeTask === 1 && task1 ? (
-              <WritingTask1Preview task1={task1} />
+              <WritingTask1Preview task1={{ image: task1Chart, report: task1.report }} />
             ) : activeTask === 2 && task2 ? (
               <WritingTask2Preview task2={task2.report} />
             ) : (

@@ -3,8 +3,9 @@ import { onAuthStateChanged, signInWithCustomToken, signOut } from "firebase/aut
 import { CircleCheck, Download, FileText, Inbox, Loader2, RefreshCw, Upload, Wallet } from "lucide-react";
 import { adminAuth, adminDb } from "@/firebase/adminConfig";
 import { getHumanReviewsForTeacher, teacherEarningUZS, uploadTeacherFeedback } from "@/firebase/teachers";
+import { loadTask1Chart } from "@/lib/task1Chart";
 import { buildReviewDocx, downloadBlob, fileToBase64 } from "@/lib/reviewDocx";
-import type { HumanReview } from "@/types";
+import type { HumanReview, HumanReviewTaskPart } from "@/types";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/Button";
 import { Badge } from "@/components/ui/badge";
@@ -120,11 +121,19 @@ export default function TeacherPortalPage() {
     setSelectedId(null);
   };
 
+  // The review stores the prompt id rather than the chart itself, so the
+  // chart is fetched here, at the one moment it is actually needed.
+  const withChart = async (part?: HumanReviewTaskPart): Promise<HumanReviewTaskPart | undefined> => {
+    if (!part?.imagePromptId) return part;
+    const chart = await loadTask1Chart(adminDb, { id: part.imagePromptId });
+    return chart ? { ...part, imageBase64: chart } : part;
+  };
+
   const handleDownload = async (review: HumanReview) => {
     setNotice(null);
     setBusy("download");
     try {
-      const blob = await buildReviewDocx(review);
+      const blob = await buildReviewDocx({ ...review, task1: await withChart(review.task1) });
       downloadBlob(blob, `${review.studentName.replace(/\s+/g, "_")}_essay.docx`);
     } catch (err) {
       console.error(err);

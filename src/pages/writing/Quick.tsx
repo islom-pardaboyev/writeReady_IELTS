@@ -27,10 +27,11 @@ import { ModalCard, ModalTitle, ModalDescription } from "@/components/ui/ModalCa
 import { HumanCheckConfirmModal } from "@/components/ui/HumanCheckConfirmModal";
 import { FullscreenButton } from "@/components/ui/FullscreenButton";
 import { ShuffleBag } from "@/lib/shuffleBag";
+import { useTask1Chart } from "@/lib/task1Chart";
 import { hasAccess } from "@/lib/reportAccess";
 
 interface Task1 {
-  image: string;
+  id: string;
   report: string;
 }
 interface Task2 {
@@ -70,6 +71,9 @@ function Quick() {
   const isDraggingSplit = useRef(false);
   const task1BagRef = useRef(new ShuffleBag<Task1>());
   const task2BagRef = useRef(new ShuffleBag<Task2>());
+  // Charts live in their own Firestore documents, so only the one on screen is
+  // fetched — the shuffle bag holds prompts, not pictures.
+  const task1Chart = useTask1Chart(db, task1);
 
   const minWords = selectedTaskType === 1 ? 150 : 250;
   const wordCount = userText.trim() === "" ? 0 : userText.trim().split(/\s+/).length;
@@ -86,7 +90,7 @@ function Quick() {
           getDocs(collection(db, "task1_reports")),
           getDocs(collection(db, "task2_reports")),
         ]);
-        const t1Docs = t1Snap.docs.map((d) => d.data() as Task1);
+        const t1Docs = t1Snap.docs.map((d) => ({ id: d.id, ...(d.data() as Omit<Task1, "id">) }));
         const t2Docs = t2Snap.docs.map((d) => d.data() as Task2);
         task1BagRef.current.setItems(t1Docs);
         task2BagRef.current.setItems(t2Docs);
@@ -139,7 +143,7 @@ function Quick() {
           {
             taskNum: selectedTaskType,
             question: selectedTaskType === 1 ? task1?.report : task2?.report,
-            imageSrc: selectedTaskType === 1 ? task1?.image : null,
+            imageSrc: selectedTaskType === 1 ? task1Chart : null,
             answer: userText,
           },
         ],
@@ -180,7 +184,7 @@ function Quick() {
     setShowFeedbackModal(false);
     humanCheck.requestHumanCheck(
       selectedTaskType === 1
-        ? { task1: task1 && userText.trim() ? { questionText: task1.report, essayText: userText, imageBase64: task1.image } : undefined }
+        ? { task1: task1 && userText.trim() ? { questionText: task1.report, essayText: userText, imagePromptId: task1.id } : undefined }
         : { task2: task2 && userText.trim() ? { questionText: task2.report, essayText: userText } : undefined },
     );
   };
@@ -380,7 +384,7 @@ function Quick() {
         <div className="w-full overflow-y-auto bg-white dark:bg-neutral-900 border-b border-slate-200 dark:border-neutral-800 md:w-[calc(var(--split)*100%)] md:border-b-0 md:border-r max-h-[42vh] md:max-h-none">
           <div className="p-6 w-full">
             {selectedTaskType === 1 && task1 ? (
-              <WritingTask1Preview task1={task1} />
+              <WritingTask1Preview task1={{ image: task1Chart, report: task1.report }} />
             ) : selectedTaskType === 2 && task2 ? (
               <WritingTask2Preview task2={task2.report} />
             ) : (

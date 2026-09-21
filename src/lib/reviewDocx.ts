@@ -47,10 +47,10 @@ function normalizeToPng(blob: Blob): Promise<{ type: 'png'; base64: string }> {
   });
 }
 
-// Task 1 images aren't always a data: URL — Quick/Mock/Practice mode store
-// them as remote ImgBB links, while Relax mode stores a true data: URL from
-// a local file upload. Fetch remote URLs and normalize them so both work,
-// regardless of the source's exact MIME type.
+// Task 1 images are data: URLs — either a student's own upload, or a chart
+// the teacher portal fetched from Firestore before building this file. The
+// remote branch is only for reviews requested before charts moved into
+// Firestore, which still hold a link; it can go once those are all checked.
 async function resolveImage(src: string): Promise<{ type: 'jpg' | 'png' | 'gif' | 'bmp'; base64: string } | null> {
   const direct = dataUrlToImage(src);
   if (direct) return direct;

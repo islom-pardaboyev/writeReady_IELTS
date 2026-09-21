@@ -2,7 +2,8 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { addDoc, collection, deleteDoc, doc, getDocs, query, updateDoc, where } from "firebase/firestore";
 import { FileText, ImagePlus, Loader2, Plus, Trash2, Upload } from "lucide-react";
 import { adminDb as db } from "@/firebase/adminConfig";
-import useUpload from "@/hooks/useUploadImage";
+import { compressChartFile, deleteTask1Chart, forgetTask1Chart, loadTask1Chart, saveTask1Chart } from "@/lib/task1Chart";
+import { isPdfSrc } from "@/lib/loadImageForPdf";
 import { useConfirm } from "@/hooks/useConfirm";
 import { Button } from "@/components/ui/Button";
 import { Textarea } from "@/components/ui/textarea";
@@ -11,7 +12,15 @@ import { ListDetail, ListPane, RowList, ListRow, DetailView, DetailHeader } from
 import { EmptyState, Field, FileButton, LoadError, Notice, RowSkeletons, SearchField } from "@/components/staff/parts";
 import type { SectionProps, SetState } from "./types";
 
-export interface Prompt { id: string; report: string; image?: string }
+export interface Prompt { id: string; report: string; thumb?: string; /** Full chart, fetched when the prompt is opened. Not stored here. */ chart?: string }
+
+// A chart may be uploaded as a PDF, which an <img> cannot render.
+function ChartPreview({ src, className, pdfHeight }: { src: string; className: string; pdfHeight: string }) {
+  if (isPdfSrc(src)) {
+    return <object data={src} type="application/pdf" className={`w-full ${pdfHeight}`} aria-label="Task 1 chart" />;
+  }
+  return <img src={src} alt="Task 1 chart" width={1200} height={800} loading="lazy" className={className} />;
+}
 
 const COPY = {
   1: {
@@ -48,16 +57,18 @@ export function PromptsSection({
   const copy = COPY[task];
   const hasImage = task === 1;
   const { confirm, dialog } = useConfirm();
-  const { uploadImage, uploading } = useUpload();
   const searchRef = useRef<HTMLInputElement>(null);
+  const [uploading, setUploading] = useState(false);
 
   const [search, setSearch] = useState("");
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [draftImage, setDraftImage] = useState("");
+  const [draftThumb, setDraftThumb] = useState("");
   const [draftReport, setDraftReport] = useState("");
   const [saving, setSaving] = useState(false);
   const [notice, setNotice] = useState<{ tone: "success" | "error"; text: string } | null>(null);
   const [newImage, setNewImage] = useState("");
+  const [newThumb, setNewThumb] = useState("");
   const [newReport, setNewReport] = useState("");
   const [adding, setAdding] = useState(false);
   const [newError, setNewError] = useState("");
@@ -65,12 +76,27 @@ export function PromptsSection({
 
   const selected = list.find((p) => p.id === selectedId) ?? null;
 
+  // The list carries only thumbnails, so the full chart is fetched when a
+  // prompt is opened and cached back onto the list entry. The token guards
+  // against a slow fetch landing after the admin has moved on.
+  const chartLoad = useRef(0);
+
   const select = (id: string | null) => {
     setSelectedId(id);
     setNotice(null);
     const p = list.find((x) => x.id === id);
-    setDraftImage(p?.image ?? "");
+    const known = p?.chart ?? "";
+    setDraftImage(known);
+    setDraftThumb(p?.thumb ?? "");
     setDraftReport(p?.report ?? "");
+    if (!hasImage || !p || known) return;
+    const token = ++chartLoad.current;
+    loadTask1Chart(db, p).then((full) => {
+      if (token !== chartLoad.current || !full) return;
+      setList((prev) => prev.map((x) => (x.id === p.id ? { ...x, chart: full } : x)));
+      // Leave it alone if the admin picked a new file while this was loading.
+      setDraftImage((cur) => (cur === known ? full : cur));
+    });
   };
 
   const startNew = () => {
@@ -96,7 +122,7 @@ export function PromptsSection({
     [list, search],
   );
 
-  const dirty = !!selected && (draftReport !== selected.report || (hasImage && draftImage !== (selected.image ?? "")));
+  const dirty = !!selected && (draftReport !== selected.report || (hasImage && draftImage !== (selected.chart ?? "")));
 
   const add = async () => {
     if (hasImage ? !newImage || !newReport.trim() : !newReport.trim()) {
@@ -112,15 +138,20 @@ export function PromptsSection({
         return;
       }
       const data = hasImage
-        ? { image: newImage, report: newReport, createdAt: new Date() }
+        ? { thumb: newThumb, report: newReport, createdAt: new Date() }
         : { report: newReport, createdAt: new Date() };
       const ref = await addDoc(collection(db, copy.collection), data);
-      const created: Prompt = hasImage ? { id: ref.id, image: newImage, report: newReport } : { id: ref.id, report: newReport };
+      if (hasImage) await saveTask1Chart(db, ref.id, newImage);
+      const created: Prompt = hasImage
+        ? { id: ref.id, chart: newImage, thumb: newThumb, report: newReport }
+        : { id: ref.id, report: newReport };
       setList((p) => [created, ...p]);
       setNewImage("");
+      setNewThumb("");
       setNewReport("");
       setSelectedId(created.id);
-      setDraftImage(created.image ?? "");
+      setDraftImage(created.chart ?? "");
+      setDraftThumb(created.thumb ?? "");
       setDraftReport(created.report);
       setNotice({ tone: "success", text: "Prompt added. Students can get it from now on." });
     } catch (e) {
@@ -136,9 +167,15 @@ export function PromptsSection({
     setSaving(true);
     setNotice(null);
     try {
-      const updates = hasImage ? { image: draftImage, report: draftReport } : { report: draftReport };
+      const chartChanged = hasImage && draftImage !== (selected.chart ?? "");
+      const updates = hasImage ? { thumb: draftThumb, report: draftReport } : { report: draftReport };
       await updateDoc(doc(db, copy.collection, selected.id), updates);
-      setList((p) => p.map((t) => (t.id === selected.id ? { ...t, ...updates } : t)));
+      if (chartChanged) {
+        await saveTask1Chart(db, selected.id, draftImage);
+        forgetTask1Chart(selected.id);
+      }
+      const patch = hasImage ? { ...updates, chart: draftImage } : updates;
+      setList((p) => p.map((t) => (t.id === selected.id ? { ...t, ...patch } : t)));
       setNotice({ tone: "success", text: "Changes saved." });
     } catch (e) {
       console.error(e);
@@ -151,13 +188,27 @@ export function PromptsSection({
     if (!selected) return;
     if (!(await confirm(`Delete this ${copy.singular}? Students will stop getting it. This cannot be undone.`, { title: "Delete prompt?", destructive: true, confirmLabel: "Delete" }))) return;
     await deleteDoc(doc(db, copy.collection, selected.id));
+    if (hasImage) {
+      await deleteTask1Chart(db, selected.id);
+      forgetTask1Chart(selected.id);
+    }
     setList((p) => p.filter((t) => t.id !== selected.id));
     setSelectedId(null);
   };
 
-  const uploadTo = async (file: File, set: (url: string) => void) => {
-    const url = await uploadImage(file);
-    if (url) set(url);
+  const uploadTo = async (file: File, set: (full: string, thumb: string) => void) => {
+    setUploading(true);
+    try {
+      const { full, thumb } = await compressChartFile(file);
+      set(full, thumb);
+    } catch (e) {
+      console.error(e);
+      const text = e instanceof Error ? e.message : "Could not read that file. Try another one.";
+      if (selectedId === "new") setNewError(text);
+      else setNotice({ tone: "error", text });
+    } finally {
+      setUploading(false);
+    }
   };
 
   const listPane = (
@@ -188,8 +239,8 @@ export function PromptsSection({
           {filtered.map((p) => (
             <ListRow key={p.id} selected={p.id === selectedId} onSelect={() => { if (p.id !== selectedId) guard(() => select(p.id)); }}>
               {hasImage && (
-                p.image ? (
-                  <img src={p.image} alt="" width={56} height={40} loading="lazy" className="h-10 w-14 shrink-0 rounded-md border border-[var(--border-color)] bg-[var(--bg-subtle)] object-cover" />
+                p.thumb ? (
+                  <img src={p.thumb} alt="" width={56} height={40} loading="lazy" className="h-10 w-14 shrink-0 rounded-md border border-[var(--border-color)] bg-[var(--bg-subtle)] object-cover" />
                 ) : (
                   <span className="h-10 w-14 shrink-0 rounded-md bg-[var(--bg-subtle)]" />
                 )
@@ -221,19 +272,19 @@ export function PromptsSection({
             <Field label="Chart or diagram">
               {newImage ? (
                 <div className="flex flex-col items-start gap-3">
-                  <img src={newImage} alt="Uploaded chart" width={1200} height={800} loading="lazy" className="max-h-72 w-full rounded-xl border border-[var(--border-color)] bg-[var(--bg-subtle)] object-contain" />
-                  <FileButton accept="image/*,application/pdf" onFile={(f) => uploadTo(f, setNewImage)} disabled={uploading}>
+                  <ChartPreview src={newImage} pdfHeight="h-72" className="max-h-72 w-full rounded-xl border border-[var(--border-color)] bg-[var(--bg-subtle)] object-contain" />
+                  <FileButton accept="image/*,application/pdf" onFile={(f) => uploadTo(f, (full, thumb) => { setNewImage(full); setNewThumb(thumb); })} disabled={uploading}>
                     {uploading ? <Loader2 size={16} className="animate-spin" aria-hidden="true" /> : <Upload size={16} aria-hidden="true" />}
-                    {uploading ? "Uploading…" : "Choose another image"}
+                    {uploading ? "Preparing…" : "Choose another image"}
                   </FileButton>
                 </div>
               ) : (
                 <div className="flex flex-col items-center rounded-xl border border-dashed border-[var(--border-strong)] bg-[var(--bg-subtle)] px-6 py-10 text-center">
                   <ImagePlus size={24} className="mb-3 text-[var(--text-secondary)]" aria-hidden="true" />
                   <p className="text-sm text-[var(--text-secondary)]">PNG, JPG or PDF of the chart students will describe.</p>
-                  <FileButton accept="image/*,application/pdf" onFile={(f) => uploadTo(f, setNewImage)} disabled={uploading} className="mt-4">
+                  <FileButton accept="image/*,application/pdf" onFile={(f) => uploadTo(f, (full, thumb) => { setNewImage(full); setNewThumb(thumb); })} disabled={uploading} className="mt-4">
                     {uploading ? <Loader2 size={16} className="animate-spin" aria-hidden="true" /> : <Upload size={16} aria-hidden="true" />}
-                    {uploading ? "Uploading…" : "Choose image"}
+                    {uploading ? "Preparing…" : "Choose image"}
                   </FileButton>
                 </div>
               )}
@@ -282,12 +333,12 @@ export function PromptsSection({
                     className="w-full overflow-hidden rounded-xl border border-[var(--border-color)] bg-[var(--bg-subtle)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ring)]"
                     aria-label="Open the image at full size"
                   >
-                    <img src={draftImage} alt="Task 1 chart" width={1200} height={800} loading="lazy" className="max-h-80 w-full object-contain" />
+                    <ChartPreview src={draftImage} pdfHeight="h-80" className="max-h-80 w-full object-contain" />
                   </button>
                 )}
-                <FileButton accept="image/*,application/pdf" onFile={(f) => uploadTo(f, setDraftImage)} disabled={uploading}>
+                <FileButton accept="image/*,application/pdf" onFile={(f) => uploadTo(f, (full, thumb) => { setDraftImage(full); setDraftThumb(thumb); })} disabled={uploading}>
                   {uploading ? <Loader2 size={16} className="animate-spin" aria-hidden="true" /> : <Upload size={16} aria-hidden="true" />}
-                  {uploading ? "Uploading…" : "Replace image"}
+                  {uploading ? "Preparing…" : "Replace image"}
                 </FileButton>
               </div>
             </Field>
@@ -325,7 +376,7 @@ export function PromptsSection({
       <Dialog open={!!preview} onOpenChange={(open) => { if (!open) setPreview(null); }}>
         <DialogContent className="max-w-5xl p-3">
           <DialogTitle className="sr-only">Task 1 image</DialogTitle>
-          {preview && <img src={preview} alt="Task 1 chart at full size" width={1200} height={800} className="max-h-[82vh] w-full rounded-lg object-contain" />}
+          {preview && <ChartPreview src={preview} pdfHeight="h-[82vh]" className="max-h-[82vh] w-full rounded-lg object-contain" />}
         </DialogContent>
       </Dialog>
       {dialog}

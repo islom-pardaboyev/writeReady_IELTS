@@ -157,7 +157,10 @@ export interface Teacher {
 export interface HumanReviewTaskPart {
   questionText: string;
   essayText: string;
+  /** A chart the student uploaded themselves, as a data URL. */
   imageBase64?: string;
+  /** Task 1 prompt id, for charts stored in Firestore. */
+  imagePromptId?: string;
 }
 
 export type HumanReviewStatus = 'pending' | 'checked';

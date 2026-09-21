@@ -101,7 +101,8 @@ export default function Admin() {
         getDocs(query(collection(db, "task1_reports"), orderBy("createdAt", "desc"))),
         getDocs(query(collection(db, "task2_reports"), orderBy("createdAt", "desc"))),
       ]);
-      setTask1(s1.docs.map((d) => ({ id: d.id, image: d.data().image ?? "", report: d.data().report ?? "" })));
+      // Thumbnails only — the full chart is fetched when a prompt is opened.
+      setTask1(s1.docs.map((d) => ({ id: d.id, thumb: d.data().thumb ?? "", report: d.data().report ?? "" })));
       setTask2(s2.docs.map((d) => ({ id: d.id, report: d.data().report ?? "" })));
       markFailed("prompts", false);
     } catch (e) {

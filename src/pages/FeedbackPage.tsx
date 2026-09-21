@@ -11,6 +11,8 @@ import { Button } from '../components/ui/Button';
 import { decodeReport } from '../lib/reportEncoding';
 import type { ReportData } from '../lib/reportEncoding';
 import { getFeedbackReportHistory } from '../firebase/firestore';
+import { db } from '../firebase/config';
+import { useTask1Chart } from '../lib/task1Chart';
 import type { EnhancedFeedbackResult } from '../types';
 import { hasFreeReportThisWeek } from '../lib/weeklyFree';
 import { downloadFeedbackPdf } from '../lib/feedbackPdf';
@@ -295,6 +297,10 @@ export function FeedbackPage() {
 
   const [recurringIssues, setRecurringIssues] = useState<string[]>([]);
   const { busy: exporting, run: runExport } = useSingleRun();
+  const storedChart = useTask1Chart(db, reportData?.task1 ?? null);
+  // Quick Write lets a student upload their own chart, which rides along in
+  // the link rather than living in the database.
+  const task1Chart = storedChart || (reportData?.task1?.image ?? '');
 
   // Decode report from URL
   useEffect(() => {
@@ -562,7 +568,7 @@ export function FeedbackPage() {
         feedback,
         taskNum: isTask1 ? 1 : 2,
         question: isTask1 ? reportData.task1?.report : reportData.task2?.report,
-        imageSrc: isTask1 ? reportData.task1?.image : null,
+        imageSrc: isTask1 ? task1Chart : null,
         essay: (isTask1 ? reportData.userText1 : reportData.userText2) ?? '',
         fileName: `WriteReady_Feedback_Task${isTask1 ? 1 : 2}_${new Date().toISOString().slice(0, 10)}.pdf`,
       }),
@@ -707,9 +713,9 @@ export function FeedbackPage() {
             <p className="text-xs font-bold tracking-widest uppercase text-[var(--text-secondary)] mb-2">
               {selectedTask === 'task1' ? 'Task 1' : 'Task 2'} Question
             </p>
-            {selectedTask === 'task1' && reportData.task1?.image && (
+            {selectedTask === 'task1' && task1Chart && (
               (() => {
-                const src = reportData.task1.image;
+                const src = task1Chart;
                 const pdf = src.startsWith('data:application/pdf') || /\.pdf(\?|$)/i.test(src);
                 return pdf ? (
                   <object data={src} type="application/pdf" className="w-full h-[400px] rounded-lg border border-[var(--border)] mb-3">

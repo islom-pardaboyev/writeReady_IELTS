@@ -6,6 +6,9 @@ rules_version = '2';
 // The api/ functions use the Admin SDK and skip these rules entirely, so
 // anything written only by the server (feedback reports, usage counters,
 // maintenance mode) has no client write rule here on purpose.
+//
+// Rules are OR'd: a request is allowed if ANY match grants it. Nothing below
+// can take away what the admin wildcard grants.
 
 service cloud.firestore {
   match /databases/{database}/documents {
@@ -61,12 +64,14 @@ service cloud.firestore {
       return request.resource.data.diff(resource.data).affectedKeys();
     }
 
-    // Like and comment counters may only move by one, or reset to zero.
+    // Like and comment counters may only move by one. They may NOT be reset:
+    // the client only ever writes current+1 or max(0, current-1), and an
+    // allowed reset let any student zero any post's counts from the console.
     function counterStepOk(field) {
       let before = resource.data.get(field, 0);
       let after = request.resource.data.get(field, 0);
       return after is number
-        && (after == before || after == before + 1 || after == before - 1 || after == 0);
+        && (after == before || after == before + 1 || after == before - 1);
     }
 
     function flags() {
@@ -93,8 +98,13 @@ service cloud.firestore {
     // ── Users ─────────────────────────────────────────────────────────────
 
     match /users/{uid} {
-      // Centers still read every profile: the center portal filters in the
-      // browser. Narrow to their own students once it queries per student.
+      // A center reads every profile because the center portal fetches the
+      // whole collection and filters in the browser (CenterAdminPage.tsx).
+      // Once that page queries where('centerId','==',<its id>), replace the
+      // line below with these two, which stop a center seeing other centers'
+      // students and anyone with no center at all:
+      //   allow get:  if isSelf(uid) || isCenterFor(resource.data.get('centerId', ''));
+      //   allow list: if isSelf(uid) || isCenterFor(resource.data.get('centerId', ''));
       allow read: if isSelf(uid) || isCenter();
 
       allow create: if
@@ -136,6 +146,14 @@ service cloud.firestore {
       allow read: if signedIn();
     }
 
+    // Task 1 charts, one document per prompt, kept apart from the prompt so
+    // that loading the prompt list does not drag every chart along with it.
+    // signedIn(), not isStudent(): a teacher fetches the chart when building
+    // the Word file for a Human Check.
+    match /task1_images/{id} {
+      allow read: if signedIn();
+    }
+
     match /questions/{id} {
       allow read: if signedIn();
     }
@@ -145,32 +163,44 @@ service cloud.firestore {
       allow create: if isStudent() && request.resource.data.uid == request.auth.uid;
     }
 
-    // AI feedback reports are written by api/feedback.ts only. Centers read
-    // them for their analytics page (same narrowing as users, later).
+    // AI feedback reports are written by api/feedback.ts only. A center reads
+    // the whole collection for its analytics page, same as users above; narrow
+    // it the same way once that page filters its query.
     match /feedback_reports/{id} {
       allow read: if (isStudent() && resource.data.uid == request.auth.uid) || isCenter();
     }
 
     // ── Human Check ───────────────────────────────────────────────────────
 
-    // Students pick a teacher from this list.
-    // These documents still hold teachers' login passwords; move them out.
+    // Students read this list to pick a teacher, so it must stay readable by
+    // anyone signed in.
+    //
+    // WARNING: rules cannot hide a field. While these documents still hold a
+    // `login` and plaintext `password` (src/firebase/teachers.ts), ANY student
+    // can read every teacher's credentials, sign in at /api/staff-login as
+    // that teacher, and reach every Human Check essay. Move those two fields
+    // into teacherAuth below. Nothing here can fix it on its own.
     match /teachers/{teacherId} {
       allow read: if signedIn();
+    }
+
+    // Teacher credentials. No client rule on purpose: only the admin wildcard
+    // above reaches this, and /api/staff-login uses the Admin SDK, which skips
+    // rules entirely. Never read this from the browser.
+    match /teacherAuth/{teacherId} {
+      allow read, write: if false;
     }
 
     match /humanReviews/{reviewId} {
       allow get: if (isStudent() && resource.data.uid == request.auth.uid)
         || isTeacherFor(resource.data.teacherId);
 
-      // Lists: students query by their own uid. Teachers query by their own
-      // teacherId, but Firestore can't reliably match that against the token
-      // (the token's email may be lowercased, document IDs aren't), so for
-      // now any teacher may list reviews, full content included. Changing a
-      // review still needs the assigned teacher. To close this, store a
-      // lowercase teacher key on each review and compare against that.
+      // Students query by their own uid; teachers query by their own
+      // teacherId (getHumanReviewsForTeacher). Naming the teacher here rather
+      // than isTeacher() is what stops one teacher listing the whole
+      // collection and reading every student's essay.
       allow list: if (isStudent() && resource.data.uid == request.auth.uid)
-        || isTeacher();
+        || isTeacherFor(resource.data.get('teacherId', ''));
 
       // Created in the same transaction that takes the price off the
       // student's balance, at the price and fee the admin set.
@@ -215,8 +245,12 @@ service cloud.firestore {
         && exists(/databases/$(database)/documents/blogPosts/$(request.resource.data.postId)/comments/$(request.resource.data.commentId)/likes/$(request.auth.uid))
         && get(/databases/$(database)/documents/blogPosts/$(request.resource.data.postId)/comments/$(request.resource.data.commentId)).data.userId == uid;
 
-      // A teacher tells the student that their essay has been checked.
+      // A teacher tells the student that their essay has been checked. Same
+      // field allowlist as the branch above, so a teacher cannot write
+      // arbitrary data into a student's notification.
       allow create: if request.resource.data.type == 'human_feedback'
+        && request.resource.data.read == false
+        && request.resource.data.keys().hasOnly(['type', 'fromUserName', 'reviewId', 'preview', 'read', 'createdAt'])
         && isTeacherFor(get(/databases/$(database)/documents/humanReviews/$(request.resource.data.reviewId)).data.teacherId)
         && get(/databases/$(database)/documents/humanReviews/$(request.resource.data.reviewId)).data.uid == uid;
     }
@@ -231,10 +265,12 @@ service cloud.firestore {
       allow read: if true;
     }
 
-    // The blog is public. Drafts are readable too, because the post page
-    // looks posts up by slug without a status filter.
+    // The blog is public, but only what has been published. The index and the
+    // post page both ask for status == 'published'; the admin panel reads
+    // drafts through the wildcard at the top.
     match /blogPosts/{postId} {
-      allow read: if true;
+      allow read: if resource.data.get('status', '') == 'published';
+
       allow update: if isStudent()
         && changed().hasOnly(['likeCount', 'commentCount'])
         && counterStepOk('likeCount')
@@ -247,10 +283,15 @@ service cloud.firestore {
 
       match /comments/{commentId} {
         allow read: if true;
+
         allow create: if isStudent()
           && request.resource.data.userId == request.auth.uid
           && request.resource.data.likeCount == 0
-          && request.resource.data.text is string;
+          && request.resource.data.keys().hasOnly(['userId', 'displayName', 'photoURL', 'text', 'likeCount', 'createdAt'])
+          && request.resource.data.text is string
+          && request.resource.data.text.size() > 0
+          && request.resource.data.text.size() <= 2000;
+
         allow update: if isStudent() && changed().hasOnly(['likeCount']) && counterStepOk('likeCount');
         allow delete: if isStudent() && resource.data.userId == request.auth.uid;
 

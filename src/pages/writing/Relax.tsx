@@ -33,17 +33,8 @@ import { ModalCard, ModalTitle, ModalDescription } from "@/components/ui/ModalCa
 import { HumanCheckConfirmModal } from "@/components/ui/HumanCheckConfirmModal";
 import { FullscreenButton } from "@/components/ui/FullscreenButton";
 import { isPdfSrc as isPdf } from "@/lib/loadImageForPdf";
+import { compressChartFile, LINK_CHART_MAX_BYTES } from "@/lib/task1Chart";
 import { hasAccess } from "@/lib/reportAccess";
-
-function readFileAsDataUrl(file: File): Promise<string> {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onload = () => resolve(reader.result as string);
-    reader.onerror = () =>
-      reject(reader.error ?? new Error("File read failed"));
-    reader.readAsDataURL(file);
-  });
-}
 
 function Relax() {
   const navigate = useNavigate();
@@ -92,13 +83,18 @@ function Relax() {
     setStep("configure");
   };
 
+  // The student's own chart has nowhere in the database to live, so it rides
+  // inside the report link. Shrinking it here keeps that link a sane length —
+  // a phone photo straight off the camera would otherwise make a link megabytes
+  // long, which browsers refuse to open.
   const handleImageUpload = async (file: File) => {
     setImageLoading(true);
     try {
-      setImageUrl(await readFileAsDataUrl(file));
+      const { full } = await compressChartFile(file, LINK_CHART_MAX_BYTES);
+      setImageUrl(full);
     } catch (err) {
       console.error("Failed to read image file:", err);
-      alert("Could not load that image. Please try a different file.");
+      alert(err instanceof Error ? err.message : "Could not load that image. Please try a different file.");
     } finally {
       setImageLoading(false);
     }
