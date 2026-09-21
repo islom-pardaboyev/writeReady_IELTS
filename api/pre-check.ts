@@ -1,10 +1,7 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { getFirestore } from 'firebase-admin/firestore';
 import { createHmac } from 'crypto';
-import { initFirebase, getUid, currentMonthKey, currentWeekKey, resolvePaidStatus } from './_lib/shared.js';
-
-// Learning-center students get the premium allowance for free.
-const CENTER_MONTHLY_LIMIT = 25;
+import { initFirebase, getUid, currentMonthKey, currentWeekKey, resolvePaidStatus, PLAN_LIMITS } from './_lib/shared.js';
 
 // Free-plan users (no subscription) get 1 AI feedback report per calendar
 // week instead of a single lifetime bonus report.
@@ -38,11 +35,12 @@ async function consumeCredit(uid: string, monthKey: string): Promise<boolean> {
     // One shared definition of "has paid" across every route — see
     // resolvePaidStatus in ./_lib/shared.ts. It applies the expiresAt rule (a
     // lapsed paid plan reverts to free, because nothing else ever downgrades
-    // the stored `plan` field; lifetime plans and centre students never
-    // expire), matching what src/hooks/useUsage.ts shows the user.
-    const { plan, isCenterStudent, isPaidPlan } = resolvePaidStatus(data);
+    // the stored `plan` field; lifetime plans never expire), matching what
+    // src/hooks/useUsage.ts shows the user. A centre student holds the plan
+    // their centre bought and the centre's contract end date.
+    const { plan, isPaidPlan } = resolvePaidStatus(data);
 
-    if (!isPaidPlan && !isCenterStudent) {
+    if (!isPaidPlan) {
       // Admin-granted bonus reports are consumed first (separate from the
       // automatic weekly free allowance).
       const bonus = typeof data.bonusAnalyses === 'number' ? data.bonusAnalyses : 0;
@@ -62,12 +60,9 @@ async function consumeCredit(uid: string, monthKey: string): Promise<boolean> {
       return;
     }
 
-    // Learning-center students always get the premium allowance (25/month),
-    // regardless of whether the center's own subscription is still active.
-    const planLimits: Record<string, number> = { forever: 9999, premium: 25, standard: 12, basic: 5 };
-    const monthlyLimit = isCenterStudent
-      ? Math.max(CENTER_MONTHLY_LIMIT, planLimits[plan] ?? 0)
-      : planLimits[plan as string];
+    // A learning-center student's profile carries the plan their center
+    // bought, so one lookup covers students and individual customers alike.
+    const monthlyLimit = PLAN_LIMITS[plan];
     if (!monthlyLimit) throw new CreditError('NOT_PRO');
 
     const usage = data.usage ?? {};

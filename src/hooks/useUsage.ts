@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { doc, onSnapshot } from 'firebase/firestore';
 import { db } from '../firebase/config';
+import { effectivePlan, monthlyLimitFor } from '../lib/plans';
 import type { UsageRecord } from '../types';
 
 export function useUsage(uid: string | null) {
@@ -12,8 +13,6 @@ export function useUsage(uid: string | null) {
     setLoading(true);
     const yearMonth = new Date().toISOString().slice(0, 7);
 
-    const planLimits: Record<string, number> = { forever: 9999, premium: 25, standard: 12, basic: 5 };
-
     const unsub = onSnapshot(doc(db, 'users', uid), (snap) => {
       setLoading(false);
       if (!snap.exists()) {
@@ -23,14 +22,10 @@ export function useUsage(uid: string | null) {
       const data = snap.data();
       const usage = data?.usage;
       const count = usage?.monthKey === yearMonth ? (usage?.count ?? 0) : 0;
-      const plan: string = data?.plan ?? 'free';
-      const expiresAt: string = data?.expiresAt ?? '';
-      const isExpired = plan !== 'forever' && !!expiresAt && new Date(expiresAt) < new Date();
-      const effectivePlan = isExpired ? 'free' : plan;
-      const hasCenter = typeof data?.centerId === 'string' && data.centerId.length > 0;
-      // Learning-center students always get at least the premium (25) allowance,
-      // matching src/firebase/firestore.ts's getUsage().
-      const limit = Math.max(planLimits[effectivePlan] ?? 0, hasCenter ? 25 : 0);
+      // The same plan rules the server applies in api/pre-check.ts, so the
+      // number on screen matches the number the student actually gets. A
+      // learning-center student carries their center's plan and end date.
+      const limit = monthlyLimitFor(effectivePlan(data));
       setUsage({ uid, yearMonth, count, limit, updatedAt: new Date() });
     }, () => {
       setLoading(false);

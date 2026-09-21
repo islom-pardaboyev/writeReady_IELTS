@@ -51,6 +51,16 @@ export function currentDayKey(): string {
 
 const PAID_PLANS = ['basic', 'standard', 'premium', 'forever'];
 
+// Reports a month, by plan. Mirrors PLAN_INFO in src/lib/plans.ts, which this
+// build cannot import from.
+export const PLAN_LIMITS: Record<string, number> = { forever: 9999, premium: 25, standard: 12, basic: 5 };
+
+// Learning-center students were written as `plan: "pro"` before centers chose
+// a plan of their own, and "pro" always meant the premium allowance. Those
+// accounts keep it until an admin saves their center, which stamps the
+// center's real plan and contract end date onto every student.
+const LEGACY_CENTER_PLAN = 'premium';
+
 export interface PaidStatus {
   /** The plan after expiry is applied — 'free' once a paid plan has lapsed. */
   plan: string;
@@ -81,10 +91,13 @@ export interface PaidStatus {
  */
 export function resolvePaidStatus(data: Record<string, unknown>): PaidStatus {
   let plan = typeof data.plan === 'string' ? data.plan : 'free';
+  if (plan === 'pro') plan = LEGACY_CENTER_PLAN;
   const isCenterStudent = typeof data.centerId === 'string' && data.centerId.length > 0;
 
   // A paid plan past its expiry reverts to free; nothing else downgrades the
-  // stored `plan` field. Lifetime plans and centre students never expire here.
+  // stored `plan` field. Lifetime plans never expire. A centre student holds
+  // the plan their centre bought and the centre's contract end date, so the
+  // same line ends their access when the contract does.
   const expiresAt = typeof data.expiresAt === 'string' ? data.expiresAt : '';
   if (plan !== 'forever' && expiresAt && new Date(expiresAt) < new Date()) {
     plan = 'free';
@@ -100,6 +113,8 @@ export function resolvePaidStatus(data: Record<string, unknown>): PaidStatus {
     plan,
     isCenterStudent,
     isPaidPlan,
-    isPaid: isPaidPlan || isCenterStudent || subscriptionActive,
+    // Centre students are not a separate case any more: their profile carries
+    // a real plan, so isPaidPlan already covers them while the contract runs.
+    isPaid: isPaidPlan || subscriptionActive,
   };
 }

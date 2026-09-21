@@ -3,7 +3,7 @@ import { collection, deleteDoc, doc, getDoc, getDocs, query, serverTimestamp, se
 import { onAuthStateChanged, signInWithCustomToken, signOut as fbSignOut } from "firebase/auth";
 import { ChartColumn, LayoutDashboard, Plus, RefreshCw, Trash2, UserPlus, Users } from "lucide-react";
 import { adminDb as db, adminAuth } from "@/firebase/adminConfig";
-import { createStudentAuthAccount } from "@/firebase/createStudentAccount";
+import { createStudentAuthAccount, deleteStudentAuthAccount } from "@/firebase/createStudentAccount";
 import { useConfirm } from "@/hooks/useConfirm";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/Button";
@@ -15,12 +15,16 @@ import { StaffLogin } from "@/components/staff/StaffLogin";
 import { ListDetail, ListPane, RowList, ListRow, DetailView, DetailHeader, DetailSection } from "@/components/staff/ListDetail";
 import { EmptyState, Field, Initials, LoadError, Notice, PageHeading, Panel, RowSkeletons, SearchField, StatStrip } from "@/components/staff/parts";
 import { daysUntil, formatDate, inDays, timeAgo } from "@/pages/writing/admin/format";
+import { PLAN_INFO } from "@/lib/plans";
+import { centerPlanOf, type CenterPlanId } from "@/lib/centerPricing";
 
 interface CenterData {
   id: string;
   name: string;
   studentLimit: number;
   expiresAt: string;
+  /** The plan WriteReady sold this center; every student of it gets that plan. */
+  plan: CenterPlanId;
 }
 
 interface Student {
@@ -39,8 +43,6 @@ interface StudentAnalytics {
 }
 
 type Section = "overview" | "students" | "analytics";
-
-const MONTHLY_ALLOWANCE = 12;
 
 function mapStudentSnap(docs: { id: string; data: () => Record<string, unknown> }[]): Student[] {
   return docs
@@ -123,7 +125,13 @@ export default function CenterAdminPage() {
       const snap = await getDoc(doc(db, "learningCenters", id));
       if (snap.exists()) {
         const d = snap.data();
-        setCenterData({ id: snap.id, name: d.name ?? "", studentLimit: d.studentLimit ?? 30, expiresAt: d.expiresAt ?? "" });
+        setCenterData({
+          id: snap.id,
+          name: d.name ?? "",
+          studentLimit: d.studentLimit ?? 30,
+          expiresAt: d.expiresAt ?? "",
+          plan: centerPlanOf(d.plan),
+        });
       }
     } catch (e) { console.error(e); }
   }, []);
@@ -235,6 +243,13 @@ export default function CenterAdminPage() {
 
   const limit = centerData?.studentLimit ?? 30;
   const full = students.length >= limit;
+  // A student added after the contract ended would land on the free plan, so
+  // the portal stops there instead of handing over an account that gives
+  // nothing.
+  const contractEnded = (daysUntil(centerData?.expiresAt) ?? 0) < 0;
+  const canAdd = !full && !contractEnded;
+  // Every student of the center gets the plan the center bought.
+  const allowance = PLAN_INFO[centerPlanOf(centerData?.plan)].monthlyAnalyses;
 
   const selectStudent = (id: string | null) => {
     setSelectedId(id);
@@ -251,6 +266,7 @@ export default function CenterAdminPage() {
     setAddError("");
     if (newPass.trim().length < 6) { setAddError("The password needs at least 6 characters."); return; }
     if (full) { setAddError(`You have used all ${limit} student places.`); return; }
+    if (contractEnded) { setAddError("Your contract has ended, so a new student would get nothing. Contact WriteReady to renew it."); return; }
     setAdding(true);
     try {
       const loginKey = newLogin.trim().toLowerCase();
@@ -269,26 +285,60 @@ export default function CenterAdminPage() {
         return;
       }
 
-      // User profile: grants pro access tied to the center's contract end.
-      await setDoc(doc(db, "users", uid), {
+      // The profile must repeat exactly what the center's own record says:
+      // firestore.rules compares the two, and a plan WriteReady changed after
+      // this page loaded would be refused. So read the record again first.
+      const fresh = await getDoc(doc(db, "learningCenters", centerId)).catch(() => null);
+      const centerNow = fresh?.exists() ? fresh.data() : null;
+      const plan = centerPlanOf(centerNow?.plan ?? centerData?.plan);
+      const endsAt: string = (centerNow?.expiresAt ?? centerData?.expiresAt ?? "") as string;
+
+      // User profile: grants the center's own plan, tied to its contract
+      // end. These fields have to stay in step with the admin panel's
+      // studentPlanFields() in
+      // src/pages/writing/admin/CentersSection.tsx and with firestore.rules.
+      const profile = {
         email: fakeEmail,
         studentLogin: loginKey,
         fullName: newName.trim(),
-        plan: "pro",
-        subscriptionExpiresAt: centerData?.expiresAt || null,
+        plan,
+        expiresAt: endsAt ? `${endsAt}T23:59:59` : "",
+        subscriptionExpiresAt: endsAt || null,
         centerId,
         centerName,
-        createdAt: serverTimestamp(),
         bonusAnalyses: 0,
-      });
+      };
+
+      try {
+        await setDoc(doc(db, "users", uid), { ...profile, createdAt: serverTimestamp() });
+      } catch (err) {
+        // The rules compare this profile against the center's own record, so
+        // printing both side by side says which field was refused.
+        console.error("The student's profile was refused. Tried to write:", profile);
+        console.error("The center's record says:", centerNow
+          ? { plan: centerNow.plan, expiresAt: centerNow.expiresAt, expiresAtType: typeof centerNow.expiresAt }
+          : "could not be read");
+        // The sign-in account already exists at this point. Leaving it would
+        // hold the login hostage: the next try would be refused as "already
+        // taken" while the student still has no profile.
+        await deleteStudentAuthAccount(fakeEmail, newPass.trim());
+        throw err;
+      }
+
       // Student record under the center (doc id = uid so it maps to the account).
-      await setDoc(doc(db, "learningCenters", centerId, "students", uid), {
-        fullName: newName.trim(),
-        login: loginKey,
-        password: newPass.trim(),
-        uid,
-        addedAt: serverTimestamp(),
-      });
+      try {
+        await setDoc(doc(db, "learningCenters", centerId, "students", uid), {
+          fullName: newName.trim(),
+          login: loginKey,
+          password: newPass.trim(),
+          uid,
+          addedAt: serverTimestamp(),
+        });
+      } catch (err) {
+        console.error("The center's own student list refused the write for center", centerId);
+        await deleteStudentAuthAccount(fakeEmail, newPass.trim());
+        throw err;
+      }
 
       setNewName(""); setNewLogin(""); setNewPass("");
       await loadStudents(centerId);
@@ -408,7 +458,7 @@ export default function CenterAdminPage() {
       <PageHeading
         title={centerName || "Overview"}
         description={new Date().toLocaleDateString("en-GB", { weekday: "long", day: "numeric", month: "long", year: "numeric" })}
-        actions={<Button onClick={() => { setSection("students"); selectStudent("new"); }} disabled={full}><UserPlus aria-hidden="true" /> Add student</Button>}
+        actions={<Button onClick={() => { setSection("students"); selectStudent("new"); }} disabled={!canAdd}><UserPlus aria-hidden="true" /> Add student</Button>}
       />
       <StatStrip
         items={[
@@ -416,6 +466,11 @@ export default function CenterAdminPage() {
           { label: "Places used", value: `${students.length} of ${limit}`, hint: full ? "All places are used" : `${limit - students.length} left` },
           { label: "AI reports today", value: reportsFailed ? "…" : reportsToday ?? "…", hint: reportsFailed ? "Could not load. Reload the page to retry." : undefined, onClick: () => setSection("analytics") },
           { label: "Contract ends", value: <span className="text-xl">{formatDate(centerData?.expiresAt) ?? "Not set"}</span> },
+          {
+            label: "Student plan",
+            value: <span className="text-xl">{PLAN_INFO[centerPlanOf(centerData?.plan)].label}</span>,
+            hint: `${PLAN_INFO[centerPlanOf(centerData?.plan)].monthlyAnalyses} AI checks a month each`,
+          },
         ]}
       />
       <Panel title="Contract" className="mt-6">
@@ -424,7 +479,7 @@ export default function CenterAdminPage() {
           <p className="text-sm text-[var(--text-secondary)]">
             {status.days === null ? "WriteReady has not set an end date for your contract yet." :
               status.days < 0 ? `Your contract ended ${formatDate(centerData?.expiresAt)}. Students keep access only while it is active.` :
-              `Your students have access until ${formatDate(centerData?.expiresAt)} (${inDays(status.days)}).`}
+              `Your students have the ${PLAN_INFO[centerPlanOf(centerData?.plan)].label} plan until ${formatDate(centerData?.expiresAt)} (${inDays(status.days)}).`}
           </p>
         </div>
         {status.variant !== "success" && status.days !== null && (
@@ -441,7 +496,7 @@ export default function CenterAdminPage() {
     <ListPane
       title="Students"
       count={students.length}
-      action={<Button size="sm" onClick={() => selectStudent("new")} disabled={full} title={full ? "All places are used" : undefined}><Plus aria-hidden="true" /> Add</Button>}
+      action={<Button size="sm" onClick={() => selectStudent("new")} disabled={!canAdd} title={full ? "All places are used" : contractEnded ? "Your contract has ended" : undefined}><Plus aria-hidden="true" /> Add</Button>}
       toolbar={
         <>
           <SearchField value={search} onChange={setSearch} placeholder="Search by name or login…" label="Search students" inputRef={searchRef} />
@@ -482,7 +537,7 @@ export default function CenterAdminPage() {
         footer={
           <>
             <Button variant="ghost" onClick={() => selectStudent(null)}>Cancel</Button>
-            <Button onClick={addStudent} loading={adding} disabled={full}>{adding ? "Adding…" : "Add student"}</Button>
+            <Button onClick={addStudent} loading={adding} disabled={!canAdd}>{adding ? "Adding…" : "Add student"}</Button>
           </>
         }
       >
@@ -499,6 +554,7 @@ export default function CenterAdminPage() {
           </Field>
         </div>
         {full && <Notice tone="warning" className="mt-5">All {limit} places are used. Contact WriteReady to raise your limit.</Notice>}
+        {contractEnded && <Notice tone="error" className="mt-5">Your contract has ended, so your students are on the free plan and no new student can be added. Contact WriteReady to renew it.</Notice>}
         {addError && <Notice tone="error" className="mt-5">{addError}</Notice>}
       </DetailView>
     );
@@ -544,7 +600,7 @@ export default function CenterAdminPage() {
         icon={Users}
         title="Select a student"
         className="py-24"
-        action={!full && <Button variant="outline" onClick={() => selectStudent("new")}><Plus aria-hidden="true" /> Add student</Button>}
+        action={canAdd && <Button variant="outline" onClick={() => selectStudent("new")}><Plus aria-hidden="true" /> Add student</Button>}
       >
         Choose a student on the left to change their name, login or password.
       </EmptyState>
@@ -577,7 +633,7 @@ export default function CenterAdminPage() {
               <div className="min-w-0 flex-1">
                 <p className="truncate text-sm font-medium text-[var(--text-primary)]">{a.student.fullName}</p>
                 <p className="truncate text-xs tabular-nums text-[var(--text-secondary)]">
-                  <span className={cn(a.monthlyCount >= MONTHLY_ALLOWANCE && "font-medium text-red-600 dark:text-red-400")}>{a.monthlyCount} of {MONTHLY_ALLOWANCE} this month</span>
+                  <span className={cn(a.monthlyCount >= allowance && "font-medium text-red-600 dark:text-red-400")}>{a.monthlyCount} of {allowance} this month</span>
                   {" · "}{a.lastActive ? `active ${timeAgo(a.lastActive)}` : "not active yet"}
                 </p>
               </div>
@@ -607,15 +663,15 @@ export default function CenterAdminPage() {
           ]}
         />
       </div>
-      <DetailSection title="This month" description={`Students get ${MONTHLY_ALLOWANCE} AI reports a month.`}>
+      <DetailSection title="This month" description={`Students get ${allowance} AI reports a month on the ${PLAN_INFO[centerPlanOf(centerData?.plan)].label} plan.`}>
         <div className="flex items-center gap-4">
           <div className="h-2 flex-1 overflow-hidden rounded-full bg-[var(--bg-subtle)]">
             <div
-              className={cn("h-full rounded-full", picked.monthlyCount >= MONTHLY_ALLOWANCE ? "bg-red-500" : picked.monthlyCount >= 8 ? "bg-amber-500" : "bg-[var(--ink-blue)]")}
-              style={{ width: `${Math.min(100, (picked.monthlyCount / MONTHLY_ALLOWANCE) * 100)}%` }}
+              className={cn("h-full rounded-full", picked.monthlyCount >= allowance ? "bg-red-500" : picked.monthlyCount >= 8 ? "bg-amber-500" : "bg-[var(--ink-blue)]")}
+              style={{ width: `${Math.min(100, (picked.monthlyCount / allowance) * 100)}%` }}
             />
           </div>
-          <span className="shrink-0 font-mono text-sm tabular-nums text-[var(--text-primary)]">{picked.monthlyCount} of {MONTHLY_ALLOWANCE} used</span>
+          <span className="shrink-0 font-mono text-sm tabular-nums text-[var(--text-primary)]">{picked.monthlyCount} of {allowance} used</span>
         </div>
       </DetailSection>
     </DetailView>

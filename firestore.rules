@@ -46,6 +46,29 @@ service cloud.firestore {
       return isStaff() && staffEmail().matches('teacher_[^@]+@writeready[.]internal');
     }
 
+    // What a learning centre bought. Its students' profiles are checked
+    // against this, so a centre can only hand out the plan it paid for.
+    // Centres added before plans existed have no `plan` field; every one of
+    // their students was given the premium allowance, so that is the default.
+    function centreDoc(centerId) {
+      return get(/databases/$(database)/documents/learningCenters/$(centerId)).data;
+    }
+
+    function centrePlan(centerId) {
+      return centreDoc(centerId).get('plan', 'premium');
+    }
+
+    function centreEndsAt(centerId) {
+      let ends = centreDoc(centerId).get('expiresAt', '');
+      return ends is string ? ends : '';
+    }
+
+    // Students' access runs to the end of the contract's last day — the same
+    // string src/pages/CenterAdminPage.tsx writes.
+    function centreStudentExpiry(centerId) {
+      return centreEndsAt(centerId) == '' ? '' : centreEndsAt(centerId) + 'T23:59:59';
+    }
+
     function isTeacherFor(teacherId) {
       return isStaff() && staffEmail() == ('teacher_' + teacherId + '@writeready.internal').lower();
     }
@@ -113,13 +136,16 @@ service cloud.firestore {
           && request.resource.data.keys().hasOnly(['email', 'plan', 'subscriptionExpiresAt', 'createdAt', 'notification'])
           && request.resource.data.plan == 'free'
           && request.resource.data.subscriptionExpiresAt == null)
-        // A learning center adds one of its own students.
+        // A learning center adds one of its own students. The student may
+        // only be given the plan and the end date the centre itself holds:
+        // that profile is what api/pre-check.ts reads to decide the quota.
         || (isCenterFor(request.resource.data.centerId)
-          && request.resource.data.keys().hasOnly(['email', 'studentLogin', 'fullName', 'plan', 'subscriptionExpiresAt', 'centerId', 'centerName', 'createdAt', 'bonusAnalyses'])
-          && request.resource.data.plan == 'pro'
+          && request.resource.data.keys().hasOnly(['email', 'studentLogin', 'fullName', 'plan', 'expiresAt', 'subscriptionExpiresAt', 'centerId', 'centerName', 'createdAt', 'bonusAnalyses'])
+          && request.resource.data.plan == centrePlan(request.resource.data.centerId)
           && request.resource.data.bonusAnalyses == 0
+          && request.resource.data.get('expiresAt', '') == centreStudentExpiry(request.resource.data.centerId)
           && (request.resource.data.subscriptionExpiresAt == null
-            || request.resource.data.subscriptionExpiresAt == get(/databases/$(database)/documents/learningCenters/$(request.resource.data.centerId)).data.get('expiresAt', null)));
+            || request.resource.data.subscriptionExpiresAt == centreEndsAt(request.resource.data.centerId)));
 
       allow update: if
         // Students can clear their welcome message, and pay for a Human

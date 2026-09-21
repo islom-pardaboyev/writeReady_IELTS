@@ -1,8 +1,8 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { addDoc, collection, deleteDoc, doc, getDocs, query, serverTimestamp, setDoc, updateDoc, where } from "firebase/firestore";
+import { addDoc, collection, deleteDoc, doc, getDocs, query, serverTimestamp, setDoc, updateDoc, where, writeBatch } from "firebase/firestore";
 import { Building2, Eye, EyeOff, Pencil, Plus, RefreshCw, Trash2, UserPlus } from "lucide-react";
 import { adminDb as db } from "@/firebase/adminConfig";
-import { createStudentAuthAccount } from "@/firebase/createStudentAccount";
+import { createStudentAuthAccount, deleteStudentAuthAccount } from "@/firebase/createStudentAccount";
 import { useConfirm } from "@/hooks/useConfirm";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/Button";
@@ -12,6 +12,18 @@ import { PasswordInput } from "@/components/ui/PasswordInput";
 import { ListDetail, ListPane, RowList, ListRow, DetailView, DetailHeader, DetailSection, KeyValues } from "@/components/staff/ListDetail";
 import { EmptyState, Field, FilterChips, Initials, LoadError, Notice, RowSkeletons, SearchField } from "@/components/staff/parts";
 import { daysUntil, formatDate, inDays, uzs } from "./format";
+import { PLAN_INFO } from "@/lib/plans";
+import {
+  CENTER_PLAN_IDS,
+  DEFAULT_CENTER_PLAN,
+  MAX_EXTRA_DISCOUNT,
+  SEAT_TIERS,
+  centerPlanOf,
+  monthsUntil,
+  tierFor,
+  quoteCenter,
+  type CenterPlanId,
+} from "@/lib/centerPricing";
 import type { SectionProps } from "./types";
 
 interface Center {
@@ -26,6 +38,27 @@ interface Center {
   password: string;
   expiresAt: string;
   studentCount: number;
+  /** The plan every student of this center gets. */
+  plan: CenterPlanId;
+  /** Months the center was billed for, kept as a record of the deal. */
+  contractMonths: number;
+  /** Discount agreed by hand, on top of the seat ladder. */
+  extraDiscountPercent: number;
+}
+
+/**
+ * The plan fields a student's own profile must carry. A student is not a
+ * special case any more: they hold their center's plan and its end date, and
+ * api/pre-check.ts reads those the same way it reads a paying customer's.
+ */
+function studentPlanFields(c: Pick<Center, "plan" | "expiresAt">) {
+  return {
+    plan: centerPlanOf(c.plan),
+    // Access runs to the end of the contract's last day, not its first minute.
+    expiresAt: c.expiresAt ? `${c.expiresAt}T23:59:59` : "",
+    // Kept equal to the center's own date: firestore.rules compares them.
+    subscriptionExpiresAt: c.expiresAt || null,
+  };
 }
 
 interface CenterStudent { id: string; fullName: string; login: string; addedAt?: string }
@@ -52,6 +85,7 @@ const STATUS_BADGE: Record<Status, { label: string; variant: "success" | "warnin
 
 const EMPTY_CENTER: Partial<Center> = {
   name: "", contactPerson: "", phone: "", contractNumber: "", paymentAmount: 0, studentLimit: 30, login: "", password: "", expiresAt: "",
+  plan: DEFAULT_CENTER_PLAN, contractMonths: 0, extraDiscountPercent: 0,
 };
 
 export function CentersSection({ intent, clearIntent }: SectionProps) {
@@ -65,6 +99,8 @@ export function CentersSection({ intent, clearIntent }: SectionProps) {
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [editing, setEditing] = useState<Partial<Center> | null>(null);
   const [formError, setFormError] = useState("");
+  const [saveNotice, setSaveNotice] = useState("");
+  const [paymentTouched, setPaymentTouched] = useState(false);
   const [saving, setSaving] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
 
@@ -102,6 +138,11 @@ export function CentersSection({ intent, clearIntent }: SectionProps) {
           password: data.password ?? "",
           expiresAt: data.expiresAt ?? "",
           studentCount: studSnap.size,
+          // Centers added before plans existed keep the premium allowance
+          // their students already have.
+          plan: centerPlanOf(data.plan),
+          contractMonths: data.contractMonths ?? 0,
+          extraDiscountPercent: data.extraDiscountPercent ?? 0,
         } satisfies Center;
       }));
       rows.sort((a, b) => a.name.localeCompare(b.name));
@@ -136,6 +177,8 @@ export function CentersSection({ intent, clearIntent }: SectionProps) {
     setSelectedId(id);
     setEditing(id === "new" ? { ...EMPTY_CENTER } : null);
     setFormError("");
+    setSaveNotice("");
+    setPaymentTouched(false);
     setShowPassword(false);
     setStudentError("");
     setEditStudentId(null);
@@ -153,6 +196,26 @@ export function CentersSection({ intent, clearIntent }: SectionProps) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [intent]);
 
+  // The price always covers today → the contract end date, so a renewal is
+  // quoted from where it really starts.
+  const quoteMonths = monthsUntil(editing?.expiresAt) ?? 0;
+  const quoteSeats = Number(editing?.studentLimit) || 1;
+  const quoteExtra = Number(editing?.extraDiscountPercent) || 0;
+  const quotePlan = editing?.plan;
+  const quote = useMemo(
+    () => quoteCenter({ planId: quotePlan, seats: quoteSeats, months: quoteMonths || 1, extraPercent: quoteExtra }),
+    [quotePlan, quoteSeats, quoteMonths, quoteExtra],
+  );
+
+  // On a new center the payment follows the calculator until the admin types
+  // their own figure. An existing center's recorded payment is never
+  // overwritten on its own — that needs the "Use this price" button.
+  const quoteIsNewCenter = Boolean(editing) && !editing?.id;
+  useEffect(() => {
+    if (paymentTouched || !quoteMonths || !quoteIsNewCenter) return;
+    setEditing((prev) => (prev && prev.paymentAmount !== quote.totalUZS ? { ...prev, paymentAmount: quote.totalUZS } : prev));
+  }, [quote.totalUZS, quoteMonths, paymentTouched, quoteIsNewCenter]);
+
   const counts = useMemo(() => {
     const c = { all: centers.length, active: 0, ending: 0, expired: 0, pending: 0 };
     centers.forEach((x) => { c[statusOf(x)] += 1; });
@@ -168,6 +231,28 @@ export function CentersSection({ intent, clearIntent }: SectionProps) {
   const patchCount = (id: string, delta: number) =>
     setCenters((prev) => prev.map((c) => (c.id === id ? { ...c, studentCount: Math.max(0, c.studentCount + delta) } : c)));
 
+  /**
+   * Copies the center's plan and contract end date onto every one of its
+   * students. Their own profile is what the quota and the API read, so a plan
+   * change only reaches them through this.
+   */
+  const applyPlanToStudents = async (centerId: string, c: Pick<Center, "plan" | "expiresAt">): Promise<number> => {
+    const snap = await getDocs(query(collection(db, "users"), where("centerId", "==", centerId)));
+    const fields = studentPlanFields(c);
+    // A student who also holds a lifetime plan keeps it — the center's plan
+    // would be a downgrade for them.
+    const targets = snap.docs.filter((d) => d.data().plan !== "forever" && d.data().subscription !== "forever");
+    // Firestore takes at most 500 writes per batch.
+    for (let i = 0; i < targets.length; i += 400) {
+      const batch = writeBatch(db);
+      // merge, not update: a profile that has since been deleted would fail
+      // the whole batch and block the save.
+      targets.slice(i, i + 400).forEach((d) => batch.set(doc(db, "users", d.id), fields, { merge: true }));
+      await batch.commit();
+    }
+    return targets.length;
+  };
+
   const saveCenter = async () => {
     if (!editing) return;
     if (!editing.name?.trim() || !editing.login?.trim() || !editing.password || !editing.expiresAt) {
@@ -177,6 +262,8 @@ export function CentersSection({ intent, clearIntent }: SectionProps) {
     setFormError("");
     setSaving(true);
     try {
+      const plan = centerPlanOf(editing.plan);
+      const expiresAt = editing.expiresAt;
       const payload = {
         name: editing.name.trim(),
         contactPerson: editing.contactPerson ?? "",
@@ -186,17 +273,35 @@ export function CentersSection({ intent, clearIntent }: SectionProps) {
         studentLimit: Number(editing.studentLimit) || 30,
         login: editing.login.trim(),
         password: editing.password,
-        expiresAt: editing.expiresAt,
+        expiresAt,
+        plan,
+        contractMonths: monthsUntil(expiresAt) ?? (Number(editing.contractMonths) || 0),
+        extraDiscountPercent: Number(editing.extraDiscountPercent) || 0,
         // Status is derived from expiresAt, never stored.
       };
+      const before = centers.find((c) => c.id === editing.id);
       let id = editing.id;
       if (id) {
         await updateDoc(doc(db, "learningCenters", id), payload);
       } else {
         id = (await addDoc(collection(db, "learningCenters"), { ...payload, createdAt: new Date() })).id;
       }
+
+      // Existing students keep whatever their profile says until it is
+      // rewritten, so push the change to them whenever it affects what they
+      // get. A center saved for the first time this way also lifts its
+      // students off the old "pro" plan.
+      let moved = 0;
+      if (before && (before.plan !== plan || before.expiresAt !== expiresAt || before.studentCount > 0)) {
+        moved = await applyPlanToStudents(id, { plan, expiresAt });
+      }
+
       await load();
       select(id);
+      if (moved > 0) {
+        setStudentError("");
+        setSaveNotice(`Saved. ${moved} student${moved === 1 ? " is" : "s are"} on the ${PLAN_INFO[plan].label} plan until ${formatDate(expiresAt)}.`);
+      }
     } catch (e) {
       console.error(e);
       setFormError("Could not save the learning center. Try again.");
@@ -237,24 +342,33 @@ export function CentersSection({ intent, clearIntent }: SectionProps) {
         return;
       }
 
-      await setDoc(doc(db, "users", uid), {
-        email: fakeEmail,
-        studentLogin: loginKey,
-        fullName: newName.trim(),
-        plan: "pro",
-        subscriptionExpiresAt: c.expiresAt || null,
-        centerId: c.id,
-        centerName: c.name,
-        createdAt: serverTimestamp(),
-        bonusAnalyses: 0,
-      });
-      await setDoc(doc(db, "learningCenters", c.id, "students", uid), {
-        fullName: newName.trim(),
-        login: loginKey,
-        password: newPassword.trim(),
-        uid,
-        addedAt: serverTimestamp(),
-      });
+      try {
+        await setDoc(doc(db, "users", uid), {
+          email: fakeEmail,
+          studentLogin: loginKey,
+          fullName: newName.trim(),
+          // The student gets the plan their center bought, for as long as the
+          // contract runs.
+          ...studentPlanFields(c),
+          centerId: c.id,
+          centerName: c.name,
+          createdAt: serverTimestamp(),
+          bonusAnalyses: 0,
+        });
+        await setDoc(doc(db, "learningCenters", c.id, "students", uid), {
+          fullName: newName.trim(),
+          login: loginKey,
+          password: newPassword.trim(),
+          uid,
+          addedAt: serverTimestamp(),
+        });
+      } catch (err) {
+        // The sign-in account already exists by now. Leaving it behind would
+        // hold the login hostage: the next try is refused as "already taken"
+        // while the student still has no profile.
+        await deleteStudentAuthAccount(fakeEmail, newPassword.trim());
+        throw err;
+      }
 
       setNewName(""); setNewLogin(""); setNewPassword("");
       await loadStudents(c.id);
@@ -388,6 +502,39 @@ export function CentersSection({ intent, clearIntent }: SectionProps) {
         }
       >
         <DetailHeader title={isNew ? "New learning center" : `Edit ${editing.name || "center"}`} meta="The center signs in to its portal with this login and password." />
+
+        <div className="mt-6">
+          <p id="c-plan-label" className="text-sm font-medium text-[var(--text-primary)]">Plan for this center's students</p>
+          <div role="radiogroup" aria-labelledby="c-plan-label" className="mt-2 grid gap-2 sm:grid-cols-3">
+            {CENTER_PLAN_IDS.map((id) => {
+              const info = PLAN_INFO[id];
+              const chosen = centerPlanOf(editing.plan) === id;
+              return (
+                <button
+                  key={id}
+                  type="button"
+                  role="radio"
+                  aria-checked={chosen}
+                  onClick={() => set({ plan: id })}
+                  className={cn(
+                    "rounded-lg border px-3.5 py-3 text-left transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ring)]",
+                    chosen
+                      ? "border-[var(--ink-blue)] bg-[var(--accent)]"
+                      : "border-[var(--border-color)] bg-[var(--bg-card)] hover:bg-[var(--bg-subtle)]",
+                  )}
+                >
+                  <span className="block text-sm font-semibold text-[var(--text-primary)]">{info.label}</span>
+                  <span className="mt-0.5 block font-mono text-xs tabular-nums text-[var(--text-secondary)]">{uzs(info.monthlyPriceUZS)} a place a month</span>
+                  <span className="block text-xs text-[var(--text-secondary)]">{info.monthlyAnalyses} AI checks a month each</span>
+                </button>
+              );
+            })}
+          </div>
+          <p className="mt-1.5 text-xs text-[var(--text-secondary)]">
+            Every student of this center gets this plan while the contract runs, and drops to the free plan when it ends.
+          </p>
+        </div>
+
         <div className="mt-6 grid gap-5 sm:grid-cols-2">
           <Field label="Center name" htmlFor="c-name" className="sm:col-span-2">
             <Input name="c-name" autoComplete="off" id="c-name" value={editing.name ?? ""} onChange={(e) => set({ name: e.target.value })} />
@@ -413,10 +560,116 @@ export function CentersSection({ intent, clearIntent }: SectionProps) {
           <Field label="Contract number" htmlFor="c-contract" optional>
             <Input name="c-contract" autoComplete="off" id="c-contract" value={editing.contractNumber ?? ""} onChange={(e) => set({ contractNumber: e.target.value })} />
           </Field>
-          <Field label="Payment (UZS)" htmlFor="c-payment" optional>
-            <Input name="c-payment" autoComplete="off" id="c-payment" type="number" min={0} value={editing.paymentAmount ?? 0} onChange={(e) => set({ paymentAmount: Number(e.target.value) })} className="font-mono" />
+          <Field
+            label="Payment (UZS)"
+            htmlFor="c-payment"
+            hint={paymentTouched || !isNew ? "What the center actually pays. The calculator below suggests a price." : "Filled in by the calculator below until you type your own figure."}
+          >
+            <Input
+              name="c-payment"
+              autoComplete="off"
+              id="c-payment"
+              type="number"
+              min={0}
+              value={editing.paymentAmount ?? 0}
+              onChange={(e) => { setPaymentTouched(true); set({ paymentAmount: Number(e.target.value) }); }}
+              className="font-mono"
+            />
           </Field>
         </div>
+        <div className="mt-6 rounded-xl border border-[var(--border-color)] bg-[var(--bg-subtle)] p-4">
+          <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1">
+            <h3 className="text-sm font-semibold text-[var(--text-primary)]">What this contract costs</h3>
+            <p className="font-mono text-xs tabular-nums text-[var(--text-secondary)]">
+              {SEAT_TIERS.filter((t) => t.percent > 0).map((t) => `${t.minSeats}+ −${t.percent}%`).join(" · ")}
+            </p>
+          </div>
+
+          {quoteMonths === 0 ? (
+            <p className="mt-3 text-sm text-[var(--text-secondary)]">
+              Set a contract end date in the future to see the price. One place on the {PLAN_INFO[centerPlanOf(editing.plan)].label} plan
+              costs <span className="font-mono tabular-nums">{uzs(PLAN_INFO[centerPlanOf(editing.plan)].monthlyPriceUZS)}</span> a month before any discount.
+            </p>
+          ) : (
+            <>
+              <dl className="mt-3 space-y-1.5 text-sm">
+                <div className="flex items-baseline justify-between gap-4">
+                  <dt className="text-[var(--text-secondary)]">
+                    {quote.seats} {quote.seats === 1 ? "place" : "places"} × {quote.months} {quote.months === 1 ? "month" : "months"} × {uzs(PLAN_INFO[quote.planId].monthlyPriceUZS)}
+                  </dt>
+                  <dd className="font-mono tabular-nums text-[var(--text-secondary)]">{uzs(quote.listTotalUZS)}</dd>
+                </div>
+                {quote.tierPercent > 0 && (
+                  <div className="flex items-baseline justify-between gap-4">
+                    <dt className="text-[var(--text-secondary)]">
+                      Bulk discount {quote.freeSeats ? `(priced as ${quote.freeSeats.seats} places)` : `(${tierFor(quote.seats).minSeats}+ places)`}
+                    </dt>
+                    <dd className="font-mono tabular-nums text-emerald-700 dark:text-emerald-400">−{quote.tierPercent}%</dd>
+                  </div>
+                )}
+                {quote.extraPercent > 0 && (
+                  <div className="flex items-baseline justify-between gap-4">
+                    <dt className="text-[var(--text-secondary)]">Agreed extra discount</dt>
+                    <dd className="font-mono tabular-nums text-emerald-700 dark:text-emerald-400">−{quote.extraPercent}%</dd>
+                  </div>
+                )}
+                <div className="flex items-baseline justify-between gap-4 border-t border-[var(--border-color)] pt-2">
+                  <dt className="font-semibold text-[var(--text-primary)]">Total for the contract</dt>
+                  <dd className="font-mono text-lg font-semibold tabular-nums text-[var(--text-primary)]">{uzs(quote.totalUZS)}</dd>
+                </div>
+                <div className="flex items-baseline justify-between gap-4">
+                  <dt className="text-[var(--text-secondary)]">One place a month</dt>
+                  <dd className="font-mono tabular-nums text-[var(--text-primary)]">{uzs(quote.perSeatMonthUZS)}</dd>
+                </div>
+                {quote.savingUZS > 0 && (
+                  <div className="flex items-baseline justify-between gap-4">
+                    <dt className="text-[var(--text-secondary)]">Saved against the full price</dt>
+                    <dd className="font-mono tabular-nums text-emerald-700 dark:text-emerald-400">{uzs(quote.savingUZS)}</dd>
+                  </div>
+                )}
+              </dl>
+
+              {quote.freeSeats && (
+                <Notice tone="info" className="mt-3">
+                  {quote.freeSeats.seats} places cost the same as {quote.seats}.{" "}
+                  <button
+                    type="button"
+                    onClick={() => set({ studentLimit: quote.freeSeats!.seats })}
+                    className="font-semibold underline underline-offset-2 hover:no-underline"
+                  >
+                    Give them {quote.freeSeats.extra} more {quote.freeSeats.extra === 1 ? "place" : "places"} free
+                  </button>
+                </Notice>
+              )}
+
+              <div className="mt-3 flex flex-wrap items-end gap-3">
+                <Field label="Extra discount (%)" htmlFor="c-extra" className="w-32" hint={`Up to ${MAX_EXTRA_DISCOUNT}%`}>
+                  <Input
+                    name="c-extra"
+                    id="c-extra"
+                    autoComplete="off"
+                    type="number"
+                    min={0}
+                    max={MAX_EXTRA_DISCOUNT}
+                    value={editing.extraDiscountPercent ?? 0}
+                    onChange={(e) => set({ extraDiscountPercent: Number(e.target.value) })}
+                    className="font-mono"
+                  />
+                </Field>
+                {(paymentTouched || !isNew) && (editing.paymentAmount ?? 0) !== quote.totalUZS && (
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={() => { setPaymentTouched(true); set({ paymentAmount: quote.totalUZS }); }}
+                  >
+                    Use this price
+                  </Button>
+                )}
+              </div>
+            </>
+          )}
+        </div>
+
         {formError && <Notice tone="error" className="mt-5">{formError}</Notice>}
       </DetailView>
     );
@@ -438,15 +691,53 @@ export function CentersSection({ intent, clearIntent }: SectionProps) {
           }
           actions={<Button variant="outline" size="sm" onClick={() => { setEditing({ ...selected }); setFormError(""); }}><Pencil aria-hidden="true" /> Edit</Button>}
         />
-        {status === "expired" && <Notice tone="error" className="mt-5">The contract has ended. Extend the end date to keep the center's students active.</Notice>}
+        {saveNotice && <Notice tone="success" className="mt-5">{saveNotice}</Notice>}
+        {status === "expired" && <Notice tone="error" className="mt-5">The contract has ended, so its students are on the free plan. Extend the end date and save to give them their plan back.</Notice>}
         {status === "ending" && <Notice tone="warning" className="mt-5">The contract ends {inDays(days ?? 0)}. Renew it before then to avoid interruptions.</Notice>}
+
+        <DetailSection title="Plan" description={`Each student gets ${PLAN_INFO[selected.plan].monthlyAnalyses} AI checks a month while the contract runs.`}>
+          <KeyValues
+            items={[
+              { label: "Plan", value: <Badge variant="purple">{PLAN_INFO[selected.plan].label}</Badge> },
+              { label: "Places", value: <span className="font-mono tabular-nums">{selected.studentLimit}</span> },
+              {
+                label: "Paid",
+                value: <span className="font-mono tabular-nums">{uzs(selected.paymentAmount)}</span>,
+              },
+              {
+                label: "One place a month",
+                value:
+                  selected.contractMonths > 0 && selected.studentLimit > 0 && selected.paymentAmount > 0 ? (
+                    <span className="font-mono tabular-nums">
+                      {uzs(Math.round(selected.paymentAmount / selected.studentLimit / selected.contractMonths))}
+                      <span className="ml-1.5 font-sans text-xs text-[var(--text-secondary)]">
+                        over {selected.contractMonths} {selected.contractMonths === 1 ? "month" : "months"}
+                      </span>
+                    </span>
+                  ) : (
+                    "Not priced"
+                  ),
+              },
+              {
+                label: "Full price would be",
+                value:
+                  selected.contractMonths > 0 ? (
+                    <span className="font-mono tabular-nums text-[var(--text-secondary)]">
+                      {uzs(PLAN_INFO[selected.plan].monthlyPriceUZS * selected.studentLimit * selected.contractMonths)}
+                    </span>
+                  ) : (
+                    "Not priced"
+                  ),
+              },
+            ]}
+          />
+        </DetailSection>
 
         <DetailSection title="Contract and sign-in">
           <KeyValues
             items={[
               { label: "Contact person", value: selected.contactPerson || "Not set" },
               { label: "Phone", value: selected.phone ? <a href={`tel:${selected.phone}`} className="underline underline-offset-2">{selected.phone}</a> : "Not set" },
-              { label: "Payment", value: <span className="font-mono tabular-nums">{uzs(selected.paymentAmount)}</span> },
               { label: "Contract number", value: selected.contractNumber || "Not set" },
               { label: "Portal login", value: <span className="font-mono">{selected.login}</span> },
               {
@@ -491,6 +782,9 @@ export function CentersSection({ intent, clearIntent }: SectionProps) {
                 <UserPlus aria-hidden="true" /> {adding ? "Adding…" : "Add student"}
               </Button>
               {full && <span className="text-sm text-[var(--text-secondary)]">All places are used. Raise the limit in Edit to add more.</span>}
+            {status === "expired" && !full && (
+              <span className="text-sm text-[var(--text-secondary)]">The contract has ended, so a student added now starts on the free plan.</span>
+            )}
             </div>
             {studentError && <Notice tone="error" className="sm:col-span-3">{studentError}</Notice>}
           </form>

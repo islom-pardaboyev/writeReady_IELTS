@@ -162,6 +162,10 @@ export function DashboardPage() {
   const centerId = profileAny?.centerId as string | undefined;
   const subscriptionExpiresAt = profileAny?.subscriptionExpiresAt as string | null | undefined;
   const isStudent = !!(centerId && centerName);
+  // `profile.plan` is already the plan after expiry, so a learning-center
+  // student whose center's contract has ended reads as free here — they get
+  // the same weekly free report as anyone else until the center renews.
+  const centerPlanEnded = isStudent && !isPaidPlan;
   const bonusAnalyses = profile?.bonusAnalyses ?? 0;
   const freeReportAvailable = hasFreeReportThisWeek(profile?.freeUsage);
   const usedCount = usage?.count ?? 0;
@@ -175,6 +179,7 @@ export function DashboardPage() {
   }
 
   const planName = planDisplayName(profile?.plan ?? 'free');
+  const onFreePlan = !isPaidPlan && (!isStudent || centerPlanEnded);
 
   return (
     <AppShell>
@@ -202,13 +207,13 @@ export function DashboardPage() {
             <p className="text-[var(--text-secondary)]">
               {isPro && !isStudent
                 ? `${planName} · ${remaining} analyses left this month${bonusAnalyses > 0 ? ` · +${bonusAnalyses} bonus` : ''}`
-                : !isStudent && bonusAnalyses > 0
+                : isStudent && !centerPlanEnded
+                ? `${planName} · ${remaining} analyses left this month`
+                : bonusAnalyses > 0
                 ? `+${bonusAnalyses} bonus analyses available 🎁`
-                : !isStudent && freeReportAvailable
+                : freeReportAvailable
                 ? 'Free plan — 1 free AI analysis available this week 🎁'
-                : !isStudent
-                ? "Free plan — you've used this week's free analysis. Resets Monday, or upgrade for more."
-                : `AI feedback — ${remaining} analyses left this month`}
+                : "Free plan — you've used this week's free analysis. Resets Monday, or upgrade for more."}
             </p>
           </div>
 
@@ -222,11 +227,19 @@ export function DashboardPage() {
                   <p className="font-sans font-bold text-lg text-[var(--text-primary)] leading-tight">{centerName}</p>
                   <div className="flex items-center gap-3 mt-1 flex-wrap">
                     <span className="text-sm text-[var(--text-secondary)]">
-                      <span className="font-medium text-[var(--text-primary)]">{remaining}</span> AI analyses remaining this month
+                      {centerPlanEnded ? (
+                        "Your center's plan has ended. You're on the free plan until it renews."
+                      ) : (
+                        <>
+                          <span className="font-medium text-[var(--text-primary)]">{planName}</span> plan ·{' '}
+                          <span className="font-medium text-[var(--text-primary)]">{remaining}</span> AI analyses remaining this month
+                        </>
+                      )}
                     </span>
                     {subscriptionExpiresAt && (
                       <span className="text-xs text-[var(--text-secondary)] bg-white/60 dark:bg-white/10 px-2 py-0.5 rounded-full">
-                        Access until {new Date(subscriptionExpiresAt).toLocaleDateString(navigator.language, { day: 'numeric', month: 'short', year: 'numeric' })}
+                        {centerPlanEnded ? 'Ended' : 'Access until'}{' '}
+                        {new Date(subscriptionExpiresAt).toLocaleDateString(navigator.language, { day: 'numeric', month: 'short', year: 'numeric' })}
                       </span>
                     )}
                   </div>
@@ -246,7 +259,7 @@ export function DashboardPage() {
           )}
 
           {/* Quota bar */}
-          {(isPro || bonusAnalyses > 0 || (!isStudent && !isPro)) && (
+          {(isPro || bonusAnalyses > 0 || onFreePlan) && (
             <Card className="gs-db-quota px-6 py-5 mb-8">
               <div className="flex items-center justify-between mb-3 flex-wrap gap-2">
                 <span className="font-semibold text-[0.9375rem] text-[var(--text-primary)]">
@@ -261,7 +274,7 @@ export function DashboardPage() {
                       {usedCount}/{usageLimit}
                     </span>
                   )}
-                  {!isPro && !isStudent && (
+                  {onFreePlan && (
                     <Badge variant={freeReportAvailable ? 'success' : 'secondary'}>
                       {freeReportAvailable ? 'Available' : 'Used — resets Monday'}
                     </Badge>
@@ -281,7 +294,7 @@ export function DashboardPage() {
                   </p>
                 </>
               )}
-              {!isPro && !isStudent && (
+              {onFreePlan && (
                 <p className="text-xs text-[var(--text-secondary)]">
                   Free-plan users get 1 AI feedback report every week. Upgrade for a higher monthly allowance.
                 </p>

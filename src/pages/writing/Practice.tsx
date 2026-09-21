@@ -16,6 +16,7 @@ import WritingTask1Preview from "@/components/writingTask1Preview/WritingTask1Pr
 import { NavLink, useNavigate } from "react-router";
 import { useAuth } from "@/hooks/useAuth";
 import { useUnsavedWork } from "@/hooks/useUnsavedWork";
+import { effectivePlan } from "@/lib/plans";
 import { Button } from "@/components/ui/Button";
 import WritingTask2Preview from "@/components/writingTask2Preview/WritingTask2Preview";
 import { encodeReport } from "@/lib/reportEncoding";
@@ -39,17 +40,10 @@ interface Task2 {
 }
 
 function hasAccess(data: Record<string, unknown>): boolean {
-  // Learning-center students always have access (free premium).
-  if (typeof data.centerId === "string" && data.centerId.length > 0) return true;
   // AI feedback for exercises requires an active paid plan — no free weekly
-  // report or bonus credits here (those still work in the other modes).
-  const plan = data.plan as string | undefined;
-  return (
-    plan === "forever" ||
-    plan === "premium" ||
-    plan === "standard" ||
-    plan === "basic"
-  );
+  // report or bonus credits here (those still work in the other modes). A
+  // learning-center student holds their center's plan until its contract ends.
+  return effectivePlan(data) !== "free";
 }
 
 function Practice() {

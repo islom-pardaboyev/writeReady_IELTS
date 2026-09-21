@@ -15,7 +15,8 @@ import {
   type Firestore,
 } from 'firebase/firestore';
 import { db } from './config';
-import type { UserProfile, UsageRecord, Question, Submission, Plan } from '../types';
+import { effectivePlan, monthlyLimitFor } from '../lib/plans';
+import type { UserProfile, UsageRecord, Question, Submission } from '../types';
 
 function toDate(val: unknown): Date {
   if (val instanceof Timestamp) return val.toDate();
@@ -31,32 +32,12 @@ export async function getUserProfile(uid: string): Promise<UserProfile | null> {
   const centerId: string | undefined = typeof d.centerId === 'string' ? d.centerId : undefined;
   const expiresAt: string = d.expiresAt ?? '';
 
-  // Derive effective plan from plan field stored directly in Firestore
-  let plan: Plan = 'free';
-  if (d.plan === 'forever' || subscription === 'forever') {
-    plan = 'forever';
-  } else if (d.plan === 'premium') {
-    plan = 'premium';
-  } else if (d.plan === 'standard') {
-    plan = 'standard';
-  } else if (d.plan === 'basic') {
-    plan = 'basic';
-  }
-
-  // A paid plan whose expiresAt has passed reverts to free — matches the
-  // downgrade already applied in useUsage.ts (and, server-side, in
-  // api/pre-check.ts's consumeCredit()) so all three agree on what "active"
-  // means. Lifetime plans never expire.
-  if (plan !== 'forever' && expiresAt && new Date(expiresAt) < new Date()) {
-    plan = 'free';
-  }
-
-  // Learning-center students always get premium access — even after the
-  // center's own subscription has expired — unless they already hold a
-  // higher (lifetime) plan.
-  if (centerId && plan !== 'forever') {
-    plan = 'premium';
-  }
+  // One rule for what the stored fields really grant — see src/lib/plans.ts.
+  // It translates the legacy "pro" plan, honours a lifetime `subscription`,
+  // and drops a plan whose end date has passed back to free. A learning-center
+  // student carries their center's plan and the center's contract end date, so
+  // they follow the same rule: when the contract ends, so does their plan.
+  const plan = effectivePlan(d);
 
   return {
     uid,
@@ -117,14 +98,9 @@ export async function getUsage(uid: string): Promise<UsageRecord | null> {
   const data = snap.data();
   const usage = data?.usage;
   const count = usage?.monthKey === yearMonth ? (usage?.count ?? 0) : 0;
-  const plan: string = data?.plan ?? 'free';
-  const expiresAt: string = data?.expiresAt ?? '';
-  const isExpired = plan !== 'forever' && !!expiresAt && new Date(expiresAt) < new Date();
-  const effectivePlan = isExpired ? 'free' : plan;
-  const hasCenter = typeof data?.centerId === 'string' && data.centerId.length > 0;
-  const planLimits: Record<string, number> = { forever: 9999, premium: 25, standard: 12, basic: 5 };
-  // Center students always get at least the premium (25) allowance.
-  const limit = Math.max(planLimits[effectivePlan] ?? 0, hasCenter ? 25 : 0);
+  // A learning-center student's plan is the one their center bought, stored on
+  // their own profile, so the same lookup covers them — see src/lib/plans.ts.
+  const limit = monthlyLimitFor(effectivePlan(data));
   return { uid, yearMonth, count, limit, updatedAt: new Date() };
 }
 
