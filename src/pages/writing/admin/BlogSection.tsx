@@ -362,7 +362,7 @@ export function BlogSection({ intent, clearIntent }: SectionProps) {
             <Field label="Author" htmlFor="b-author">
               <Input name="b-author" autoComplete="off" id="b-author" value={editor.author ?? "WriteReady Team"} onChange={(e) => set({ author: e.target.value })} />
             </Field>
-            <Field label="Cover image URL" htmlFor="b-image" optional className="sm:col-span-2">
+            <Field label="Cover image URL" htmlFor="b-image" optional className="sm:col-span-2" hint="Only use a picture you own or that is licensed for reuse — the address is loaded straight from that site, so its owner sees the traffic. Unsplash, Pexels and Wikimedia Commons are safe sources.">
               <Input name="b-image" autoComplete="off" id="b-image" type="url" placeholder="https://example.com…" value={editor.featuredImage ?? ""} onChange={(e) => set({ featuredImage: e.target.value })} />
             </Field>
             <Field label="Call-to-action text" htmlFor="b-cta" optional>

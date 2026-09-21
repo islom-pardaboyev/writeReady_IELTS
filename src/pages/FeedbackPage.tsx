@@ -177,7 +177,7 @@ function UpgradePrompt() {
       </p>
       <a
         href="/pricing"
-        className="inline-flex items-center gap-1.5 bg-[var(--ink-blue)] text-white px-6 py-3 rounded-xl font-bold text-sm hover:opacity-90 transition-opacity no-underline"
+        className="inline-flex items-center gap-1.5 bg-[var(--ink-blue-solid)] text-white px-6 py-3 rounded-xl font-bold text-sm hover:opacity-90 transition-opacity no-underline"
       >
         View plans <ChevronRight className="w-4 h-4" />
       </a>
@@ -604,7 +604,7 @@ export function FeedbackPage() {
       <AppShell minimal>
         <div className="bg-[var(--bg-base)] min-h-[calc(100vh-56px)] py-10 flex items-center">
           <div className="container mx-auto max-w-xl px-4">
-            <div className="bg-[var(--ink-blue)] rounded-2xl p-10 text-center text-white">
+            <div className="bg-[var(--ink-blue-solid)] rounded-2xl p-10 text-center text-white">
               <div className="w-14 h-14 rounded-2xl bg-white/15 flex items-center justify-center mx-auto mb-5">
                 <Lock className="w-6 h-6" />
               </div>
@@ -613,8 +613,9 @@ export function FeedbackPage() {
               </h2>
               <p className="text-white/70 mb-7 leading-relaxed">
                 Your essay has been saved. Free-plan users get 1 AI feedback report per week —
-                come back next week for another free check, or upgrade to Basic, Standard, or
-                Premium for unlimited access to band scores, corrections, vocabulary, and grammar.
+                come back next week for another free check, or upgrade to Basic, Standard or
+                Premium for more reports each month, with band scores, corrections, vocabulary
+                and grammar.
               </p>
               <div className="flex gap-3 justify-center flex-wrap">
                 <Link to="/pricing">
@@ -685,7 +686,7 @@ export function FeedbackPage() {
                       onClick={() => { setSelectedTask(t); setActiveTab('overview'); }}
                       className={`px-5 py-1.5 rounded-full border-2 font-semibold text-sm transition-colors cursor-pointer flex items-center gap-2 ${
                         selectedTask === t
-                          ? 'border-[var(--ink-blue)] bg-[var(--ink-blue)] text-white'
+                          ? 'border-[var(--ink-blue)] bg-[var(--ink-blue-solid)] text-white'
                           : 'border-[var(--border-color)] bg-[var(--bg-card)] text-[var(--text-secondary)] hover:border-[var(--ink-blue)]'
                       }`}
                     >
@@ -1307,7 +1308,7 @@ export function FeedbackPage() {
                               onClick={() => setLtLang(lang)}
                               className={`px-3 py-1 rounded-full text-xs font-semibold border transition-colors cursor-pointer ${
                                 ltLang === lang
-                                  ? 'bg-[var(--ink-blue)] text-white border-[var(--ink-blue)]'
+                                  ? 'bg-[var(--ink-blue-solid)] text-white border-[var(--ink-blue)]'
                                   : 'bg-[var(--bg-card)] text-[var(--text-secondary)] border-[var(--border-color)]'
                               }`}
                             >
@@ -1415,7 +1416,7 @@ export function FeedbackPage() {
                           {m.replacements.length > 0 && (
                             <button
                               onClick={() => applyLtFix(m, m.replacements[0].value)}
-                              className="px-3 py-1 bg-[var(--ink-blue)] text-white text-xs font-semibold rounded cursor-pointer border-none shrink-0"
+                              className="px-3 py-1 bg-[var(--ink-blue-solid)] text-white text-xs font-semibold rounded cursor-pointer border-none shrink-0"
                             >{m.replacements[0].value}</button>
                           )}
                         </div>

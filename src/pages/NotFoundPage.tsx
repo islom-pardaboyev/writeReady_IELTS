@@ -63,7 +63,7 @@ export function NotFoundPage() {
           </button>
           <Link
             to={user ? '/dashboard' : '/'}
-            className="inline-flex min-h-11 items-center gap-2 rounded-full bg-[var(--ink-blue)] px-5 text-[0.9375rem] font-semibold text-white no-underline transition-opacity hover:opacity-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ring)] focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--bg-base)]"
+            className="inline-flex min-h-11 items-center gap-2 rounded-full bg-[var(--ink-blue-solid)] px-5 text-[0.9375rem] font-semibold text-white no-underline transition-opacity hover:opacity-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ring)] focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--bg-base)]"
           >
             {user ? 'Go to dashboard' : 'Go to home page'}
           </Link>

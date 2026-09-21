@@ -292,7 +292,7 @@ export function PricingPage() {
 
             {/* Standard — Popular */}
             <Card className="gs-plan-card hover:-translate-y-1 transition-[transform,box-shadow] duration-200 p-7 flex flex-col relative border-2 border-[var(--ink-blue)] shadow-[0_8px_32px_rgba(79,70,229,0.18)]">
-              <div className="absolute -top-[13px] left-1/2 -translate-x-1/2 bg-[var(--ink-blue)] text-white text-[0.6875rem] font-bold tracking-[0.08em] uppercase px-4 py-[0.3rem] rounded-[20px] whitespace-nowrap">
+              <div className="absolute -top-[13px] left-1/2 -translate-x-1/2 bg-[var(--ink-blue-solid)] text-white text-[0.6875rem] font-bold tracking-[0.08em] uppercase px-4 py-[0.3rem] rounded-[20px] whitespace-nowrap">
                 ⭐ Most popular
               </div>
               <div className="mb-5">
@@ -346,7 +346,7 @@ export function PricingPage() {
                 >
                   Premium
                 </div>
-                <div className="text-sm text-white/55">
+                <div className="text-sm text-white/75">
                   All features, maximum analyses
                 </div>
               </div>
@@ -356,7 +356,7 @@ export function PricingPage() {
                 >
                   49,000
                 </span>
-                <span className="text-sm text-white/50 ml-1.5">
+                <span className="text-sm text-white/75 ml-1.5">
                   UZS / month
                 </span>
               </div>
@@ -513,7 +513,7 @@ export function PricingPage() {
 
             {/* Step 1 */}
             <div className="flex items-center gap-3 mb-4">
-              <span className="w-7 h-7 rounded-full bg-[var(--ink-blue)] text-white flex items-center justify-center font-bold text-sm shrink-0">
+              <span className="w-7 h-7 rounded-full bg-[var(--ink-blue-solid)] text-white flex items-center justify-center font-bold text-sm shrink-0">
                 1
               </span>
               <h3 className="text-[1.05rem] font-bold text-[var(--text-primary)]">
@@ -549,7 +549,7 @@ export function PricingPage() {
             </div>
 
             <div className="flex items-center gap-3 mb-4">
-              <span className="w-7 h-7 rounded-full bg-[var(--ink-blue)] text-white flex items-center justify-center font-bold text-sm shrink-0">
+              <span className="w-7 h-7 rounded-full bg-[var(--ink-blue-solid)] text-white flex items-center justify-center font-bold text-sm shrink-0">
                 2
               </span>
               <h3 className="text-[1.05rem] font-bold text-[var(--text-primary)]">
@@ -572,7 +572,7 @@ export function PricingPage() {
               href={`https://t.me/${TELEGRAM_USERNAME}`}
               target="_blank"
               rel="noopener noreferrer"
-              className="flex items-center justify-center gap-2 bg-[var(--ink-blue)] text-white rounded-[14px] p-3.5 font-bold text-base no-underline mb-5 hover:opacity-90 transition-colors"
+              className="flex items-center justify-center gap-2 bg-[var(--ink-blue-solid)] text-white rounded-[14px] p-3.5 font-bold text-base no-underline mb-5 hover:opacity-90 transition-colors"
             >
               <Send size={18} />
               Open Telegram

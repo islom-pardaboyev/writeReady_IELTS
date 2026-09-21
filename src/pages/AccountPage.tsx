@@ -145,7 +145,7 @@ export function AccountPage() {
           <Card className="gs-profile-card p-6 flex items-center gap-[1.125rem] mb-4">
             <Avatar className="w-14 h-14 shrink-0">
               {user.photoURL && <AvatarImage src={user.photoURL} alt={displayName} />}
-              <AvatarFallback className="bg-[var(--ink-blue)] text-white font-sans text-xl font-bold">
+              <AvatarFallback className="bg-[var(--ink-blue-solid)] text-white font-sans text-xl font-bold">
                 {initials}
               </AvatarFallback>
             </Avatar>

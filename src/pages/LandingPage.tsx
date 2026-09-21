@@ -6,6 +6,7 @@ import { ArrowUpRight, Send } from 'lucide-react';
 import { TELEGRAM_CHANNEL_URL } from '@/lib/links';
 import { Header } from '@/components/layout/Header';
 import { SkipLink } from '@/components/layout/SkipLink';
+import { IELTS_DISCLAIMER } from '@/lib/legal';
 import { ChatBot } from '../components/ui/ChatBot';
 
 gsap.registerPlugin(ScrollTrigger);
@@ -95,11 +96,11 @@ export function LandingPage() {
           </h1>
 
           <p className="gs-hero-sub text-[1.0625rem] text-[var(--text-secondary)] leading-[1.75] mb-8 max-w-[440px]">
-            WriteReady combines real IELTS exam prompts with AI to deliver sentence-level feedback, vocabulary upgrades, and a band score — in both Uzbek and English.
+            WriteReady combines IELTS-style exam prompts with AI to deliver sentence-level feedback, vocabulary upgrades, and a band score — in both Uzbek and English.
           </p>
 
           <div className="gs-hero-ctas flex gap-[0.875rem] items-center mb-8 flex-wrap">
-            <Link to="/auth?mode=signup" className="inline-flex items-center gap-2 bg-[var(--ink-blue)] text-white font-bold text-[0.9375rem] px-7 py-3 rounded-[50px] no-underline hover:opacity-90 transition-opacity">
+            <Link to="/auth?mode=signup" className="inline-flex items-center gap-2 bg-[var(--ink-blue-solid)] text-white font-bold text-[0.9375rem] px-7 py-3 rounded-[50px] no-underline hover:opacity-90 transition-opacity">
               Check My Essay →
             </Link>
             <Link to="/writing/mock" className="inline-flex items-center gap-[0.375rem] text-[var(--text-secondary)] font-semibold text-[0.9375rem] no-underline hover:text-[var(--text-primary)] transition-colors">
@@ -108,7 +109,7 @@ export function LandingPage() {
           </div>
 
           <ul className="grid grid-cols-2 gap-x-6 gap-y-2 list-none m-0 p-0">
-            {['First analysis free', 'No credit card required', 'Real exam-style prompts', 'Sentence-level feedback'].map((t) => (
+            {['First analysis free', 'No credit card required', 'Exam-style prompts', 'Sentence-level feedback'].map((t) => (
               <li key={t} className="gs-hero-bullet flex items-center gap-2 text-sm text-[var(--text-secondary)]">
                 <span className="text-green-500 font-bold text-base" aria-hidden="true">✓</span> {t}
               </li>
@@ -127,7 +128,7 @@ export function LandingPage() {
             </div>
             <div className="flex items-center justify-between mb-4">
               <span className="text-[0.8125rem] font-semibold text-[var(--text-secondary)]">Task 2 — Opinion Essay</span>
-              <div className="bg-[var(--ink-blue)] text-white text-[0.8125rem] font-bold px-[0.875rem] py-1 rounded-[20px]">
+              <div className="bg-[var(--ink-blue-solid)] text-white text-[0.8125rem] font-bold px-[0.875rem] py-1 rounded-[20px]">
                 Band 7.0
               </div>
             </div>
@@ -179,7 +180,7 @@ export function LandingPage() {
             <div key={s.sub} className="gs-stat-item px-6 py-5">
               <strong className="block text-[1.75rem] font-black text-[var(--text-primary)] tracking-[-0.02em] mb-[0.125rem]">{s.value}</strong>
               <p className="text-[0.8125rem] font-bold text-[var(--text-secondary)] mb-[0.125rem] uppercase tracking-[0.04em] m-0">{s.sub}</p>
-              <p className="text-[0.75rem] text-[var(--text-secondary)] opacity-60 m-0">{s.note}</p>
+              <p className="text-[0.75rem] text-[var(--text-secondary)] m-0">{s.note}</p>
             </div>
           ))}
         </div>
@@ -194,7 +195,7 @@ export function LandingPage() {
         <div className="grid grid-cols-[repeat(auto-fit,minmax(260px,1fr))] gap-6">
           {[
             { n: '01', title: 'Choose your mode', desc: 'Mock exam for pressure, Practice for pace, Quick Write for daily warm-up, or Relax for free writing.' },
-            { n: '02', title: 'Write your essay', desc: 'Real IELTS Task 1 and Task 2 prompts, selected randomly from our exam bank.' },
+            { n: '02', title: 'Write your essay', desc: 'IELTS-style Task 1 and Task 2 prompts, picked at random from our question bank.' },
             { n: '03', title: 'Get AI feedback', desc: 'Sentence-level grammar notes, vocabulary upgrades with Uzbek meanings, and a band score estimate.' },
           ].map((s) => (
             <div key={s.n} className="gs-step-card bg-[var(--bg-card)] rounded-xl p-8 border border-[var(--border-color)]">
@@ -215,7 +216,7 @@ export function LandingPage() {
           </div>
           <div className="grid grid-cols-[repeat(auto-fit,minmax(260px,1fr))] gap-5">
             {[
-              { emoji: '⏱', title: 'Mock Exam', tag: 'Exam simulation', desc: '60-minute timer, both Task 1 and Task 2. Mirrors the real IELTS on-computer experience.', dark: true, href: '/writing/mock' },
+              { emoji: '⏱', title: 'Mock Exam', tag: 'Exam simulation', desc: '60-minute timer, both Task 1 and Task 2. Laid out like the computer-based test.', dark: true, href: '/writing/mock' },
               { emoji: '✏️', title: 'Practice Mode', tag: 'Targeted improvement', desc: 'No timer pressure. Work through tasks at your own pace with randomly selected prompts.', dark: false, href: '/writing/practice' },
               { emoji: '⚡', title: 'Quick Write', tag: 'Speed training', desc: 'One random task, no timer, instant submission. Great for daily warm-up and building writing habits.', dark: false, tinted: false, href: '/writing/quick' },
               { emoji: '☕', title: 'Relax Mode', tag: 'Free writing', desc: 'Use your own custom prompt. Enter any question you like, optionally upload a chart, and write freely.', dark: false, tinted: true, href: '/writing/relax' },
@@ -231,7 +232,7 @@ export function LandingPage() {
                   }`}
                 >
                   <span className="block text-[1.75rem] mb-4" aria-hidden="true">{m.emoji}</span>
-                  <p className={`text-[0.7rem] font-bold uppercase tracking-[0.08em] mb-[0.375rem] m-0 ${m.dark ? 'text-white/50' : 'text-[var(--text-secondary)]'}`}>{m.tag}</p>
+                  <p className={`text-[0.7rem] font-bold uppercase tracking-[0.08em] mb-[0.375rem] m-0 ${m.dark ? 'text-white/70' : 'text-[var(--text-secondary)]'}`}>{m.tag}</p>
                   <h3 className={`text-[1.125rem] font-extrabold mb-2 tracking-[-0.01em] ${m.dark ? 'text-white' : 'text-[var(--text-primary)]'}`}>{m.title}</h3>
                   <p className={`text-[0.875rem] leading-[1.7] ${m.dark ? 'text-white/70' : 'text-[var(--text-secondary)]'}`}>{m.desc}</p>
                 </div>
@@ -248,9 +249,9 @@ export function LandingPage() {
             Ready to reach your target band?
           </h2>
           <p className="text-white/55 text-base mb-8 leading-[1.7]">
-            Free to start. Upgrade for unlimited AI feedback in Uzbek and English.
+            Free to start. Upgrade for more AI feedback each month, in Uzbek and English.
           </p>
-          <Link to="/auth?mode=signup" className="inline-flex items-center gap-2 bg-[var(--ink-blue)] text-white font-bold text-base px-8 py-[0.875rem] rounded-[50px] no-underline hover:opacity-90 transition-opacity">
+          <Link to="/auth?mode=signup" className="inline-flex items-center gap-2 bg-[var(--ink-blue-solid)] text-white font-bold text-base px-8 py-[0.875rem] rounded-[50px] no-underline hover:opacity-90 transition-opacity">
             Create Free Account →
           </Link>
         </div>
@@ -270,9 +271,18 @@ export function LandingPage() {
           <ArrowUpRight size={14} className="opacity-60 transition-opacity group-hover:opacity-100" aria-hidden="true" />
           <span className="sr-only">(opens in a new tab)</span>
         </a>
-        <p className="text-[0.8125rem] text-white/30">
+        <nav aria-label="Legal" className="mb-3 flex flex-wrap items-center justify-center gap-x-4 gap-y-1 text-[0.8125rem]">
+          <Link to="/privacy" className="rounded text-white/60 no-underline hover:text-white hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-400">
+            Privacy Policy
+          </Link>
+          <Link to="/terms" className="rounded text-white/60 no-underline hover:text-white hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-400">
+            Terms of Service
+          </Link>
+        </nav>
+        <p className="text-[0.8125rem] text-white/60">
           © {new Date().getFullYear()} WriteReady IELTS · AI-powered writing coach
         </p>
+        <p className="mx-auto mt-3 max-w-[640px] text-[0.75rem] leading-relaxed text-white/60">{IELTS_DISCLAIMER}</p>
       </footer>
       <ChatBot />
     </div>

@@ -45,6 +45,11 @@ button:disabled {
 
   /* Brand */
   --ink-blue: #4f46e5;
+  /* A filled brand surface that carries white text. --ink-blue goes pale in
+     dark mode so it stays readable AS TEXT on a dark page, which leaves white
+     text on it at 2.98:1. Use this for anything painted brand-colour with
+     white on top; use --ink-blue for brand-coloured text and borders. */
+  --ink-blue-solid: #4f46e5;
   --ink-light: #6366f1;
   --paper: #f8f9fa;
   --slate: #1a2230;
@@ -156,6 +161,9 @@ button:disabled {
 
   /* Brand — adjusted for dark bg */
   --ink-blue: #818cf8;
+  /* Stays deep in dark mode: white on #4f46e5 is 6.29:1, white on #818cf8 is
+     2.98:1 and fails WCAG AA. */
+  --ink-blue-solid: #4f46e5;
   --ink-light: #a5b4fc;
   --paper: #0a0a0a;
   --slate: #e5e5e5;

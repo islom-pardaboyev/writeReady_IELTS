@@ -123,6 +123,26 @@ export function AppSidebar() {
               </a>
             </SidebarMenuItem>
           </SidebarMenu>
+
+          {/* Reachable from inside the app too, not only from the public pages. */}
+          {!collapsed && (
+            <nav aria-label="Legal" className="mt-3 flex flex-wrap gap-x-3 gap-y-1 px-3.5 text-xs">
+              <Link
+                to="/privacy"
+                onClick={handleNavClick}
+                className="rounded text-[var(--sidebar-foreground)]/60 no-underline hover:text-[var(--sidebar-foreground)] hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ink-blue)]"
+              >
+                Privacy
+              </Link>
+              <Link
+                to="/terms"
+                onClick={handleNavClick}
+                className="rounded text-[var(--sidebar-foreground)]/60 no-underline hover:text-[var(--sidebar-foreground)] hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ink-blue)]"
+              >
+                Terms
+              </Link>
+            </nav>
+          )}
         </SidebarGroup>
       </SidebarContent>
 

@@ -269,7 +269,7 @@ export function PromptsSection({
         <DetailHeader title={`New ${copy.singular}`} meta={hasImage ? "Students describe this chart or diagram." : "Students write an essay answering this question."} />
         <div className="mt-6 flex flex-col gap-5">
           {hasImage && (
-            <Field label="Chart or diagram">
+            <Field label="Chart or diagram" hint="Use a chart you made yourself. A scan from a Cambridge IELTS book or another publisher is their copyright, and publishing it here is an infringement.">
               {newImage ? (
                 <div className="flex flex-col items-start gap-3">
                   <ChartPreview src={newImage} pdfHeight="h-72" className="max-h-72 w-full rounded-xl border border-[var(--border-color)] bg-[var(--bg-subtle)] object-contain" />
@@ -324,7 +324,7 @@ export function PromptsSection({
         {notice && <Notice tone={notice.tone} className="mt-5">{notice.text}</Notice>}
         <div className="mt-6 flex flex-col gap-5">
           {hasImage && (
-            <Field label="Chart or diagram">
+            <Field label="Chart or diagram" hint="Use a chart you made yourself. A scan from a Cambridge IELTS book or another publisher is their copyright, and publishing it here is an infringement.">
               <div className="flex flex-col items-start gap-3">
                 {draftImage && (
                   <button

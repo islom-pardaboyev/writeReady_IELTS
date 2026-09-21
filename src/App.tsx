@@ -7,6 +7,7 @@ import { RouteTitle } from './components/layout/RouteTitle';
 import { RouteFocus } from './components/layout/RouteFocus';
 import { GlobalShortcuts } from './components/shortcuts/GlobalShortcuts';
 import { AnnouncementCard } from './components/ui/AnnouncementCard';
+import { CookieNotice } from './components/ui/CookieNotice';
 import { LandingPage } from './pages/LandingPage';
 import { NotFoundPage } from './pages/NotFoundPage';
 import { AuthPage } from './pages/AuthPage';
@@ -27,6 +28,8 @@ const TeacherPortalPage = lazy(() => import('./pages/TeacherPortalPage'));
 const HumanReviewPage = lazy(() => import('./pages/HumanReviewPage').then(m => ({ default: m.HumanReviewPage })));
 const BlogIndexPage = lazy(() => import('./pages/blog/BlogIndexPage').then(m => ({ default: m.BlogIndexPage })));
 const BlogPostPage = lazy(() => import('./pages/blog/BlogPostPage').then(m => ({ default: m.BlogPostPage })));
+const PrivacyPolicyPage = lazy(() => import('./pages/legal/PrivacyPolicyPage').then(m => ({ default: m.PrivacyPolicyPage })));
+const TermsPage = lazy(() => import('./pages/legal/TermsPage').then(m => ({ default: m.TermsPage })));
 
 const PageSpinner = (
   <div className="min-h-screen flex items-center justify-center">
@@ -50,6 +53,7 @@ export default function App() {
           <RouteFocus />
           <GlobalShortcuts />
           <AnnouncementCard />
+          <CookieNotice />
           {/* vercel.json lists these same paths, so unknown addresses can be
               served with a real 404 status. Add a route there too. */}
           <Routes>
@@ -68,6 +72,8 @@ export default function App() {
             <Route path="/writing/practice" element={withSuspense(<Practice />)} />
             <Route path="/writing/relax" element={withSuspense(<Relax />)} />
             <Route path="/writing/quick" element={withSuspense(<Quick />)} />
+            <Route path="/privacy" element={withSuspense(<PrivacyPolicyPage />)} />
+            <Route path="/terms" element={withSuspense(<TermsPage />)} />
             <Route path="/blog" element={withSuspense(<BlogIndexPage />)} />
             <Route path="/blog/:slug" element={withSuspense(<BlogPostPage />)} />
             <Route path="*" element={<NotFoundPage />} />

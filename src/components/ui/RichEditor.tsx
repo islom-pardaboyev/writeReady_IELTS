@@ -28,7 +28,7 @@ function ToolbarBtn({ onClick, active, title, children }: {
       aria-pressed={active}
       className={`px-2 py-1 rounded text-sm font-medium transition-colors cursor-pointer border-none ${
         active
-          ? 'bg-[var(--ink-blue)] text-white'
+          ? 'bg-[var(--ink-blue-solid)] text-white'
           : 'bg-transparent text-[var(--text-primary)] hover:bg-[var(--bg-subtle)]'
       }`}
     >

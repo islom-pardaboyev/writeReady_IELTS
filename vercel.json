@@ -4,7 +4,7 @@
     { "source": "/api/(.*)", "destination": "/api/$1" },
 
     { "source": "/", "destination": "/index.html" },
-    { "source": "/(auth|dashboard|pricing|account|admin|center-admin|teacher-portal|blog)", "destination": "/index.html" },
+    { "source": "/(auth|dashboard|pricing|account|admin|center-admin|teacher-portal|blog|privacy|terms)", "destination": "/index.html" },
     { "source": "/(workspace|feedback|human-review|blog)/([^/]+)", "destination": "/index.html" },
     { "source": "/writing/(mock|practice|relax|quick)", "destination": "/index.html" },
 

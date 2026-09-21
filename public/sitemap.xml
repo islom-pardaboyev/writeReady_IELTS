@@ -36,6 +36,16 @@
     <priority>0.6</priority>
   </url>
   <url>
+    <loc>https://writeready.uz/privacy</loc>
+    <changefreq>yearly</changefreq>
+    <priority>0.3</priority>
+  </url>
+  <url>
+    <loc>https://writeready.uz/terms</loc>
+    <changefreq>yearly</changefreq>
+    <priority>0.3</priority>
+  </url>
+  <url>
     <loc>https://writeready.uz/auth</loc>
     <changefreq>yearly</changefreq>
     <priority>0.5</priority>

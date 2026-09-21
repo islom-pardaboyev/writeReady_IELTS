@@ -260,7 +260,7 @@ export function WorkspacePage() {
 
 function ModeBadge({ mode }: { mode: PracticeMode }) {
   const colors: Record<PracticeMode, { className: string; label: string }> = {
-    mock: { className: 'bg-[var(--ink-blue)] text-white', label: '⏱ Mock' },
+    mock: { className: 'bg-[var(--ink-blue-solid)] text-white', label: '⏱ Mock' },
     practice: { className: 'bg-[var(--paper-dark)] text-[var(--slate)]', label: '✏️ Practice' },
     relax: { className: 'bg-[var(--mist)] text-[var(--ink-blue)]', label: '☕ Relax' },
   };

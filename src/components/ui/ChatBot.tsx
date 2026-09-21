@@ -167,7 +167,7 @@ export function ChatBot() {
         onClick={() => setOpen((o) => !o)}
         aria-expanded={open}
         aria-controls="ielts-assistant"
-        className="fixed bottom-6 right-6 z-[200] w-14 h-14 rounded-full bg-[var(--ink-blue)] text-white shadow-lg flex items-center justify-center hover:opacity-90 transition-colors"
+        className="fixed bottom-6 right-6 z-[200] w-14 h-14 rounded-full bg-[var(--ink-blue-solid)] text-white shadow-lg flex items-center justify-center hover:opacity-90 transition-colors"
         aria-label={open ? 'Close IELTS assistant' : 'Open IELTS assistant'}
       >
         {open ? <CloseIcon /> : <BotIcon />}
@@ -189,15 +189,15 @@ export function ChatBot() {
           style={{ height: '480px' }}
         >
           {/* Header */}
-          <div className="flex items-center gap-3 px-4 py-3 border-b border-[var(--border-color)] bg-[var(--ink-blue)] shrink-0">
+          <div className="flex items-center gap-3 px-4 py-3 border-b border-[var(--border-color)] bg-[var(--ink-blue-solid)] shrink-0">
             <div className="w-8 h-8 rounded-full bg-white/20 flex items-center justify-center text-white">
               <BotIcon />
             </div>
             <div className="flex-1 min-w-0">
               <p className="text-sm font-bold text-white leading-tight">IELTS Assistant</p>
-              <p className="text-[0.65rem] text-white/70">Powered by AI · Ask me anything</p>
+              <p className="text-[0.65rem] text-white/85">Powered by AI · Ask me anything</p>
             </div>
-            <button type="button" onClick={close} className="text-white/70 hover:text-white transition-colors bg-transparent border-0 cursor-pointer p-1" aria-label="Close IELTS assistant">
+            <button type="button" onClick={close} className="text-white/85 hover:text-white transition-colors bg-transparent border-0 cursor-pointer p-1" aria-label="Close IELTS assistant">
               <CloseIcon />
             </button>
           </div>
@@ -238,7 +238,7 @@ export function ChatBot() {
                   )}
                   <div className={`px-4 py-2.5 rounded-2xl text-sm max-w-[85%] leading-relaxed ${
                     m.role === 'user'
-                      ? 'bg-[var(--ink-blue)] text-white rounded-tr-sm'
+                      ? 'bg-[var(--ink-blue-solid)] text-white rounded-tr-sm'
                       : 'bg-[var(--bg-subtle)] text-[var(--text-primary)] rounded-tl-sm'
                   }`}>
                     {m.role === 'assistant' ? renderMarkdown(m.content) : m.content}
@@ -285,7 +285,7 @@ export function ChatBot() {
                 onClick={() => send(input)}
                 disabled={!input.trim() || loading}
                 aria-label="Send message"
-                className="w-8 h-8 rounded-lg bg-[var(--ink-blue)] text-white flex items-center justify-center shrink-0 hover:opacity-90 transition-colors disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer border-0"
+                className="w-8 h-8 rounded-lg bg-[var(--ink-blue-solid)] text-white flex items-center justify-center shrink-0 hover:opacity-90 transition-colors disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer border-0"
               >
                 <SendIcon />
               </button>

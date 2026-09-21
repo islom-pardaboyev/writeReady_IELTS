@@ -230,7 +230,7 @@ export function Header() {
               </Link>
               <Link
                 to="/auth?mode=signup"
-                className="ml-1 bg-[var(--ink-blue)] text-white text-sm font-semibold px-5 py-2 rounded-lg no-underline hover:opacity-90 transition-opacity dark:bg-indigo-600"
+                className="ml-1 bg-[var(--ink-blue-solid)] text-white text-sm font-semibold px-5 py-2 rounded-lg no-underline hover:opacity-90 transition-opacity dark:bg-indigo-600"
               >
                 Start Free
               </Link>

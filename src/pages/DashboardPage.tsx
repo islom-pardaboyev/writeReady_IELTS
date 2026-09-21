@@ -310,7 +310,7 @@ export function DashboardPage() {
                 key={m.id}
                 className={`gs-db-mode-card rounded-[14px] p-6 text-left cursor-pointer transition-[transform,box-shadow] duration-150 shadow-[var(--shadow-sm)] hover:-translate-y-0.5 hover:shadow-[0_6px_20px_rgba(0,0,0,0.15)] focus-visible:-translate-y-0.5 focus-visible:shadow-[0_6px_20px_rgba(0,0,0,0.15)] motion-reduce:hover:translate-y-0 border-[1.5px] ${
                   m.id === 'mock'
-                    ? 'bg-[var(--ink-blue)] border-transparent'
+                    ? 'bg-[var(--ink-blue-solid)] border-transparent'
                     : m.id === 'quick'
                     ? 'bg-violet-50 border-violet-200 dark:bg-violet-900/20 dark:border-violet-800'
                     : m.id === 'relax'
@@ -323,7 +323,7 @@ export function DashboardPage() {
                 <div className={`font-sans font-bold text-lg mb-1 ${m.id === 'mock' ? 'text-white' : m.id === 'quick' ? 'text-violet-800 dark:text-violet-200' : 'text-[var(--text-primary)]'}`}>
                   {m.title}
                 </div>
-                <div className={`text-[0.8125rem] ${m.id === 'mock' ? 'text-white/75' : m.id === 'quick' ? 'text-violet-600 dark:text-violet-300' : 'text-[var(--text-secondary)]'}`}>
+                <div className={`text-[0.8125rem] ${m.id === 'mock' ? 'text-white/85' : m.id === 'quick' ? 'text-violet-600 dark:text-violet-300' : 'text-[var(--text-secondary)]'}`}>
                   {m.desc}
                 </div>
               </button>
