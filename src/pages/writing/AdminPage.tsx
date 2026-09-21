@@ -13,7 +13,7 @@ import {
   Trophy,
   Users,
 } from "lucide-react";
-import { adminDb as db, adminAuth } from "@/firebase/adminConfig";
+import { adminDb as db, adminAuth, ADMIN_EMAIL } from "@/firebase/adminConfig";
 import { StaffShell, type StaffNavGroup } from "@/components/staff/StaffShell";
 import { AdminLogin } from "./admin/AdminLogin";
 import { AdminHome } from "./admin/AdminHome";
@@ -49,10 +49,18 @@ export default function Admin() {
     // Firebase Auth persists the signed-in session across reloads on its
     // own; wait for it to report a real user before trusting the localStorage
     // flag, so Firestore queries never race ahead of the restored session.
+    // The teacher and center portals share this Firebase app, so the restored
+    // user may not be the admin. Trusting the flag then shows the admin screen
+    // while every write is refused — send them back to sign in instead.
     const unsub = onAuthStateChanged(adminAuth, (fbUser) => {
-      if (fbUser) {
+      if (!fbUser) return;
+      if (fbUser.email?.toLowerCase() === ADMIN_EMAIL) {
         setIsLoggedIn(true);
         if (u) setAdminUser(u);
+      } else {
+        localStorage.removeItem("adminLoggedIn");
+        localStorage.removeItem("adminUser");
+        setIsLoggedIn(false);
       }
     });
     return unsub;

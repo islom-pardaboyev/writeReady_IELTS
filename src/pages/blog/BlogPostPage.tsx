@@ -8,6 +8,7 @@ import type { BlogPost } from '../../types/blog';
 import { Button } from '../../components/ui/Button';
 import { Badge } from '../../components/ui/badge';
 import { Card, CardContent } from '../../components/ui/Card';
+import { LogoLoader } from '../../components/ui/LogoLoader';
 
 function renderMarkdown(content: string) {
   const blocks = content.split(/\n\n+/);
@@ -102,7 +103,7 @@ export function BlogPostPage() {
     return (
       <Layout>
         <div className="flex justify-center py-20">
-          <div className="animate-spin w-8 h-8 border-2 border-indigo-600 border-t-transparent rounded-full" />
+          <LogoLoader size={56} />
         </div>
       </Layout>
     );

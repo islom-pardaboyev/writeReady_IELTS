@@ -4,6 +4,38 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 
+    <!-- Loading logo. The .wr-* styles live here, not in index.css, so the logo
+         paints before any JS or CSS bundle has loaded. src/components/ui/LogoLoader.tsx
+         renders the same markup once React is running and relies on these rules. -->
+    <style>
+      html { background: #f8f9fa; }
+      html.dark { background: #0a0a0a; }
+      .wr-loader { --wr-size: 72px; display: inline-block; width: var(--wr-size); height: var(--wr-size); opacity: 0; animation: wr-in 0.2s ease-out 0.2s forwards; }
+      .wr-loader.wr-now { opacity: 1; animation: none; }
+      .wr-stage { display: block; width: 100%; height: 100%; perspective: calc(var(--wr-size) * 9); }
+      .wr-tile { display: block; position: relative; width: 100%; height: 100%; transform-style: preserve-3d; animation: wr-swing 2.6s ease-in-out infinite; }
+      .wr-face, .wr-edge { position: absolute; inset: 0; border-radius: 22%; }
+      .wr-face { overflow: hidden; transform: translateZ(calc(var(--wr-size) * 0.105)); }
+      .wr-face svg { display: block; width: 100%; height: 100%; }
+      .wr-edge { background: #3730a3; transform: translateZ(calc(var(--wr-size) * 0.0263 * var(--k))); }
+      @keyframes wr-in { to { opacity: 1; } }
+      @keyframes wr-swing { 0%, 100% { transform: rotateY(-30deg) rotateX(6deg); } 50% { transform: rotateY(30deg) rotateX(-6deg); } }
+      @keyframes wr-pulse { 50% { opacity: 0.5; } }
+      @media (prefers-reduced-motion: reduce) {
+        .wr-tile { animation: wr-pulse 2.4s ease-in-out infinite; transform: rotateY(-12deg) rotateX(4deg); }
+      }
+    </style>
+    <script>
+      // Dark mode before first paint (main.tsx applies the same rule later), so
+      // dark-mode visitors never see a white flash behind the loading logo.
+      try {
+        var t = localStorage.getItem('theme');
+        if (t === 'dark' || ((!t || t === 'system') && matchMedia('(prefers-color-scheme: dark)').matches)) {
+          document.documentElement.classList.add('dark');
+        }
+      } catch (e) {}
+    </script>
+
     <!-- Fonts: preconnect + direct stylesheet link (not a CSS @import) so the
          browser can fetch font CSS in parallel with the app bundle instead of
          discovering it only after index.css has loaded. -->
@@ -80,7 +112,35 @@
     </script>
   </head>
   <body>
-    <div id="root"></div>
+    <!-- Shown until React renders; React clears #root on its first render. -->
+    <div id="root">
+      <div id="wr-splash" style="min-height: 100vh; display: flex; align-items: center; justify-content: center">
+        <span class="wr-loader wr-now" role="status" aria-label="Loading">
+          <span class="wr-stage" aria-hidden="true">
+            <span class="wr-tile">
+              <span class="wr-edge" style="--k: -3"></span>
+              <span class="wr-edge" style="--k: -2"></span>
+              <span class="wr-edge" style="--k: -1"></span>
+              <span class="wr-edge" style="--k: 0"></span>
+              <span class="wr-edge" style="--k: 1"></span>
+              <span class="wr-edge" style="--k: 2"></span>
+              <span class="wr-edge" style="--k: 3"></span>
+              <span class="wr-face">
+                <svg viewBox="0 0 512 512" focusable="false"><rect width="512" height="512" fill="#4f46e5" /><polyline points="104,176 180,368 256,216 332,368" fill="none" stroke="#ffffff" stroke-width="56" stroke-linecap="round" stroke-linejoin="round" /><polyline points="332,368 416,120" fill="none" stroke="#f59e0b" stroke-width="56" stroke-linecap="round" /></svg>
+              </span>
+            </span>
+          </span>
+        </span>
+      </div>
+      <script>
+        // Every swing starts at the page clock's zero, so all loaders (this one
+        // and the ones React shows later) are always at the same point of the
+        // swing, and a new loader continues the motion of the one it replaces.
+        document.querySelectorAll('.wr-tile').forEach(function (el) {
+          el.getAnimations().forEach(function (a) { if (a.animationName === 'wr-swing') a.startTime = 0; });
+        });
+      </script>
+    </div>
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>

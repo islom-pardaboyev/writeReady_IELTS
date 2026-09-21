@@ -14,6 +14,8 @@ import { getFeedbackReportHistory } from '../firebase/firestore';
 import type { EnhancedFeedbackResult } from '../types';
 import { hasFreeReportThisWeek } from '../lib/weeklyFree';
 import { downloadFeedbackPdf } from '../lib/feedbackPdf';
+import { useSingleRun } from '../hooks/useSingleRun';
+import { LogoLoader } from '@/components/ui/LogoLoader';
 import { FeedbackRating } from '@/components/ui/FeedbackRating';
 
 type Tab = 'overview' | 'priority' | 'detailed' | 'essay' | 'sample' | 'vocabulary' | 'grammar' | 'spelling' | 'quiz';
@@ -292,7 +294,7 @@ export function FeedbackPage() {
   const ltOverlayRef = useRef<HTMLDivElement>(null);
 
   const [recurringIssues, setRecurringIssues] = useState<string[]>([]);
-  const [exporting, setExporting] = useState(false);
+  const { busy: exporting, run: runExport } = useSingleRun();
 
   // Decode report from URL
   useEffect(() => {
@@ -552,22 +554,19 @@ export function FeedbackPage() {
     setLtPopover(null);
   };
 
-  const exportPDF = async () => {
+  const exportPDF = () => {
     if (!feedback || !reportData) return;
-    setExporting(true);
     const isTask1 = selectedTask === 'task1';
-    try {
-      await downloadFeedbackPdf({
+    return runExport(() =>
+      downloadFeedbackPdf({
         feedback,
         taskNum: isTask1 ? 1 : 2,
         question: isTask1 ? reportData.task1?.report : reportData.task2?.report,
         imageSrc: isTask1 ? reportData.task1?.image : null,
         essay: (isTask1 ? reportData.userText1 : reportData.userText2) ?? '',
         fileName: `WriteReady_Feedback_Task${isTask1 ? 1 : 2}_${new Date().toISOString().slice(0, 10)}.pdf`,
-      });
-    } finally {
-      setExporting(false);
-    }
+      }),
+    );
   };
 
   // ── Guards ─────────────────────────────────────────────────────────────────
@@ -586,8 +585,9 @@ export function FeedbackPage() {
   if (!reportData) {
     return (
       <AppShell minimal>
-        <div className="flex items-center justify-center py-24 text-[var(--text-muted)] gap-2.5">
-          <Loader2 className="w-4 h-4 animate-spin" /> Loading…
+        <div className="flex flex-col items-center justify-center py-24 text-[var(--text-muted)] gap-3">
+          <LogoLoader size={56} />
+          <span>Loading…</span>
         </div>
       </AppShell>
     );
@@ -662,7 +662,7 @@ export function FeedbackPage() {
               </div>
               {feedback && (
                 <Button onClick={exportPDF} loading={exporting} variant="secondary" size="sm">
-                  <Download className="w-3.5 h-3.5" /> Download PDF
+                  {!exporting && <Download className="w-3.5 h-3.5" />} {exporting ? 'Saving PDF…' : 'Download PDF'}
                 </Button>
               )}
             </div>
@@ -738,9 +738,7 @@ export function FeedbackPage() {
             return (
               <div className="rounded-2xl border border-[var(--border-color)] p-6 sm:p-8 bg-[var(--bg-card)] shadow-sm">
                 <div className="flex items-center gap-3.5 mb-6">
-                  <div className="inline-flex items-center justify-center w-12 h-12 rounded-2xl bg-[var(--ink-blue)]/10 shrink-0">
-                    <Loader2 className="w-5 h-5 text-[var(--ink-blue)] animate-spin" />
-                  </div>
+                  <LogoLoader size={48} label="Analysing your essay" className="shrink-0" />
                   <div className="min-w-0">
                     <p className="font-bold text-[var(--text-primary)] text-lg leading-tight">Analysing your essay…</p>
                     <p className="text-sm text-[var(--text-secondary)]">{ANALYSIS_STAGES[stage].label} · {pct}%</p>

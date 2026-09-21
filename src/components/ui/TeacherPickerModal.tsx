@@ -3,6 +3,7 @@ import { GraduationCap } from 'lucide-react';
 import { getActiveTeachers } from '../../firebase/teachers';
 import type { Teacher } from '../../types';
 import { Dialog, DialogContent, DialogTitle, DialogDescription } from './dialog';
+import { LogoLoader } from './LogoLoader';
 
 interface TeacherPickerModalProps {
   open: boolean;
@@ -42,7 +43,7 @@ export function TeacherPickerModal({ open, onClose, onSelect, submitting }: Teac
 
           {loading ? (
             <div className="flex justify-center py-10">
-              <div className="animate-spin w-6 h-6 border-2 border-emerald-600 border-t-transparent rounded-full" role="status" aria-label="Loading teachers" />
+              <LogoLoader size={44} label="Loading teachers" />
             </div>
           ) : error ? (
             <p className="text-sm text-red-500 py-6 text-center">{error}</p>

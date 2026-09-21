@@ -9,6 +9,7 @@ import { GlobalShortcuts } from './components/shortcuts/GlobalShortcuts';
 import { AnnouncementCard } from './components/ui/AnnouncementCard';
 import { LandingPage } from './pages/LandingPage';
 import { AuthPage } from './pages/AuthPage';
+import { LogoLoader } from '@/components/ui/LogoLoader';
 
 const DashboardPage = lazy(() => import('./pages/DashboardPage').then(m => ({ default: m.DashboardPage })));
 const WorkspacePage = lazy(() => import('./pages/WorkspacePage').then(m => ({ default: m.WorkspacePage })));
@@ -28,7 +29,7 @@ const BlogPostPage = lazy(() => import('./pages/blog/BlogPostPage').then(m => ({
 
 const PageSpinner = (
   <div className="min-h-screen flex items-center justify-center">
-    <div className="animate-spin w-8 h-8 border-2 border-blue-600 border-t-transparent rounded-full" />
+    <LogoLoader />
   </div>
 );
 

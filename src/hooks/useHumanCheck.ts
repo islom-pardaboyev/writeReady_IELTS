@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useAuth } from './useAuth';
 import { createHumanReview, InsufficientBalanceError } from '../firebase/teachers';
 import { getHumanCheckPrice, getHumanCheckPlatformFee } from './useFeatureFlag';
+import { notifyTeacher } from '../lib/notifyTeacher';
 import type { HumanReview, HumanReviewTaskPart, Teacher } from '../types';
 
 interface HumanCheckParts {
@@ -62,7 +63,7 @@ export function useHumanCheck(mode: HumanReview['mode']) {
     setSubmitting(true);
     setError(null);
     try {
-      await createHumanReview({
+      const reviewId = await createHumanReview({
         uid: user.uid,
         studentName: user.displayName || user.email || 'Student',
         studentEmail: user.email || '',
@@ -72,6 +73,9 @@ export function useHumanCheck(mode: HumanReview['mode']) {
         task1: pendingParts.task1,
         task2: pendingParts.task2,
       }, price, platformFee);
+
+      // Not awaited: the teachers' group is told in the background.
+      void notifyTeacher(reviewId);
 
       await refreshProfile();
       setSuccess(true);

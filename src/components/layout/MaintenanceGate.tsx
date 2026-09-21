@@ -4,12 +4,13 @@ import { onAuthStateChanged } from 'firebase/auth';
 import { adminAuth, ADMIN_EMAIL } from '@/firebase/adminConfig';
 import { getMaintenanceStatus, type MaintenanceStatus } from '@/hooks/useFeatureFlag';
 import { MaintenancePage } from '@/pages/MaintenancePage';
+import { LogoLoader } from '@/components/ui/LogoLoader';
 
 const STAFF_PATHS = new Set(['/admin', '/teacher-portal', '/center-admin']);
 
 const PageSpinner = (
   <div className="min-h-screen flex items-center justify-center bg-[var(--bg-base)]">
-    <div className="animate-spin w-8 h-8 border-2 border-[var(--ink-blue)] border-t-transparent rounded-full" />
+    <LogoLoader />
   </div>
 );
 

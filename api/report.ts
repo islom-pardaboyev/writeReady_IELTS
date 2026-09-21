@@ -136,7 +136,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     }
   }
 
-  const page = clip(String(body.page ?? '').trim(), 200);
+  // A feedback page's address ends in the whole encoded essay: hundreds of
+  // unreadable characters in the Telegram message, and a copy of the student's
+  // writing in the reports collection. Keep the route, drop the payload.
+  const page = clip(String(body.page ?? '').trim().replace(/^(\/feedback\/)[^/?#]+/, '$1…'), 200);
   const userAgent = clip(String(req.headers['user-agent'] ?? ''), 200);
   const errorText = clip(String(body.error ?? '').trim(), 500);
   const stack = clip(String(body.stack ?? '').trim(), 900);

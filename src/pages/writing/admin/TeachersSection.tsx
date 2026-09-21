@@ -13,6 +13,7 @@ import {
 import type { Teacher } from "@/types";
 import { useConfirm } from "@/hooks/useConfirm";
 import { cn } from "@/lib/utils";
+import { TELEGRAM_USERNAME_HELP, TELEGRAM_USERNAME_RE, normalizeTelegramUsername } from "@/lib/telegram";
 import { Button } from "@/components/ui/Button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
@@ -103,7 +104,7 @@ export function TeachersSection({
 
   const select = (id: string | null) => {
     setSelectedId(id);
-    setEditing(id === "new" ? { name: "", ieltsOverall: 8, ieltsWriting: 8, login: "", password: "" } : null);
+    setEditing(id === "new" ? { name: "", ieltsOverall: 8, ieltsWriting: 8, login: "", password: "", telegram: "" } : null);
     setFormError("");
     setNotice(null);
     setEarnings([]);
@@ -127,6 +128,10 @@ export function TeachersSection({
       setFormError("Fill in the name, login and password.");
       return;
     }
+    if (!TELEGRAM_USERNAME_RE.test(editing.telegram ?? "")) {
+      setFormError(TELEGRAM_USERNAME_HELP);
+      return;
+    }
     setFormError("");
     setSaving(true);
     try {
@@ -138,6 +143,7 @@ export function TeachersSection({
         ieltsWriting: Number(editing.ieltsWriting) || 0,
         login: editing.login.trim(),
         password: editing.password,
+        telegram: editing.telegram!,
         active: editing.active ?? true,
       };
       // Firestore rejects undefined values (e.g. a teacher with no photo).
@@ -150,7 +156,13 @@ export function TeachersSection({
       setNotice({ tone: "success", text: editing.id ? "Profile saved." : "Teacher added. They can sign in to the teacher portal now." });
     } catch (e) {
       console.error(e);
-      setFormError("Could not save the teacher. Try again.");
+      // The rules only let the admin's own sign-in change teachers. Another
+      // portal in this browser (teacher, learning center) can replace it.
+      setFormError(
+        (e as { code?: string })?.code === "permission-denied"
+          ? "The database refused this change. Sign out, sign in as admin again, then try once more."
+          : "Could not save the teacher. Try again.",
+      );
     }
     setSaving(false);
   };
@@ -284,6 +296,20 @@ export function TeachersSection({
           <Field label="Portal password" htmlFor="t-password">
             <PasswordInput name="t-password" id="t-password" autoComplete="new-password" value={editing.password ?? ""} onChange={(e) => set({ password: e.target.value })} />
           </Field>
+          <Field label="Telegram username" htmlFor="t-telegram" hint="Used to tag this teacher in the teachers' Telegram group when a student picks them." className="sm:col-span-2">
+            <Input
+              name="t-telegram"
+              id="t-telegram"
+              autoComplete="off"
+              autoCapitalize="none"
+              spellCheck={false}
+              placeholder="@username"
+              maxLength={40}
+              value={editing.telegram ?? ""}
+              onChange={(e) => set({ telegram: normalizeTelegramUsername(e.target.value) })}
+              className="font-mono"
+            />
+          </Field>
           <Field label="Photo" optional hint="Students see it when they pick a teacher.">
             <div className="flex items-center gap-3">
               <Initials name={editing.name || "?"} size={48} src={editing.photoBase64} />
@@ -317,6 +343,11 @@ export function TeachersSection({
             <>
               IELTS {selected.ieltsOverall.toFixed(1)} overall, {selected.ieltsWriting.toFixed(1)} writing
               <span className="block">Portal login <span className="font-mono">{selected.login}</span></span>
+              <span className="block">
+                {selected.telegram
+                  ? <>Telegram <span className="font-mono">{selected.telegram}</span></>
+                  : "No Telegram username yet. Edit the profile to add one, so they can be tagged in the group."}
+              </span>
             </>
           }
           actions={<Button variant="outline" size="sm" onClick={() => { setEditing({ ...selected }); setFormError(""); }}><Pencil aria-hidden="true" /> Edit</Button>}

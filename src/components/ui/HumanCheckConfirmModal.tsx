@@ -2,6 +2,7 @@ import { Link } from 'react-router';
 import { Wallet } from 'lucide-react';
 import { Button } from './Button';
 import { Dialog, DialogContent, DialogTitle, DialogDescription } from './dialog';
+import { LogoLoader } from './LogoLoader';
 
 interface HumanCheckConfirmModalProps {
   open: boolean;
@@ -27,7 +28,7 @@ export function HumanCheckConfirmModal({ open, priceLoading, price, balance, can
             <>
               <DialogTitle className="sr-only">Loading Human Check price</DialogTitle>
               <div className="flex justify-center py-6">
-                <div className="animate-spin w-6 h-6 border-2 border-emerald-600 border-t-transparent rounded-full" role="status" aria-label="Loading price" />
+                <LogoLoader size={44} label="Loading price" />
               </div>
             </>
           ) : canAfford ? (

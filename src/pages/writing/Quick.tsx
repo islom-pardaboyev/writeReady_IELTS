@@ -8,6 +8,9 @@ import {
 import { auth, db } from "@/firebase/firebase";
 import { collection, doc, getDoc, getDocs } from "firebase/firestore";
 import { downloadEssayPdf } from "@/lib/essayPdf";
+import { useSingleRun } from "@/hooks/useSingleRun";
+import { BusyLabel } from "@/components/ui/BusyLabel";
+import { LogoLoader } from "@/components/ui/LogoLoader";
 import WritingTask1Preview from "@/components/writingTask1Preview/WritingTask1Preview";
 import { NavLink, useNavigate } from "react-router";
 import { useAuth } from "@/hooks/useAuth";
@@ -42,6 +45,8 @@ function Quick() {
   useEffect(() => {
     if (!authLoading && !user) navigate("/auth", { replace: true });
   }, [user, authLoading, navigate]);
+
+  const { busy: finishing, run: runFinish } = useSingleRun();
 
   // Task selection (null = not chosen yet)
   const [selectedTaskType, setSelectedTaskType] = useState<1 | 2 | null>(null);
@@ -124,21 +129,23 @@ function Quick() {
     }
   };
 
-  const handleFinish = async () => {
+  const handleFinish = () => {
     if (selectedTaskType === null) return;
-    await downloadEssayPdf({
-      mode: "Quick Write",
-      fileName: `WriteReady_Quick_Task${selectedTaskType}.pdf`,
-      tasks: [
-        {
-          taskNum: selectedTaskType,
-          question: selectedTaskType === 1 ? task1?.report : task2?.report,
-          imageSrc: selectedTaskType === 1 ? task1?.image : null,
-          answer: userText,
-        },
-      ],
+    return runFinish(async () => {
+      await downloadEssayPdf({
+        mode: "Quick Write",
+        fileName: `WriteReady_Quick_Task${selectedTaskType}.pdf`,
+        tasks: [
+          {
+            taskNum: selectedTaskType,
+            question: selectedTaskType === 1 ? task1?.report : task2?.report,
+            imageSrc: selectedTaskType === 1 ? task1?.image : null,
+            answer: userText,
+          },
+        ],
+      });
+      setShowFeedbackModal(true);
     });
-    setShowFeedbackModal(true);
   };
 
   const handleAcceptFeedback = async () => {
@@ -183,7 +190,7 @@ function Quick() {
     return (
       <div className="flex items-center justify-center min-h-screen bg-slate-50 dark:bg-neutral-950">
         <div className="flex flex-col items-center gap-4">
-          <div className="w-8 h-8 border-2 border-violet-600 border-t-transparent rounded-full animate-spin" />
+          <LogoLoader label="Loading questions" />
           <p className="text-sm text-slate-500 dark:text-neutral-400 tracking-wide">Loading questions…</p>
         </div>
       </div>
@@ -309,9 +316,11 @@ function Quick() {
             </button>
             <button
               onClick={handleFinish}
-              className="flex items-center gap-1.5 px-4 py-1.5 text-xs font-semibold text-violet-900 bg-white hover:bg-violet-50 rounded-md transition-colors"
+              disabled={finishing}
+              aria-busy={finishing}
+              className="flex items-center gap-1.5 px-4 py-1.5 text-xs font-semibold text-violet-900 bg-white hover:bg-violet-50 rounded-md transition-colors disabled:opacity-60"
             >
-              Finish & save PDF
+              <BusyLabel busy={finishing} busyText="Saving PDF…">Finish & save PDF</BusyLabel>
             </button>
           </div>
         </div>
@@ -438,9 +447,11 @@ function Quick() {
               <span className="text-slate-200 dark:text-neutral-700">|</span>
               <button
                 onClick={handleFinish}
-                className="text-xs font-medium text-violet-600 dark:text-violet-400 hover:text-violet-800 dark:hover:text-violet-300 transition-colors"
+                disabled={finishing}
+                aria-busy={finishing}
+                className="text-xs font-medium text-violet-600 dark:text-violet-400 hover:text-violet-800 dark:hover:text-violet-300 transition-colors disabled:opacity-60"
               >
-                Finish & save PDF
+                <BusyLabel busy={finishing} busyText="Saving PDF…">Finish & save PDF</BusyLabel>
               </button>
             </div>
           </div>

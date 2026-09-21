@@ -33,6 +33,7 @@ function mapTeacher(id: string, data: Record<string, unknown>): Teacher {
     ieltsWriting: (data.ieltsWriting as number) ?? 0,
     login: (data.login as string) ?? '',
     password: (data.password as string) ?? '',
+    telegram: (data.telegram as string) ?? undefined,
     active: (data.active as boolean) ?? true,
     createdAt: toDate(data.createdAt),
   };
@@ -74,6 +75,7 @@ export interface CreateTeacherInput {
   ieltsWriting: number;
   login: string;
   password: string;
+  telegram: string;
 }
 
 export async function createTeacher(input: CreateTeacherInput, dbInstance: Firestore = db): Promise<string> {

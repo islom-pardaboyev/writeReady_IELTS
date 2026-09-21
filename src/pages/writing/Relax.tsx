@@ -7,6 +7,8 @@ import {
 } from "react";
 import { useStopwatch } from "@/hooks/useStopwatch";
 import { downloadEssayPdf } from "@/lib/essayPdf";
+import { useSingleRun } from "@/hooks/useSingleRun";
+import { BusyLabel } from "@/components/ui/BusyLabel";
 import { NavLink, useNavigate } from "react-router";
 import { doc, getDoc } from "firebase/firestore";
 import { auth, db } from "@/firebase/firebase";
@@ -45,6 +47,7 @@ function readFileAsDataUrl(file: File): Promise<string> {
 
 function Relax() {
   const navigate = useNavigate();
+  const { busy: finishing, run: runFinish } = useSingleRun();
   const [step, setStep] = useState<"select" | "configure" | "write">("select");
   const [activeTask, setActiveTask] = useState<1 | 2 | null>(null);
   const [prompt, setPrompt] = useState("");
@@ -128,21 +131,23 @@ function Relax() {
       e.currentTarget.releasePointerCapture(e.pointerId);
   };
 
-  const handleDownloadPDF = async () => {
+  const handleDownloadPDF = () => {
     if (activeTask === null) return;
-    await downloadEssayPdf({
-      mode: "Relax Mode",
-      fileName: `WriteReady_Relax_Task${activeTask}.pdf`,
-      tasks: [
-        {
-          taskNum: activeTask,
-          question: activeTask === 1 ? prompt : task2Prompt,
-          imageSrc: activeTask === 1 ? imageUrl : null,
-          answer: userText,
-        },
-      ],
+    return runFinish(async () => {
+      await downloadEssayPdf({
+        mode: "Relax Mode",
+        fileName: `WriteReady_Relax_Task${activeTask}.pdf`,
+        tasks: [
+          {
+            taskNum: activeTask,
+            question: activeTask === 1 ? prompt : task2Prompt,
+            imageSrc: activeTask === 1 ? imageUrl : null,
+            answer: userText,
+          },
+        ],
+      });
+      setShowFeedbackModal(true);
     });
-    setShowFeedbackModal(true);
   };
 
   const handleAcceptFeedback = async () => {
@@ -517,9 +522,11 @@ function Relax() {
             </nav>
             <button
               onClick={handleDownloadPDF}
-              className="flex items-center gap-1.5 px-4 py-1.5 text-xs font-semibold text-white dark:text-neutral-900 bg-slate-900 dark:bg-neutral-100 hover:bg-slate-800 dark:hover:bg-white rounded-md transition-colors"
+              disabled={finishing}
+              aria-busy={finishing}
+              className="flex items-center gap-1.5 px-4 py-1.5 text-xs font-semibold text-white dark:text-neutral-900 bg-slate-900 dark:bg-neutral-100 hover:bg-slate-800 dark:hover:bg-white rounded-md transition-colors disabled:opacity-60"
             >
-              Save PDF
+              <BusyLabel busy={finishing} busyText="Saving PDF…">Save PDF</BusyLabel>
             </button>
           </div>
         </div>
@@ -626,9 +633,11 @@ function Relax() {
               <span className="text-slate-200 dark:text-neutral-700">|</span>
               <button
                 onClick={handleDownloadPDF}
-                className="text-xs font-medium text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300 transition-colors"
+                disabled={finishing}
+                aria-busy={finishing}
+                className="text-xs font-medium text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300 transition-colors disabled:opacity-60"
               >
-                Save PDF
+                <BusyLabel busy={finishing} busyText="Saving PDF…">Save PDF</BusyLabel>
               </button>
             </div>
           </div>

@@ -8,6 +8,9 @@ import {
 import { auth, db } from "@/firebase/firebase";
 import { collection, doc, getDoc, getDocs } from "firebase/firestore";
 import { downloadEssayPdf } from "@/lib/essayPdf";
+import { useSingleRun } from "@/hooks/useSingleRun";
+import { BusyLabel } from "@/components/ui/BusyLabel";
+import { LogoLoader } from "@/components/ui/LogoLoader";
 import WritingTask1Preview from "@/components/writingTask1Preview/WritingTask1Preview";
 import { NavLink, useNavigate } from "react-router";
 import { useAuth } from "@/hooks/useAuth";
@@ -50,6 +53,7 @@ function Mock() {
     if (!authLoading && !user) navigate("/auth", { replace: true });
   }, [user, authLoading, navigate]);
 
+  const { busy: finishing, run: runFinish } = useSingleRun();
   const [activeTask, setActiveTask] = useState<1 | 2>(1);
   const [userText1, setUserText1] = useState("");
   const [userText2, setUserText2] = useState("");
@@ -186,16 +190,18 @@ function Mock() {
     }
   };
 
-  const handleDownloadPDF = async () => {
-    await downloadEssayPdf({
-      mode: "Mock Exam",
-      fileName: "WriteReady_Mock.pdf",
-      tasks: [
-        { taskNum: 1, question: task1?.report, imageSrc: task1?.image, answer: userText1 },
-        { taskNum: 2, question: task2?.report, answer: userText2 },
-      ],
+  const handleDownloadPDF = () => {
+    return runFinish(async () => {
+      await downloadEssayPdf({
+        mode: "Mock Exam",
+        fileName: "WriteReady_Mock.pdf",
+        tasks: [
+          { taskNum: 1, question: task1?.report, imageSrc: task1?.image, answer: userText1 },
+          { taskNum: 2, question: task2?.report, answer: userText2 },
+        ],
+      });
+      setShowFeedbackModal(true);
     });
-    setShowFeedbackModal(true);
   };
 
   const handleAcceptFeedback = async () => {
@@ -250,7 +256,7 @@ function Mock() {
     return (
       <div className="flex items-center justify-center min-h-screen bg-slate-50 dark:bg-neutral-950">
         <div className="flex flex-col items-center gap-4">
-          <div className="w-8 h-8 border-2 border-blue-600 border-t-transparent rounded-full animate-spin" />
+          <LogoLoader label="Setting up your exam" />
           <p className="text-sm text-slate-500 dark:text-neutral-400 tracking-wide">
             Setting up your exam…
           </p>
@@ -347,9 +353,11 @@ function Mock() {
             </button>
             <button
               onClick={handleDownloadPDF}
-              className="flex items-center gap-1.5 px-4 py-1.5 text-xs font-semibold text-slate-900 bg-white hover:bg-slate-100 rounded-md transition-colors"
+              disabled={finishing}
+              aria-busy={finishing}
+              className="flex items-center gap-1.5 px-4 py-1.5 text-xs font-semibold text-slate-900 bg-white hover:bg-slate-100 rounded-md transition-colors disabled:opacity-60"
             >
-              Finish & save PDF
+              <BusyLabel busy={finishing} busyText="Saving PDF…">Finish & save PDF</BusyLabel>
             </button>
           </div>
         </div>
@@ -572,9 +580,11 @@ function Mock() {
               <span className="text-slate-200 dark:text-neutral-700">|</span>
               <button
                 onClick={handleDownloadPDF}
-                className="text-xs font-medium text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300 transition-colors"
+                disabled={finishing}
+                aria-busy={finishing}
+                className="text-xs font-medium text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300 transition-colors disabled:opacity-60"
               >
-                Finish & save PDF
+                <BusyLabel busy={finishing} busyText="Saving PDF…">Finish & save PDF</BusyLabel>
               </button>
             </div>
           </div>

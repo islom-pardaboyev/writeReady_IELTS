@@ -5,6 +5,7 @@ import type { BlogComment } from '../../types/blog';
 import { Button } from '../ui/Button';
 import { Textarea } from '../ui/textarea';
 import { Avatar, AvatarImage, AvatarFallback } from '../ui/avatar';
+import { LogoLoader } from '../ui/LogoLoader';
 
 function relativeTime(d: Date | null): string {
   if (!d) return '';
@@ -126,7 +127,7 @@ export function CommentSection({ postId }: Props) {
       {/* Comments list */}
       {loading ? (
         <div className="flex justify-center py-8">
-          <div className="animate-spin w-6 h-6 border-2 border-indigo-600 border-t-transparent rounded-full" />
+          <LogoLoader size={40} label="Loading comments" />
         </div>
       ) : comments.length === 0 ? (
         <p className="text-sm text-[var(--text-secondary)] text-center py-6">No comments yet. Be the first!</p>

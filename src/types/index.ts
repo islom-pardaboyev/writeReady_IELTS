@@ -148,6 +148,8 @@ export interface Teacher {
   ieltsWriting: number;
   login: string;
   password: string;
+  /** "@username" — used to tag the teacher in the teachers' Telegram group. */
+  telegram?: string;
   active: boolean;
   createdAt: Date;
 }

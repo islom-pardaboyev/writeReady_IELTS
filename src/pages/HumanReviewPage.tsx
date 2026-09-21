@@ -6,6 +6,7 @@ import { Card } from "../components/ui/Card";
 import { useAuth } from "../hooks/useAuth";
 import { getHumanReview } from "../firebase/teachers";
 import { base64ToBlob, downloadBlob } from "../lib/reviewDocx";
+import { LogoLoader } from "@/components/ui/LogoLoader";
 import type { HumanReview } from "../types";
 import { GraduationCap, Download, Clock } from "lucide-react";
 
@@ -40,7 +41,7 @@ export function HumanReviewPage() {
     return (
       <AppShell>
         <div className="flex items-center justify-center min-h-[60vh]">
-          <div className="animate-spin w-8 h-8 border-2 border-blue-600 border-t-transparent rounded-full" />
+          <LogoLoader />
         </div>
       </AppShell>
     );

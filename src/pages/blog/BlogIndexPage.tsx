@@ -5,6 +5,7 @@ import { getBlogPosts } from '../../firebase/blog';
 import type { BlogPost } from '../../types/blog';
 import { Card, CardContent } from '../../components/ui/Card';
 import { Badge } from '../../components/ui/badge';
+import { LogoLoader } from '../../components/ui/LogoLoader';
 
 const CATEGORIES = ['All', 'Writing tips', 'Vocabulary', 'Band score', 'Grammar', 'News'] as const;
 
@@ -58,7 +59,7 @@ export function BlogIndexPage() {
 
         {loading ? (
           <div className="flex justify-center py-20">
-            <div className="animate-spin w-8 h-8 border-2 border-indigo-600 border-t-transparent rounded-full" />
+            <LogoLoader size={56} />
           </div>
         ) : filtered.length === 0 ? (
           <div className="text-center py-20 text-[var(--text-secondary)]">
