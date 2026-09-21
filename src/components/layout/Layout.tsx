@@ -1,7 +1,6 @@
 import type { ReactNode } from 'react';
 import { Link } from 'react-router';
 import { Header } from './Header';
-import { IELTS_DISCLAIMER } from '../../lib/legal';
 import { SkipLink } from './SkipLink';
 import { ChatBot } from '../ui/ChatBot';
 
@@ -26,7 +25,6 @@ export function Layout({ children, noHeader }: LayoutProps) {
           </Link>
         </nav>
         <p className="m-0">© {new Date().getFullYear()} WriteReady IELTS · Built for IELTS learners</p>
-        <p className="mx-auto mt-2 max-w-[640px] text-[0.75rem] leading-relaxed opacity-90">{IELTS_DISCLAIMER}</p>
       </footer>
       <ChatBot />
     </div>

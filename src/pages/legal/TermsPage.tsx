@@ -10,7 +10,7 @@ const SECTIONS = [
   { id: "centres", title: "Learning centre accounts" },
   { id: "plans", title: "Plans and what they include" },
   { id: "paying", title: "Paying" },
-  { id: "refunds", title: "Refunds" },
+  { id: "refunds", title: "Payments are not refundable" },
   { id: "human-check", title: "Human Check" },
   { id: "your-work", title: "Your essays stay yours" },
   { id: "fair-use", title: "Fair use" },
@@ -92,11 +92,22 @@ export function TermsPage() {
         renew automatically: when a month ends you decide whether to buy another.
       </p>
 
-      <h2 id="refunds">8. Refunds</h2>
+      <h2 id="refunds">8. Payments are not refundable</h2>
       <p>
-        If the site does not work as described and we cannot fix it, tell us within 14 days of paying and we will refund
-        the unused part of your plan. We do not refund reports you have already used, or a plan you simply did not use.
-        Money in your account balance can be spent on a Human Check or refunded on request while it is unspent.
+        <strong>All payments are final.</strong> Once a plan is activated we do not refund it — not for reports you did
+        not use, not for a month you were too busy to write in, and not if you change your mind. The same goes for money
+        you add to your account balance and for a Human Check you have asked a teacher to do: once the teacher has your
+        essay, that payment is spent. Your balance is for use on this site and is not paid back in cash.
+      </p>
+      <p>
+        Two narrow exceptions, because it would not be fair otherwise. If you pay and we never activate the plan, you
+        get that money back. If we close WriteReady while your plan is still running, you get back the part you have not
+        used. Nothing here takes away a right your own country&apos;s consumer law gives you and does not let us sign
+        away.
+      </p>
+      <p>
+        The free plan gives one report a week, so you can try the AI feedback and see whether it suits you before you
+        pay anything.
       </p>
 
       <h2 id="human-check">9. Human Check</h2>
@@ -132,8 +143,9 @@ export function TermsPage() {
       <h2 id="availability">12. Availability and changes</h2>
       <p>
         We work to keep WriteReady up, but we cannot promise it will never be down. We may take it offline for
-        maintenance, change features, or stop offering a feature. If we stop the service altogether, we will give notice
-        and refund the unused part of any paid plan.
+        maintenance, change features, or stop offering a feature. A short outage is not a reason for money back. If we
+        close the service altogether, we will give notice and return the unused part of any plan that is still running,
+        as section 8 says.
       </p>
 
       <h2 id="liability">13. Our responsibility, and its limits</h2>

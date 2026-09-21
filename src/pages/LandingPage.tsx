@@ -6,7 +6,6 @@ import { ArrowUpRight, Send } from 'lucide-react';
 import { TELEGRAM_CHANNEL_URL } from '@/lib/links';
 import { Header } from '@/components/layout/Header';
 import { SkipLink } from '@/components/layout/SkipLink';
-import { IELTS_DISCLAIMER } from '@/lib/legal';
 import { ChatBot } from '../components/ui/ChatBot';
 
 gsap.registerPlugin(ScrollTrigger);
@@ -282,7 +281,6 @@ export function LandingPage() {
         <p className="text-[0.8125rem] text-white/60">
           © {new Date().getFullYear()} WriteReady IELTS · AI-powered writing coach
         </p>
-        <p className="mx-auto mt-3 max-w-[640px] text-[0.75rem] leading-relaxed text-white/60">{IELTS_DISCLAIMER}</p>
       </footer>
       <ChatBot />
     </div>

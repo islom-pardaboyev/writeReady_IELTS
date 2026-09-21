@@ -45,7 +45,7 @@ export function PrivacyPolicyPage() {
         <tbody>
           <tr>
             <td>Your email address and password</td>
-            <td>When you create an account. The password is handled by Google Firebase Authentication; we never see it.</td>
+            <td>When you create an account. Your password is held by the sign-in service we use, not by us — we never see it.</td>
           </tr>
           <tr>
             <td>Your name and profile picture</td>
@@ -84,13 +84,14 @@ export function PrivacyPolicyPage() {
       <h2 id="essays">3. Your essays and feedback</h2>
       <p>
         Your essay is the heart of this service, so it is worth being exact about what happens to it. When you ask for
-        feedback, the text of your essay and its prompt are sent to <strong>Anthropic</strong>, the company behind the
-        Claude AI models, which writes the feedback and the band estimate. The result comes back to us and is saved to
-        your account so you can open it again later.
+        feedback, the text of your essay and its prompt are sent to <strong>an artificial-intelligence company outside
+        {LEGAL.country}</strong>, which writes the feedback and the band estimate. The result comes back to us and is
+        saved to your account so you can open it again later.
       </p>
       <p>
-        Anthropic processes the text to answer that one request. Under its API terms it does not use it to train its
-        models. Messages you type into the chat bubble go to <strong>Google</strong> instead, through the Gemini API.
+        That company processes your text to answer that one request, and under the terms we have with it your essay is
+        not used to train its models. Messages you type into the chat bubble go to a different AI company, also outside
+        {LEGAL.country}. If you want to know exactly which companies these are, ask us and we will tell you.
       </p>
       <p>
         If you ask for a Human Check, the essay you choose is also shown to the teacher you pick, together with your
@@ -113,29 +114,32 @@ export function PrivacyPolicyPage() {
       </p>
 
       <h2 id="who-sees-it">5. Who else sees it</h2>
-      <p>These companies process data on our behalf so that the site can run:</p>
+      <p>
+        These are the kinds of companies that handle your information for us so the site can run. Each one may only use
+        it to do that job, and nothing else. If you want their names, ask us and we will tell you.
+      </p>
       <table>
         <thead>
           <tr>
-            <th>Company</th>
+            <th>Kind of company</th>
             <th>What it does for us</th>
           </tr>
         </thead>
         <tbody>
           <tr>
-            <td>Google (Firebase Authentication and Cloud Firestore)</td>
+            <td>A cloud database and sign-in provider</td>
             <td>Holds your account, your essays, your reports and your plan.</td>
           </tr>
           <tr>
-            <td>Anthropic</td>
+            <td>An artificial-intelligence provider</td>
             <td>Writes the AI feedback on the essay you submit.</td>
           </tr>
           <tr>
-            <td>Google (Gemini API)</td>
+            <td>A second artificial-intelligence provider</td>
             <td>Answers your messages in the chat bubble.</td>
           </tr>
           <tr>
-            <td>Vercel</td>
+            <td>A website hosting provider</td>
             <td>Hosts the site and keeps short server logs, which include IP addresses.</td>
           </tr>
           <tr>
@@ -156,7 +160,7 @@ export function PrivacyPolicyPage() {
       </p>
       <ul>
         <li>
-          <strong>Sign-in.</strong> Firebase Authentication keeps your session so you are not asked to sign in on every
+          <strong>Sign-in.</strong> Our sign-in provider keeps your session so you are not asked to sign in on every
           page.
         </li>
         <li>
@@ -188,8 +192,8 @@ export function PrivacyPolicyPage() {
 
       <h2 id="where">8. Where your data is kept</h2>
       <p>
-        Our providers keep data on servers outside {LEGAL.country} — Google, Anthropic and Vercel all run their services
-        abroad. Using the site means your information is sent to and stored in those countries.
+        The providers listed above keep data on servers outside {LEGAL.country}. Using the site means your information
+        is sent to and stored in those countries.
       </p>
       <p>
         If you are in the European Union or the United Kingdom, this is a transfer outside your region, and our
@@ -243,7 +247,7 @@ export function PrivacyPolicyPage() {
 
       <h2 id="security">13. Security</h2>
       <p>
-        Sign-in is handled by Google Firebase Authentication. Access to your reports is limited by security rules to
+        Sign-in is handled by a specialist provider, not by us. Access to your reports is limited by security rules to
         your own account and to staff who need it. No service is perfectly safe, so please use a password you do not use
         anywhere else, and tell us straight away if you think someone else is in your account.
       </p>
