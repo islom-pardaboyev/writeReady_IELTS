@@ -541,7 +541,12 @@ export function FeedbackPage() {
         try { errData = JSON.parse(errText); } catch { /* ignore */ }
         throw new Error(errData.error ?? `Server error (${preRes.status})`);
       }
-      const { token: preCheckToken, isBonus } = await preRes.json() as { token: string; isBonus: boolean };
+      const { token: preCheckToken, limited: limitedReport } = await preRes.json() as {
+        token: string;
+        /** True only for the automatic weekly free report. An admin-granted
+         *  bonus is a reward and buys the same full report a paid plan does. */
+        limited?: boolean;
+      };
 
       // Step 2: feedback — only HMAC verify + Claude stream (no Firebase overhead)
       const res = await fetch('/api/feedback', {
@@ -597,7 +602,7 @@ export function FeedbackPage() {
       // return a `limited` field, so reading it off the response always gave
       // false: every free report then rendered as a full one and the tabs it
       // has no data for crashed on undefined.
-      const feedbackWithLimit = { ...parsedFeedback, limited: isBonus };
+      const feedbackWithLimit = { ...parsedFeedback, limited: limitedReport === true };
       setFeedbacks((p) => ({ ...p, [taskKey]: feedbackWithLimit }));
       sessionStorage.setItem(cacheKey, JSON.stringify(feedbackWithLimit));
       refreshProfile().catch(() => {});

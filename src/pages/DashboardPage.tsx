@@ -210,7 +210,7 @@ export function DashboardPage() {
                 : isStudent && !centerPlanEnded
                 ? `${planName} · ${remaining} analyses left this month`
                 : bonusAnalyses > 0
-                ? `+${bonusAnalyses} bonus analyses available 🎁`
+                ? `+${bonusAnalyses} bonus full ${bonusAnalyses === 1 ? 'report' : 'reports'} available 🎁`
                 : freeReportAvailable
                 ? 'Free plan · 1 free AI analysis available this week 🎁'
                 : "Free plan · you've used this week's free analysis. Resets Monday, or upgrade for more."}

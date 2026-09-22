@@ -15,22 +15,33 @@ const MAX_TOKENS = 12000;
 const LIMITED_MAX_TOKENS = 2000;
 const TOKEN_MAX_AGE_MS = 3 * 60 * 1000; // 3 minutes
 
-function verifyToken(raw: string): { uid: string; isBonus: boolean } {
+/**
+ * Which allowance pre-check charged. See CreditSource in api/pre-check.ts:
+ * 'paid' and 'bonus' both earn the full report, 'free' is the score-only one.
+ */
+type CreditSource = 'paid' | 'bonus' | 'free';
+
+function verifyToken(raw: string): { uid: string; source: CreditSource } {
   const secret = process.env.NONCE_SECRET ?? 'fallback-secret-change-in-prod';
   const parts = raw.split('.');
   if (parts.length !== 4) throw new Error('INVALID_TOKEN');
-  const [b64uid, bonus, ts, sig] = parts;
-  const payload = `${b64uid}.${bonus}.${ts}`;
+  const [b64uid, flag, ts, sig] = parts;
+  const payload = `${b64uid}.${flag}.${ts}`;
   const expected = createHmac('sha256', secret).update(payload).digest('hex');
   if (sig !== expected) throw new Error('INVALID_TOKEN');
   if (Date.now() - Number(ts) > TOKEN_MAX_AGE_MS) throw new Error('TOKEN_EXPIRED');
   const uid = Buffer.from(b64uid, 'base64url').toString();
-  return { uid, isBonus: bonus === '1' };
+  // '1' and '0' are tokens signed by the previous version, still valid for the
+  // three minutes they live. '1' meant "not the monthly quota", and back then
+  // that always produced the short report, so 'free' keeps their behaviour.
+  const source: CreditSource =
+    flag === 'paid' || flag === 'bonus' || flag === 'free' ? flag : flag === '1' ? 'free' : 'paid';
+  return { uid, source };
 }
 
 // Reverse the credit that pre-check deducted, so a failed/truncated report
-// never costs the user a report from their monthly/weekly quota.
-async function refundCredit(uid: string, isBonus: boolean): Promise<void> {
+// never costs the user a report from their monthly/weekly/bonus allowance.
+async function refundCredit(uid: string, source: CreditSource): Promise<void> {
   try {
     initFirebase();
     if (!getApps().length) return;
@@ -40,17 +51,18 @@ async function refundCredit(uid: string, isBonus: boolean): Promise<void> {
       const snap = await tx.get(userRef);
       if (!snap.exists) return;
       const data = snap.data()!;
-      if (isBonus) {
-        // Figure out which of the two free mechanisms was actually consumed:
-        // the weekly free allowance (the common case) or an admin-granted
-        // bonus (used only once the weekly allowance was already spent).
+      // The token says exactly which allowance was charged, so put it back
+      // there. This used to be a guess between the two free mechanisms.
+      if (source === 'bonus') {
+        const bonus = typeof data.bonusAnalyses === 'number' ? data.bonusAnalyses : 0;
+        tx.set(userRef, { bonusAnalyses: bonus + 1 }, { merge: true });
+        return;
+      }
+      if (source === 'free') {
         const weekKey = currentWeekKey();
         const freeUsage = data.freeUsage;
         if (freeUsage?.weekKey === weekKey && typeof freeUsage.count === 'number' && freeUsage.count > 0) {
           tx.set(userRef, { freeUsage: { weekKey, count: freeUsage.count - 1 } }, { merge: true });
-        } else {
-          const bonus = typeof data.bonusAnalyses === 'number' ? data.bonusAnalyses : 0;
-          tx.set(userRef, { bonusAnalyses: bonus + 1 }, { merge: true });
         }
         return;
       }
@@ -80,9 +92,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   }
 
   let uid: string;
-  let isBonus: boolean;
+  let source: CreditSource;
   try {
-    ({ uid, isBonus } = verifyToken(preCheckToken as string));
+    ({ uid, source } = verifyToken(preCheckToken as string));
   } catch (e: unknown) {
     const msg = (e as Error).message;
     if (msg === 'TOKEN_EXPIRED') return res.status(401).json({ error: 'Session expired. Please try again.' });
@@ -96,7 +108,11 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   const wordCount = (essayText as string).trim().split(/\s+/).filter(Boolean).length;
 
   const anthropic = new Anthropic({ apiKey });
-  const { cacheable, variable } = isBonus
+  // Only the automatic weekly free report is the score-only one. An
+  // admin-granted bonus is a reward, so it buys the same full report a paying
+  // student gets.
+  const isScoreOnly = source === 'free';
+  const { cacheable, variable } = isScoreOnly
     ? limitedPromptParts(essayText as string, questionText as string, resolvedTask, wordCount)
     : promptParts(essayText as string, questionText as string, resolvedTask, wordCount);
 
@@ -109,7 +125,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   try {
     const stream = await anthropic.messages.stream({
       model: ALLOWED_MODEL,
-      max_tokens: isBonus ? LIMITED_MAX_TOKENS : MAX_TOKENS,
+      max_tokens: isScoreOnly ? LIMITED_MAX_TOKENS : MAX_TOKENS,
       // Sonnet 5 runs adaptive thinking when `thinking` is omitted, unlike
       // Sonnet 4.6, which ran without it. Leaving this off would silently
       // turn thinking on: thinking tokens bill as output, and they share the
@@ -151,13 +167,13 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       JSON.parse(raw.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim());
     } catch { clientCanParse = false; }
     if (stopReason === 'max_tokens' || !clientCanParse) {
-      await refundCredit(uid, isBonus);
+      await refundCredit(uid, source);
     }
 
     // Save report to Firestore (non-blocking, best-effort)
     try {
       initFirebase();
-      const feedback = isBonus
+      const feedback = isScoreOnly
         ? parseLimitedResponse(raw, wordCount, resolvedTask)
         : parseResponse(raw, wordCount, resolvedTask);
       const db = getFirestore();
@@ -181,7 +197,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     // admin, but never expose the raw provider message — it can leak billing
     // details. The credit was deducted in pre-check, so refund it here.
     console.error('feedback error:', err);
-    await refundCredit(uid, isBonus);
+    await refundCredit(uid, source);
     if (!res.headersSent) {
       return res.status(503).json({ error: 'AI feedback is temporarily unavailable right now — you were not charged. Please try again shortly, or contact @writeready_admin on Telegram if it keeps happening.' });
     }

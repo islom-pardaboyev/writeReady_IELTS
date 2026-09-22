@@ -108,7 +108,7 @@ export function LeaderboardSection() {
         // Shown to the student twice: as the dashboard banner (users.notification)
         // and as the preview line in the notification bell. The rest of the site
         // is in English, so this line is too.
-        const msg = `🎁 Congratulations! You got ${n} free AI ${n === 1 ? "analysis" : "analyses"}. Send your essay and see your result!`;
+        const msg = `🎁 Congratulations! You got ${n} full AI ${n === 1 ? "report" : "reports"}, the same as a paid plan: band scores, sentence-by-sentence corrections, vocabulary, grammar and a sample answer. Send an essay and see your result!`;
         await updateDoc(doc(db, "users", uid), { bonusAnalyses: current + n, notification: msg });
         await addDoc(collection(db, "notifications", uid, "items"), {
           type: "bonus",
@@ -172,7 +172,7 @@ export function LeaderboardSection() {
                     <span className="block truncate text-sm font-medium text-[var(--text-primary)]">{e.email}</span>
                     <span className="block text-xs tabular-nums text-[var(--text-secondary)]">
                       {e.prevBand !== null ? `${e.prevBand.toFixed(1)} last month, ${e.currBand?.toFixed(1)} now` : `${e.currBand?.toFixed(1)} this month, new`}
-                      {e.bonusAnalyses > 0 && ` · ${e.bonusAnalyses} free left`}
+                      {e.bonusAnalyses > 0 && ` · ${e.bonusAnalyses} full ${e.bonusAnalyses === 1 ? "report" : "reports"} left`}
                     </span>
                   </span>
                   <span
@@ -198,8 +198,8 @@ export function LeaderboardSection() {
     <DetailView>
       <DetailHeader
         leading={<span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-[var(--accent)] text-[var(--accent-foreground)]"><Gift size={20} aria-hidden="true" /></span>}
-        title="Give free analyses"
-        meta="Reward the students who improved most. Each one gets the free AI analyses and a notification on the site."
+        title="Give full reports"
+        meta="Reward the students who improved most. Each one gets full AI reports, the same as a paid plan, plus a notification on the site."
       />
       {notice && <Notice tone={notice.tone} className="mt-5">{notice.text}</Notice>}
       {chosen.length === 0 ? (
@@ -227,7 +227,7 @@ export function LeaderboardSection() {
             </ul>
           </div>
           <form className="flex flex-wrap items-end gap-2" onSubmit={(e) => { e.preventDefault(); grant(); }}>
-            <Field label="Free analyses for each student" htmlFor="bonus-amount" className="w-full max-w-[240px]">
+            <Field label="Full reports for each student" htmlFor="bonus-amount" className="w-full max-w-[240px]">
               <Input name="bonus-amount" autoComplete="off" id="bonus-amount" type="number" min={1} max={50} value={amount} onChange={(e) => setAmount(e.target.value)} className="font-mono" />
             </Field>
             <Button type="submit" loading={granting} disabled={!amount || Number(amount) < 1}>

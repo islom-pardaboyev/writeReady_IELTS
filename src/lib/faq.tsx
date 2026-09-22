@@ -88,14 +88,14 @@ export const GROUPS: Group[] = [
       {
         q: "Do I need to pay to try it?",
         home: true,
-        plain: `No. Every account gets ${FREE_WEEKLY_LIMIT} free AI feedback report each week, with no card needed. One report covers one essay, so if you sit a full mock exam you choose whether to mark Task 1 or Task 2. The free report gives you the four band scores and the fixes worth doing first. The sentence-by-sentence notes, the vocabulary, the grammar points and the sample answer come with a paid plan. The free allowance starts again every Monday.`,
+        plain: `No. Every account gets ${FREE_WEEKLY_LIMIT} free AI feedback report each week, with no card needed. One report covers one essay, so if you sit a full mock exam you choose whether to mark Task 1 or Task 2. The free report gives you the four band scores. The sentence-by-sentence notes, the vocabulary, the grammar points and the sample answer come with a paid plan. The free allowance starts again every Monday.`,
         a: (
           <>
             No. Every account gets <strong>{FREE_WEEKLY_LIMIT} free AI feedback report each week</strong>, with no card
             needed. One report covers <strong>one essay</strong>, so if you sit a full mock exam you choose whether to
-            mark Task 1 or Task 2. The free report gives you the four band scores and the fixes worth doing first. The
-            sentence-by-sentence notes, the vocabulary, the grammar points and the sample answer come with a paid plan.
-            The free allowance starts again every Monday.
+            mark Task 1 or Task 2. The free report gives you the four band scores. The sentence-by-sentence notes, the
+            vocabulary, the grammar points and the sample answer come with a paid plan. The free allowance starts again
+            every Monday.
           </>
         ),
       },

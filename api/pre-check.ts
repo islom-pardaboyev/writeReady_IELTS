@@ -7,25 +7,38 @@ import { initFirebase, getUid, currentMonthKey, currentWeekKey, resolvePaidStatu
 // week instead of a single lifetime bonus report.
 const FREE_WEEKLY_LIMIT = 1;
 
+/**
+ * Which allowance paid for this report. It decides two separate things, which
+ * is why one boolean was not enough:
+ *
+ *   'paid'  monthly plan quota     full report, refunds to usage
+ *   'bonus' admin-granted reward   full report, refunds to bonusAnalyses
+ *   'free'  weekly free allowance  score only,  refunds to freeUsage
+ *
+ * A bonus is a gift an admin hands to a student who did well, so it has to be
+ * worth having: it buys the same full report a paying student gets. Only the
+ * automatic weekly free report is the score-only one.
+ */
+export type CreditSource = 'paid' | 'bonus' | 'free';
+
 type CreditErrorCode = 'USER_NOT_FOUND' | 'NOT_PRO' | 'LIMIT_REACHED' | 'FREE_LIMIT_REACHED';
 class CreditError extends Error {
   constructor(public code: CreditErrorCode) { super(code); }
 }
 
-function signToken(uid: string, isBonus: boolean): string {
+function signToken(uid: string, source: CreditSource): string {
   const secret = process.env.NONCE_SECRET ?? 'fallback-secret-change-in-prod';
   const b64uid = Buffer.from(uid).toString('base64url');
   const ts = Date.now().toString();
-  const bonus = isBonus ? '1' : '0';
-  const payload = `${b64uid}.${bonus}.${ts}`;
+  const payload = `${b64uid}.${source}.${ts}`;
   const sig = createHmac('sha256', secret).update(payload).digest('hex');
   return `${payload}.${sig}`;
 }
 
-async function consumeCredit(uid: string, monthKey: string): Promise<boolean> {
+async function consumeCredit(uid: string, monthKey: string): Promise<CreditSource> {
   const db = getFirestore();
   const userRef = db.collection('users').doc(uid);
-  let isBonus = false;
+  let source: CreditSource = 'paid';
 
   await db.runTransaction(async (tx) => {
     const snap = await tx.get(userRef);
@@ -46,7 +59,7 @@ async function consumeCredit(uid: string, monthKey: string): Promise<boolean> {
       const bonus = typeof data.bonusAnalyses === 'number' ? data.bonusAnalyses : 0;
       if (bonus > 0) {
         tx.set(userRef, { bonusAnalyses: bonus - 1 }, { merge: true });
-        isBonus = true;
+        source = 'bonus';
         return;
       }
 
@@ -56,7 +69,7 @@ async function consumeCredit(uid: string, monthKey: string): Promise<boolean> {
       const freeUsed = freeUsage.weekKey === weekKey ? (freeUsage.count ?? 0) : 0;
       if (freeUsed >= FREE_WEEKLY_LIMIT) throw new CreditError('FREE_LIMIT_REACHED');
       tx.set(userRef, { freeUsage: { weekKey, count: freeUsed + 1 } }, { merge: true });
-      isBonus = true;
+      source = 'free';
       return;
     }
 
@@ -72,7 +85,7 @@ async function consumeCredit(uid: string, monthKey: string): Promise<boolean> {
     tx.set(userRef, { usage: { monthKey, count: used + 1 } }, { merge: true });
   });
 
-  return isBonus;
+  return source;
 }
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
@@ -93,10 +106,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   }
 
   const monthKey = currentMonthKey();
-  let isBonus = false;
+  let source: CreditSource = 'paid';
 
   try {
-    isBonus = await consumeCredit(uid, monthKey);
+    source = await consumeCredit(uid, monthKey);
   } catch (e: unknown) {
     if (e instanceof CreditError) {
       if (e.code === 'NOT_PRO') return res.status(403).json({ error: 'AI feedback requires a paid plan (Basic, Standard, Premium, or Lifetime).' });
@@ -107,8 +120,12 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     return res.status(500).json({ error: 'Usage tracking error. Please try again.' });
   }
 
-  const token = signToken(uid, isBonus);
-  return res.status(200).json({ token, isBonus, uid, monthKey });
+  const token = signToken(uid, source);
+  // `limited` is what the client needs: only the weekly free report is the
+  // score-only one. `isBonus` is kept for older clients still in a browser tab.
+  return res.status(200).json({
+    token, source, limited: source === 'free', isBonus: source !== 'paid', uid, monthKey,
+  });
 }
 
 export { signToken, currentMonthKey };
