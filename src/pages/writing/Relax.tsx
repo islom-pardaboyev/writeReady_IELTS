@@ -276,7 +276,7 @@ function Relax() {
                   </p>
                   <p className="mt-1 text-sm text-slate-500 dark:text-neutral-400">
                     {task === 1
-                      ? "Describe a visual — chart, map, or diagram"
+                      ? "Describe a visual: chart, map or diagram"
                       : "Write an academic essay on a given topic"}
                   </p>
                 </button>
@@ -513,7 +513,7 @@ function Relax() {
           {activeTask}
         </span>
         <p className="text-xs text-slate-600 dark:text-neutral-300">
-          No time limit — write at your own pace. At least{" "}
+          No time limit. Write at your own pace. At least{" "}
           <strong>{minWords} words</strong>.
         </p>
       </div>

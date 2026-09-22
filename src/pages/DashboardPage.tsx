@@ -212,8 +212,8 @@ export function DashboardPage() {
                 : bonusAnalyses > 0
                 ? `+${bonusAnalyses} bonus analyses available 🎁`
                 : freeReportAvailable
-                ? 'Free plan — 1 free AI analysis available this week 🎁'
-                : "Free plan — you've used this week's free analysis. Resets Monday, or upgrade for more."}
+                ? 'Free plan · 1 free AI analysis available this week 🎁'
+                : "Free plan · you've used this week's free analysis. Resets Monday, or upgrade for more."}
             </p>
           </div>
 
@@ -276,7 +276,7 @@ export function DashboardPage() {
                   )}
                   {onFreePlan && (
                     <Badge variant={freeReportAvailable ? 'success' : 'secondary'}>
-                      {freeReportAvailable ? 'Available' : 'Used — resets Monday'}
+                      {freeReportAvailable ? 'Available' : 'Used · resets Monday'}
                     </Badge>
                   )}
                 </div>
@@ -296,7 +296,8 @@ export function DashboardPage() {
               )}
               {onFreePlan && (
                 <p className="text-xs text-[var(--text-secondary)]">
-                  Free-plan users get 1 AI feedback report every week. Upgrade for a higher monthly allowance.
+                  Free-plan users get 1 AI feedback report every week, and one report covers one essay. Upgrade for a
+                  higher monthly allowance.
                 </p>
               )}
             </Card>

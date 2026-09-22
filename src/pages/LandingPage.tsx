@@ -106,7 +106,7 @@ export function LandingPage() {
           </h1>
 
           <p className="gs-hero-sub text-[1.0625rem] text-[var(--text-secondary)] leading-[1.75] mb-8 max-w-[440px]">
-            WriteReady combines IELTS-style exam prompts with AI to deliver sentence-level feedback, vocabulary upgrades, and a band score — in both Uzbek and English.
+            Write against IELTS-style exam prompts and get the essay marked: notes on every sentence, stronger vocabulary with Uzbek meanings, and an estimated band score.
           </p>
 
           <div className="gs-hero-ctas flex gap-[0.875rem] items-center mb-8 flex-wrap">
@@ -119,7 +119,7 @@ export function LandingPage() {
           </div>
 
           <ul className="grid grid-cols-2 gap-x-6 gap-y-2 list-none m-0 p-0">
-            {['First analysis free', 'No credit card required', 'Exam-style prompts', 'Sentence-level feedback'].map((t) => (
+            {['One free analysis a week', 'No credit card required', 'Exam-style prompts', 'Sentence-level feedback'].map((t) => (
               <li key={t} className="gs-hero-bullet flex items-center gap-2 text-sm text-[var(--text-secondary)]">
                 <span className="text-green-500 font-bold text-base" aria-hidden="true">✓</span> {t}
               </li>

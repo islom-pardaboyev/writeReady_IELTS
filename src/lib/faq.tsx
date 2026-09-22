@@ -44,6 +44,36 @@ export const GROUPS: Group[] = [
         ),
       },
       {
+        q: "Why is this better than just asking ChatGPT?",
+        home: true,
+        plain:
+          "Ask ChatGPT for a band score and it will give you one. It marks against whatever you paste in, and it forgets the essay you wrote last week. WriteReady sends your essay with the official IELTS Writing band descriptors and the best-fit method examiners are trained to use, plus wording that stops the model putting everybody on Band 7, and we test that prompt against reference essays so the marking does not drift. Every full report comes back in the same shape: each sentence reviewed in order, 15 words with Uzbek meanings, 10 grammar points, a band 8 to 9 answer to your exact question, and the three fixes worth doing first. Two reports a month apart can be compared, so you can see whether you improved. Around that you get exam-style prompts, a 60-minute timer, every report saved and downloadable, and a teacher you can pay to check the same essay. The colours, the spacing and the type are chosen so your eye lands on what matters first and an hour of practice does not wear you out.",
+        a: (
+          <>
+            <p>
+              Ask ChatGPT for a band score and it will give you one. It marks against whatever you paste in, and it
+              forgets the essay you wrote last week.
+            </p>
+            <p>
+              WriteReady sends your essay with the <strong>official IELTS Writing band descriptors</strong> and the
+              best-fit method examiners are trained to use, plus wording that stops the model putting everybody on
+              Band 7. We test that prompt against reference essays, so the marking does not drift when we change
+              something.
+            </p>
+            <p>
+              Every full report comes back in the same shape: each sentence reviewed in order, 15 words with Uzbek
+              meanings, 10 grammar points, a band 8 to 9 answer to your exact question, and the three fixes worth doing
+              first. Two reports a month apart can be compared, so you can see whether you improved.
+            </p>
+            <p>
+              Around that you get exam-style prompts, a 60-minute timer, every report saved and downloadable, and a
+              teacher you can pay to check the same essay. The colours, the spacing and the type are chosen so your eye
+              lands on what matters first and an hour of practice does not wear you out.
+            </p>
+          </>
+        ),
+      },
+      {
         q: "Is this the official IELTS test?",
         plain:
           "No. WriteReady is not connected to the British Council, IDP or Cambridge, and the band score you see is an estimate produced by AI, not an official result. Use it to practise and to find your weak points, not to predict your exam score.",
@@ -58,11 +88,14 @@ export const GROUPS: Group[] = [
       {
         q: "Do I need to pay to try it?",
         home: true,
-        plain: `No. Every account gets ${FREE_WEEKLY_LIMIT} free AI feedback report each week, with no card needed. Write an essay, send it, and read the full report.`,
+        plain: `No. Every account gets ${FREE_WEEKLY_LIMIT} free AI feedback report each week, with no card needed. One report covers one essay, so if you sit a full mock exam you choose whether to mark Task 1 or Task 2. The free report gives you the four band scores and the fixes worth doing first. The sentence-by-sentence notes, the vocabulary, the grammar points and the sample answer come with a paid plan. The free allowance starts again every Monday.`,
         a: (
           <>
             No. Every account gets <strong>{FREE_WEEKLY_LIMIT} free AI feedback report each week</strong>, with no card
-            needed. Write an essay, send it, and read the full report. The free allowance starts again every Monday.
+            needed. One report covers <strong>one essay</strong>, so if you sit a full mock exam you choose whether to
+            mark Task 1 or Task 2. The free report gives you the four band scores and the fixes worth doing first. The
+            sentence-by-sentence notes, the vocabulary, the grammar points and the sample answer come with a paid plan.
+            The free allowance starts again every Monday.
           </>
         ),
       },
@@ -74,16 +107,16 @@ export const GROUPS: Group[] = [
         a: (
           <ul>
             <li>
-              <strong>Mock Exam</strong> — a 60-minute timer over both tasks, like the real test.
+              <strong>Mock Exam</strong>: a 60-minute timer over both tasks, like the real test.
             </li>
             <li>
-              <strong>Practice</strong> — no timer, work at your own pace.
+              <strong>Practice</strong>: no timer, work at your own pace.
             </li>
             <li>
-              <strong>Quick Write</strong> — one random task, good for a short daily session.
+              <strong>Quick Write</strong>: one random task, good for a short daily session.
             </li>
             <li>
-              <strong>Relax</strong> — paste your own prompt and upload your own chart.
+              <strong>Relax</strong>: paste your own prompt and upload your own chart.
             </li>
           </ul>
         ),
@@ -96,21 +129,21 @@ export const GROUPS: Group[] = [
       {
         q: "What do the paid plans include?",
         home: true,
-        plain: `Basic is ${uzs(PLAN_INFO.basic.monthlyPriceUZS)} a month for ${PLAN_INFO.basic.monthlyAnalyses} AI reports. Standard is ${uzs(PLAN_INFO.standard.monthlyPriceUZS)} for ${PLAN_INFO.standard.monthlyAnalyses}. Premium is ${uzs(PLAN_INFO.premium.monthlyPriceUZS)} for ${PLAN_INFO.premium.monthlyAnalyses}. Every plan gives the same full report; only the number of reports a month changes.`,
+        plain: `Basic is ${uzs(PLAN_INFO.basic.monthlyPriceUZS)} a month for ${PLAN_INFO.basic.monthlyAnalyses} AI reports. Standard is ${uzs(PLAN_INFO.standard.monthlyPriceUZS)} for ${PLAN_INFO.standard.monthlyAnalyses}. Premium is ${uzs(PLAN_INFO.premium.monthlyPriceUZS)} for ${PLAN_INFO.premium.monthlyAnalyses}. Every paid plan gives the same full report; only the number of reports a month changes.`,
         a: (
           <>
             <ul>
               <li>
-                <strong>Basic</strong> — {uzs(PLAN_INFO.basic.monthlyPriceUZS)} a month, {PLAN_INFO.basic.monthlyAnalyses} AI reports.
+                <strong>Basic</strong>: {uzs(PLAN_INFO.basic.monthlyPriceUZS)} a month, {PLAN_INFO.basic.monthlyAnalyses} AI reports.
               </li>
               <li>
-                <strong>Standard</strong> — {uzs(PLAN_INFO.standard.monthlyPriceUZS)} a month, {PLAN_INFO.standard.monthlyAnalyses} AI reports.
+                <strong>Standard</strong>: {uzs(PLAN_INFO.standard.monthlyPriceUZS)} a month, {PLAN_INFO.standard.monthlyAnalyses} AI reports.
               </li>
               <li>
-                <strong>Premium</strong> — {uzs(PLAN_INFO.premium.monthlyPriceUZS)} a month, {PLAN_INFO.premium.monthlyAnalyses} AI reports.
+                <strong>Premium</strong>: {uzs(PLAN_INFO.premium.monthlyPriceUZS)} a month, {PLAN_INFO.premium.monthlyAnalyses} AI reports.
               </li>
             </ul>
-            Every plan gives the same full report. Only the number of reports a month changes. See{" "}
+            Every paid plan gives the same full report. Only the number of reports a month changes. See{" "}
             <Link to="/pricing">Pricing</Link>.
           </>
         ),
@@ -130,12 +163,13 @@ export const GROUPS: Group[] = [
       {
         q: "Can I get my money back?",
         plain:
-          "No. Payments are final: we do not refund reports you did not use or a month you were too busy to write in. The two exceptions are if we take your money and never switch the plan on, or if we close the site while your plan is still running. That is why the free weekly report exists — try it before you pay.",
+          "No. Payments are final: we do not refund reports you did not use or a month you were too busy to write in. The two exceptions are if we take your money and never switch the plan on, or if we close the site while your plan is still running. That is why the free weekly report exists, so you can try it before you pay.",
         a: (
           <>
             No. Payments are final: we do not refund reports you did not use, or a month you were too busy to write in.
             The two exceptions are if we take your money and never switch the plan on, or if we close the site while your
-            plan is still running. That is why the free weekly report exists — try it before you pay. Full wording in the{" "}
+            plan is still running. That is why the free weekly report exists, so you can try it before you pay. Full wording
+            in the{" "}
             <Link to="/terms#refunds">Terms of Service</Link>.
           </>
         ),
@@ -144,6 +178,17 @@ export const GROUPS: Group[] = [
         q: "Do unused reports carry over to next month?",
         plain: "No. Each month starts again at your plan's number, and anything you did not use is gone.",
         a: <>No. Each month starts again at your plan&apos;s number, and anything you did not use is gone.</>,
+      },
+      {
+        q: "If a report fails, do I lose it?",
+        plain:
+          "No. If the AI report fails or comes back cut off, the site puts that report back on your account by itself. Send the same essay again and it is not counted twice.",
+        a: (
+          <>
+            No. If the AI report fails or comes back cut off, the site puts that report back on your account by itself.
+            Send the same essay again and it is not counted twice.
+          </>
+        ),
       },
     ],
   },
@@ -164,8 +209,8 @@ export const GROUPS: Group[] = [
             </p>
             <p>
               That is what makes the score useful: you can see which sentence cost you a mark, instead of being handed a
-              number. Treat it as a well-argued second opinion, not as your exam result — and if you want a person to
-              look at it, use Human Check.
+              number. Treat it as a well-argued second opinion, not as your exam result. If you want a person to look at
+              it, use Human Check.
             </p>
           </>
         ),
@@ -176,8 +221,8 @@ export const GROUPS: Group[] = [
           "It is an estimate. The AI marks against the four public IELTS criteria and explains why it gave each score, which makes it useful for spotting weak points. It is not an examiner, and real examiners sometimes disagree with each other too. Treat a half band either way as normal.",
         a: (
           <>
-            It is an estimate. The AI marks against the four public IELTS criteria — task achievement, coherence and
-            cohesion, lexical resource, grammatical range and accuracy — and explains why it gave each score, which is
+            It is an estimate. The AI marks against the four public IELTS criteria (task achievement, coherence and
+            cohesion, lexical resource, grammatical range and accuracy) and explains why it gave each score, which is
             what makes it useful. It is not an examiner. Treat half a band either way as normal.
           </>
         ),
@@ -234,7 +279,7 @@ export const GROUPS: Group[] = [
           <>
             Your centre bought places and chose a plan for its students, so you get that plan for as long as its contract
             runs. When the contract ends your account stays and goes back to the free weekly report until the centre
-            renews. Centre staff can see your name, your login and how much you have practised — but not the essays you
+            renews. Centre staff can see your name, your login and how much you have practised, but not the essays you
             write.
           </>
         ),
@@ -269,7 +314,7 @@ export const GROUPS: Group[] = [
           "Yes, in a mobile browser. The writing screen stacks the question above your answer instead of side by side. For a full mock exam a laptop is closer to the real computer-based test.",
         a: (
           <>
-            Yes, in a mobile browser — the writing screen stacks the question above your answer instead of side by side.
+            Yes, in a mobile browser. The writing screen stacks the question above your answer instead of side by side.
             For a full mock exam a laptop is closer to the real computer-based test.
           </>
         ),

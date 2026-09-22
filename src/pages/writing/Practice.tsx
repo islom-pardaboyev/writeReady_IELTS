@@ -496,8 +496,8 @@ function Practice() {
                 Session saved
               </ModalTitle>
               <ModalDescription className="mt-2 text-sm leading-6 text-center text-slate-500 dark:text-neutral-400">
-                Would you like in-depth AI feedback on your writing? We'll
-                analyse grammar, vocabulary, coherence, and task achievement.
+                AI feedback marks your writing for grammar, vocabulary, coherence and task
+                achievement.
               </ModalDescription>
               <div className="flex flex-col gap-2.5 mt-6">
                 <Button

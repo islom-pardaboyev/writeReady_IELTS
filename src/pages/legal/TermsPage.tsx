@@ -32,8 +32,8 @@ export function TermsPage() {
       <p>
         These terms are an agreement between you and <strong>{LEGAL.entity}</strong> ({LEGAL.address}), which runs{" "}
         {LEGAL.service} at {LEGAL.site}. By making an account or using the site you accept them. If you do not accept
-        them, please do not use the site. Read the <Link to="/privacy">Privacy Policy</Link> too — it is part of this
-        agreement.
+        them, please do not use the site. Read the <Link to="/privacy">Privacy Policy</Link> too, because it is part of
+        this agreement.
       </p>
 
       <h2 id="what-it-is">2. What WriteReady is</h2>
@@ -77,7 +77,7 @@ export function TermsPage() {
       <h2 id="plans">6. Plans and what they include</h2>
       <p>
         The free plan gives one AI feedback report each calendar week. Paid plans give a fixed number of AI reports each
-        month — the exact number for each plan is shown on the <Link to="/pricing">Pricing</Link> page. Allowances do
+        month. The exact number for each plan is shown on the <Link to="/pricing">Pricing</Link> page. Allowances do
         not roll over: an unused report does not move to next month.
       </p>
       <p>
@@ -94,7 +94,7 @@ export function TermsPage() {
 
       <h2 id="refunds">8. Payments are not refundable</h2>
       <p>
-        <strong>All payments are final.</strong> Once a plan is activated we do not refund it — not for reports you did
+        <strong>All payments are final.</strong> Once a plan is activated we do not refund it: not for reports you did
         not use, not for a month you were too busy to write in, and not if you change your mind. The same goes for money
         you add to your account balance and for a Human Check you have asked a teacher to do: once the teacher has your
         essay, that payment is spent. Your balance is for use on this site and is not paid back in cash.
@@ -125,8 +125,8 @@ export function TermsPage() {
         publish your writing, sell it, or hand it to anyone else.
       </p>
       <p>
-        The site itself — its design, its code, its prompts and its explanations — belongs to us. Please do not copy it,
-        scrape it or resell it.
+        The site itself, with its design, its code, its prompts and its explanations, belongs to us. Please do not copy
+        it, scrape it or resell it.
       </p>
 
       <h2 id="fair-use">11. Fair use</h2>
@@ -155,7 +155,7 @@ export function TermsPage() {
       </p>
       <p>
         If we cause you loss, our responsibility is limited to what you paid us in the 12 months before the problem. We
-        do not limit responsibility for anything the law does not allow us to limit — for example death, personal injury
+        do not limit responsibility for anything the law does not allow us to limit, for example death, personal injury
         or fraud caused by us.
       </p>
 

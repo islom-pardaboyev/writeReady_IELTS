@@ -67,7 +67,7 @@ function CrashCard({ error, stack }: { error: Error; stack: string }) {
         {status === 'sent' ? (
           <>
             <p className="mt-2 text-sm leading-6 text-[var(--text-secondary)]">
-              Thank you — your report has been sent. We will look at it.
+              Thank you. Your report has been sent, and we will look at it.
             </p>
             <Button onClick={() => window.location.assign('/')} className="w-full mt-6">
               Back to home
@@ -76,7 +76,7 @@ function CrashCard({ error, stack }: { error: Error; stack: string }) {
         ) : (
           <>
             <p className="mt-2 text-sm leading-6 text-[var(--text-secondary)]">
-              Sorry about that. Telling us what you were doing helps us fix it — the
+              Sorry about that. Telling us what you were doing helps us fix it. The
               technical details are added for you.
             </p>
 

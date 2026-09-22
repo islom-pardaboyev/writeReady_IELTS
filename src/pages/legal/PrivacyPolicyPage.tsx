@@ -45,7 +45,7 @@ export function PrivacyPolicyPage() {
         <tbody>
           <tr>
             <td>Your email address and password</td>
-            <td>When you create an account. Your password is held by the sign-in service we use, not by us — we never see it.</td>
+            <td>When you create an account. Your password is held by the sign-in service we use, not by us. We never see it.</td>
           </tr>
           <tr>
             <td>Your name and profile picture</td>
@@ -254,8 +254,8 @@ export function PrivacyPolicyPage() {
 
       <h2 id="changes">14. Changes to this policy</h2>
       <p>
-        When we change this page we update the date at the top. If a change matters to you — for example a new company
-        processing your essays — we will say so on the site rather than quietly editing the text.
+        When we change this page we update the date at the top. If a change matters to you, for example a new company
+        processing your essays, we will say so on the site rather than quietly editing the text.
       </p>
 
       <h2 id="contact">15. How to contact us</h2>

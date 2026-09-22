@@ -7,6 +7,12 @@ import { initFirebase, currentMonthKey, currentWeekKey } from './_lib/shared.js'
 
 const ALLOWED_MODEL = 'claude-sonnet-5';
 const MAX_TOKENS = 12000;
+// The free weekly report is short, but it still writes a band rationale for
+// all four criteria, because that reasoning is what makes its score match a
+// paid one. 800 was sized for a single rationale and would now truncate, which
+// costs the student the report and refunds it. max_tokens is a cap, not a
+// charge: only tokens actually written are billed, so the headroom is free.
+const LIMITED_MAX_TOKENS = 2000;
 const TOKEN_MAX_AGE_MS = 3 * 60 * 1000; // 3 minutes
 
 function verifyToken(raw: string): { uid: string; isBonus: boolean } {
@@ -90,9 +96,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   const wordCount = (essayText as string).trim().split(/\s+/).filter(Boolean).length;
 
   const anthropic = new Anthropic({ apiKey });
-  const prompt = isBonus
-    ? buildLimitedPrompt(essayText as string, questionText as string, resolvedTask, wordCount)
-    : buildPrompt(essayText as string, questionText as string, resolvedTask, wordCount);
+  const { cacheable, variable } = isBonus
+    ? limitedPromptParts(essayText as string, questionText as string, resolvedTask, wordCount)
+    : promptParts(essayText as string, questionText as string, resolvedTask, wordCount);
 
   res.setHeader('Content-Type', 'text/plain; charset=utf-8');
   res.setHeader('Transfer-Encoding', 'chunked');
@@ -103,7 +109,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   try {
     const stream = await anthropic.messages.stream({
       model: ALLOWED_MODEL,
-      max_tokens: isBonus ? 800 : MAX_TOKENS,
+      max_tokens: isBonus ? LIMITED_MAX_TOKENS : MAX_TOKENS,
       // Sonnet 5 runs adaptive thinking when `thinking` is omitted, unlike
       // Sonnet 4.6, which ran without it. Leaving this off would silently
       // turn thinking on: thinking tokens bill as output, and they share the
@@ -112,7 +118,17 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       // Disabled keeps grading behaviour and cost in line with 4.6; turn it
       // on deliberately (with a raised max_tokens) if band accuracy needs it.
       thinking: { type: 'disabled' },
-      messages: [{ role: 'user', content: prompt }],
+      // The fixed half carries the cache breakpoint. On a hit those tokens bill
+      // at ~0.1x instead of full price, which is most of the cost of a report;
+      // on a miss the write costs ~1.25x, so it pays from the second request
+      // sharing this task type within the 5-minute window.
+      messages: [{
+        role: 'user',
+        content: [
+          { type: 'text', text: cacheable, cache_control: { type: 'ephemeral' } },
+          { type: 'text', text: variable },
+        ],
+      }],
     });
 
     for await (const chunk of stream) {
@@ -228,62 +244,33 @@ GRAMMATICAL RANGE & ACCURACY (both tasks):
 - Band 4: Very limited range; subordinate clauses rare, simple sentences predominate; some structures accurate but grammatical errors frequent and may impede meaning; punctuation often faulty/inadequate.`;
 }
 
-function buildLimitedPrompt(essay: string, question: string, taskType: string, wordCount: number): string {
-  return `You are a certified, experienced IELTS examiner. Score this essay accurately using the official IELTS best-fit method and the band descriptors below. Be fair and calibrated — award high bands (8.0–9.0) to genuinely strong essays and low bands to weak ones. Return ONLY valid JSON — no markdown, no backticks.
+/* ── Scoring, shared by both reports ──────────────────────────────────────
+ *
+ * The free weekly report and a paid report must award the SAME band for the
+ * same essay: the free one is smaller, not softer. So every instruction that
+ * can move a score lives in the four blocks below and is used, verbatim, by
+ * both prompts. Only the extra OUTPUT sections differ (sentence analysis,
+ * vocabulary, grammar, sample answer, band-gap analysis), because those are
+ * what a paid plan pays for.
+ *
+ * Edit a scoring rule here and it changes for both. That is the point: the
+ * two prompts used to keep their own condensed copies, and the free one drifted
+ * into a softer, vaguer version that scored the same essay differently.        */
 
-TASK TYPE: ${taskType}
-QUESTION: ${question}
-STUDENT ESSAY (${wordCount} words):
-${essay}
-
-=== BAND DESCRIPTORS (condensed) ===
-${bandDescriptors(taskType)}
-
-For each criterion, choose the band whose descriptor BEST matches the essay overall (official IELTS best-fit) — cite one concrete reason. Do not demand perfection: the top bands allow minor slips, so a strong, fluent, well-organised essay with wide vocabulary and mostly error-free sentences is a genuine Band 8–9, not a 6. Use the full 4.0–9.0 range; if the essay sits between two bands, pick the closer fit rather than rounding down. Score each of the 4 criteria INDEPENDENTLY — it is uncommon for all four to be the identical band, so do NOT default every criterion to 7.0. These scores must be as accurate as a full paid report.
-
-Return ONLY this JSON structure:
-{
-  "taskType": "${taskType}",
-  "topic": "<2-5 word topic label>",
-  "wordCount": ${wordCount},
-  "bandRationale": {
-    "taskAchievement": "<one short phrase: highest band met and why>"
-  },
-  "scores": {
-    "taskAchievement": <band 4.0-9.0 in 0.5 steps>,
-    "coherenceCohesion": <band 4.0-9.0 in 0.5 steps>,
-    "lexicalResource": <band 4.0-9.0 in 0.5 steps>,
-    "grammaticalRangeAccuracy": <band 4.0-9.0 in 0.5 steps>,
-    "overall": <(TA+CC+LR+GRA)/4, IELTS rounding: .25 rounds up to .5, .75 rounds up to next whole band>
-  },
-  "feedback": {
-    "taskAchievement": {
-      "strengths": ["<1 concrete strength>"],
-      "issues": ["<1 specific issue>"]
-    }
-  },
-  "priorityFixes": [
-    "<most important fix — specific and actionable>",
-    "<second most important fix>",
-    "<third most important fix>"
-  ]
-}`;
+function examinerPreamble(): string {
+  return `You are a certified, experienced IELTS examiner. Score this essay accurately using the official IELTS best-fit method and the band descriptors below — not your own idea of "good writing." Be fair and calibrated: award high bands (8.0–9.0) to genuinely strong essays and low bands to weak ones. Under-scoring a strong essay is just as wrong as over-scoring a weak one. Return ONLY valid JSON — no markdown, no backticks, no extra text.`;
 }
 
-// Exported so scripts/compare-band-scores.ts grades against the REAL prompt
-// rather than a copy that would drift out of sync with this one.
-export function buildPrompt(essay: string, question: string, taskType: string, wordCount: number): string {
-  return `You are a certified, experienced IELTS examiner. Score this essay accurately using the official IELTS best-fit method and the band descriptors below — not your own idea of "good writing." Be fair and calibrated: award high bands (8.0–9.0) to genuinely strong essays and low bands to weak ones. Under-scoring a strong essay is just as wrong as over-scoring a weak one. Return ONLY valid JSON — no markdown, no backticks, no extra text.
-
+function essayBlock(essay: string, question: string, taskType: string, wordCount: number): string {
+  return `=== THE ESSAY TO MARK ===
 TASK TYPE: ${taskType}
 QUESTION: ${question}
 STUDENT ESSAY (${wordCount} words):
-${essay}
+${essay}`;
+}
 
-=== OFFICIAL BAND DESCRIPTORS (condensed) ===
-${bandDescriptors(taskType)}
-
-=== SCORING METHOD (official IELTS best-fit) ===
+function scoringMethod(): string {
+  return `=== SCORING METHOD (official IELTS best-fit) ===
 For EACH of the 4 criteria, choose the band whose descriptor BEST matches the essay's overall profile — exactly as a real IELTS examiner does. Best-fit means matching the closest overall description; NOT every feature of a band must be present, and one or two features sitting slightly higher or lower does not change the best-fit band.
 
 Apply the band descriptors exactly as written, in both directions. The top bands tolerate minor errors — Band 9 allows "rare errors only, as slips" and Band 8 allows "occasional inaccuracies" — so do not withhold a high band over a handful of small mistakes. Equally, the lower bands exist and must be used: frequent errors, a narrow range, or underdeveloped ideas belong at Band 5 or 6, however hard the student has clearly worked.
@@ -296,15 +283,18 @@ Calibration anchors — score each criterion independently against these:
 - Band 7.0–7.5: good but with visible limits — sufficient range with some less-common vocabulary; frequent error-free complex sentences BUT errors that clearly persist; clear, organised argument that may lack full development in places.
 - Band 5.0–6.0: adequate but limited range; noticeable or frequent errors; ideas underdeveloped, mechanical, or repetitive.
 
-Do NOT cluster essays at Band 7. Band 7 means "good, but with visible limitations." Judge each essay against the descriptors and award what it has earned: a fluent, precise, fully developed essay is a Band 8 or 9, and an essay with persistent errors, narrow vocabulary or thin ideas is a Band 5 or 6. Excellent, competent and weak essays must all end up with clearly different scores. Point to specific evidence from the essay for the band you award.
+Do NOT cluster essays at Band 7. Band 7 means "good, but with visible limitations." Judge each essay against the descriptors and award what it has earned: a fluent, precise, fully developed essay is a Band 8 or 9, and an essay with persistent errors, narrow vocabulary or thin ideas is a Band 5 or 6. Excellent, competent and weak essays must all end up with clearly different scores. Point to specific evidence from the essay for the band you award.`;
+}
 
-Return this EXACT JSON structure:
-{
-  "taskType": "${taskType}",
+/** The reasoning and the four bands. `bandRationale` is never shown to the
+ *  student: it is there to make the model commit to a descriptor before it
+ *  commits to a number, which is what keeps the two reports in line. */
+function scoresSchema(taskType: string, gapCoaching: boolean): string {
+  return `  "taskType": "${taskType}",
   "topic": "<2-5 word topic label e.g. 'Technology and Society'>",
-  "wordCount": ${wordCount},
+  "wordCount": <the word count given with the essay below>,
   "bandRationale": {
-    "taskAchievement": "<which band descriptor is fully met and why, citing the essay; note the next band up and what's missing to reach it>",
+    "taskAchievement": "<which band descriptor is fully met and why, citing the essay${gapCoaching ? "; note the next band up and what's missing to reach it" : ''}>",
     "coherenceCohesion": "<same>",
     "lexicalResource": "<same>",
     "grammaticalRangeAccuracy": "<same>"
@@ -315,7 +305,70 @@ Return this EXACT JSON structure:
     "lexicalResource": <band 4.0-9.0 in 0.5 steps>,
     "grammaticalRangeAccuracy": <band 4.0-9.0 in 0.5 steps>,
     "overall": <(TA+CC+LR+GRA)/4, IELTS rounding: .25 rounds up to .5, .75 rounds up to next whole band, never round down on .25/.75>
+  },`;
+}
+
+/** The scoring half of STRICT RULES. */
+function scoringRules(): string {
+  return `- Score each of the 4 criteria INDEPENDENTLY. It is uncommon for all four to land on the exact same band — most essays are stronger in some areas than others. Do NOT default to giving every criterion 7.0; give matching scores only when each criterion genuinely best-fits that band on its own.
+- scores.* must be internally consistent with bandRationale.* — the score must reflect the best-fit band you described
+- Award the band the evidence supports, in either direction: give Band 8.0–9.0 when the essay's profile genuinely matches those descriptors, and give Band 4.0–6.0 when it does not. Occasional slips do not block a high band; persistent errors and undeveloped ideas do.
+- Do NOT compress scores toward the middle. Never inflate a score to encourage the student, and never deflate one to appear rigorous. This student is preparing for a real exam where a stranger will mark them — a score that is too generous does more harm than one that is too harsh, because it tells them they are ready when they are not. The same applies to the written feedback: name the real weaknesses plainly instead of softening them.`;
+}
+
+/**
+ * The free weekly report: the same band score as a paid one, and nothing else.
+ *
+ * It runs the identical preamble, descriptors, scoring method, rationale and
+ * scoring rules, so the four criteria and the overall band are reached exactly
+ * the way a paid report reaches them. It then stops: no sentence analysis, no
+ * vocabulary, no grammar points, no sample answer, no band-gap analysis.
+ *
+ * Exported for the same reason as buildPrompt, so scripts/compare-band-scores.ts
+ * can grade the real free prompt rather than a copy of it.
+ */
+export function buildLimitedPromptParts(taskType: string): string {
+  return `${examinerPreamble()}
+
+=== OFFICIAL BAND DESCRIPTORS (condensed) ===
+${bandDescriptors(taskType)}
+
+${scoringMethod()}
+
+Return ONLY this JSON structure:
+{
+${scoresSchema(taskType, false)}
+  "feedback": {
+    "taskAchievement": {
+      "strengths": ["<1 concrete strength>"],
+      "issues": ["<1 specific issue>"]
+    }
   },
+  "priorityFixes": [
+    "<most important fix — specific and actionable>",
+    "<second most important fix>",
+    "<third most important fix>"
+  ]
+}
+
+STRICT RULES:
+- Keep every feedback/strength/issue string to one concise sentence
+${scoringRules()}`;
+}
+
+// Exported so scripts/compare-band-scores.ts grades against the REAL prompt
+// rather than a copy that would drift out of sync with this one.
+export function buildPromptParts(taskType: string): string {
+  return `${examinerPreamble()}
+
+=== OFFICIAL BAND DESCRIPTORS (condensed) ===
+${bandDescriptors(taskType)}
+
+${scoringMethod()}
+
+Return this EXACT JSON structure:
+{
+${scoresSchema(taskType, true)}
   "feedback": {
     "taskAchievement": {
       "strengths": ["<at least 1 concrete strength, quoting the essay if possible>"],
@@ -373,10 +426,49 @@ STRICT RULES:
 - Keep every feedback/strength/issue string to one concise sentence
 - Every category MUST have at least 1 strength
 - Every issue should reference the essay where possible
-- Score each of the 4 criteria INDEPENDENTLY. It is uncommon for all four to land on the exact same band — most essays are stronger in some areas than others. Do NOT default to giving every criterion 7.0; give matching scores only when each criterion genuinely best-fits that band on its own.
-- scores.* must be internally consistent with bandRationale.* — the score must reflect the best-fit band you described
-- Award the band the evidence supports, in either direction: give Band 8.0–9.0 when the essay's profile genuinely matches those descriptors, and give Band 4.0–6.0 when it does not. Occasional slips do not block a high band; persistent errors and undeveloped ideas do.
-- Do NOT compress scores toward the middle. Never inflate a score to encourage the student, and never deflate one to appear rigorous. This student is preparing for a real exam where a stranger will mark them — a score that is too generous does more harm than one that is too harsh, because it tells them they are ready when they are not. The same applies to the written feedback: name the real weaknesses plainly instead of softening them.`;
+${scoringRules()}`;
+}
+
+/**
+ * A prompt in two halves.
+ *
+ * `cacheable` is byte-identical for every essay of a given task type, so it is
+ * sent with a cache breakpoint and served from Anthropic's prompt cache at ~0.1x
+ * input price on a hit. It is ~89% of the request: the band descriptors and the
+ * scoring method are the same words every time, and before this split they were
+ * re-bought on every report because the student's essay sat in front of them and
+ * caching only matches a prefix.
+ *
+ * `variable` is the student's own question and essay, which is never the same
+ * twice and is always billed in full.
+ */
+export interface PromptParts {
+  cacheable: string;
+  variable: string;
+}
+
+export function limitedPromptParts(
+  essay: string, question: string, taskType: string, wordCount: number,
+): PromptParts {
+  return { cacheable: buildLimitedPromptParts(taskType), variable: essayBlock(essay, question, taskType, wordCount) };
+}
+
+export function promptParts(
+  essay: string, question: string, taskType: string, wordCount: number,
+): PromptParts {
+  return { cacheable: buildPromptParts(taskType), variable: essayBlock(essay, question, taskType, wordCount) };
+}
+
+/* The joined forms. scripts/compare-band-scores.ts grades these, so it sees the
+ * exact text the model sees, in the same order. */
+export function buildLimitedPrompt(essay: string, question: string, taskType: string, wordCount: number): string {
+  const { cacheable, variable } = limitedPromptParts(essay, question, taskType, wordCount);
+  return `${cacheable}\n\n${variable}`;
+}
+
+export function buildPrompt(essay: string, question: string, taskType: string, wordCount: number): string {
+  const { cacheable, variable } = promptParts(essay, question, taskType, wordCount);
+  return `${cacheable}\n\n${variable}`;
 }
 
 type CategoryFeedback = { strengths: string[]; issues: string[] };

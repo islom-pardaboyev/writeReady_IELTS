@@ -202,7 +202,7 @@ export function WorkspacePage() {
                   onChange={(e) => setEssay(e.target.value)}
                   placeholder={
                     mode === 'relax'
-                      ? 'Start writing — no pressure, explore your ideas…'
+                      ? 'Start writing. No pressure, explore your ideas…'
                       : mode === 'practice'
                       ? 'Write your response here. You can submit paragraph by paragraph for targeted feedback…'
                       : 'Write your essay here…'

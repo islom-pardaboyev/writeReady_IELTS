@@ -103,7 +103,7 @@ async function taskSection(label: string, part: HumanReviewTaskPart): Promise<Pa
           children: [
             new TextRun({
               text: isLink
-                ? `⚠ Image could not be embedded — open manually: ${part.imageBase64}`
+                ? `⚠ Image could not be embedded. Open it manually: ${part.imageBase64}`
                 : '⚠ Image could not be embedded.',
               italics: true,
             }),

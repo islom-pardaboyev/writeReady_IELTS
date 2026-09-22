@@ -42,7 +42,7 @@ export function CookieNotice() {
             </>
           ) : (
             <>
-              We keep a little data in your browser — enough to sign you in and remember your theme and shortcuts. No
+              We keep a little data in your browser, enough to sign you in and remember your theme and shortcuts. No
               advertising, no tracking.
             </>
           )}{" "}

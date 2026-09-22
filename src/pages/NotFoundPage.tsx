@@ -45,7 +45,7 @@ export function NotFoundPage() {
         </h1>
 
         <p className="mt-5 max-w-[50ch] text-pretty text-[1.0625rem] leading-relaxed text-[var(--text-secondary)]">
-          The link may be old, or the address may have a typo. Nothing is lost — your
+          The link may be old, or the address may have a typo. Nothing is lost. Your
           account, essays and feedback reports are all still there.
         </p>
 

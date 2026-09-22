@@ -20,6 +20,7 @@ import { useSingleRun } from '../hooks/useSingleRun';
 import { LogoLoader } from '@/components/ui/LogoLoader';
 import { FeedbackRating } from '@/components/ui/FeedbackRating';
 
+type TaskKey = 'task1' | 'task2';
 type Tab = 'overview' | 'priority' | 'detailed' | 'essay' | 'sample' | 'vocabulary' | 'grammar' | 'spelling' | 'quiz';
 
 const TABS: { id: Tab; label: string; icon: typeof LayoutGrid }[] = [
@@ -163,6 +164,76 @@ function PracticeResult({ result, accentClass }: {
   );
 }
 
+/**
+ * The free plan gives one AI report a week. A mock exam gives the student two
+ * essays. This is where those two facts meet, so it does two jobs: before
+ * anything is spent it asks which essay to mark, and afterwards it says where
+ * the report went instead of leaving an empty panel behind.
+ */
+function FreeTaskGate({
+  hasCredit,
+  markedTask,
+  onChoose,
+}: {
+  hasCredit: boolean;
+  markedTask: TaskKey | null;
+  onChoose: (task: TaskKey) => void;
+}) {
+  const label = (t: TaskKey) => (t === 'task1' ? 'Task 1' : 'Task 2');
+
+  if (hasCredit && !markedTask) {
+    return (
+      <div className="rounded-2xl border border-[var(--border-color)] bg-[var(--bg-card)] p-6 sm:p-8 shadow-sm">
+        <span className="flex items-center justify-center w-11 h-11 rounded-2xl bg-[var(--ink-blue)]/10 mb-4">
+          <Sparkles className="w-5 h-5 text-[var(--ink-blue)]" />
+        </span>
+        <h2 className="text-xl font-bold text-[var(--text-primary)]">Which essay should we mark?</h2>
+        <p className="mt-2 max-w-prose text-[0.9375rem] leading-relaxed text-[var(--text-secondary)]">
+          You wrote two essays, and the free plan includes <strong className="text-[var(--text-primary)]">one AI
+          report a week</strong>. Pick the essay you want marked. The other one stays saved and unmarked, and your
+          next free report arrives on Monday.
+        </p>
+        <div className="mt-6 flex flex-wrap gap-3">
+          {(['task1', 'task2'] as const).map((t) => (
+            <Button key={t} onClick={() => onChoose(t)}>
+              Mark {label(t)}
+            </Button>
+          ))}
+        </div>
+        <p className="mt-4 text-sm text-[var(--text-secondary)]">
+          Need both marked?{' '}
+          <Link to="/pricing" className="font-semibold text-[var(--ink-blue)]">
+            A paid plan
+          </Link>{' '}
+          has enough reports for every essay you write.
+        </p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="rounded-2xl border border-[var(--border-color)] bg-[var(--bg-card)] p-6 sm:p-8 shadow-sm">
+      <span className="flex items-center justify-center w-11 h-11 rounded-2xl bg-[var(--ink-blue)]/10 mb-4">
+        <Lock className="w-5 h-5 text-[var(--ink-blue)]" />
+      </span>
+      <h2 className="text-xl font-bold text-[var(--text-primary)]">This essay is not marked</h2>
+      <p className="mt-2 max-w-prose text-[0.9375rem] leading-relaxed text-[var(--text-secondary)]">
+        The free plan includes one AI report a week
+        {markedTask ? <>, and this week&rsquo;s went to <strong className="text-[var(--text-primary)]">{label(markedTask)}</strong></> : null}
+        . Your essay is saved, so you can mark it once your next free report arrives on Monday.
+      </p>
+      <div className="mt-6 flex flex-wrap gap-3">
+        <Link to="/pricing">
+          <Button>See paid plans</Button>
+        </Link>
+        <Link to="/dashboard">
+          <Button variant="secondary">Back to dashboard</Button>
+        </Link>
+      </div>
+    </div>
+  );
+}
+
 function UpgradePrompt() {
   return (
     <div className="flex flex-col items-center justify-center py-20 px-6 text-center">
@@ -236,7 +307,7 @@ export function FeedbackPage() {
   const { user, profile, refreshProfile, loading: authLoading } = useAuth();
 
   const [reportData, setReportData] = useState<ReportData | null>(null);
-  const [selectedTask, setSelectedTask] = useState<'task1' | 'task2'>('task2');
+  const [selectedTask, setSelectedTask] = useState<TaskKey>('task2');
   const [wordCountWarning, setWordCountWarning] = useState<string | null>(null);
   const [decodeError, setDecodeError] = useState(false);
   const [hasBothTasks, setHasBothTasks] = useState(false);
@@ -318,6 +389,26 @@ export function FeedbackPage() {
     }
   }, [id]);
 
+  // Reports generated earlier in this browser session are in sessionStorage.
+  // Restore them on mount, so reloading the page shows the report again rather
+  // than the gate below, and so markedTask knows which essay a free weekly
+  // report was already spent on.
+  useEffect(() => {
+    if (!id) return;
+    const restored: Record<string, EnhancedFeedbackResult> = {};
+    for (const t of ['task1', 'task2'] as const) {
+      const raw = sessionStorage.getItem(`feedback_${id}_${t}`);
+      if (!raw) continue;
+      try {
+        const parsed = JSON.parse(raw) as EnhancedFeedbackResult;
+        // Same staleness check loadFeedback uses: drop pre-`improved` reports.
+        const hasImproved = parsed.sentenceAnalysis?.some((sa) => 'improved' in sa);
+        if (hasImproved || !parsed.sentenceAnalysis?.length) restored[t] = parsed;
+      } catch { /* ignore a corrupt entry */ }
+    }
+    if (Object.keys(restored).length) setFeedbacks((prev) => ({ ...restored, ...prev }));
+  }, [id]);
+
   // Word count check
   useEffect(() => {
     if (!reportData) return;
@@ -326,7 +417,7 @@ export function FeedbackPage() {
     const min = selectedTask === 'task1' ? 150 : 250;
     if (count > 0 && count < min) {
       setWordCountWarning(
-        `Your essay is ${count} words — below the IELTS minimum of ${min} words for ${
+        `Your essay is ${count} words, below the IELTS minimum of ${min} words for ${
           selectedTask === 'task1' ? 'Task 1' : 'Task 2'
         }. Short essays are penalised for Task Achievement.`
       );
@@ -351,14 +442,27 @@ export function FeedbackPage() {
   const hasFreeCredit = (profile?.bonusAnalyses ?? 0) > 0 || hasFreeReportThisWeek(profile?.freeUsage);
   const canGetFeedback = isPro || hasFreeCredit;
 
-  const loadFeedback = useCallback(async () => {
+  // A mock exam is two essays; a free plan is one report a week. Loading
+  // automatically would spend that report on whichever task happened to be
+  // selected, so free plans choose the essay themselves and the other one
+  // stays unmarked. Paid plans have reports to spare, so they load straight in.
+  const markedTask: TaskKey | null =
+    (['task1', 'task2'] as const).find((t) => feedbacks[t]) ?? null;
+  const hasAnyFeedback = markedTask !== null;
+  const mustChooseTask = !isPro && hasBothTasks;
+
+  // `task` is passed explicitly when the student chooses which essay to spend
+  // their free weekly report on: setSelectedTask would not have applied yet,
+  // so reading selectedTask here would mark the wrong essay.
+  const loadFeedback = useCallback(async (task?: TaskKey) => {
     if (!reportData || !user) return;
+    const taskKey = task ?? selectedTask;
 
-    const essay = selectedTask === 'task1' ? reportData.userText1 : reportData.userText2;
+    const essay = taskKey === 'task1' ? reportData.userText1 : reportData.userText2;
     const question =
-      selectedTask === 'task1' ? (reportData.task1?.report ?? '') : (reportData.task2?.report ?? '');
+      taskKey === 'task1' ? (reportData.task1?.report ?? '') : (reportData.task2?.report ?? '');
 
-    const cacheKey = `feedback_${id}_${selectedTask}`;
+    const cacheKey = `feedback_${id}_${taskKey}`;
     const cached = sessionStorage.getItem(cacheKey);
     if (cached) {
       try {
@@ -366,14 +470,13 @@ export function FeedbackPage() {
         // Invalidate cache if it's missing the improved field (old format)
         const hasImproved = parsed.sentenceAnalysis?.some(s => 'improved' in s);
         if (hasImproved || !parsed.sentenceAnalysis?.length) {
-          setFeedbacks((p) => ({ ...p, [selectedTask]: parsed }));
+          setFeedbacks((p) => ({ ...p, [taskKey]: parsed }));
           return;
         }
         sessionStorage.removeItem(cacheKey);
       } catch { /* ignore */ }
     }
 
-    const taskKey = selectedTask;
     setLoadings((p) => ({ ...p, [taskKey]: true }));
     setAnalysisStage((p) => ({ ...p, [taskKey]: 0 }));
     setFeedbackErrors((p) => { const n = { ...p }; delete n[taskKey]; return n; });
@@ -402,7 +505,7 @@ export function FeedbackPage() {
         body: JSON.stringify({
           essayText: essay,
           questionText: question,
-          taskType: selectedTask === 'task1' ? 'Task 1' : 'Task 2',
+          taskType: taskKey === 'task1' ? 'Task 1' : 'Task 2',
           preCheckToken,
         }),
       });
@@ -475,11 +578,11 @@ export function FeedbackPage() {
 
   // Auto-load feedback when ready (per task)
   useEffect(() => {
-    if (reportData && user && canGetFeedback && !feedback && !loading && !feedbackError) {
+    if (reportData && user && canGetFeedback && !mustChooseTask && !feedback && !loading && !feedbackError) {
       loadFeedback();
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [reportData, user, canGetFeedback, selectedTask]);
+  }, [reportData, user, canGetFeedback, mustChooseTask, selectedTask]);
 
   const runSpellCheck = async (text: string) => {
     if (!text.trim()) return;
@@ -602,7 +705,7 @@ export function FeedbackPage() {
     );
   }
 
-  if (profile && !canGetFeedback && !feedback) {
+  if (profile && !canGetFeedback && !hasAnyFeedback) {
     return (
       <AppShell minimal>
         <div className="bg-[var(--bg-base)] min-h-[calc(100vh-56px)] py-10 flex items-center">
@@ -615,10 +718,10 @@ export function FeedbackPage() {
                 You&rsquo;ve used your free report this week
               </h2>
               <p className="text-white/70 mb-7 leading-relaxed">
-                Your essay has been saved. Free-plan users get 1 AI feedback report per week —
-                come back next week for another free check, or upgrade to Basic, Standard or
-                Premium for more reports each month, with band scores, corrections, vocabulary
-                and grammar.
+                Your essay has been saved. The free plan gives 1 AI feedback report per week, and
+                that report covers one essay. Come back on Monday for another free check, or upgrade
+                to Basic, Standard or Premium for more reports each month, with band scores,
+                corrections, vocabulary and grammar.
               </p>
               <div className="flex gap-3 justify-center flex-wrap">
                 <Link to="/pricing">
@@ -694,7 +797,13 @@ export function FeedbackPage() {
                       }`}
                     >
                       {t === 'task1' ? 'Task 1' : 'Task 2'}
-                      {isLoading ? <Loader2 className="w-3 h-3 animate-spin opacity-70" /> : hasFb ? <CheckCircle2 className="w-3 h-3 opacity-80" /> : null}
+                      {isLoading ? (
+                        <Loader2 className="w-3 h-3 animate-spin opacity-70" />
+                      ) : hasFb ? (
+                        <CheckCircle2 className="w-3 h-3 opacity-80" />
+                      ) : mustChooseTask ? (
+                        <Lock className="w-3 h-3 opacity-60" aria-label="not marked" />
+                      ) : null}
                     </button>
                   );
                 })}
@@ -740,6 +849,19 @@ export function FeedbackPage() {
               {selectedTask === 'task1' ? reportData.task1?.report : reportData.task2?.report}
             </p>
           </div>
+
+          {/* ── Free plan: one report a week, two essays in this exam ── */}
+          {mustChooseTask && !feedback && !loading && !feedbackError && (
+            <FreeTaskGate
+              hasCredit={canGetFeedback}
+              markedTask={markedTask}
+              onChoose={(t) => {
+                setSelectedTask(t);
+                setActiveTab('overview');
+                loadFeedback(t);
+              }}
+            />
+          )}
 
           {/* ── Loading (staged progress) ── */}
           {loading && (() => {
@@ -819,7 +941,7 @@ export function FeedbackPage() {
                     </Link>
                   ) : (
                     <>
-                      <Button size="sm" onClick={loadFeedback}>Try again</Button>
+                      <Button size="sm" onClick={() => loadFeedback()}>Try again</Button>
                       <a
                         href="https://t.me/writeready_admin"
                         target="_blank"
@@ -1140,7 +1262,7 @@ export function FeedbackPage() {
                         key={i}
                         type="button"
                         aria-pressed={!!flipped[i]}
-                        aria-label={`${v.word} — tap to ${flipped[i] ? 'hide' : 'show'} translation`}
+                        aria-label={`${v.word}, tap to ${flipped[i] ? 'hide' : 'show'} translation`}
                         className="fp-flip-card h-[185px] text-left bg-transparent border-0 p-0 cursor-pointer transition-transform duration-200 hover:scale-[1.03]"
                         onClick={() => setFlipped((prev) => ({ ...prev, [i]: !prev[i] }))}
                       >

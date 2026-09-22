@@ -192,7 +192,7 @@ export function AccountPage() {
               </div>
               <div className="text-sm text-white/50 mb-7">
                 {isForever
-                  ? 'Never expires — full access forever'
+                  ? 'Never expires, full access forever'
                   : profile.subscription
                     ? `Active until ${new Date(profile.subscription).toLocaleDateString(navigator.language, { month: 'long', day: 'numeric', year: 'numeric' })}`
                     : 'Active subscription'}

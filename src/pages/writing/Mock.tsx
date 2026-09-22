@@ -586,14 +586,14 @@ function Mock() {
 
               <ModalTitle className="mt-4 text-base font-semibold text-center text-slate-900 dark:text-neutral-100">
                 {autoSubmittedByTimer
-                  ? "Time's up — exam complete"
+                  ? "Time's up. Exam complete."
                   : "Exam saved"}
               </ModalTitle>
               <ModalDescription className="mt-2 text-sm leading-6 text-center text-slate-500 dark:text-neutral-400">
                 {autoSubmittedByTimer &&
                   "Your answers were automatically saved. "}
-                Would you like in-depth AI feedback on your writing? We'll
-                analyse grammar, vocabulary, coherence, and task achievement.
+                AI feedback marks your writing for grammar, vocabulary, coherence and task
+                achievement.
               </ModalDescription>
 
               <div className="flex flex-col gap-2.5 mt-6">

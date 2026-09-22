@@ -46,7 +46,7 @@ export function FeedbackRating({ reportId }: { reportId: string }) {
   if (done) {
     return (
       <p className="text-xs text-[var(--text-secondary)] py-3" role="status">
-        Thanks — that helps us improve the feedback.
+        Thanks, that helps us improve the feedback.
       </p>
     );
   }
