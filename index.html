@@ -71,7 +71,19 @@
       property="og:description"
       content="Practice IELTS Writing with instant AI feedback in Uzbek and English. Get band scores, grammar corrections, and vocabulary upgrades."
     />
-    <meta property="og:image" content="https://writeready.uz/logo.png" />
+    <!-- 1200x630 card, not the square logo: chat apps and search engines crop or
+         letterbox anything else. Built from scripts/og-image.svg by
+         `npm run og:image`. Telegram caches a preview per page URL forever, so
+         after changing this image ask @WebpageBot on Telegram to refresh
+         https://writeready.uz before checking how a shared link looks. -->
+    <meta property="og:image" content="https://writeready.uz/og-image.jpg" />
+    <meta property="og:image:type" content="image/jpeg" />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta
+      property="og:image:alt"
+      content="WriteReady IELTS — practice IELTS Writing with instant AI feedback, showing an overall band 7.5 score card."
+    />
     <meta property="og:locale" content="en_US" />
     <meta property="og:site_name" content="WriteReady IELTS" />
 
@@ -82,7 +94,11 @@
       name="twitter:description"
       content="Practice IELTS Writing with instant AI feedback in Uzbek and English."
     />
-    <meta name="twitter:image" content="https://writeready.uz/logo.png" />
+    <meta name="twitter:image" content="https://writeready.uz/og-image.jpg" />
+    <meta
+      name="twitter:image:alt"
+      content="WriteReady IELTS — practice IELTS Writing with instant AI feedback, showing an overall band 7.5 score card."
+    />
 
     <!-- logo -->
     <link rel="icon" type="image/svg+xml" href="/logo.svg" />

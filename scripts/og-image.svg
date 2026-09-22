@@ -1,0 +1,81 @@
+<!-- Source for public/og-image.jpg (the link preview card shown by Telegram,
+     WhatsApp, Facebook, X). Re-render after editing:
+       npm run og:image
+     Keep it 1200x630 and keep the important content away from the edges,
+     since some clients crop the card. -->
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="630" viewBox="0 0 1200 630">
+<defs>
+  <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+    <stop offset="0" stop-color="#181542"/>
+    <stop offset="0.55" stop-color="#2b2585"/>
+    <stop offset="1" stop-color="#4338ca"/>
+  </linearGradient>
+  <radialGradient id="glowA" cx="0.5" cy="0.5" r="0.5">
+    <stop offset="0" stop-color="#f59e0b" stop-opacity="0.30"/>
+    <stop offset="1" stop-color="#f59e0b" stop-opacity="0"/>
+  </radialGradient>
+  <radialGradient id="glowB" cx="0.5" cy="0.5" r="0.5">
+    <stop offset="0" stop-color="#818cf8" stop-opacity="0.35"/>
+    <stop offset="1" stop-color="#818cf8" stop-opacity="0"/>
+  </radialGradient>
+  <linearGradient id="tile" x1="0" y1="0" x2="1" y2="1">
+    <stop offset="0" stop-color="#6366f1"/>
+    <stop offset="1" stop-color="#4f46e5"/>
+  </linearGradient>
+</defs>
+
+  <rect width="1200" height="630" fill="url(#bg)"/>
+  <ellipse cx="1120" cy="620" rx="460" ry="360" fill="url(#glowA)"/>
+  <ellipse cx="120" cy="40" rx="420" ry="320" fill="url(#glowB)"/>
+
+
+  <!-- brand row -->
+  <rect x="80" y="70" width="76" height="76" rx="19" fill="url(#tile)"/>
+  <g transform="translate(80,70) scale(0.1484)">
+    <polyline points="104,176 180,368 256,216 332,368" fill="none" stroke="#ffffff" stroke-width="56" stroke-linecap="round" stroke-linejoin="round"/>
+    <polyline points="332,368 416,120" fill="none" stroke="#fbbf24" stroke-width="56" stroke-linecap="round"/>
+  </g>
+  <text x="176" y="122" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="34" font-weight="700" fill="#ffffff" letter-spacing="0.4">WriteReady<tspan fill="#fbbf24"> IELTS</tspan></text>
+
+  <!-- headline -->
+  <text x="80" y="262" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="47" font-weight="700" fill="#ffffff">Practice IELTS Writing</text>
+  <text x="80" y="320" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="47" font-weight="700" fill="#ffffff">with instant AI feedback</text>
+
+  <!-- supporting copy -->
+  <text x="80" y="382" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="22" font-weight="400" fill="#c7d2fe">Band score, grammar fixes and vocabulary</text>
+  <text x="80" y="414" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="22" font-weight="400" fill="#c7d2fe">upgrades — in Uzbek and English.</text>
+
+  <!-- chips -->
+  <g font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="20" font-weight="500">
+    <rect x="80" y="452" width="196" height="46" rx="23" fill="#ffffff" fill-opacity="0.10" stroke="#ffffff" stroke-opacity="0.18"/>
+    <text x="178" y="481" fill="#e0e7ff" text-anchor="middle">Task 1 &amp; Task 2</text>
+    <rect x="288" y="452" width="202" height="46" rx="23" fill="#ffffff" fill-opacity="0.10" stroke="#ffffff" stroke-opacity="0.18"/>
+    <text x="389" y="481" fill="#e0e7ff" text-anchor="middle">4 practice modes</text>
+  </g>
+
+  <text x="80" y="562" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="24" font-weight="700" fill="#fbbf24" letter-spacing="0.6">writeready.uz</text>
+
+  <!-- score card -->
+  <rect x="740" y="140" width="380" height="370" rx="30" fill="#ffffff" fill-opacity="0.08" stroke="#ffffff" stroke-opacity="0.17"/>
+  <text x="930" y="200" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="15" font-weight="600" fill="#a5b4fc" letter-spacing="3" text-anchor="middle">OVERALL BAND</text>
+  <text x="930" y="300" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="92" font-weight="700" fill="#ffffff" text-anchor="middle">7.5</text>
+  <line x1="778" y1="340" x2="1082" y2="340" stroke="#ffffff" stroke-opacity="0.14" stroke-width="2"/>
+
+  <g font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="15" font-weight="400" fill="#c7d2fe">
+    <text x="778" y="385">Task Response</text>
+    <rect x="950" y="375" width="132" height="8" rx="4" fill="#ffffff" fill-opacity="0.16"/>
+    <rect x="950" y="375" width="112" height="8" rx="4" fill="#fbbf24"/>
+
+    <text x="778" y="417">Coherence</text>
+    <rect x="950" y="407" width="132" height="8" rx="4" fill="#ffffff" fill-opacity="0.16"/>
+    <rect x="950" y="407" width="95" height="8" rx="4" fill="#fbbf24"/>
+
+    <text x="778" y="449">Lexical Resource</text>
+    <rect x="950" y="439" width="132" height="8" rx="4" fill="#ffffff" fill-opacity="0.16"/>
+    <rect x="950" y="439" width="105" height="8" rx="4" fill="#fbbf24"/>
+
+    <text x="778" y="481">Grammar</text>
+    <rect x="950" y="471" width="132" height="8" rx="4" fill="#ffffff" fill-opacity="0.16"/>
+    <rect x="950" y="471" width="88" height="8" rx="4" fill="#fbbf24"/>
+  </g>
+</svg>

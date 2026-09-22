@@ -105,8 +105,10 @@ export function LeaderboardSection() {
       await Promise.all([...selected].map(async (uid) => {
         const snap = await getDocs(query(collection(db, "users"), where("__name__", "==", uid)));
         const current = snap.docs[0]?.data()?.bonusAnalyses ?? 0;
-        // Students read this in Uzbek on the site.
-        const msg = `🎁 Tabriklaymiz! Sizga ${n} ta bepul AI tahlil berildi. Inshoingizni yuboring va natijani ko'ring!`;
+        // Shown to the student twice: as the dashboard banner (users.notification)
+        // and as the preview line in the notification bell. The rest of the site
+        // is in English, so this line is too.
+        const msg = `🎁 Congratulations! You got ${n} free AI ${n === 1 ? "analysis" : "analyses"}. Send your essay and see your result!`;
         await updateDoc(doc(db, "users", uid), { bonusAnalyses: current + n, notification: msg });
         await addDoc(collection(db, "notifications", uid, "items"), {
           type: "bonus",

@@ -112,8 +112,8 @@ function PracticeResult({ result, accentClass }: {
   accentClass?: string;
 }) {
   const isSystemError = result.score === 0 && !result.correct && (
-    result.feedback.includes('Tekshirib bo\'lmadi') ||
-    result.feedback.includes('Tarmoq xatosi') ||
+    result.feedback.includes('Could not check it') ||
+    result.feedback.includes('Network error') ||
     result.feedback.includes('Evaluation failed') ||
     result.feedback.includes('not configured') ||
     result.feedback.includes('required')
@@ -526,7 +526,7 @@ export function FeedbackPage() {
         setPracticeChecked((p) => ({ ...p, [key]: {
           score: 0,
           correct: false,
-          feedback: data.error ?? 'Tekshirib bo\'lmadi. Qayta urinib ko\'ring.',
+          feedback: data.error ?? 'Could not check it. Please try again.',
           improved: '',
         }}));
         return;
@@ -541,7 +541,7 @@ export function FeedbackPage() {
       setPracticeChecked((p) => ({ ...p, [key]: {
         score: 0,
         correct: false,
-        feedback: `Tarmoq xatosi: ${(err as Error).message}`,
+        feedback: `Network error: ${(err as Error).message}`,
         improved: '',
       }}));
     } finally {
@@ -1161,7 +1161,7 @@ export function FeedbackPage() {
                           >
                             <div className="w-full">
                               <span className="bg-[var(--gold)] text-white text-[0.65rem] font-bold px-2 py-0.5 rounded-full inline-block mb-2 uppercase tracking-wide">
-                                O'zbek
+                                Uzbek
                               </span>
                               <p className="text-[0.9rem] font-bold text-[var(--text-primary)] mb-1">{v.uzbek}</p>
                               <p className="text-[0.75rem] text-[var(--text-muted)] mb-2 leading-snug">{v.english}</p>

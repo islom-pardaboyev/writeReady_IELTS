@@ -7,7 +7,8 @@
     "dev": "vite",
     "build": "tsc -b && vite build",
     "lint": "oxlint",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "og:image": "bash scripts/build-og-image.sh"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.106.0",

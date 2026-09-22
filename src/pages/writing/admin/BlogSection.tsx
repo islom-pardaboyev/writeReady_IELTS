@@ -191,8 +191,9 @@ export function BlogSection({ intent, clearIntent }: SectionProps) {
       else id = await saveBlogPost(postData, db);
       if (wasPublished && !wasAlreadyPublished) {
         const usersSnap = await getDocs(collection(db, "users"));
-        // Students read this in Uzbek on the site.
-        const preview = `📝 Yangi maqola: "${postData.title}"`;
+        // The notification bell puts "New blog post" above this line, so the
+        // preview is just the title.
+        const preview = postData.title;
         await Promise.all(usersSnap.docs.map((u) =>
           addDoc(collection(db, "notifications", u.id, "items"), {
             type: "new_post",

@@ -205,7 +205,7 @@ export function Header() {
                       to="/pricing"
                       className="flex items-center gap-2.5 px-3 py-2 text-sm text-amber-700 font-semibold no-underline cursor-pointer hover:bg-amber-50 rounded-md mx-1 dark:text-amber-400 dark:hover:bg-amber-900/20"
                     >
-                      <span aria-hidden="true">⭐</span> Rejani yangilash
+                      <span aria-hidden="true">⭐</span> Upgrade plan
                     </Link>
                   </DropdownMenuItem>
                 )}

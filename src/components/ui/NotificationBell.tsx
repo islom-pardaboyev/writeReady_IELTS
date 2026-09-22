@@ -29,7 +29,7 @@ function relativeTime(d: Date | null): string {
   return d.toLocaleDateString('en-GB', { day: 'numeric', month: 'short' });
 }
 
-// Previews written for the site start with an emoji ("🎁 Tabriklaymiz!");
+// Previews written for the site start with an emoji ("🎁 Congratulations!");
 // the row already has an icon, so drop it.
 const stripLeadingEmoji = (text: string) => text.replace(/^[\p{Extended_Pictographic}\p{Emoji_Modifier}\s]+/u, '');
 
@@ -50,7 +50,14 @@ function describe(n: Notification): Described {
     case 'comment':
       return { icon: MessageCircle, title: <><strong className="font-semibold">{name}</strong> left a comment</>, body: preview, href: postHref };
     case 'new_post':
-      return { icon: Newspaper, title: <strong className="font-semibold">New blog post</strong>, body: preview, href: postHref };
+      // Posts published before this line was translated stored the title behind
+      // an Uzbek label; the row's own title says what it is, so drop the label.
+      return {
+        icon: Newspaper,
+        title: <strong className="font-semibold">New blog post</strong>,
+        body: preview.replace(/^Yangi maqola:\s*/i, '').replace(/^"(.*)"$/, '$1'),
+        href: postHref,
+      };
     case 'human_feedback':
       return {
         icon: GraduationCap,
@@ -58,8 +65,19 @@ function describe(n: Notification): Described {
         body: 'Your feedback is ready to download.',
         href: n.reviewId ? `/human-review/${n.reviewId}` : '/dashboard',
       };
-    case 'bonus':
-      return { icon: Gift, title: <strong className="font-semibold">Free AI analyses added</strong>, body: preview };
+    case 'bonus': {
+      // Grants made before this line was translated are stored in Uzbek, so the
+      // sentence is rebuilt here from the count instead of shown as stored.
+      const count = Number(preview.match(/\d+/)?.[0] ?? NaN);
+      const one = count === 1;
+      return {
+        icon: Gift,
+        title: <strong className="font-semibold">Free AI {one ? 'analysis' : 'analyses'} added</strong>,
+        body: count > 0
+          ? `You got ${count} free AI ${one ? 'analysis' : 'analyses'}. Send your essay and see your result!`
+          : 'Send your essay and see your result!',
+      };
+    }
     default:
       return { icon: Bell, title: <strong className="font-semibold">{name}</strong>, body: preview };
   }

@@ -98,5 +98,5 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     return res.status(200).json({ role: 'teacher', customToken, teacherId: teacherDoc.id, teacherName: data.name ?? 'Teacher' });
   }
 
-  return res.status(401).json({ error: "Login yoki parol noto'g'ri!" });
+  return res.status(401).json({ error: 'Incorrect login or password.' });
 }

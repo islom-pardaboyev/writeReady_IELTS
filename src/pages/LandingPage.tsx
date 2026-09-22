@@ -161,7 +161,7 @@ export function LandingPage() {
                 <span className="text-[0.75rem] text-[var(--text-secondary)]">→</span>
                 <span className="text-[0.8rem] font-semibold text-[var(--text-primary)]">profoundly</span>
               </div>
-              <p className="text-[0.75rem] text-[var(--text-secondary)]">O'zbek: keskin darajada · C1 level</p>
+              <p className="text-[0.75rem] text-[var(--text-secondary)]">Uzbek: keskin darajada · C1 level</p>
             </div>
           </div>
 

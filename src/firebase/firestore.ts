@@ -67,7 +67,7 @@ export async function createUserProfile(uid: string, email: string): Promise<voi
     plan: 'free',
     subscriptionExpiresAt: null,
     createdAt: serverTimestamp(),
-    notification: '🎁 Xush kelibsiz! Har hafta 1 marta bepul AI tahlil olishingiz mumkin. Sinab ko\'ring!',
+    notification: '🎁 Welcome! You get 1 free AI analysis every week. Give it a try!',
   });
 }
 
