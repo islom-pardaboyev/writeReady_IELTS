@@ -233,7 +233,7 @@ function stageFromRaw(raw: string): number {
 export function FeedbackPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
-  const { user, profile, refreshProfile } = useAuth();
+  const { user, profile, refreshProfile, loading: authLoading } = useAuth();
 
   const [reportData, setReportData] = useState<ReportData | null>(null);
   const [selectedTask, setSelectedTask] = useState<'task1' | 'task2'>('task2');
@@ -335,10 +335,13 @@ export function FeedbackPage() {
     }
   }, [reportData, selectedTask]);
 
-  // Redirect if not logged in
+  // Redirect if not logged in — wait for Firebase Auth to finish rehydrating
+  // the session first, otherwise a hard refresh on this page (a shared report
+  // link is exactly that) bounces a signed-in user to /auth before their
+  // session has a chance to load.
   useEffect(() => {
-    if (user === null) navigate('/auth');
-  }, [user, navigate]);
+    if (!authLoading && user === null) navigate('/auth');
+  }, [user, authLoading, navigate]);
 
   const isPro = profile?.plan === 'basic' || profile?.plan === 'standard' || profile?.plan === 'premium' || profile?.plan === 'forever';
   // Free-plan users get 1 AI feedback report per week (or an admin-granted

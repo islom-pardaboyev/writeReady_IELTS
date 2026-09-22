@@ -14,7 +14,7 @@ export function WorkspacePage() {
   const { id } = useParams<{ id: string }>();
   const [params] = useSearchParams();
   const mode = (params.get('mode') ?? 'practice') as PracticeMode;
-  const { user, profile } = useAuth();
+  const { user, profile, loading: authLoading } = useAuth();
   const navigate = useNavigate();
 
   const [question, setQuestion] = useState<Question | null>(null);
@@ -28,6 +28,10 @@ export function WorkspacePage() {
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   useEffect(() => {
+    // Wait for Firebase Auth to finish rehydrating before deciding the
+    // visitor is signed out — otherwise a hard refresh on this page bounces a
+    // signed-in user to /auth before their session has a chance to load.
+    if (authLoading) return;
     if (!user) { navigate('/auth'); return; }
     if (!id) { navigate('/dashboard'); return; }
     getQuestion(id).then((q) => {
@@ -35,7 +39,7 @@ export function WorkspacePage() {
       setLoading(false);
     });
     return () => { if (intervalRef.current) clearInterval(intervalRef.current); };
-  }, [id, user, navigate]);
+  }, [id, user, authLoading, navigate]);
 
   const startTimer = useCallback(() => {
     setStarted(true);

@@ -30,7 +30,7 @@ const PRO_FEATURES = [
 
 
 export function AccountPage() {
-  const { user, profile, logOut, updateDisplayName, changePassword } = useAuth();
+  const { user, profile, logOut, updateDisplayName, changePassword, loading: authLoading } = useAuth();
   const { usage } = useUsage(user?.uid ?? null);
   const navigate = useNavigate();
   const rootRef = useRef<HTMLDivElement>(null);
@@ -48,8 +48,11 @@ export function AccountPage() {
   const [passwordSuccess, setPasswordSuccess] = useState(false);
 
   useEffect(() => {
-    if (!user) navigate('/auth');
-  }, [user, navigate]);
+    // Wait for Firebase Auth to finish rehydrating before deciding the visitor
+    // is signed out — otherwise a hard refresh on /account bounces a signed-in
+    // user to /auth before their session has a chance to load.
+    if (!authLoading && !user) navigate('/auth');
+  }, [user, authLoading, navigate]);
 
   useEffect(() => {
     if (user) setNameInput(user.displayName ?? '');
