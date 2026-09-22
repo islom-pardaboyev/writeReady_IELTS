@@ -14,6 +14,7 @@ import {
 } from 'firebase/auth';
 import { auth } from '../firebase/config';
 import { createUserProfile, getUserProfile } from '../firebase/firestore';
+import { markSeen } from '../lib/seen';
 import type { UserProfile } from '../types';
 import { AuthContext } from './authContextDef';
 
@@ -36,6 +37,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setUser(u);
       if (u) {
         await loadProfile(u);
+        // After the profile exists, so a brand new account is never stamped
+        // before it is written. Not awaited: nothing on screen waits for it.
+        void markSeen();
       } else {
         setProfile(null);
       }

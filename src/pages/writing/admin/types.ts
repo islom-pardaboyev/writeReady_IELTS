@@ -36,6 +36,8 @@ export interface UserRow {
   expiresAt?: string;
   createdAt?: string;
   balanceUZS?: number;
+  /** When they were last on the site, as an ISO string. Empty if never seen. */
+  lastActiveAt?: string;
 }
 
 export interface PendingReview {

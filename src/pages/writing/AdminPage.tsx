@@ -27,6 +27,10 @@ import { BlogSection } from "./admin/BlogSection";
 import { SettingsSection } from "./admin/SettingsSection";
 import type { AdminSection, Intent, PendingReview, UserRow } from "./admin/types";
 
+/** The newer of two ISO times, or "" when there is neither. */
+const latest = (...times: (string | undefined)[]) =>
+  times.filter(Boolean).sort().at(-1) ?? "";
+
 export default function Admin() {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [adminUser, setAdminUser] = useState("Admin");
@@ -69,7 +73,23 @@ export default function Admin() {
   const loadUsers = useCallback(async () => {
     setUsersLoading(true);
     try {
-      const snap = await getDocs(collection(db, "users"));
+      // `lastActiveAt` is stamped by api/seen.ts every time someone opens the
+      // site, so it counts a visit even if they never check an essay. It only
+      // exists for people who have been back since it was added, so their
+      // newest essay check stands in for the ones who have not. Reports come
+      // back newest first, so the first one for a user is their latest.
+      const [snap, reportSnap] = await Promise.all([
+        getDocs(collection(db, "users")),
+        getDocs(query(collection(db, "feedback_reports"), orderBy("createdAt", "desc"))),
+      ]);
+      const lastReport: Record<string, string> = {};
+      reportSnap.docs.forEach((d) => {
+        const data = d.data();
+        const uid = data.uid as string | undefined;
+        if (!uid || lastReport[uid]) return;
+        const ts = data.createdAt?.toDate?.() as Date | undefined;
+        if (ts) lastReport[uid] = ts.toISOString();
+      });
       setUsers(
         snap.docs
           .filter((d) => !d.data().email?.endsWith("@writeready.internal"))
@@ -83,6 +103,7 @@ export default function Admin() {
               expiresAt: data.expiresAt ?? "",
               createdAt: data.createdAt?.toDate?.()?.toISOString() ?? "",
               balanceUZS: typeof data.balanceUZS === "number" ? data.balanceUZS : 0,
+              lastActiveAt: latest(data.lastActiveAt?.toDate?.()?.toISOString(), lastReport[d.id]),
             };
           }),
       );

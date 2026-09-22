@@ -101,3 +101,15 @@ export function planStatus(u: UserRow): string {
 export function joinedToday(u: UserRow): boolean {
   return u.createdAt?.slice(0, 10) === todayKey();
 }
+
+// ── Activity ─────────────────────────────────────────────────────────────────
+// The last time a person opened the site, stamped by api/seen.ts. Accounts that
+// have not been back since that was added fall back to their newest essay
+// check — see loadUsers() in AdminPage.tsx.
+
+/** "Active 5 minutes ago", or a plain date once it is over a week old. */
+export function lastActiveLabel(u: Pick<UserRow, "lastActiveAt">): string {
+  const ago = timeAgo(u.lastActiveAt);
+  if (!ago) return "Not active yet";
+  return Date.now() - new Date(u.lastActiveAt!).getTime() < 7 * DAY ? `Active ${ago}` : `Active on ${ago}`;
+}

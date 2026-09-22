@@ -4,13 +4,14 @@ import { RefreshCw, Trash2, Users } from "lucide-react";
 import { adminDb as db } from "@/firebase/adminConfig";
 import { deleteUserAccount } from "@/firebase/firestore";
 import { useConfirm } from "@/hooks/useConfirm";
+import { formatDateTime } from "@/lib/duration";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/Button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { ListDetail, ListPane, RowList, ListRow, DetailView, DetailHeader, DetailSection, KeyValues } from "@/components/staff/ListDetail";
 import { EmptyState, Field, FilterChips, Initials, LoadError, Notice, RowSkeletons, SearchField } from "@/components/staff/parts";
-import { PLANS, formatDate, isExpiredPaid, isPaying, joinedToday, planBadge, planLabel, planOf, planStatus, uzs, type PlanId } from "./format";
+import { PLANS, formatDate, isExpiredPaid, isPaying, joinedToday, lastActiveLabel, planBadge, planLabel, planOf, planStatus, uzs, type PlanId } from "./format";
 import type { SectionProps, SetState, UserRow } from "./types";
 
 type Filter = "all" | "today" | "paying" | "expired";
@@ -208,6 +209,7 @@ export function UsersSection({
                   {joinedToday(u) ? "Joined today" : u.createdAt ? `Joined ${formatDate(u.createdAt)}` : "Join date unknown"}
                   {(u.balanceUZS ?? 0) > 0 && <> · <span className="tabular-nums">{uzs(u.balanceUZS ?? 0)}</span></>}
                 </p>
+                <p className="mt-0.5 truncate text-xs text-[var(--text-secondary)]">{lastActiveLabel(u)}</p>
               </div>
             </ListRow>
           ))}
@@ -286,11 +288,17 @@ export function UsersSection({
           )}
         </DetailSection>
 
-        <DetailSection title="Account">
+        <DetailSection title="Account" description="Last active is the last time this person opened the site. For anyone who has not been back since we started recording it, it shows their last essay check instead.">
           <KeyValues
             items={[
               { label: "Joined", value: formatDate(selected.createdAt) ?? "Unknown" },
               { label: "Plan ends", value: current === "forever" ? "Never" : formatDate(selected.expiresAt) ?? "No end date" },
+              {
+                label: "Last active",
+                value: selected.lastActiveAt
+                  ? <span title={formatDateTime(new Date(selected.lastActiveAt).getTime())}>{lastActiveLabel(selected)}</span>
+                  : "Never",
+              },
               { label: "User ID", value: <span className="font-mono text-xs">{selected.id}</span> },
             ]}
           />
