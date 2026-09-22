@@ -29,6 +29,19 @@ export function isStandalone(): boolean {
   );
 }
 
+/**
+ * A phone or a tablet, as opposed to a laptop or a desktop.
+ *
+ * `pointer: coarse` asks what the *primary* pointing device is, which is the
+ * question worth asking here. Screen size cannot answer it: an iPad is wider
+ * than plenty of laptops. Nor can touch support: a Windows laptop with a
+ * touchscreen still points with its trackpad, so it reports a fine pointer and
+ * is correctly left out, while a phone or an iPad reports a coarse one.
+ */
+export function isHandheld(): boolean {
+  return window.matchMedia("(pointer: coarse)").matches;
+}
+
 export function isIOSSafari(): boolean {
   const ua = navigator.userAgent;
   const ios =
@@ -98,9 +111,15 @@ window.addEventListener("appinstalled", () => {
   emit();
 });
 
-/** There is somewhere to send this visitor — a real prompt, or the steps. */
+/**
+ * There is somewhere to send this visitor — a real prompt, or the steps.
+ *
+ * Laptops and desktops are excluded deliberately, even where Chrome offers to
+ * install: the home screen is the point, and on a machine that already has the
+ * site one bookmark away the offer is just something else to dismiss.
+ */
 export function canInstall(): boolean {
-  return !installed && (deferred !== null || isIOSSafari());
+  return !installed && isHandheld() && (deferred !== null || isIOSSafari());
 }
 
 /** The browser gave us an event, so the install is a single tap. */

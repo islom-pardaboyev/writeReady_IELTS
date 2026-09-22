@@ -48,19 +48,22 @@ export function MaintenancePage({ startedAt, endsAt }: { startedAt: number | nul
 
   return (
     <div className="flex min-h-dvh flex-col bg-[var(--bg-base)] text-[var(--text-primary)]">
-      <header className="mx-auto flex w-full max-w-[1160px] items-center gap-2 px-6 py-5">
+      <header className="mx-auto flex w-full max-w-[1160px] items-center gap-2 px-5 py-5 sm:px-6">
         <img src={Logo} width={36} height={36} className="size-9" alt="" />
         <span className="text-lg font-bold">
           WriteReady <span className="text-[var(--ink-blue)]">IELTS</span>
         </span>
       </header>
 
-      <main className="mx-auto flex w-full max-w-[680px] flex-1 flex-col items-center justify-center px-6 pb-20 pt-8 text-center">
-        <h1 className="text-balance text-[clamp(2.25rem,5.5vw,3.75rem)] font-black leading-[1.05] tracking-[-0.035em]">
+      <main className="mx-auto flex w-full max-w-[680px] flex-1 flex-col items-center justify-center px-5 pb-16 pt-6 text-center sm:px-6 sm:pb-20 sm:pt-8">
+        <h1 className="text-balance text-[clamp(2rem,5.5vw,3.75rem)] font-black leading-[1.05] tracking-[-0.035em]">
           {counting ? (
             <>
               We reopen {day === 'today' || day === 'tomorrow' ? '' : 'on '}
-              <span className="whitespace-nowrap text-[var(--ink-blue)]">{day}.</span>
+              {/* Held on one line from sm up, where there is room for it. A
+                  narrow phone plus a long date ("27 September 2027") runs past
+                  the screen edge, and a wrapped date beats a clipped one. */}
+              <span className="text-[var(--ink-blue)] sm:whitespace-nowrap">{day}.</span>
             </>
           ) : pastEnd ? (
             <>
@@ -102,7 +105,7 @@ export function MaintenancePage({ startedAt, endsAt }: { startedAt: number | nul
         </a>
       </main>
 
-      <footer className="mx-auto w-full max-w-[1160px] border-t border-[var(--border-color)] px-6 py-5 text-center text-sm text-[var(--text-secondary)]">
+      <footer className="mx-auto w-full max-w-[1160px] border-t border-[var(--border-color)] px-5 py-5 text-center text-sm text-[var(--text-secondary)] sm:px-6">
         Teachers and learning centers can still sign in to the{' '}
         <Link to="/teacher-portal" className="font-medium text-[var(--text-primary)] underline decoration-[var(--border-strong)] underline-offset-4 hover:text-[var(--ink-blue)] hover:decoration-current">
           teacher portal
