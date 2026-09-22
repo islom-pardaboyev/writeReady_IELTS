@@ -335,24 +335,12 @@ ${bandDescriptors(taskType)}
 
 ${scoringMethod()}
 
-Return ONLY this JSON structure:
+Return ONLY this JSON structure, and nothing beyond it:
 {
-${scoresSchema(taskType, false)}
-  "feedback": {
-    "taskAchievement": {
-      "strengths": ["<1 concrete strength>"],
-      "issues": ["<1 specific issue>"]
-    }
-  },
-  "priorityFixes": [
-    "<most important fix — specific and actionable>",
-    "<second most important fix>",
-    "<third most important fix>"
-  ]
+${scoresSchema(taskType, false).replace(/,\s*$/, '')}
 }
 
 STRICT RULES:
-- Keep every feedback/strength/issue string to one concise sentence
 ${scoringRules()}`;
 }
 
@@ -518,20 +506,31 @@ function applyOfficialRounding(feedback: ParsedFeedback): ParsedFeedback {
   return feedback;
 }
 
+/**
+ * The free report carries the four bands and nothing else.
+ *
+ * Every other field is filled in empty rather than left out, because the whole
+ * object is handed to code that expects a full report. A missing array reads as
+ * undefined and takes the page down on the first `.map`, which is exactly what
+ * used to happen to free accounts.
+ */
 function parseLimitedResponse(raw: string, wordCount: number, taskType: string): ParsedFeedback {
+  let parsed: Partial<ParsedFeedback> = {};
   try {
-    const cleaned = raw.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
-    const parsed = JSON.parse(cleaned);
-    return applyOfficialRounding({ ...parsed, limited: true });
-  } catch {
-    return {
-      taskType, topic: 'General', wordCount,
-      scores: { taskAchievement: 5.5, coherenceCohesion: 5.5, lexicalResource: 5.5, grammaticalRangeAccuracy: 5.5, overall: 5.5 },
-      feedback: { taskAchievement: { strengths: ['Essay addresses the task'], issues: ['Could not analyse this attempt — please try again.'] } },
-      priorityFixes: ['We could not generate recommendations for this attempt. Please try again.'],
-      limited: true,
-    };
-  }
+    parsed = JSON.parse(raw.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim());
+  } catch { /* keep the defaults below */ }
+
+  return applyOfficialRounding({
+    taskType, topic: 'General', wordCount,
+    scores: { taskAchievement: 5.5, coherenceCohesion: 5.5, lexicalResource: 5.5, grammaticalRangeAccuracy: 5.5, overall: 5.5 },
+    ...parsed,
+    feedback: {},
+    priorityFixes: [],
+    sentenceAnalysis: [],
+    vocabulary: [],
+    grammar: [],
+    limited: true,
+  });
 }
 
 function parseResponse(raw: string, wordCount: number, taskType: string): ParsedFeedback {

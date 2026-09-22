@@ -234,6 +234,40 @@ function FreeTaskGate({
   );
 }
 
+/** What sits under the score on a free report: the bands, then what a paid plan adds. */
+function FreeReportNotice() {
+  return (
+    <div className="rounded-2xl border border-[var(--border-color)] bg-[var(--bg-card)] p-6 shadow-sm">
+      <p className="flex items-center gap-2 font-bold text-[var(--text-primary)]">
+        <span className="inline-flex items-center justify-center w-7 h-7 rounded-lg bg-[var(--ink-blue)]/10">
+          <Lock className="w-4 h-4 text-[var(--ink-blue)]" />
+        </span>
+        Your free weekly report is the band score
+      </p>
+      <p className="mt-3 text-[0.9375rem] leading-relaxed text-[var(--text-secondary)]">
+        The four criteria above are marked against the official IELTS band descriptors, the same way a
+        paid report is marked. The greyed-out tabs are what a paid plan adds:
+      </p>
+      <ul className="mt-3 grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-1.5 text-[0.9375rem] text-[var(--text-secondary)] list-none p-0">
+        {['Every sentence reviewed and rewritten', 'Priority fixes and band gap analysis',
+          '15 words with Uzbek meanings', '10 grammar points',
+          'A band 8 to 9 sample answer', 'Spelling check and practice exercises'].map((item) => (
+          <li key={item} className="flex items-start gap-2">
+            <span aria-hidden="true" className="text-[var(--ink-blue)] mt-0.5">+</span>
+            {item}
+          </li>
+        ))}
+      </ul>
+      <Link
+        to="/pricing"
+        className="mt-5 inline-flex items-center gap-1.5 rounded-xl bg-[var(--ink-blue-solid)] px-6 py-3 text-sm font-bold text-white no-underline transition-opacity hover:opacity-90"
+      >
+        See plans <ChevronRight className="w-4 h-4" />
+      </Link>
+    </div>
+  );
+}
+
 function UpgradePrompt() {
   return (
     <div className="flex flex-col items-center justify-center py-20 px-6 text-center">
@@ -322,6 +356,12 @@ export function FeedbackPage() {
   const feedback = feedbacks[selectedTask] ?? null;
   const feedbackError = feedbackErrors[selectedTask] ?? null;
 
+  // The tab a free report is allowed to show. Every panel renders off this
+  // rather than activeTab, so a free report stays on Overview even if
+  // activeTab was left on another tab by a paid report in the same session.
+  // Nothing else can mount, so nothing else can start a request.
+  const shownTab: Tab = feedback?.limited ? 'overview' : activeTab;
+
   const [flipped, setFlipped] = useState<Record<number, boolean>>({});
   // Each category accordion opens/closes independently — opening one must never close another.
   const [expandedCats, setExpandedCats] = useState<Set<string>>(new Set(['taskAchievement']));
@@ -403,7 +443,12 @@ export function FeedbackPage() {
         const parsed = JSON.parse(raw) as EnhancedFeedbackResult;
         // Same staleness check loadFeedback uses: drop pre-`improved` reports.
         const hasImproved = parsed.sentenceAnalysis?.some((sa) => 'improved' in sa);
-        if (hasImproved || !parsed.sentenceAnalysis?.length) restored[t] = parsed;
+        if (!hasImproved && parsed.sentenceAnalysis?.length) continue;
+        // Entries cached before `limited` was set correctly claim to be full
+        // reports while carrying none of the data a full report has. A report
+        // with no sentence analysis and no vocabulary is a score-only one.
+        const looksLimited = !parsed.sentenceAnalysis?.length && !parsed.vocabulary?.length;
+        restored[t] = looksLimited ? { ...parsed, limited: true } : parsed;
       } catch { /* ignore a corrupt entry */ }
     }
     if (Object.keys(restored).length) setFeedbacks((prev) => ({ ...restored, ...prev }));
@@ -496,7 +541,7 @@ export function FeedbackPage() {
         try { errData = JSON.parse(errText); } catch { /* ignore */ }
         throw new Error(errData.error ?? `Server error (${preRes.status})`);
       }
-      const { token: preCheckToken } = await preRes.json() as { token: string };
+      const { token: preCheckToken, isBonus } = await preRes.json() as { token: string; isBonus: boolean };
 
       // Step 2: feedback — only HMAC verify + Claude stream (no Firebase overhead)
       const res = await fetch('/api/feedback', {
@@ -547,7 +592,12 @@ export function FeedbackPage() {
         throw new Error('Feedback incomplete. Please try again.');
       }
 
-      const feedbackWithLimit = { ...parsedFeedback, limited: parsedFeedback.limited ?? false };
+      // pre-check decides which prompt runs, so it is the authority on whether
+      // this report is the free score-only one. The model is never asked to
+      // return a `limited` field, so reading it off the response always gave
+      // false: every free report then rendered as a full one and the tabs it
+      // has no data for crashed on undefined.
+      const feedbackWithLimit = { ...parsedFeedback, limited: isBonus };
       setFeedbacks((p) => ({ ...p, [taskKey]: feedbackWithLimit }));
       sessionStorage.setItem(cacheKey, JSON.stringify(feedbackWithLimit));
       refreshProfile().catch(() => {});
@@ -1038,7 +1088,7 @@ export function FeedbackPage() {
               </div>
 
               {/* Recurring issues */}
-              {recurringIssues.length > 0 && (
+              {!feedback.limited && recurringIssues.length > 0 && (
                 <div className="flex items-start gap-3 bg-amber-50 border border-amber-200 dark:bg-amber-900/20 dark:border-amber-800 rounded-2xl px-5 py-4 mb-5">
                   <Repeat2 className="w-4 h-4 text-amber-700 dark:text-amber-400 mt-0.5 shrink-0" />
                   <div>
@@ -1064,7 +1114,12 @@ export function FeedbackPage() {
                 <div role="tablist" aria-label="Feedback report sections" className="mock-question-scroll flex overflow-x-auto px-4 sm:px-6">
                   {TABS.map((tab) => {
                     const Icon = tab.icon;
-                    const active = activeTab === tab.id;
+                    const active = shownTab === tab.id;
+                    // A free report buys the score. The rest stay on screen so the
+                    // student can see what a paid plan adds, but they are real
+                    // disabled buttons: not clickable, not reachable by keyboard,
+                    // and they never mount a panel that would fetch anything.
+                    const locked = !!feedback.limited && tab.id !== 'overview';
                     return (
                       <button
                         key={tab.id}
@@ -1072,15 +1127,21 @@ export function FeedbackPage() {
                         role="tab"
                         aria-selected={active}
                         aria-controls={`fp-panel-${tab.id}`}
-                        onClick={() => setActiveTab(tab.id)}
-                        className={`flex items-center gap-1.5 mt-1.5 px-3.5 py-2.5 rounded-lg text-[0.8125rem] font-semibold whitespace-nowrap cursor-pointer border-none bg-transparent relative transition-colors duration-150 shrink-0 ${
-                          active
-                            ? 'text-[var(--ink-blue)]'
-                            : 'text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-subtle)]'
+                        disabled={locked}
+                        tabIndex={locked ? -1 : undefined}
+                        title={locked ? 'Included in a paid plan' : undefined}
+                        onClick={locked ? undefined : () => setActiveTab(tab.id)}
+                        className={`flex items-center gap-1.5 mt-1.5 px-3.5 py-2.5 rounded-lg text-[0.8125rem] font-semibold whitespace-nowrap border-none bg-transparent relative transition-colors duration-150 shrink-0 ${
+                          locked
+                            ? 'text-[var(--text-secondary)] opacity-40 cursor-not-allowed'
+                            : active
+                              ? 'text-[var(--ink-blue)] cursor-pointer'
+                              : 'text-[var(--text-secondary)] cursor-pointer hover:text-[var(--text-primary)] hover:bg-[var(--bg-subtle)]'
                         }`}
                       >
                         <Icon className="w-4 h-4" />
                         {tab.label}
+                        {locked && <Lock className="w-3 h-3 shrink-0" aria-label="paid plan only" />}
                         {active && (
                           <span className="absolute bottom-[-6px] left-2 right-2 h-0.5 bg-[var(--ink-blue)] rounded-t-full" />
                         )}
@@ -1091,7 +1152,7 @@ export function FeedbackPage() {
               </div>
 
               {/* ── OVERVIEW ── */}
-              {activeTab === 'overview' && (
+              {shownTab === 'overview' && (
                 <div id="fp-panel-overview" role="tabpanel" aria-labelledby="fp-tab-overview" className="fp-tab-panel">
                   <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-6">
                     {CATEGORY_META.map((cat) => {
@@ -1122,7 +1183,7 @@ export function FeedbackPage() {
                   </div>
 
                   {feedback.limited ? (
-                    <UpgradePrompt />
+                    <FreeReportNotice />
                   ) : (
                     <div className="bg-[var(--bg-card)] rounded-2xl p-6 border border-[var(--border-color)] border-l-4 border-l-[var(--gold)] shadow-sm transition-shadow duration-200 hover:shadow-md">
                       <p className="flex items-center gap-2 font-bold text-[var(--text-primary)] mb-3">
@@ -1140,9 +1201,9 @@ export function FeedbackPage() {
               )}
 
               {/* ── PRIORITY FIXES ── */}
-              {activeTab === 'priority' && (
+              {shownTab === 'priority' && (
                 <div id="fp-panel-priority" role="tabpanel" aria-labelledby="fp-tab-priority" className="fp-tab-panel flex flex-col gap-4">
-                  {feedback.priorityFixes.map((fix, i) => {
+                  {(feedback.priorityFixes ?? []).map((fix, i) => {
                     const accent = i === 0 ? '#b91c1c' : i === 1 ? '#D97706' : '#16A34A';
                     const label = i === 0 ? 'High priority' : i === 1 ? 'Medium priority' : 'Also consider';
                     const labelColor = i === 0 ? 'text-red-700 dark:text-red-400' : i === 1 ? 'text-amber-800 dark:text-amber-400' : 'text-green-700 dark:text-green-400';
@@ -1172,9 +1233,9 @@ export function FeedbackPage() {
               )}
 
               {/* ── DETAILED FEEDBACK ── */}
-              {activeTab === 'detailed' && (feedback.limited ? <UpgradePrompt /> :(
+              {shownTab === 'detailed' && (feedback.limited ? <UpgradePrompt /> :(
                 <div id="fp-panel-detailed" role="tabpanel" aria-labelledby="fp-tab-detailed" className="fp-tab-panel flex flex-col gap-3">
-                  {(Object.entries(feedback.feedback) as [string, { strengths: string[]; issues: string[] }][]).map(
+                  {(Object.entries(feedback.feedback ?? {}) as [string, { strengths: string[]; issues: string[] }][]).map(
                     ([key, cat]) => {
                       const isOpen = expandedCats.has(key);
                       const catMeta = CATEGORY_BY_KEY[key] as typeof CATEGORY_META[number] | undefined;
@@ -1251,13 +1312,13 @@ export function FeedbackPage() {
               ))}
 
               {/* ── VOCABULARY ── */}
-              {activeTab === 'vocabulary' && (feedback.limited ? <UpgradePrompt /> :(
+              {shownTab === 'vocabulary' && (feedback.limited ? <UpgradePrompt /> :(
                 <div id="fp-panel-vocabulary" role="tabpanel" aria-labelledby="fp-tab-vocabulary" className="fp-tab-panel">
                   <p className="text-sm text-[var(--text-muted)] mb-5">
                     Tap a card to flip it and see the meaning and example sentence.
                   </p>
                   <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
-                    {feedback.vocabulary.map((v, i) => (
+                    {(feedback.vocabulary ?? []).map((v, i) => (
                       <button
                         key={i}
                         type="button"
@@ -1271,7 +1332,7 @@ export function FeedbackPage() {
                             className="fp-flip-face bg-linear-to-br from-purple-500 to-purple-700 text-white border border-purple-600 shadow-sm"
                           >
                             <p className="text-[0.65rem] font-bold tracking-widest uppercase text-white/40 mb-3">
-                              Word {i + 1} of {feedback.vocabulary.length}
+                              Word {i + 1} of {(feedback.vocabulary ?? []).length}
                             </p>
                             <p className="text-xl font-bold text-white leading-snug">
                               {v.word}
@@ -1300,9 +1361,9 @@ export function FeedbackPage() {
               ))}
 
               {/* ── GRAMMAR ── */}
-              {activeTab === 'grammar' && (feedback.limited ? <UpgradePrompt /> :(
+              {shownTab === 'grammar' && (feedback.limited ? <UpgradePrompt /> :(
                 <div id="fp-panel-grammar" role="tabpanel" aria-labelledby="fp-tab-grammar" className="fp-tab-panel flex flex-col gap-3">
-                  {feedback.grammar.map((g, i) => (
+                  {(feedback.grammar ?? []).map((g, i) => (
                     <div key={i} className="bg-[var(--bg-card)] rounded-2xl px-6 py-5 border border-[var(--border-color)] shadow-sm transition-[transform,box-shadow] duration-200 hover:shadow-md hover:-translate-y-0.5">
                       <div className="flex gap-4 items-start">
                         <div className="w-9 h-9 rounded-xl flex items-center justify-center bg-amber-500/10 text-amber-600 dark:text-amber-400 shrink-0">
@@ -1324,7 +1385,7 @@ export function FeedbackPage() {
               ))}
 
               {/* ── ESSAY ANALYSIS ── */}
-              {activeTab === 'essay' && (feedback.limited ? <UpgradePrompt /> : (() => {
+              {shownTab === 'essay' && (feedback.limited ? <UpgradePrompt /> : (() => {
                 const sentences = feedback.sentenceAnalysis ?? [];
                 const typeColor: Record<string, { bg: string; border: string; label: string; dot: string; text: string }> = {
                   word_choice: { bg: 'bg-purple-50 dark:bg-purple-900/20', border: 'border-purple-200 dark:border-purple-800', label: 'Word Choice', dot: 'bg-purple-500', text: 'text-purple-900 dark:text-purple-200' },
@@ -1403,7 +1464,7 @@ export function FeedbackPage() {
               })())}
 
               {/* ── SAMPLE RESPONSE ── */}
-              {activeTab === 'sample' && (feedback.limited ? <UpgradePrompt /> : (
+              {shownTab === 'sample' && (feedback.limited ? <UpgradePrompt /> : (
                 <div id="fp-panel-sample" role="tabpanel" aria-labelledby="fp-tab-sample" className="fp-tab-panel relative overflow-hidden bg-[var(--bg-card)] rounded-2xl border border-[var(--border-color)] border-l-4 border-l-[var(--gold)] px-6 py-6 shadow-sm transition-shadow duration-200 hover:shadow-md">
                   <div className="absolute inset-0 bg-linear-to-br from-[var(--gold)]/[0.05] via-transparent to-transparent pointer-events-none" />
                   <p className="relative flex items-center gap-2 text-xs font-bold tracking-widest uppercase text-[var(--gold)] mb-4">
@@ -1419,7 +1480,7 @@ export function FeedbackPage() {
               ))}
 
               {/* ── SPELLING CHECKER ── */}
-              {activeTab === 'spelling' && (() => {
+              {shownTab === 'spelling' && (() => {
                 const essayText = selectedTask === 'task1' ? reportData.userText1 : reportData.userText2;
                 return (
                 <div id="fp-panel-spelling" role="tabpanel" aria-labelledby="fp-tab-spelling" className="fp-tab-panel">
@@ -1553,13 +1614,13 @@ export function FeedbackPage() {
               })()}
 
               {/* ── WRITING PRACTICE ── */}
-              {activeTab === 'quiz' && (feedback.limited ? <UpgradePrompt /> : (
+              {shownTab === 'quiz' && (feedback.limited ? <UpgradePrompt /> : (
                 <div id="fp-panel-quiz" role="tabpanel" aria-labelledby="fp-tab-quiz" className="fp-tab-panel">
                   <p className="text-sm text-[var(--text-muted)] mb-5">
                     Write a sentence using each word or grammar rule. Tap <strong>Show example</strong> to check.
                   </p>
                   <div className="flex flex-col gap-4">
-                    {feedback.vocabulary.map((v, i) => {
+                    {(feedback.vocabulary ?? []).map((v, i) => {
                       const key = `vocab_${i}`;
                       return (
                         <div key={key} className="bg-[var(--bg-card)] rounded-2xl px-5 py-4 border border-[var(--border-color)] border-l-4 border-l-purple-500 shadow-sm transition-shadow duration-200 hover:shadow-md">
@@ -1604,7 +1665,7 @@ export function FeedbackPage() {
                         </div>
                       );
                     })}
-                    {feedback.grammar.map((g, i) => {
+                    {(feedback.grammar ?? []).map((g, i) => {
                       const key = `grammar_${i}`;
                       return (
                         <div key={key} className="bg-[var(--bg-card)] rounded-2xl px-5 py-4 border border-[var(--border-color)] border-l-4 border-l-amber-500 shadow-sm transition-shadow duration-200 hover:shadow-md">
