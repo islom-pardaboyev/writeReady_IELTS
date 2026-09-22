@@ -6,6 +6,8 @@ import { ArrowUpRight, Send } from 'lucide-react';
 import { TELEGRAM_CHANNEL_URL } from '@/lib/links';
 import { Header } from '@/components/layout/Header';
 import { SkipLink } from '@/components/layout/SkipLink';
+import { FaqAccordion, FaqAnswerStyles } from '@/components/ui/FaqAccordion';
+import { HOME_QUESTIONS } from '@/lib/faq';
 import { ChatBot } from '../components/ui/ChatBot';
 
 gsap.registerPlugin(ScrollTrigger);
@@ -56,6 +58,15 @@ export function LandingPage() {
       gsap.from('.gs-mode-card', {
         scrollTrigger: { trigger: '.gs-modes', start: 'top 78%' },
         y: 44, opacity: 0, duration: 0.65, stagger: 0.15, ease: 'power2.out',
+      });
+
+      gsap.from('.gs-faq-header', {
+        scrollTrigger: { trigger: '.gs-faq', start: 'top 82%' },
+        y: 30, opacity: 0, duration: 0.6, ease: 'power2.out',
+      });
+      gsap.from('.gs-faq-list', {
+        scrollTrigger: { trigger: '.gs-faq', start: 'top 78%' },
+        y: 40, opacity: 0, duration: 0.65, ease: 'power2.out',
       });
 
       gsap.from('.gs-cta-content', {
@@ -241,6 +252,26 @@ export function LandingPage() {
         </div>
       </section>
 
+      {/* ── Questions ── */}
+      <section className="gs-faq max-w-[760px] mx-auto px-6 py-20">
+        <div className="gs-faq-header mb-8">
+          <p className="text-[0.8125rem] font-bold uppercase tracking-[0.08em] text-indigo-600 dark:text-indigo-400 mb-2">
+            Before you start
+          </p>
+          <h2 className="text-[clamp(1.75rem,3vw,2.25rem)] font-black text-[var(--text-primary)] tracking-[-0.02em]">
+            Questions people ask first
+          </h2>
+        </div>
+        <div className="gs-faq-list">
+          <FaqAccordion items={HOME_QUESTIONS} />
+          <p className="mt-5 text-center text-sm text-[var(--text-secondary)]">
+            <Link to="/faq" className="font-semibold text-[var(--ink-blue)] no-underline hover:underline">
+              All questions and answers →
+            </Link>
+          </p>
+        </div>
+      </section>
+
       {/* ── CTA ── */}
       <section className="gs-cta bg-slate-900 px-6 py-20 text-center dark:bg-black">
         <div className="gs-cta-content max-w-[600px] mx-auto">
@@ -271,6 +302,9 @@ export function LandingPage() {
           <span className="sr-only">(opens in a new tab)</span>
         </a>
         <nav aria-label="Legal" className="mb-3 flex flex-wrap items-center justify-center gap-x-4 gap-y-1 text-[0.8125rem]">
+          <Link to="/faq" className="rounded text-white/60 no-underline hover:text-white hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-400">
+            FAQ
+          </Link>
           <Link to="/privacy" className="rounded text-white/60 no-underline hover:text-white hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-400">
             Privacy Policy
           </Link>
@@ -282,6 +316,7 @@ export function LandingPage() {
           © {new Date().getFullYear()} WriteReady IELTS · AI-powered writing coach
         </p>
       </footer>
+      <FaqAnswerStyles />
       <ChatBot />
     </div>
   );

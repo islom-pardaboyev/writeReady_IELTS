@@ -17,6 +17,9 @@ export function Layout({ children, noHeader }: LayoutProps) {
       <main id="main-content" tabIndex={-1} className="outline-none flex-1 bg-[var(--bg-base)]">{children}</main>
       <footer className="border-t border-[var(--border-color)] bg-[var(--bg-card)] px-5 py-6 text-center text-[0.8125rem] text-[var(--text-secondary)]">
         <nav aria-label="Legal" className="mb-2 flex flex-wrap items-center justify-center gap-x-4 gap-y-1">
+          <Link to="/faq" className="rounded text-[var(--text-secondary)] underline-offset-2 hover:text-[var(--text-primary)] hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ring)]">
+            FAQ
+          </Link>
           <Link to="/privacy" className="rounded text-[var(--text-secondary)] underline-offset-2 hover:text-[var(--text-primary)] hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ring)]">
             Privacy Policy
           </Link>
