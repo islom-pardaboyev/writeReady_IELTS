@@ -27,7 +27,16 @@ import { daysUntil, formatDate, inDays, isExpiredPaid, isPaying, joinedToday, pl
 import type { AdminSection, Intent, PendingReview, UserRow } from "./types";
 
 interface CenterLite { id: string; name: string; expiresAt: string }
-interface ReportLite { id: string; uid: string; taskType: string; band: string; createdAt: Date | null }
+/** `source` says which allowance paid for the report. Reports written before
+ *  it was recorded have none, which reads as an ordinary plan report. */
+type ReportSource = "paid" | "bonus" | "free";
+interface ReportLite { id: string; uid: string; taskType: string; band: string; source: ReportSource | null; createdAt: Date | null }
+
+const SOURCE_TAG: Record<ReportSource, { label: string; className: string }> = {
+  bonus: { label: "bonus", className: "bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-300" },
+  free: { label: "free weekly", className: "bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-300" },
+  paid: { label: "plan", className: "bg-indigo-50 text-indigo-700 dark:bg-indigo-900/30 dark:text-indigo-300" },
+};
 
 type Tone = "ok" | "warning" | "danger" | "neutral";
 
@@ -99,6 +108,7 @@ export function AdminHome({
           uid: data.uid ?? "",
           taskType: String(data.taskType ?? "").toLowerCase().includes("1") ? "Task 1" : "Task 2",
           band: overallBand(data.scores ?? {}),
+          source: data.source === "bonus" || data.source === "free" || data.source === "paid" ? data.source : null,
           createdAt: data.createdAt?.toDate?.() ?? null,
         };
       }));
@@ -288,7 +298,14 @@ export function AdminHome({
                     >
                       <span className="min-w-0 flex-1">
                         <span className="block truncate text-sm font-medium text-[var(--text-primary)]">{emailOf.get(r.uid) ?? "Unknown student"}</span>
-                        <span className="block text-xs text-[var(--text-secondary)]">{r.taskType} · {timeAgo(r.createdAt)}</span>
+                        <span className="flex items-center gap-1.5 text-xs text-[var(--text-secondary)]">
+                          <span>{r.taskType} · {timeAgo(r.createdAt)}</span>
+                          {r.source && (
+                            <span className={`shrink-0 rounded-full px-1.5 py-px text-[0.65rem] font-semibold ${SOURCE_TAG[r.source].className}`}>
+                              {SOURCE_TAG[r.source].label}
+                            </span>
+                          )}
+                        </span>
                       </span>
                       {r.band && (
                         <span className="shrink-0 text-right">

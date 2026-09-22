@@ -80,9 +80,25 @@ async function consumeCredit(uid: string, monthKey: string): Promise<CreditSourc
 
     const usage = data.usage ?? {};
     const used = usage.monthKey === monthKey ? (usage.count ?? 0) : 0;
-    if (used >= monthlyLimit) throw new CreditError('LIMIT_REACHED');
+    if (used < monthlyLimit) {
+      tx.set(userRef, { usage: { monthKey, count: used + 1 } }, { merge: true });
+      return;
+    }
 
-    tx.set(userRef, { usage: { monthKey, count: used + 1 } }, { merge: true });
+    // The month's allowance is spent. Fall back to admin-granted bonus reports
+    // before refusing: the monthly allowance resets and is lost if unused, a
+    // bonus never expires, so spending the plan first is what the student
+    // wants. Without this a paid student could never spend a bonus at all --
+    // the reward for topping the leaderboard sat on their account unusable,
+    // and they were told their limit was reached while holding one.
+    const paidBonus = typeof data.bonusAnalyses === 'number' ? data.bonusAnalyses : 0;
+    if (paidBonus > 0) {
+      tx.set(userRef, { bonusAnalyses: paidBonus - 1 }, { merge: true });
+      source = 'bonus';
+      return;
+    }
+
+    throw new CreditError('LIMIT_REACHED');
   });
 
   return source;

@@ -114,6 +114,14 @@ function Practice() {
   }, [loading]);
 
   const activeText = activeTask === 1 ? userText1 : userText2;
+
+  // Practice has two tasks, and one report marks one essay. If only one was
+  // written, say so before the report is spent: an empty task cannot be
+  // marked, and there is no timer here, so writing it is still an option.
+  // Null when both are written, or when neither is.
+  const emptyTask: 1 | 2 | null =
+    userText1.trim() && !userText2.trim() ? 2 : !userText1.trim() && userText2.trim() ? 1 : null;
+  const writtenTask: 1 | 2 = emptyTask === 1 ? 2 : 1;
   const wordCount =
     activeText.trim() === "" ? 0 : activeText.trim().split(/\s+/).length;
   const minWords = activeTask === 1 ? 150 : 250;
@@ -496,17 +504,41 @@ function Practice() {
                 Session saved
               </ModalTitle>
               <ModalDescription className="mt-2 text-sm leading-6 text-center text-slate-500 dark:text-neutral-400">
-                AI feedback marks your writing for grammar, vocabulary, coherence and task
-                achievement.
+                {emptyTask ? (
+                  <>
+                    You left <strong className="text-slate-700 dark:text-neutral-200">Task {emptyTask}</strong> empty,
+                    so the report can only mark Task {writtenTask}. It costs one report either way, and there is no
+                    timer here.
+                  </>
+                ) : (
+                  <>
+                    AI feedback marks your writing for grammar, vocabulary, coherence and task
+                    achievement.
+                  </>
+                )}
               </ModalDescription>
               <div className="flex flex-col gap-2.5 mt-6">
+                {emptyTask && (
+                  <Button
+                    onClick={() => { setShowFeedbackModal(false); setActiveTask(emptyTask); }}
+                    disabled={checkingAccess}
+                    className="w-full bg-blue-600 hover:bg-blue-700 text-white"
+                  >
+                    Write Task {emptyTask} first
+                  </Button>
+                )}
                 <Button
                   onClick={handleAcceptFeedback}
                   disabled={checkingAccess}
-                  className="w-full bg-blue-600 hover:bg-blue-700 text-white"
+                  variant={emptyTask ? "outline" : undefined}
+                  className={emptyTask ? "w-full" : "w-full bg-blue-600 hover:bg-blue-700 text-white"}
                 >
                   <Bot aria-hidden="true" className="w-4 h-4 mr-1.5" />
-                  {checkingAccess ? "Checking…" : "Get AI feedback"}
+                  {checkingAccess
+                    ? "Checking…"
+                    : emptyTask
+                      ? `Get feedback for Task ${writtenTask} only`
+                      : "Get AI feedback"}
                 </Button>
                 {humanCheckEnabled && (
                   <Button

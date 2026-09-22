@@ -170,18 +170,25 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       await refundCredit(uid, source);
     }
 
-    // Save report to Firestore (non-blocking, best-effort)
+    // Save the report to Firestore. This has to be awaited: the response has
+    // already been streamed and ended, and a serverless function can be frozen
+    // the moment its handler returns. Firing this off without awaiting left the
+    // write to race the shutdown, so reports went missing from the admin list
+    // and from the student's own history at random.
     try {
       initFirebase();
       const feedback = isScoreOnly
         ? parseLimitedResponse(raw, wordCount, resolvedTask)
         : parseResponse(raw, wordCount, resolvedTask);
       const db = getFirestore();
-      db.collection('feedback_reports').add({
+      await db.collection('feedback_reports').add({
         uid,
         taskType: feedback.taskType,
         topic: feedback.topic,
         scores: feedback.scores,
+        // Which allowance paid for it, so the admin can tell a bonus report
+        // from a plan report and from the weekly free one.
+        source,
         issues: [
           ...(feedback.feedback?.taskAchievement?.issues ?? []),
           ...(feedback.feedback?.coherenceCohesion?.issues ?? []),
@@ -189,8 +196,11 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           ...(feedback.feedback?.grammaticalRangeAccuracy?.issues ?? []),
         ],
         createdAt: FieldValue.serverTimestamp(),
-      }).catch(console.error);
-    } catch { /* ignore — report saving is non-critical */ }
+      });
+    } catch (e) {
+      // Never fail the request over this: the student already has their report.
+      console.error('feedback_reports save failed:', e);
+    }
 
   } catch (err) {
     // Log the real error (e.g. Claude API unavailable / out of credits) for the
