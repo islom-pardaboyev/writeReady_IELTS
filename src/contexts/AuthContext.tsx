@@ -14,7 +14,7 @@ import {
 } from 'firebase/auth';
 import { auth } from '../firebase/config';
 import { createUserProfile, getUserProfile } from '../firebase/firestore';
-import { markSeen } from '../lib/seen';
+import { markSeen, watchSeen } from '../lib/seen';
 import type { UserProfile } from '../types';
 import { AuthContext } from './authContextDef';
 
@@ -36,7 +36,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const unsub = onAuthStateChanged(auth, async (u) => {
       setUser(u);
       if (u) {
-        await loadProfile(u);
+        // A profile that will not load is no reason to skip the stamp, or to
+        // leave the whole app sitting on its loading screen.
+        try {
+          await loadProfile(u);
+        } catch (e) {
+          console.error('loadProfile failed:', e);
+        }
         // After the profile exists, so a brand new account is never stamped
         // before it is written. Not awaited: nothing on screen waits for it.
         void markSeen();
@@ -45,7 +51,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
       setLoading(false);
     });
-    return unsub;
+    // Catches the visits this callback never hears about: a tab left open for
+    // days, or a phone waking up with the site still on screen.
+    const unwatch = watchSeen();
+    return () => {
+      unsub();
+      unwatch();
+    };
   }, []);
 
   const signUp = async (email: string, password: string) => {

@@ -37,9 +37,18 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     await getFirestore().collection('users').doc(uid).update({
       lastActiveAt: FieldValue.serverTimestamp(),
     });
-  } catch {
-    // No profile yet, or Firestore is having a moment. Nothing here is worth
-    // showing a visitor an error over.
+  } catch (e: unknown) {
+    // Still nothing worth showing a visitor an error over, but a stamp that
+    // never lands leaves the admin panel quietly wrong, so it goes to the log
+    // and the browser hears about it — src/lib/seen.ts then tries again on the
+    // next visit instead of going quiet for ten minutes. A missing profile
+    // (grpc NOT_FOUND) is the ordinary case and fixes itself once
+    // createUserProfile() has run; anything else is a real problem.
+    const code = (e as { code?: number | string }).code;
+    const missing = code === 5 || code === 'not-found';
+    if (missing) console.warn(`seen: ${uid} has no profile yet, nothing stamped`);
+    else console.error(`seen: could not stamp ${uid}:`, e);
+    return res.status(missing ? 404 : 500).json({ error: 'Not stamped.' });
   }
   return res.status(204).end();
 }

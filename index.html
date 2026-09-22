@@ -100,10 +100,20 @@
       content="WriteReady IELTS — practice IELTS Writing with instant AI feedback, showing an overall band 7.5 score card."
     />
 
-    <!-- logo -->
+    <!-- logo. The home-screen icons come from scripts/build-pwa-icons.sh; the
+         apple-touch one is full bleed because iOS paints transparent corners
+         black and rounds the icon itself. The manifest link is injected at
+         build time by vite-plugin-pwa — see vite.config.ts. -->
     <link rel="icon" type="image/svg+xml" href="/logo.svg" />
     <link rel="icon" type="image/png" href="/logo.png" />
-    <link rel="apple-touch-icon" href="/logo.png" />
+    <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png" />
+
+    <!-- Installed-app behaviour. Both spellings: iOS reads the apple- one,
+         and Chrome warns that it is deprecated in favour of the plain one. -->
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+    <meta name="apple-mobile-web-app-title" content="WriteReady" />
 
     <!-- Mobile browser chrome color (matches --ink-blue brand color) -->
     <meta name="theme-color" content="#4f46e5" media="(prefers-color-scheme: light)" />

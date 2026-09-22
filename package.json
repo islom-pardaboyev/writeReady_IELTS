@@ -8,7 +8,8 @@
     "build": "tsc -b && vite build",
     "lint": "oxlint",
     "preview": "vite preview",
-    "og:image": "bash scripts/build-og-image.sh"
+    "og:image": "bash scripts/build-og-image.sh",
+    "pwa:icons": "bash scripts/build-pwa-icons.sh"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.106.0",
@@ -58,6 +59,7 @@
     "@vitejs/plugin-react": "^6.0.2",
     "oxlint": "^1.69.0",
     "typescript": "~6.0.2",
-    "vite": "^8.1.0"
+    "vite": "^8.1.0",
+    "vite-plugin-pwa": "^1.3.0"
   }
 }
