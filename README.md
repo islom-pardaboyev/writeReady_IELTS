@@ -14,8 +14,8 @@ Students write Task 1 and Task 2 answers in four modes (Mock exam, Practice, Qui
 ## How an essay is scored
 
 1. `api/pre-check.ts` checks the student's plan and takes one report from their allowance (monthly plan, bonus, or the free weekly report). It returns a signed token that is valid for 3 minutes and can be used once.
-2. `api/feedback.ts` spends the token, sends the essay to Claude and streams the report back. For Task 1 it also sends the chart, so the student's figures are checked against it.
-3. The prompt contains the official IELTS Writing band descriptors (public version, May 2023, kept in `scripts/ielts-official-band-descriptors.md`) and the examiners' best-fit method. It also covers the cases a naive marker gets wrong: essays that don't answer the question, essays far under the word count, essays not in English, and essays that try to instruct the AI.
+2. `api/feedback.ts` spends the token, sends the essay to Claude and streams the report back.
+3. The prompt contains the official IELTS Writing band descriptors (public version, May 2023, kept in `scripts/ielts-official-band-descriptors.md`) and the examiners' best-fit method.
 4. The overall band is always worked out in code with the official IELTS rounding (`api/_lib/bandScore.ts`), never taken from the model's own sum. The browser, the database and every chart use this same file.
 5. A report that fails or comes back without real scores is refunded automatically and never saved.
 

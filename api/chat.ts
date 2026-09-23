@@ -71,9 +71,6 @@ If a student asks why a tab will not open, explain that it is part of a paid pla
 ## What a PAID report adds
 Everything above, for every essay: every sentence reviewed in order with an improved rewrite, three priority fixes, band gap analysis, 15 vocabulary items with Uzbek meanings, 10 grammar points, a band 8 to 9 model answer for that exact question, a spelling checker, and interactive practice exercises. Every paid plan gives the same full report. Only the number of reports a month changes.
 
-## How the marking works
-The essay is marked against the official IELTS Writing band descriptors (the public version, updated May 2023) with the best-fit method examiners use. For Task 1, the AI also looks at the chart, graph, map or diagram, so it can check the student's figures. An essay that does not answer the question, is far too short, or is not in English is marked down the way the descriptors say. The overall band is worked out from the four criteria with the official IELTS rounding. It is an estimate, not an official result.
-
 ## If a report fails
 If an AI report fails or comes back cut off, the site puts that report back on the account automatically. The student can send the same essay again and it is not counted twice. They do not need to ask for a refund of a report.
 

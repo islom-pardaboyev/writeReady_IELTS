@@ -12,7 +12,7 @@ import { decodeReport } from '../lib/reportEncoding';
 import type { ReportData } from '../lib/reportEncoding';
 import { getFeedbackReportHistory } from '../firebase/firestore';
 import { db } from '../firebase/config';
-import { loadTask1Chart, useTask1Chart } from '../lib/task1Chart';
+import { useTask1Chart } from '../lib/task1Chart';
 import type { CategoryFeedback, EnhancedFeedbackCategories, EnhancedFeedbackResult } from '../types';
 import { CRITERIA, bandLabel, extractJson, normalizeScores } from '@shared/bandScore';
 import { hasFreeReportThisWeek } from '../lib/weeklyFree';
@@ -592,13 +592,6 @@ export function FeedbackPage() {
         limited?: boolean;
       };
 
-      // The Task 1 chart goes with the essay, so the examiner can check the
-      // student's figures against it. Awaited here rather than read from
-      // task1Chart, which may not have loaded yet when this runs on page open.
-      const chartImage = taskKey === 'task1'
-        ? ((reportData.task1?.id ? await loadTask1Chart(db, { id: reportData.task1.id }) : '') || (reportData.task1?.image ?? ''))
-        : '';
-
       // Step 2: feedback — token check + Claude stream
       const res = await fetch('/api/feedback', {
         method: 'POST',
@@ -608,7 +601,6 @@ export function FeedbackPage() {
           questionText: question,
           taskType: taskKey === 'task1' ? 'Task 1' : 'Task 2',
           preCheckToken,
-          ...(chartImage ? { chartImage } : {}),
         }),
       });
 
