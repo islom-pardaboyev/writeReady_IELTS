@@ -3,6 +3,7 @@ import { addDoc, collection, doc, getDocs, query, updateDoc, where } from "fireb
 import { Gift, RefreshCw, Trophy, X } from "lucide-react";
 import { adminDb as db } from "@/firebase/adminConfig";
 import { cn } from "@/lib/utils";
+import { reportBand } from "@shared/bandScore";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/input";
 import { ListDetail, ListPane, DetailView, DetailHeader } from "@/components/staff/ListDetail";
@@ -41,9 +42,10 @@ export function LeaderboardSection() {
         const data = d.data();
         const uid = data.uid as string;
         if (!uid) return;
-        const vals = Object.values((data.scores ?? {}) as Record<string, number>).filter((v) => typeof v === "number");
-        if (!vals.length) return;
-        const avg = vals.reduce((a, b) => a + b, 0) / vals.length;
+        // The report's official overall band. Averaging every stored number
+        // counted the overall a second time next to the four criteria.
+        const avg = reportBand(data.scores);
+        if (avg === null) return;
         const ts = data.createdAt?.toDate?.() as Date | undefined;
         if (!ts) return;
         const month = `${ts.getFullYear()}-${String(ts.getMonth() + 1).padStart(2, "0")}`;
@@ -61,12 +63,15 @@ export function LeaderboardSection() {
         bonusMap[d.id] = typeof data.bonusAnalyses === "number" ? data.bonusAnalyses : 0;
       });
 
+      // Improvement needs a band in both months. A student new this month
+      // used to count their whole band as "improvement" (+6.5 from nothing),
+      // which put newcomers above students who had really moved up.
       const rows: LeaderEntry[] = Object.entries(map)
-        .filter(([, { curr }]) => curr.count > 0)
+        .filter(([, { curr, prev }]) => curr.count > 0 && prev.count > 0)
         .map(([uid, { curr, prev }]) => {
           const currBand = Math.round((curr.total / curr.count) * 10) / 10;
-          const prevBand = prev.count > 0 ? Math.round((prev.total / prev.count) * 10) / 10 : null;
-          const improvement = prevBand !== null ? currBand - prevBand : currBand;
+          const prevBand = Math.round((prev.total / prev.count) * 10) / 10;
+          const improvement = currBand - prevBand;
           return {
             uid,
             email: emailMap[uid] ?? uid,
@@ -138,7 +143,7 @@ export function LeaderboardSection() {
           <RefreshCw className={cn(loading && "animate-spin motion-reduce:animate-none")} aria-hidden="true" />
         </Button>
       }
-      toolbar={<p className="text-sm text-[var(--text-secondary)]">Top 10 students by band improvement this month versus last month.</p>}
+      toolbar={<p className="text-sm text-[var(--text-secondary)]">Top 10 students by band improvement this month versus last month. Students need reports in both months to appear.</p>}
     >
       {loading && entries.length === 0 ? (
         <RowSkeletons rows={8} />

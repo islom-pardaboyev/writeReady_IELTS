@@ -16,6 +16,7 @@ import { doc, updateDoc } from 'firebase/firestore';
 import { hasFreeReportThisWeek } from '../lib/weeklyFree';
 import { db } from '../firebase/config';
 import { GraduationCap, Clock, Download } from 'lucide-react';
+import { reportBand } from '@shared/bandScore';
 
 gsap.registerPlugin(ScrollTrigger);
 
@@ -26,11 +27,10 @@ const modes = [
   { id: 'relax', emoji: '☕', title: 'Relax', desc: 'Your prompt · Write freely' },
 ];
 
+// The report's official overall band, the same number the report showed.
 function overallBand(scores: Record<string, number>): string {
-  const vals = Object.values(scores).filter((v) => typeof v === 'number');
-  if (!vals.length) return '—';
-  const avg = vals.reduce((a, b) => a + b, 0) / vals.length;
-  return (Math.round(avg * 2) / 2).toFixed(1);
+  const band = reportBand(scores);
+  return band === null ? '—' : band.toFixed(1);
 }
 
 const relativeTimeFormat = new Intl.RelativeTimeFormat(navigator.language, { numeric: 'auto' });

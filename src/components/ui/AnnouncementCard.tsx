@@ -15,7 +15,7 @@ import { cn } from "@/lib/utils";
 
 // Pages where a card would get in the way: writing and exam screens, sign-in,
 // and the staff portals.
-const HIDDEN_ON = ["/writing", "/workspace", "/auth", "/admin", "/center-admin", "/teacher-portal"];
+const HIDDEN_ON = ["/writing", "/auth", "/admin", "/center-admin", "/teacher-portal"];
 
 // Long enough for the page to settle before the card slides in.
 const SHOW_AFTER_MS = 1200;

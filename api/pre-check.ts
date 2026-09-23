@@ -1,5 +1,5 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
-import { getFirestore } from 'firebase-admin/firestore';
+import { getFirestore, FieldValue } from 'firebase-admin/firestore';
 import { createHmac } from 'crypto';
 import { initFirebase, getUid, currentMonthKey, currentWeekKey, resolvePaidStatus, PLAN_LIMITS } from './_lib/shared.js';
 
@@ -27,7 +27,10 @@ class CreditError extends Error {
 }
 
 function signToken(uid: string, source: CreditSource): string {
-  const secret = process.env.NONCE_SECRET ?? 'fallback-secret-change-in-prod';
+  // No default: a secret written in the source code would let anyone sign
+  // their own tokens. api/feedback.ts refuses to run without it too.
+  const secret = process.env.NONCE_SECRET;
+  if (!secret) throw new Error('NONCE_SECRET is not set');
   const b64uid = Buffer.from(uid).toString('base64url');
   const ts = Date.now().toString();
   const payload = `${b64uid}.${source}.${ts}`;
@@ -39,6 +42,9 @@ async function consumeCredit(uid: string, monthKey: string): Promise<CreditSourc
   const db = getFirestore();
   const userRef = db.collection('users').doc(uid);
   let source: CreditSource = 'paid';
+  // Asking for a report is the clearest sign a student is here, and this
+  // write happens anyway, so "last active" comes along for free.
+  const seen = { lastActiveAt: FieldValue.serverTimestamp() };
 
   await db.runTransaction(async (tx) => {
     const snap = await tx.get(userRef);
@@ -58,7 +64,7 @@ async function consumeCredit(uid: string, monthKey: string): Promise<CreditSourc
       // automatic weekly free allowance).
       const bonus = typeof data.bonusAnalyses === 'number' ? data.bonusAnalyses : 0;
       if (bonus > 0) {
-        tx.set(userRef, { bonusAnalyses: bonus - 1 }, { merge: true });
+        tx.set(userRef, { bonusAnalyses: bonus - 1, ...seen }, { merge: true });
         source = 'bonus';
         return;
       }
@@ -68,7 +74,7 @@ async function consumeCredit(uid: string, monthKey: string): Promise<CreditSourc
       const freeUsage = data.freeUsage ?? {};
       const freeUsed = freeUsage.weekKey === weekKey ? (freeUsage.count ?? 0) : 0;
       if (freeUsed >= FREE_WEEKLY_LIMIT) throw new CreditError('FREE_LIMIT_REACHED');
-      tx.set(userRef, { freeUsage: { weekKey, count: freeUsed + 1 } }, { merge: true });
+      tx.set(userRef, { freeUsage: { weekKey, count: freeUsed + 1 }, ...seen }, { merge: true });
       source = 'free';
       return;
     }
@@ -81,7 +87,7 @@ async function consumeCredit(uid: string, monthKey: string): Promise<CreditSourc
     const usage = data.usage ?? {};
     const used = usage.monthKey === monthKey ? (usage.count ?? 0) : 0;
     if (used < monthlyLimit) {
-      tx.set(userRef, { usage: { monthKey, count: used + 1 } }, { merge: true });
+      tx.set(userRef, { usage: { monthKey, count: used + 1 }, ...seen }, { merge: true });
       return;
     }
 
@@ -93,7 +99,7 @@ async function consumeCredit(uid: string, monthKey: string): Promise<CreditSourc
     // and they were told their limit was reached while holding one.
     const paidBonus = typeof data.bonusAnalyses === 'number' ? data.bonusAnalyses : 0;
     if (paidBonus > 0) {
-      tx.set(userRef, { bonusAnalyses: paidBonus - 1 }, { merge: true });
+      tx.set(userRef, { bonusAnalyses: paidBonus - 1, ...seen }, { merge: true });
       source = 'bonus';
       return;
     }
@@ -112,8 +118,16 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (req.method === 'OPTIONS') return res.status(200).end();
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
 
+  // Checked before any credit is taken, so a missing secret can never charge
+  // a student for a report that cannot be signed.
+  if (!process.env.NONCE_SECRET) {
+    console.error('pre-check: NONCE_SECRET is not set');
+    return res.status(500).json({ error: 'AI feedback is not set up correctly. Please contact @writeready_admin on Telegram.' });
+  }
+
   try { initFirebase(); } catch (e: unknown) {
-    return res.status(500).json({ error: `Firebase init failed: ${(e as Error).message}` });
+    console.error('pre-check: Firebase init failed:', e);
+    return res.status(500).json({ error: 'The server could not start. Please try again shortly.' });
   }
 
   let uid: string;
@@ -143,6 +157,3 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     token, source, limited: source === 'free', isBonus: source !== 'paid', uid, monthKey,
   });
 }
-
-export { signToken, currentMonthKey };
-export type { CreditErrorCode };

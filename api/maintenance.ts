@@ -86,8 +86,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
   if (req.method === 'GET') {
     const snap = await flagRef.get();
-    // Every open tab polls this, so let the CDN answer repeats: the function
-    // (and its Firestore read) runs at most ~once per 5s per region, not per visitor.
+    // Every visitor checks this once when the site opens, so let the CDN
+    // answer repeats: the function (and its Firestore read) runs at most
+    // ~once per 5s per region, not once per visitor.
     res.setHeader('Cache-Control', 'public, s-maxage=5, stale-while-revalidate=10');
     return res.status(200).json(toStatus(snap.data() as StoredFlags | undefined));
   }

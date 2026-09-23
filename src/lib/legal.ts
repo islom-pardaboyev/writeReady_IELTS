@@ -20,7 +20,7 @@ export const LEGAL = {
   /** TODO (owner): a mailbox you actually read. Telegram alone is thin for a privacy request. */
   email: '',
   /** Change this whenever the wording of either document changes. */
-  updated: '21 September 2026',
+  updated: '23 September 2026',
 } as const;
 
 export const TELEGRAM_CONTACT_URL = `https://t.me/${LEGAL.telegram}`;

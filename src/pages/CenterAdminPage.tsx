@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { collection, deleteDoc, doc, getDoc, getDocs, query, serverTimestamp, setDoc, updateDoc, where } from "firebase/firestore";
+import { collection, doc, getDoc, getDocs, query, serverTimestamp, setDoc, where } from "firebase/firestore";
 import { onAuthStateChanged, signInWithCustomToken, signOut as fbSignOut } from "firebase/auth";
 import { ChartColumn, LayoutDashboard, Plus, RefreshCw, Trash2, UserPlus, Users } from "lucide-react";
 import { adminDb as db, adminAuth } from "@/firebase/adminConfig";
@@ -17,6 +17,8 @@ import { EmptyState, Field, Initials, LoadError, Notice, PageHeading, Panel, Row
 import { daysUntil, formatDate, inDays, timeAgo } from "@/pages/writing/admin/format";
 import { PLAN_INFO } from "@/lib/plans";
 import { centerPlanOf, type CenterPlanId } from "@/lib/centerPricing";
+import { removeCenterStudent, updateCenterStudent } from "@/lib/centerStudent";
+import { reportBand } from "@shared/bandScore";
 
 interface CenterData {
   id: string;
@@ -29,6 +31,8 @@ interface CenterData {
 
 interface Student {
   id: string;
+  /** The student's account. New students use it as their document id too. */
+  uid: string;
   fullName: string;
   login: string;
   addedAt?: string;
@@ -51,12 +55,29 @@ function mapStudentSnap(docs: { id: string; data: () => Record<string, unknown> 
       const addedAt = data.addedAt as { toDate?: () => Date } | undefined;
       return {
         id: d.id,
+        uid: typeof data.uid === "string" && data.uid ? data.uid : d.id,
         fullName: (data.fullName as string) ?? "",
         login: (data.login as string) ?? "",
         addedAt: addedAt?.toDate?.()?.toISOString?.() ?? "",
       };
     })
     .sort((a, b) => a.fullName.localeCompare(b.fullName));
+}
+
+/**
+ * The feedback reports of these students, and nobody else's. Firestore takes
+ * at most 30 values in an `in` filter, so the list is fetched in slices. The
+ * portal used to download every report and every user profile on the whole
+ * platform and filter them here, which showed each center other people's data
+ * and grew slower with every new student anywhere.
+ */
+async function reportsFor(uids: string[]) {
+  const slices: string[][] = [];
+  for (let i = 0; i < uids.length; i += 30) slices.push(uids.slice(i, i + 30));
+  const snaps = await Promise.all(
+    slices.map((ids) => getDocs(query(collection(db, "feedback_reports"), where("uid", "in", ids)))),
+  );
+  return snaps.flatMap((snap) => snap.docs.map((d) => d.data()));
 }
 
 function contractStatus(expiresAt?: string) {
@@ -153,17 +174,9 @@ export default function CenterAdminPage() {
     try {
       const todayStart = new Date();
       todayStart.setHours(0, 0, 0, 0);
-      const [snap, usersSnap] = await Promise.all([getDocs(collection(db, "feedback_reports")), getDocs(collection(db, "users"))]);
-      const logins = new Set(list.map((s) => s.login).filter(Boolean));
-      const uids = new Set<string>();
-      usersSnap.docs.forEach((d) => {
-        const sLogin = d.data().studentLogin;
-        if (sLogin && logins.has(sLogin)) uids.add(d.id);
-      });
+      const reports = await reportsFor(list.map((s) => s.uid));
       let count = 0;
-      snap.docs.forEach((d) => {
-        const data = d.data();
-        if (!uids.has(data.uid)) return;
+      reports.forEach((data) => {
         const ts = data.createdAt?.toDate?.() as Date | undefined;
         if (ts && ts >= todayStart) count++;
       });
@@ -190,29 +203,27 @@ export default function CenterAdminPage() {
   const loadAnalytics = useCallback(async () => {
     setAnalyticsLoading(true);
     try {
-      const [studSnap, usersSnap, reportsSnap] = await Promise.all([
-        getDocs(collection(db, "learningCenters", centerId, "students")),
-        getDocs(collection(db, "users")),
-        getDocs(collection(db, "feedback_reports")),
-      ]);
+      const studSnap = await getDocs(collection(db, "learningCenters", centerId, "students"));
       const studs = mapStudentSnap(studSnap.docs);
-      const loginToUid: Record<string, string> = {};
-      usersSnap.docs.forEach((d) => {
-        const sLogin = d.data().studentLogin;
-        if (sLogin) loginToUid[sLogin] = d.id;
-      });
+      // "Last active" is when the student last used the site (stamped by
+      // api/seen.ts on their profile), not only when they last got a report:
+      // a student who logs in and writes without asking for feedback used to
+      // show as "not active yet". A center may read its own students' profiles.
+      const [reports, profiles] = await Promise.all([
+        reportsFor(studs.map((s) => s.uid)),
+        getDocs(query(collection(db, "users"), where("centerId", "==", centerId))),
+      ]);
+      const seenAt = new Map(profiles.docs.map((d) => [d.id, d.data().lastActiveAt?.toDate?.() as Date | undefined]));
       const monthKeyFormat = new Intl.DateTimeFormat("en-CA", { year: "numeric", month: "2-digit" });
       const monthKey = monthKeyFormat.format(new Date());
 
       const result: StudentAnalytics[] = studs.map((s) => {
-        const uid = loginToUid[s.login];
-        if (!uid) return { student: s, avgBand: null, reportCount: 0, lastActive: null, monthlyCount: 0 };
-        const mine = reportsSnap.docs.filter((d) => d.data().uid === uid);
-        let totalBand = 0; let bandCount = 0; let lastTs: Date | null = null; let monthlyCount = 0;
-        mine.forEach((d) => {
-          const data = d.data();
-          const vals = Object.values((data.scores ?? {}) as Record<string, number>).filter((v) => typeof v === "number");
-          if (vals.length) { totalBand += vals.reduce((a, b) => a + b, 0) / vals.length; bandCount++; }
+        const mine = reports.filter((data) => data.uid === s.uid);
+        let totalBand = 0; let bandCount = 0; let lastTs: Date | null = seenAt.get(s.uid) ?? null; let monthlyCount = 0;
+        mine.forEach((data) => {
+          // Each report's official overall band, the number the student saw.
+          const band = reportBand(data.scores);
+          if (band !== null) { totalBand += band; bandCount++; }
           const ts = data.createdAt?.toDate?.() as Date | undefined;
           if (ts) {
             if (!lastTs || ts > lastTs) lastTs = ts;
@@ -327,10 +338,10 @@ export default function CenterAdminPage() {
 
       // Student record under the center (doc id = uid so it maps to the account).
       try {
+        // No password here: it lives in the sign-in account only.
         await setDoc(doc(db, "learningCenters", centerId, "students", uid), {
           fullName: newName.trim(),
           login: loginKey,
-          password: newPass.trim(),
           uid,
           addedAt: serverTimestamp(),
         });
@@ -355,7 +366,8 @@ export default function CenterAdminPage() {
 
   const removeStudent = async (s: Student) => {
     if (!(await confirm(`Remove ${s.fullName}? They lose the access your center gives them.`, { title: "Remove student?", destructive: true, confirmLabel: "Remove" }))) return;
-    await deleteDoc(doc(db, "learningCenters", centerId, "students", s.id));
+    const result = await removeCenterStudent(centerId, s.id);
+    if (!result.ok) { setEditNotice({ tone: "error", text: result.error }); return; }
     setStudents((prev) => prev.filter((x) => x.id !== s.id));
     selectStudent(null);
   };
@@ -364,27 +376,21 @@ export default function CenterAdminPage() {
     if (!editName.trim() || !editLogin.trim()) { setEditNotice({ tone: "error", text: "Name and login are required." }); return; }
     setEditNotice(null);
     setSavingEdit(true);
-    try {
-      if (editLogin.trim() !== s.login) {
-        const existing = await getDocs(query(collection(db, "learningCenters", centerId, "students"), where("login", "==", editLogin.trim())));
-        if (!existing.empty) { setEditNotice({ tone: "error", text: "That login is already used by one of your students." }); setSavingEdit(false); return; }
-      }
-      const updates: Record<string, string> = { fullName: editName.trim(), login: editLogin.trim() };
-      if (editPass.trim()) updates.password = editPass.trim();
-      await updateDoc(doc(db, "learningCenters", centerId, "students", s.id), updates);
-      // The student doc's id is the user's uid (see addStudent). Analytics and
-      // "reports today" join users.studentLogin -> students.login by value, so
-      // an edited login must be mirrored onto the user profile or that student
-      // silently disappears from both until this is back in sync.
-      if (editLogin.trim() !== s.login) {
-        await updateDoc(doc(db, "users", s.id), { studentLogin: editLogin.trim() }).catch(() => {});
-      }
-      setStudents((prev) => prev.map((x) => (x.id === s.id ? { ...x, fullName: editName.trim(), login: editLogin.trim() } : x)));
+    // The server changes the login and password the student really signs in
+    // with (api/center-student.ts), not just the copy shown here.
+    const result = await updateCenterStudent(centerId, s.id, {
+      fullName: editName.trim(),
+      login: editLogin.trim(),
+      ...(editPass.trim() ? { password: editPass.trim() } : {}),
+    });
+    if (result.ok) {
+      const login = result.login ?? editLogin.trim().toLowerCase();
+      setStudents((prev) => prev.map((x) => (x.id === s.id ? { ...x, fullName: editName.trim(), login } : x)));
+      setEditLogin(login);
       setEditPass("");
-      setEditNotice({ tone: "success", text: "Changes saved." });
-    } catch (e) {
-      console.error(e);
-      setEditNotice({ tone: "error", text: "Could not save the changes. Try again." });
+      setEditNotice({ tone: "success", text: editPass.trim() || login !== s.login ? "Saved. The student signs in with the new details from now on." : "Changes saved." });
+    } else {
+      setEditNotice({ tone: "error", text: result.error });
     }
     setSavingEdit(false);
   };
@@ -406,6 +412,7 @@ export default function CenterAdminPage() {
       });
       const data = await res.json().catch(() => ({}));
       if (!res.ok) {
+        if (res.status === 429) return data.error ?? "Too many wrong passwords. Wait 15 minutes and try again.";
         return res.status >= 500 ? "The sign-in service had a problem. Try again in a minute." : "That username or password is not right.";
       }
       await signInWithCustomToken(adminAuth, data.customToken);

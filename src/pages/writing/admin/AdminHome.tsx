@@ -25,6 +25,7 @@ import { Badge } from "@/components/ui/badge";
 import { LoadError, PageHeading, Panel, StatStrip } from "@/components/staff/parts";
 import { daysUntil, formatDate, inDays, isExpiredPaid, isPaying, joinedToday, planBadge, planLabel, timeAgo } from "./format";
 import type { AdminSection, Intent, PendingReview, UserRow } from "./types";
+import { reportBand } from "@shared/bandScore";
 
 interface CenterLite { id: string; name: string; expiresAt: string }
 /** `source` says which allowance paid for the report. Reports written before
@@ -58,10 +59,10 @@ const TONE: Record<Tone, string> = {
 
 const ENDING_SOON_DAYS = 14;
 
+// The report's official overall band, the same number the student saw.
 function overallBand(scores: Record<string, unknown>): string {
-  const vals = Object.values(scores).filter((v): v is number => typeof v === "number");
-  if (!vals.length) return "";
-  return (Math.round((vals.reduce((a, b) => a + b, 0) / vals.length) * 2) / 2).toFixed(1);
+  const band = reportBand(scores);
+  return band === null ? "" : band.toFixed(1);
 }
 
 export function AdminHome({

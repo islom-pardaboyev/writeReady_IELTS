@@ -5,7 +5,10 @@ rules_version = '2';
 //
 // The api/ functions use the Admin SDK and skip these rules entirely, so
 // anything written only by the server (feedback reports, usage counters,
-// maintenance mode) has no client write rule here on purpose.
+// maintenance mode) has no client write rule here on purpose. Collections
+// only the server touches (used_report_tokens, login_limits, chat_limits,
+// report_limits, user_reports) have no rule at all, so no browser can read
+// or write them.
 //
 // Rules are OR'd: a request is allowed if ANY match grants it. Nothing below
 // can take away what the admin wildcard grants.
@@ -121,14 +124,9 @@ service cloud.firestore {
     // ── Users ─────────────────────────────────────────────────────────────
 
     match /users/{uid} {
-      // A center reads every profile because the center portal fetches the
-      // whole collection and filters in the browser (CenterAdminPage.tsx).
-      // Once that page queries where('centerId','==',<its id>), replace the
-      // line below with these two, which stop a center seeing other centers'
-      // students and anyone with no center at all:
-      //   allow get:  if isSelf(uid) || isCenterFor(resource.data.get('centerId', ''));
-      //   allow list: if isSelf(uid) || isCenterFor(resource.data.get('centerId', ''));
-      allow read: if isSelf(uid) || isCenter();
+      // A center may read its own students' profiles and nobody else's. The
+      // center portal no longer downloads the whole collection.
+      allow read: if isSelf(uid) || isCenterFor(resource.data.get('centerId', ''));
 
       allow create: if
         // A new sign-up always starts on the free plan.
@@ -147,18 +145,16 @@ service cloud.firestore {
           && (request.resource.data.subscriptionExpiresAt == null
             || request.resource.data.subscriptionExpiresAt == centreEndsAt(request.resource.data.centerId)));
 
-      allow update: if
-        // Students can clear their welcome message, and pay for a Human
-        // Check. The balance can only go down; the review itself is checked
-        // under humanReviews.
-        (isSelf(uid)
-          && (changed().hasOnly(['notification'])
-            || (changed().hasOnly(['balanceUZS'])
-              && request.resource.data.balanceUZS is number
-              && request.resource.data.balanceUZS >= 0
-              && request.resource.data.balanceUZS < resource.data.get('balanceUZS', 0))))
-        // A center renames one of its own students' logins.
-        || (isCenterFor(resource.data.get('centerId', '')) && changed().hasOnly(['studentLogin']));
+      // Students can clear their welcome message, and pay for a Human Check.
+      // The balance can only go down; the review itself is checked under
+      // humanReviews. Renaming or removing a center's student goes through
+      // api/center-student.ts, which also changes the sign-in account.
+      allow update: if isSelf(uid)
+        && (changed().hasOnly(['notification'])
+          || (changed().hasOnly(['balanceUZS'])
+            && request.resource.data.balanceUZS is number
+            && request.resource.data.balanceUZS >= 0
+            && request.resource.data.balanceUZS < resource.data.get('balanceUZS', 0)));
     }
 
     // ── Writing ───────────────────────────────────────────────────────────
@@ -180,18 +176,12 @@ service cloud.firestore {
       allow read: if signedIn();
     }
 
-    match /questions/{id} {
-      allow read: if signedIn();
-    }
-
-    match /submissions/{id} {
-      allow read: if isStudent() && resource.data.uid == request.auth.uid;
-      allow create: if isStudent() && request.resource.data.uid == request.auth.uid;
-    }
-
-    // AI feedback reports are written by api/feedback.ts only. A center reads
-    // the whole collection for its analytics page, same as users above; narrow
-    // it the same way once that page filters its query.
+    // AI feedback reports are written by api/feedback.ts only. The center
+    // portal asks only for its own students' reports (where uid in [...]),
+    // but the rules cannot check that a report's uid belongs to the center,
+    // so a center can still read any report's scores. Reports hold scores and
+    // short notes, never the essay. To close this, save the student's
+    // centerId on each report and check it here.
     match /feedback_reports/{id} {
       allow read: if (isStudent() && resource.data.uid == request.auth.uid) || isCenter();
     }
@@ -199,13 +189,10 @@ service cloud.firestore {
     // ── Human Check ───────────────────────────────────────────────────────
 
     // Students read this list to pick a teacher, so it must stay readable by
-    // anyone signed in.
-    //
-    // WARNING: rules cannot hide a field. While these documents still hold a
-    // `login` and plaintext `password` (src/firebase/teachers.ts), ANY student
-    // can read every teacher's credentials, sign in at /api/staff-login as
-    // that teacher, and reach every Human Check essay. Move those two fields
-    // into teacherAuth below. Nothing here can fix it on its own.
+    // anyone signed in. Rules cannot hide a field, so logins and passwords
+    // are kept in teacherAuth below, never here. Older teacher documents that
+    // still had them are cleaned up by the admin panel's Teachers screen and
+    // by api/staff-login.ts (src/firebase/teachers.ts).
     match /teachers/{teacherId} {
       allow read: if signedIn();
     }

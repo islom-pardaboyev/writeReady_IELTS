@@ -2,8 +2,10 @@ import type { VercelRequest } from '@vercel/node';
 import { initializeApp, getApps, cert } from 'firebase-admin/app';
 import { getAuth } from 'firebase-admin/auth';
 
-// Shared by api/check-practice.ts, api/feedback.ts, and api/pre-check.ts.
-// Cannot be shared with src/ (separate builds — see src/lib/weeklyFree.ts).
+// Shared by the api/ routes. The api/ build cannot import from src/, so a few
+// rules here mirror src/lib (see src/lib/weeklyFree.ts and src/lib/plans.ts).
+// The other way round works for files with no imports: src/ uses
+// api/_lib/bandScore.ts directly.
 
 export function initFirebase(): void {
   if (getApps().length) return;
@@ -92,6 +94,11 @@ export interface PaidStatus {
 export function resolvePaidStatus(data: Record<string, unknown>): PaidStatus {
   let plan = typeof data.plan === 'string' ? data.plan : 'free';
   if (plan === 'pro') plan = LEGACY_CENTER_PLAN;
+  // A lifetime `subscription` on an older account means lifetime, whatever
+  // `plan` says. effectivePlan() in src/lib/plans.ts reads it the same way;
+  // before this, the site showed such a student a Lifetime quota while this
+  // route gave them only the free weekly report.
+  if (data.subscription === 'forever') plan = 'forever';
   const isCenterStudent = typeof data.centerId === 'string' && data.centerId.length > 0;
 
   // A paid plan past its expiry reverts to free; nothing else downgrades the

@@ -12,8 +12,9 @@ import { decodeReport } from '../lib/reportEncoding';
 import type { ReportData } from '../lib/reportEncoding';
 import { getFeedbackReportHistory } from '../firebase/firestore';
 import { db } from '../firebase/config';
-import { useTask1Chart } from '../lib/task1Chart';
-import type { EnhancedFeedbackResult } from '../types';
+import { loadTask1Chart, useTask1Chart } from '../lib/task1Chart';
+import type { CategoryFeedback, EnhancedFeedbackCategories, EnhancedFeedbackResult } from '../types';
+import { CRITERIA, bandLabel, extractJson, normalizeScores } from '@shared/bandScore';
 import { hasFreeReportThisWeek } from '../lib/weeklyFree';
 import { downloadFeedbackPdf } from '../lib/feedbackPdf';
 import { useSingleRun } from '../hooks/useSingleRun';
@@ -34,16 +35,6 @@ const TABS: { id: Tab; label: string; icon: typeof LayoutGrid }[] = [
   { id: 'spelling', label: 'Spelling', icon: SearchCheck },
   { id: 'quiz', label: 'Practice', icon: Brain },
 ];
-
-// Official IELTS band-score descriptors
-function bandLabel(score: number): string {
-  if (score >= 8.5) return 'Expert user';
-  if (score >= 7.5) return 'Very good user';
-  if (score >= 6.5) return 'Good user';
-  if (score >= 5.5) return 'Competent user';
-  if (score >= 4.5) return 'Modest user';
-  return 'Limited user';
-}
 
 // A single consistent color identity per scoring category, reused across the
 // hero, overview cards and detailed accordion so the whole page reads as one system.
@@ -108,19 +99,23 @@ function categorizeIssue(issue: string): string | null {
   return null;
 }
 
+type PracticeCheck = {
+  score: number;
+  correct: boolean;
+  feedback: string;
+  improved: string;
+  /** The check did not run (limit reached, server or network problem), so there is no verdict to show. */
+  system?: boolean;
+};
+
 function PracticeResult({ result, accentClass }: {
-  result: { score: number; correct: boolean; feedback: string; improved: string };
+  result: PracticeCheck;
   accentClass?: string;
 }) {
-  const isSystemError = result.score === 0 && !result.correct && (
-    result.feedback.includes('Could not check it') ||
-    result.feedback.includes('Network error') ||
-    result.feedback.includes('Evaluation failed') ||
-    result.feedback.includes('not configured') ||
-    result.feedback.includes('required')
-  );
-
-  if (isSystemError) {
+  // Set by checkPracticeSentence, not guessed from the wording: a daily-limit
+  // message used to be shown as "Error found, 0/100", as if the student's
+  // sentence had been marked wrong.
+  if (result.system) {
     return (
       <div className="mt-3 rounded-xl px-3.5 py-3 border bg-amber-50 border-amber-200 dark:bg-amber-900/20 dark:border-amber-800 flex gap-2.5 items-start">
         <AlertTriangle className="w-4 h-4 text-amber-600 dark:text-amber-400 mt-0.5 shrink-0" />
@@ -290,6 +285,52 @@ function UpgradePrompt() {
   );
 }
 
+/**
+ * A report as this page shows it, built from the model's JSON. The scores go
+ * through the same rules the server used before saving (api/_lib/bandScore.ts),
+ * so the band on screen is the band in the student's history. Before, the page
+ * showed the model's own sum for the overall band, which could differ from the
+ * saved one.
+ *
+ * Null when there are no real scores. The server refunds exactly those
+ * reports, so the page can say "you were not charged" and mean it. Missing
+ * lists become empty ones, so a short reply can never crash a tab.
+ */
+function toFeedbackResult(parsed: unknown, limited: boolean, taskType: 'Task 1' | 'Task 2'): EnhancedFeedbackResult | null {
+  if (!parsed || typeof parsed !== 'object') return null;
+  const p = parsed as Record<string, unknown>;
+  const scores = normalizeScores(p.scores);
+  if (!scores) return null;
+  const list = <T,>(v: unknown): T[] => (Array.isArray(v) ? (v as T[]) : []);
+  const text = (v: unknown) => (typeof v === 'string' ? v : '');
+  const strings = (v: unknown) => list<unknown>(v).filter((x): x is string => typeof x === 'string');
+
+  // Only the categories the model wrote, each with both lists present. The
+  // score-only free report has none, and shows none.
+  const rawCategories = (p.feedback && typeof p.feedback === 'object' ? p.feedback : {}) as Record<string, Partial<CategoryFeedback> | undefined>;
+  const feedback = Object.fromEntries(
+    CRITERIA.filter((k) => rawCategories[k]).map((k) => [k, {
+      strengths: strings(rawCategories[k]?.strengths),
+      issues: strings(rawCategories[k]?.issues),
+    }]),
+  ) as unknown as EnhancedFeedbackCategories;
+
+  return {
+    taskType,
+    topic: text(p.topic) || 'General',
+    wordCount: typeof p.wordCount === 'number' ? p.wordCount : 0,
+    scores,
+    feedback,
+    priorityFixes: strings(p.priorityFixes),
+    bandGapAnalysis: text(p.bandGapAnalysis),
+    sampleResponse: text(p.sampleResponse),
+    sentenceAnalysis: list(p.sentenceAnalysis),
+    vocabulary: list(p.vocabulary),
+    grammar: list(p.grammar),
+    limited,
+  };
+}
+
 // Three clearly distinct tiers — gold never doubles as both "great" and "needs work".
 function scoreColor(score: number) {
   return score >= 7 ? 'text-amber-500' : score >= 6 ? 'text-[var(--ink-blue)]' : 'text-rose-500';
@@ -380,7 +421,7 @@ export function FeedbackPage() {
   // Writing practice quiz
   const [practiceInputs, setPracticeInputs] = useState<Record<string, string>>({});
   const [practiceRevealed, setPracticeRevealed] = useState<Record<string, boolean>>({});
-  const [practiceChecked, setPracticeChecked] = useState<Record<string, { score: number; correct: boolean; feedback: string; improved: string }>>({});
+  const [practiceChecked, setPracticeChecked] = useState<Record<string, PracticeCheck>>({});
   const [practiceChecking, setPracticeChecking] = useState<Record<string, boolean>>({});
 
   // Essay sentence analysis — Set so multiple can be open simultaneously
@@ -440,15 +481,17 @@ export function FeedbackPage() {
       const raw = sessionStorage.getItem(`feedback_${id}_${t}`);
       if (!raw) continue;
       try {
-        const parsed = JSON.parse(raw) as EnhancedFeedbackResult;
-        // Same staleness check loadFeedback uses: drop pre-`improved` reports.
-        const hasImproved = parsed.sentenceAnalysis?.some((sa) => 'improved' in sa);
-        if (!hasImproved && parsed.sentenceAnalysis?.length) continue;
+        const stored = JSON.parse(raw) as EnhancedFeedbackResult;
         // Entries cached before `limited` was set correctly claim to be full
         // reports while carrying none of the data a full report has. A report
         // with no sentence analysis and no vocabulary is a score-only one.
-        const looksLimited = !parsed.sentenceAnalysis?.length && !parsed.vocabulary?.length;
-        restored[t] = looksLimited ? { ...parsed, limited: true } : parsed;
+        const looksLimited = stored.limited === true || (!stored.sentenceAnalysis?.length && !stored.vocabulary?.length);
+        const parsed = toFeedbackResult(stored, looksLimited, t === 'task1' ? 'Task 1' : 'Task 2');
+        if (!parsed) continue;
+        // Same staleness check loadFeedback uses: drop pre-`improved` reports.
+        const hasImproved = parsed.sentenceAnalysis.some((sa) => 'improved' in sa);
+        if (!hasImproved && parsed.sentenceAnalysis.length) continue;
+        restored[t] = parsed;
       } catch { /* ignore a corrupt entry */ }
     }
     if (Object.keys(restored).length) setFeedbacks((prev) => ({ ...restored, ...prev }));
@@ -511,10 +554,11 @@ export function FeedbackPage() {
     const cached = sessionStorage.getItem(cacheKey);
     if (cached) {
       try {
-        const parsed = JSON.parse(cached) as EnhancedFeedbackResult;
+        const stored = JSON.parse(cached) as EnhancedFeedbackResult;
+        const parsed = toFeedbackResult(stored, stored.limited === true, taskKey === 'task1' ? 'Task 1' : 'Task 2');
         // Invalidate cache if it's missing the improved field (old format)
-        const hasImproved = parsed.sentenceAnalysis?.some(s => 'improved' in s);
-        if (hasImproved || !parsed.sentenceAnalysis?.length) {
+        const hasImproved = parsed?.sentenceAnalysis.some(s => 'improved' in s);
+        if (parsed && (hasImproved || !parsed.sentenceAnalysis.length)) {
           setFeedbacks((p) => ({ ...p, [taskKey]: parsed }));
           return;
         }
@@ -548,7 +592,14 @@ export function FeedbackPage() {
         limited?: boolean;
       };
 
-      // Step 2: feedback — only HMAC verify + Claude stream (no Firebase overhead)
+      // The Task 1 chart goes with the essay, so the examiner can check the
+      // student's figures against it. Awaited here rather than read from
+      // task1Chart, which may not have loaded yet when this runs on page open.
+      const chartImage = taskKey === 'task1'
+        ? ((reportData.task1?.id ? await loadTask1Chart(db, { id: reportData.task1.id }) : '') || (reportData.task1?.image ?? ''))
+        : '';
+
+      // Step 2: feedback — token check + Claude stream
       const res = await fetch('/api/feedback', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -557,6 +608,7 @@ export function FeedbackPage() {
           questionText: question,
           taskType: taskKey === 'task1' ? 'Task 1' : 'Task 2',
           preCheckToken,
+          ...(chartImage ? { chartImage } : {}),
         }),
       });
 
@@ -590,21 +642,22 @@ export function FeedbackPage() {
       // Stream finished — final "preparing interactive exercises" beat.
       setAnalysisStage((p) => ({ ...p, [taskKey]: LAST_STAGE }));
 
-      let parsedFeedback: EnhancedFeedbackResult;
-      try {
-        parsedFeedback = JSON.parse(raw.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim());
-      } catch {
-        throw new Error('Feedback incomplete. Please try again.');
-      }
-
       // pre-check decides which prompt runs, so it is the authority on whether
       // this report is the free score-only one. The model is never asked to
       // return a `limited` field, so reading it off the response always gave
       // false: every free report then rendered as a full one and the tabs it
       // has no data for crashed on undefined.
-      const feedbackWithLimit = { ...parsedFeedback, limited: limitedReport === true };
-      setFeedbacks((p) => ({ ...p, [taskKey]: feedbackWithLimit }));
-      sessionStorage.setItem(cacheKey, JSON.stringify(feedbackWithLimit));
+      let feedbackWithLimit: EnhancedFeedbackResult | null = null;
+      try {
+        feedbackWithLimit = toFeedbackResult(extractJson(raw), limitedReport === true, taskKey === 'task1' ? 'Task 1' : 'Task 2');
+      } catch { /* handled below */ }
+      if (!feedbackWithLimit) {
+        // The server applies the same test and has already given the report back.
+        throw new Error('Feedback incomplete — you were not charged. Please try again.');
+      }
+      const finished = feedbackWithLimit;
+      setFeedbacks((p) => ({ ...p, [taskKey]: finished }));
+      sessionStorage.setItem(cacheKey, JSON.stringify(finished));
       refreshProfile().catch(() => {});
 
       getFeedbackReportHistory(user.uid, 5)
@@ -686,6 +739,7 @@ export function FeedbackPage() {
           correct: false,
           feedback: data.error ?? 'Could not check it. Please try again.',
           improved: '',
+          system: true,
         }}));
         return;
       }
@@ -696,11 +750,13 @@ export function FeedbackPage() {
         improved: data.improved ?? '',
       }}));
     } catch (err) {
+      console.error('Practice check failed:', err);
       setPracticeChecked((p) => ({ ...p, [key]: {
         score: 0,
         correct: false,
-        feedback: `Network error: ${(err as Error).message}`,
+        feedback: 'Could not reach the checker. Check your connection and try again.',
         improved: '',
+        system: true,
       }}));
     } finally {
       setPracticeChecking((p) => ({ ...p, [key]: false }));
@@ -1029,7 +1085,7 @@ export function FeedbackPage() {
                   {/* Overall score ring */}
                   <div className="flex flex-col items-center min-w-[130px]">
                     <p className="inline-flex items-center gap-1.5 text-[0.65rem] font-bold tracking-widest uppercase text-[var(--text-secondary)] mb-4">
-                      <Sparkles className="w-3 h-3 text-[var(--gold)]" /> Band Score
+                      <Sparkles className="w-3 h-3 text-[var(--gold)]" /> Estimated band
                     </p>
                     <div className="relative flex items-center justify-center">
                       <svg className="w-28 h-28 -rotate-90 drop-shadow-[0_2px_10px_rgba(0,0,0,0.08)]" viewBox="0 0 96 96">
@@ -1040,7 +1096,7 @@ export function FeedbackPage() {
                           strokeWidth="8"
                           strokeLinecap="round"
                           strokeDasharray={`${2 * Math.PI * 40}`}
-                          strokeDashoffset={`${2 * Math.PI * 40 * (1 - (feedback.scores.overall - 4) / 5)}`}
+                          strokeDashoffset={`${2 * Math.PI * 40 * (1 - Math.min(1, Math.max(0, (feedback.scores.overall - 4) / 5)))}`}
                           className="transition-[stroke-dashoffset,stroke] duration-700"
                         />
                       </svg>

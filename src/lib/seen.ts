@@ -1,8 +1,9 @@
 import { auth } from '@/firebase/firebase';
 
-// Two visits a few minutes apart are the same visit for our purposes, and the
-// admin panel reads both as "a while ago". Skipping the repeat keeps a refresh,
-// or a second tab, from writing again. Kept per person, so someone else signing
+// Two stamps a few minutes apart say the same thing, so a refresh, a second
+// tab or a quick run of page changes only writes once per window. The API
+// routes students use most (reports, practice checks) also stamp on the
+// server, at no extra cost. Kept per person, so someone else signing
 // in on this computer is still stamped.
 const QUIET_MS = 10 * 60_000;
 const keyFor = (uid: string) => `lastSeenPing:${uid}`;

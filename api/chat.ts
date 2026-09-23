@@ -1,6 +1,50 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
+import { createHash } from 'crypto';
+import Anthropic from '@anthropic-ai/sdk';
+import { getFirestore } from 'firebase-admin/firestore';
+import { initFirebase, currentDayKey } from './_lib/shared.js';
 
-const GEMINI_URL = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-latest:generateContent';
+// Claude Haiku 4.5: fast and cheap (about $0.0045 a message), and it uses the
+// same Anthropic key and bill as the essay reports. The assistant ran on the
+// free Gemini tier before, which kept running out of quota.
+const MODEL = 'claude-haiku-4-5';
+// Answers are meant to stay under 150 words; this leaves room for the example
+// essay or full feedback a student may ask for, and caps the cost of any one reply.
+const MAX_TOKENS = 1500;
+
+// The assistant is open to visitors who are not signed in (the landing page
+// has it), so these limits are what stop someone running long conversations
+// on the site's API key. They are far above what a real chat needs.
+const MAX_MESSAGES = 20; // only the most recent ones are sent
+const MAX_MESSAGE_CHARS = 4000;
+const DAILY_LIMIT = 150; // messages per visitor (IP address) per day
+
+/**
+ * One counter per visitor per day, keyed by a hash of their IP so no raw
+ * address is stored. Returns false once the day's allowance is used. If the
+ * count cannot be checked the message goes through: a broken counter must
+ * not break the assistant.
+ */
+async function withinDailyLimit(req: VercelRequest): Promise<boolean> {
+  try {
+    initFirebase();
+    const ip = String(req.headers['x-real-ip'] ?? req.headers['x-forwarded-for'] ?? '').split(',')[0].trim();
+    const key = `chat_${createHash('sha256').update(ip || 'unknown').digest('hex').slice(0, 24)}`;
+    const db = getFirestore();
+    const ref = db.collection('chat_limits').doc(key);
+    const dayKey = currentDayKey();
+    return await db.runTransaction(async (tx) => {
+      const d = (await tx.get(ref)).data() as { dayKey?: string; count?: number } | undefined;
+      const used = d?.dayKey === dayKey ? (d.count ?? 0) : 0;
+      if (used >= DAILY_LIMIT) return false;
+      tx.set(ref, { dayKey, count: used + 1 });
+      return true;
+    });
+  } catch (e) {
+    console.error('chat: could not check the daily limit, letting it through:', e);
+    return true;
+  }
+}
 
 const SYSTEM_PROMPT = `You are the IELTS Writing assistant built into WriteReady IELTS, an AI writing coach for Uzbek learners. Help students raise their IELTS Writing band, and answer questions about how this site works.
 
@@ -26,6 +70,9 @@ If a student asks why a tab will not open, explain that it is part of a paid pla
 
 ## What a PAID report adds
 Everything above, for every essay: every sentence reviewed in order with an improved rewrite, three priority fixes, band gap analysis, 15 vocabulary items with Uzbek meanings, 10 grammar points, a band 8 to 9 model answer for that exact question, a spelling checker, and interactive practice exercises. Every paid plan gives the same full report. Only the number of reports a month changes.
+
+## How the marking works
+The essay is marked against the official IELTS Writing band descriptors (the public version, updated May 2023) with the best-fit method examiners use. For Task 1, the AI also looks at the chart, graph, map or diagram, so it can check the student's figures. An essay that does not answer the question, is far too short, or is not in English is marked down the way the descriptors say. The overall band is worked out from the four criteria with the official IELTS rounding. It is an estimate, not an official result.
 
 ## If a report fails
 If an AI report fails or comes back cut off, the site puts that report back on the account automatically. The student can send the same essay again and it is not counted twice. They do not need to ask for a refund of a report.
@@ -113,43 +160,55 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (!Array.isArray(messages) || !messages.length) {
     return res.status(400).json({ error: 'messages array is required' });
   }
+  const recent = messages.slice(-MAX_MESSAGES);
+  // Trimming can leave an assistant turn first; the history must open with the student.
+  while (recent.length > 1 && (recent[0] as { role?: unknown })?.role === 'assistant') recent.shift();
+  const valid = recent.every((m: unknown) => {
+    const msg = m as { role?: unknown; content?: unknown };
+    return (msg.role === 'user' || msg.role === 'assistant')
+      && typeof msg.content === 'string' && msg.content.length <= MAX_MESSAGE_CHARS;
+  });
+  if (!valid) {
+    return res.status(400).json({ error: `Each message can be up to ${MAX_MESSAGE_CHARS} characters.` });
+  }
 
-  const apiKey = process.env.GEMINI_API_KEY ?? process.env.GOOGLE_GEMINI_FLASH_API_KEY;
-  if (!apiKey) return res.status(500).json({ error: 'Gemini API key not configured.' });
+  const apiKey = process.env.ANTHROPIC_API_KEY;
+  if (!apiKey) {
+    console.error('chat: ANTHROPIC_API_KEY is not set');
+    return res.status(500).json({ error: 'The assistant is not set up yet.' });
+  }
 
-  // Convert messages to Gemini format
-  const contents = [
-    { role: 'user', parts: [{ text: SYSTEM_PROMPT }] },
-    { role: 'model', parts: [{ text: 'Understood. I am your IELTS Writing assistant. How can I help you today?' }] },
-    ...messages.map((m: { role: string; content: string }) => ({
-      role: m.role === 'assistant' ? 'model' : 'user',
-      parts: [{ text: m.content }],
-    })),
-  ];
+  if (!(await withinDailyLimit(req))) {
+    return res.status(429).json({ error: "You've sent a lot of messages today. Please come back tomorrow, or write to @writeready_admin on Telegram." });
+  }
 
   try {
-    const geminiRes = await fetch(GEMINI_URL, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'X-goog-api-key': apiKey },
-      body: JSON.stringify({
-        contents,
-        generationConfig: { temperature: 0.7, maxOutputTokens: 2048 },
-      }),
+    const message = await new Anthropic({ apiKey }).messages.create({
+      model: MODEL,
+      max_tokens: MAX_TOKENS,
+      // The instructions are the same for every visitor, so they carry a cache
+      // breakpoint: repeat reads bill at about a tenth of the price. (If the
+      // text is ever shorter than the model's minimum cache size, this is
+      // simply ignored.)
+      system: [{ type: 'text', text: SYSTEM_PROMPT, cache_control: { type: 'ephemeral' } }],
+      messages: recent.map((m: { role: 'user' | 'assistant'; content: string }) => ({ role: m.role, content: m.content })),
     });
 
-    if (!geminiRes.ok) {
-      const body = await geminiRes.text();
-      throw new Error(`Gemini ${geminiRes.status}: ${body.slice(0, 200)}`);
-    }
-
-    const data = await geminiRes.json() as {
-      candidates?: { content: { parts: { text: string }[] } }[];
-    };
-    const reply = data?.candidates?.[0]?.content?.parts?.[0]?.text ?? 'Sorry, I could not generate a response.';
-
-    return res.status(200).json({ reply });
+    const reply = message.content
+      .filter((block): block is Anthropic.TextBlock => block.type === 'text')
+      .map((block) => block.text)
+      .join('')
+      .trim();
+    return res.status(200).json({
+      reply: reply || 'Sorry, I could not answer that. Please ask in a different way, or write to @writeready_admin on Telegram.',
+    });
   } catch (err) {
+    // The provider's own message can include account details; it goes to the
+    // log, not to the visitor.
     console.error('chat error:', err);
-    return res.status(500).json({ error: (err as Error).message });
+    if (err instanceof Anthropic.RateLimitError) {
+      return res.status(429).json({ error: 'The assistant is busy right now. Please try again in a minute.' });
+    }
+    return res.status(502).json({ error: 'The assistant is not available right now. Please try again in a minute.' });
   }
 }

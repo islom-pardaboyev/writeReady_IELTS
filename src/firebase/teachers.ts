@@ -2,7 +2,6 @@ import {
   doc,
   getDoc,
   updateDoc,
-  deleteDoc,
   collection,
   getDocs,
   query,
@@ -12,6 +11,8 @@ import {
   serverTimestamp,
   Timestamp,
   runTransaction,
+  writeBatch,
+  deleteField,
   type Firestore,
 } from 'firebase/firestore';
 import { db } from './config';
@@ -43,10 +44,27 @@ function mapTeacher(id: string, data: Record<string, unknown>): Teacher {
 // Every function takes an optional Firestore instance so callers running under
 // the isolated admin/teacher-portal Firebase app (adminDb) don't touch the
 // main app's `db` instance, matching the existing Learning Center convention.
+//
+// A teacher's public profile (`teachers`) is readable by every signed-in
+// student, because students pick a teacher from it. So the portal login and
+// password live apart, in `teacherAuth/<teacherId>`, which only the admin and
+// api/staff-login.ts can read. They used to sit on the public profile, where
+// any student could read them and sign in as the teacher.
 
-export async function getTeachers(dbInstance: Firestore = db): Promise<Teacher[]> {
+const TEACHER_AUTH = 'teacherAuth';
+
+/** All teachers. Pass `withLogins` from the admin panel to fill in login and password. */
+export async function getTeachers(dbInstance: Firestore = db, opts: { withLogins?: boolean } = {}): Promise<Teacher[]> {
   const snap = await getDocs(query(collection(dbInstance, 'teachers'), orderBy('createdAt', 'desc')));
-  return snap.docs.map((d) => mapTeacher(d.id, d.data()));
+  const teachers = snap.docs.map((d) => mapTeacher(d.id, d.data()));
+  if (!opts.withLogins) return teachers;
+  const logins = await getDocs(collection(dbInstance, TEACHER_AUTH));
+  const byId = new Map(logins.docs.map((d) => [d.id, d.data()]));
+  return teachers.map((t) => {
+    const auth = byId.get(t.id);
+    if (!auth) return t;
+    return { ...t, login: (auth.login as string) ?? t.login, password: (auth.password as string) ?? t.password };
+  });
 }
 
 export async function getActiveTeachers(dbInstance: Firestore = db): Promise<Teacher[]> {
@@ -54,17 +72,25 @@ export async function getActiveTeachers(dbInstance: Firestore = db): Promise<Tea
   return teachers.filter((t) => t.active);
 }
 
-export async function getTeacher(teacherId: string, dbInstance: Firestore = db): Promise<Teacher | null> {
-  const snap = await getDoc(doc(dbInstance, 'teachers', teacherId));
-  if (!snap.exists()) return null;
-  return mapTeacher(snap.id, snap.data());
-}
-
-export async function findTeacherByLogin(login: string, dbInstance: Firestore = db): Promise<Teacher | null> {
-  const snap = await getDocs(query(collection(dbInstance, 'teachers'), where('login', '==', login)));
-  if (snap.empty) return null;
-  const d = snap.docs[0];
-  return mapTeacher(d.id, d.data());
+/**
+ * Moves logins saved on the public profile, before teacherAuth existed, to
+ * teacherAuth. Each teacher moves in the same batch that deletes the public
+ * copy, so a login is never lost half way. The admin panel runs this when it
+ * lists teachers; api/staff-login.ts also moves a teacher when they sign in.
+ * Returns how many teachers were moved.
+ */
+export async function secureLegacyTeacherLogins(dbInstance: Firestore = db): Promise<number> {
+  const snap = await getDocs(collection(dbInstance, 'teachers'));
+  const legacy = snap.docs.filter((d) => 'login' in d.data() || 'password' in d.data());
+  if (!legacy.length) return 0;
+  const batch = writeBatch(dbInstance);
+  for (const d of legacy) {
+    const { login, password } = d.data();
+    batch.set(doc(dbInstance, TEACHER_AUTH, d.id), { login: login ?? '', password: password ?? '' }, { merge: true });
+    batch.update(d.ref, { login: deleteField(), password: deleteField() });
+  }
+  await batch.commit();
+  return legacy.length;
 }
 
 export interface CreateTeacherInput {
@@ -79,11 +105,12 @@ export interface CreateTeacherInput {
 }
 
 export async function createTeacher(input: CreateTeacherInput, dbInstance: Firestore = db): Promise<string> {
-  const ref = await addDoc(collection(dbInstance, 'teachers'), {
-    ...input,
-    active: true,
-    createdAt: serverTimestamp(),
-  });
+  const { login, password, ...profile } = input;
+  const ref = doc(collection(dbInstance, 'teachers'));
+  const batch = writeBatch(dbInstance);
+  batch.set(ref, { ...profile, active: true, createdAt: serverTimestamp() });
+  batch.set(doc(dbInstance, TEACHER_AUTH, ref.id), { login, password });
+  await batch.commit();
   return ref.id;
 }
 
@@ -92,11 +119,26 @@ export async function updateTeacher(
   updates: Partial<CreateTeacherInput & { active: boolean }>,
   dbInstance: Firestore = db,
 ): Promise<void> {
-  await updateDoc(doc(dbInstance, 'teachers', teacherId), updates);
+  const { login, password, ...profile } = updates;
+  const batch = writeBatch(dbInstance);
+  if (login !== undefined || password !== undefined) {
+    batch.set(doc(dbInstance, TEACHER_AUTH, teacherId), {
+      ...(login !== undefined ? { login } : {}),
+      ...(password !== undefined ? { password } : {}),
+    }, { merge: true });
+    // Clears a copy left on the public profile by the old code.
+    batch.update(doc(dbInstance, 'teachers', teacherId), { ...profile, login: deleteField(), password: deleteField() });
+  } else {
+    batch.update(doc(dbInstance, 'teachers', teacherId), profile);
+  }
+  await batch.commit();
 }
 
 export async function deleteTeacher(teacherId: string, dbInstance: Firestore = db): Promise<void> {
-  await deleteDoc(doc(dbInstance, 'teachers', teacherId));
+  const batch = writeBatch(dbInstance);
+  batch.delete(doc(dbInstance, 'teachers', teacherId));
+  batch.delete(doc(dbInstance, TEACHER_AUTH, teacherId));
+  await batch.commit();
 }
 
 // ── Human reviews ───────────────────────────────────────────────────────────

@@ -22,7 +22,7 @@ function friendlyAuthError(err: unknown, fallback: string): string {
 const PRO_FEATURES = [
   'Real exam-style prompts',
   'Sentence-by-sentence feedback',
-  'Estimated band score per sentence',
+  'Priority fixes and a plan for the next band',
   'Full essay report (4 criteria)',
   '15 topic-specific vocabulary words',
   'High-level sample essays',
@@ -224,10 +224,11 @@ export function AccountPage() {
             <Card className="gs-plan-card p-8 mb-4">
               <div className="font-sans font-bold text-xl text-[var(--text-primary)] mb-1.5">Free Plan</div>
               <p className="text-sm text-[var(--text-secondary)] mb-6 leading-relaxed">
-                You're on the free plan. Upgrade to Pro to unlock AI feedback, band score estimates, and vocabulary upgrades.
+                You're on the free plan: one estimated band score a week. A paid plan adds the full report, with
+                sentence-by-sentence corrections, vocabulary, grammar points and a model answer.
               </p>
               <Link to="/pricing">
-                <Button>Upgrade to Pro</Button>
+                <Button>See paid plans</Button>
               </Link>
             </Card>
           )}

@@ -73,7 +73,9 @@ export function UsersSection({
     return users
       .filter((u) => (filter === "today" ? joinedToday(u) : filter === "paying" ? isPaying(u) : filter === "expired" ? isExpiredPaid(u) : true))
       .filter((u) => !q || u.email.toLowerCase().includes(q))
-      .sort((a, b) => (b.createdAt ?? "").localeCompare(a.createdAt ?? ""));
+      // Most recently active first, so the people using the site right now
+      // are at the top; join date breaks ties and orders those never seen.
+      .sort((a, b) => (b.lastActiveAt ?? "").localeCompare(a.lastActiveAt ?? "") || (b.createdAt ?? "").localeCompare(a.createdAt ?? ""));
   }, [users, filter, search]);
 
   const selected = users.find((u) => u.id === selectedId) ?? null;

@@ -95,6 +95,7 @@ export default function TeacherPortalPage() {
       const data = await res.json().catch(() => ({}));
       if (!res.ok) {
         if (res.status === 403) return "This account is turned off. Ask the WriteReady admin to turn it back on.";
+        if (res.status === 429) return data.error ?? "Too many wrong passwords. Wait 15 minutes and try again.";
         return res.status >= 500 ? "The sign-in service had a problem. Try again in a minute." : "That login or password is not right.";
       }
       await signInWithCustomToken(adminAuth, data.customToken);

@@ -5,6 +5,7 @@ import { MaintenanceGate } from './components/layout/MaintenanceGate';
 import { ErrorBoundary } from './components/layout/ErrorBoundary';
 import { RouteTitle } from './components/layout/RouteTitle';
 import { RouteFocus } from './components/layout/RouteFocus';
+import { RouteSeen } from './components/layout/RouteSeen';
 import { GlobalShortcuts } from './components/shortcuts/GlobalShortcuts';
 import { AnnouncementCard } from './components/ui/AnnouncementCard';
 import { CookieNotice } from './components/ui/CookieNotice';
@@ -17,7 +18,6 @@ import { AuthPage } from './pages/AuthPage';
 import { LogoLoader } from '@/components/ui/LogoLoader';
 
 const DashboardPage = lazy(() => import('./pages/DashboardPage').then(m => ({ default: m.DashboardPage })));
-const WorkspacePage = lazy(() => import('./pages/WorkspacePage').then(m => ({ default: m.WorkspacePage })));
 const FeedbackPage = lazy(() => import('./pages/FeedbackPage').then(m => ({ default: m.FeedbackPage })));
 const PricingPage = lazy(() => import('./pages/PricingPage').then(m => ({ default: m.PricingPage })));
 const AccountPage = lazy(() => import('./pages/AccountPage').then(m => ({ default: m.AccountPage })));
@@ -55,6 +55,7 @@ export default function App() {
         <MaintenanceGate>
           <RouteTitle />
           <RouteFocus />
+          <RouteSeen />
           <GlobalShortcuts />
           <AnnouncementCard />
           <CookieNotice />
@@ -67,7 +68,6 @@ export default function App() {
             <Route path="/" element={<LandingPage />} />
             <Route path="/auth" element={<AuthPage />} />
             <Route path="/dashboard" element={withSuspense(<DashboardPage />)} />
-            <Route path="/workspace/:id" element={withSuspense(<WorkspacePage />)} />
             <Route path="/feedback/:id" element={withSuspense(<FeedbackPage />)} />
             <Route path="/pricing" element={withSuspense(<PricingPage />)} />
             <Route path="/account" element={withSuspense(<AccountPage />)} />

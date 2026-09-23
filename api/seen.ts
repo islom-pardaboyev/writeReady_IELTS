@@ -6,9 +6,11 @@ import { initFirebase, getUid } from './_lib/shared.js';
  * Records that a signed-in person is on the site, so the admin panel can show
  * when each student was last here.
  *
- * The browser calls this once when it opens (see src/lib/seen.ts), not on a
- * timer. Visiting is the whole signal: it does not matter what they do next,
- * so the body carries nothing and the only thing written is the clock.
+ * The browser calls this when the site opens, when the student moves to
+ * another page, and when a tab comes back into view (src/lib/seen.ts), at
+ * most once per ten minutes and never on a timer. api/pre-check.ts and
+ * api/check-practice.ts stamp the same field while they save anyway. The
+ * body carries nothing and the only thing written is the clock.
  *
  * Firestore rules let a student change almost nothing on their own profile, so
  * the stamp is written here with the Admin SDK instead of from the browser.

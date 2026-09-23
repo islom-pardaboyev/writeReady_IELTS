@@ -66,6 +66,8 @@ export default defineConfig({
   resolve: {
     alias: {
       '@': resolve(__dirname, './src'),
+      // Files in api/_lib with no imports, shared by the site and the API.
+      '@shared': resolve(__dirname, './api/_lib'),
     },
   },
   build: {

@@ -1,6 +1,4 @@
 export type Plan = 'free' | 'basic' | 'standard' | 'premium' | 'forever';
-export type PracticeMode = 'mock' | 'practice' | 'relax';
-export type TaskType = 'task1' | 'task2';
 
 export interface UserProfile {
   uid: string;
@@ -24,58 +22,6 @@ export interface UsageRecord {
   count: number;
   limit: number;
   updatedAt: Date;
-}
-
-export interface Question {
-  id: string;
-  taskType: TaskType;
-  topic: string;
-  promptText: string;
-  category: string;
-  dateAdded: Date;
-  source?: string;
-}
-
-export interface SentenceFeedback {
-  sentence: string;
-  original: string;
-  correction?: string;
-  explanation?: string;
-  type: 'grammar' | 'coherence' | 'style' | 'ok';
-}
-
-export interface VocabUpgrade {
-  word: string;
-  uzbekMeaning: string;
-  englishMeaning: string;
-  exampleSentence: string;
-}
-
-export interface FeedbackResult {
-  sentenceFeedback: SentenceFeedback[];
-  vocabUpgrades: VocabUpgrade[];
-  taskAchievementNotes: string;
-  overallSummary: string;
-  bandEstimate: number;
-  modelParagraph: string;
-}
-
-export interface Submission {
-  id: string;
-  uid: string;
-  questionId: string;
-  questionText: string;
-  essayText: string;
-  mode: PracticeMode;
-  feedback?: FeedbackResult;
-  createdAt: Date;
-}
-
-export interface AnalyzeRequest {
-  essayText: string;
-  questionText: string;
-  mode: PracticeMode;
-  idToken: string;
 }
 
 // ── Enhanced feedback (api/feedback.ts) ────────────────────────────────────
@@ -146,6 +92,8 @@ export interface Teacher {
   certificateBase64?: string;
   ieltsOverall: number;
   ieltsWriting: number;
+  /** Portal login and password. Stored in teacherAuth, not on the public
+   *  profile, and filled in only for the admin panel (getTeachers withLogins). */
   login: string;
   password: string;
   /** "@username" — used to tag the teacher in the teachers' Telegram group. */

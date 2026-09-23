@@ -90,8 +90,8 @@ export function PrivacyPolicyPage() {
       </p>
       <p>
         That company processes your text to answer that one request, and under the terms we have with it your essay is
-        not used to train its models. Messages you type into the chat bubble go to a different AI company, also outside
-        {LEGAL.country}. If you want to know exactly which companies these are, ask us and we will tell you.
+        not used to train its models. Messages you type into the chat bubble go to the same company, on the same terms.
+        If you want to know exactly which company this is, ask us and we will tell you.
       </p>
       <p>
         If you ask for a Human Check, the essay you choose is also shown to the teacher you pick, together with your
@@ -132,11 +132,7 @@ export function PrivacyPolicyPage() {
           </tr>
           <tr>
             <td>An artificial-intelligence provider</td>
-            <td>Writes the AI feedback on the essay you submit.</td>
-          </tr>
-          <tr>
-            <td>A second artificial-intelligence provider</td>
-            <td>Answers your messages in the chat bubble.</td>
+            <td>Writes the AI feedback on the essay you submit, and answers your messages in the chat bubble.</td>
           </tr>
           <tr>
             <td>A website hosting provider</td>

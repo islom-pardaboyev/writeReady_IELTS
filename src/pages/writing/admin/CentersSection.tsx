@@ -13,6 +13,7 @@ import { ListDetail, ListPane, RowList, ListRow, DetailView, DetailHeader, Detai
 import { EmptyState, Field, FilterChips, Initials, LoadError, Notice, RowSkeletons, SearchField } from "@/components/staff/parts";
 import { daysUntil, formatDate, inDays, uzs } from "./format";
 import { PLAN_INFO } from "@/lib/plans";
+import { removeCenterStudent, updateCenterStudent } from "@/lib/centerStudent";
 import {
   CENTER_PLAN_IDS,
   DEFAULT_CENTER_PLAN,
@@ -355,10 +356,10 @@ export function CentersSection({ intent, clearIntent }: SectionProps) {
           createdAt: serverTimestamp(),
           bonusAnalyses: 0,
         });
+        // No password here: it lives in the sign-in account only.
         await setDoc(doc(db, "learningCenters", c.id, "students", uid), {
           fullName: newName.trim(),
           login: loginKey,
-          password: newPassword.trim(),
           uid,
           addedAt: serverTimestamp(),
         });
@@ -381,8 +382,11 @@ export function CentersSection({ intent, clearIntent }: SectionProps) {
   };
 
   const removeStudent = async (c: Center, s: CenterStudent) => {
-    if (!(await confirm(`Remove ${s.fullName} from ${c.name}? They lose the access the center gives them.`, { title: "Remove student?", destructive: true, confirmLabel: "Remove" }))) return;
-    await deleteDoc(doc(db, "learningCenters", c.id, "students", s.id));
+    if (!(await confirm(`Remove ${s.fullName} from ${c.name}? They lose the access the center gives them and move to the free plan.`, { title: "Remove student?", destructive: true, confirmLabel: "Remove" }))) return;
+    // The server also takes the center's plan off their account
+    // (api/center-student.ts); deleting this record alone left it in place.
+    const result = await removeCenterStudent(c.id, s.id);
+    if (!result.ok) { setStudentError(result.error); return; }
     setStudents((prev) => prev.filter((x) => x.id !== s.id));
     patchCount(c.id, -1);
   };
@@ -399,24 +403,19 @@ export function CentersSection({ intent, clearIntent }: SectionProps) {
     if (!esName.trim() || !esLogin.trim()) { setEsError("Name and login are required."); return; }
     setEsSaving(true);
     setEsError("");
-    try {
-      if (esLogin.trim() !== s.login) {
-        const ex = await getDocs(query(collection(db, "learningCenters", c.id, "students"), where("login", "==", esLogin.trim())));
-        if (!ex.empty) { setEsError("That login is already used in this center."); setEsSaving(false); return; }
-      }
-      const updates: Record<string, string> = { fullName: esName.trim(), login: esLogin.trim() };
-      if (esPass.trim()) updates.password = esPass.trim();
-      await updateDoc(doc(db, "learningCenters", c.id, "students", s.id), updates);
-      // The student doc id is the user's uid; analytics join users.studentLogin
-      // to students.login, so a changed login has to be mirrored there too.
-      if (esLogin.trim() !== s.login) {
-        await updateDoc(doc(db, "users", s.id), { studentLogin: esLogin.trim() }).catch(() => {});
-      }
-      setStudents((prev) => prev.map((x) => (x.id === s.id ? { ...x, fullName: esName.trim(), login: esLogin.trim() } : x)));
+    // The server changes the login and password the student really signs in
+    // with (api/center-student.ts), not just the copy shown here.
+    const result = await updateCenterStudent(c.id, s.id, {
+      fullName: esName.trim(),
+      login: esLogin.trim(),
+      ...(esPass.trim() ? { password: esPass.trim() } : {}),
+    });
+    if (result.ok) {
+      const login = result.login ?? esLogin.trim().toLowerCase();
+      setStudents((prev) => prev.map((x) => (x.id === s.id ? { ...x, fullName: esName.trim(), login } : x)));
       setEditStudentId(null);
-    } catch (e) {
-      console.error(e);
-      setEsError("Could not save the student. Try again.");
+    } else {
+      setEsError(result.error);
     }
     setEsSaving(false);
   };

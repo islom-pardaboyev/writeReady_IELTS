@@ -1,6 +1,8 @@
 import jsPDF from "jspdf";
 import type { CategoryFeedback, EnhancedFeedbackResult, SentenceIssueType } from "@/types";
 import { isPdfSrc, loadImageForPdf } from "@/lib/loadImageForPdf";
+// The same official band names the feedback page shows.
+import { bandLabel } from "@shared/bandScore";
 import {
   BRAND,
   countWords,
@@ -52,16 +54,6 @@ const WHITE: RGB = [255, 255, 255];
 
 // Same thresholds and colors as the scores on the feedback page.
 const scoreColor = (s: number): RGB => (s >= 7 ? STRONG : s >= 6 ? BRAND : WEAK);
-
-// Official IELTS band descriptors, as the feedback page shows them.
-function bandLabel(score: number): string {
-  if (score >= 8.5) return "Expert user";
-  if (score >= 7.5) return "Very good user";
-  if (score >= 6.5) return "Good user";
-  if (score >= 5.5) return "Competent user";
-  if (score >= 4.5) return "Modest user";
-  return "Limited user";
-}
 
 type CriterionKey = keyof EnhancedFeedbackResult["feedback"];
 const CRITERIA: { key: CriterionKey; name: string; about: string }[] = [

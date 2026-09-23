@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { getAllFeedbackReports, type FeedbackReport } from '../../firebase/firestore';
 import { Card } from './Card';
+import { reportBand } from '@shared/bandScore';
 
 const CATEGORY_LABELS: Record<string, string> = {
   taskAchievement: 'Task Achievement',
@@ -32,10 +33,12 @@ function TrendChart({ reports }: TrendChartProps) {
   const H = 140;
   const PAD = { top: 12, right: 16, bottom: 28, left: 28 };
 
-  const points = reports.map((r) => {
-    const vals = Object.values(r.scores).filter((v) => typeof v === 'number' && v !== r.scores.overall);
-    return vals.length ? vals.reduce((a, b) => a + b, 0) / vals.length : (r.scores.overall ?? 0);
-  });
+  // Each report's official overall band, the same number the student saw on
+  // the report itself. This used to average the stored numbers after dropping
+  // every one equal to the overall, so criteria that matched it vanished and a
+  // 6.0 report could be drawn as a 6.5. Reports here all have a band: see
+  // ProgressSection below.
+  const points = reports.map((r) => reportBand(r.scores) ?? 0);
 
   const min = Math.max(0, Math.min(...points) - 0.5);
   const max = Math.min(9, Math.max(...points) + 0.5);
@@ -158,7 +161,9 @@ export function ProgressSection({ uid }: { uid: string }) {
 
   useEffect(() => {
     getAllFeedbackReports(uid)
-      .then(setReports)
+      // A report with no usable score has nothing to plot.
+      .then((all) => setReports(all.filter((r) => reportBand(r.scores) !== null)))
+      .catch((e) => console.error('Could not load progress:', e))
       .finally(() => setLoading(false));
   }, [uid]);
 

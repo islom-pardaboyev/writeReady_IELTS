@@ -7,6 +7,7 @@ import {
   deleteTeacher as deleteTeacherDoc,
   getHumanReviewsForTeacher,
   getTeachers,
+  secureLegacyTeacherLogins,
   teacherEarningUZS,
   updateTeacher,
 } from "@/firebase/teachers";
@@ -57,7 +58,11 @@ export function TeachersSection({
   const load = useCallback(async () => {
     setLoading(true);
     try {
-      const rows = await getTeachers(db);
+      // Logins saved by the old code on the public profile, where students
+      // could read them, are moved to teacherAuth first. A failure here must
+      // not stop the list from loading.
+      await secureLegacyTeacherLogins(db).catch((e) => console.error("Could not move teacher logins:", e));
+      const rows = await getTeachers(db, { withLogins: true });
       setTeachers(rows);
       const next: Record<string, { pending: number; checked: number }> = {};
       await Promise.all(rows.map(async (t) => {

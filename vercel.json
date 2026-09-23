@@ -5,7 +5,7 @@
 
     { "source": "/", "destination": "/index.html" },
     { "source": "/(auth|dashboard|pricing|account|admin|center-admin|teacher-portal|blog|privacy|terms|faq)", "destination": "/index.html" },
-    { "source": "/(workspace|feedback|human-review|blog)/([^/]+)", "destination": "/index.html" },
+    { "source": "/(feedback|human-review|blog)/([^/]+)", "destination": "/index.html" },
     { "source": "/writing/(mock|practice|relax|quick)", "destination": "/index.html" },
 
     { "source": "/((?!api/|@|src/|node_modules/|.*\\.[a-zA-Z0-9]+$).*)", "destination": "/api/not-found" }

@@ -10,7 +10,6 @@ type TitleFor = string | ((query: URLSearchParams) => string);
 const ROUTE_TITLES: [RegExp, TitleFor][] = [
   [/^\/auth$/, (q) => (q.get('mode') === 'signup' ? 'Create your account' : q.get('mode') === 'student' ? 'Student sign in' : 'Sign in')],
   [/^\/dashboard$/, 'Dashboard'],
-  [/^\/workspace\/[^/]+$/, 'Writing'],
   [/^\/feedback\/[^/]+$/, 'Feedback report'],
   [/^\/pricing$/, 'Pricing'],
   [/^\/account$/, 'My Account'],
