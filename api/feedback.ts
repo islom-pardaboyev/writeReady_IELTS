@@ -433,7 +433,7 @@ function chartLine(chart: ChartNote, fullReport: boolean): string {
   if (chart === 'missing') {
     return `TASK 1 VISUAL: none was sent with this task. If the question refers to a chart, graph, table, map or diagram, you cannot see it: judge Task Achievement on what the question text shows, and do not mark the student down for figures you cannot check.`;
   }
-  const scoring = `TASK 1 VISUAL: the chart, graph, table, map or diagram the student had to describe is attached above. Study it before you mark. Check every trend, figure and comparison the student reports against it: for example, a line the student says fell while the visual shows it rising, a wrong number, a wrong overview, or a key feature left out. These are Task Achievement weaknesses. Weigh them with the descriptors above as part of the best-fit judgement: mistakes in details point toward Band 6 ("inaccurate info in details"), mistakes in the main trends or the overview toward Band 5 ("inaccurate material in key areas").`;
+  const scoring = `TASK 1 VISUAL: the chart, graph, table, map or diagram the student had to describe is attached above. Study it before you mark. Check every trend, figure and comparison the student reports against it: for example, a line the student says fell while the visual shows it rising, a wrong number, a wrong overview, or a key feature left out. These are Task Achievement weaknesses. Weigh them with the descriptors above as part of the best-fit judgement: one or two small slips in details are the "few omissions/lapses" Band 7 allows; repeated mistakes in details point toward Band 6 ("inaccurate info in details"), and mistakes in the main trends or the overview toward Band 5 ("inaccurate material in key areas").`;
   return fullReport
     ? `${scoring} Name each mistake in feedback.taskAchievement.issues, quoting the student's words and saying what the visual actually shows. In sentenceAnalysis, never mark a sentence with wrong data as ok: use word_choice when a wrong trend word or figure is the fault, and say in its feedback what the visual shows.`
     : scoring;
@@ -453,15 +453,16 @@ function scoringMethod(): string {
   return `=== SCORING METHOD (official IELTS best-fit) ===
 For EACH of the 4 criteria, choose the band whose descriptor BEST matches the essay's overall profile — exactly as a real IELTS examiner does. Best-fit means matching the closest overall description; NOT every feature of a band must be present, and one or two features sitting slightly higher or lower does not change the best-fit band.
 
-Apply the band descriptors exactly as written, in both directions. The top bands tolerate minor errors — Band 9 allows "rare errors only, as slips" and Band 8 allows "occasional inaccuracies" — so do not withhold a high band over a handful of small mistakes. Equally, the lower bands exist and must be used: frequent errors, a narrow range, or underdeveloped ideas belong at Band 5 or 6, however hard the student has clearly worked.
+Apply the band descriptors exactly as written, in both directions. The top bands tolerate minor errors — Band 9 allows "rare errors only, as slips" and Band 8 allows "occasional inaccuracies" — so do not withhold a high band over a handful of small mistakes. Equally, the lower bands exist and must be used: frequent errors that make the reader work, a narrow range, or underdeveloped ideas belong at Band 5 or 6.
 
 Use the FULL range 4.0–9.0. Use half bands (e.g. 7.5) when the essay sits between two whole bands; pick the closer fit, rounding up or down as the evidence points rather than by habit.
 
 Calibration anchors — score each criterion independently against these:
 - Band 9.0: near-native — precise, wide, natural vocabulary; varied structures that are virtually all error-free; fully developed, well-supported ideas; effortless, seamless cohesion. Errors are rare slips only.
-- Band 8.0–8.5: fluent and flexible — a wide vocabulary used naturally with only occasional slips; a wide range of structures where the great majority of sentences are error-free; well-developed ideas; well-managed cohesion and paragraphing.
-- Band 7.0–7.5: good but with visible limits — sufficient range with some less-common vocabulary; frequent error-free complex sentences BUT errors that clearly persist; clear, organised argument that may lack full development in places.
-- Band 5.0–6.0: adequate but limited range; noticeable or frequent errors; ideas underdeveloped, mechanical, or repetitive.
+- Band 8.0–8.5: fluent and flexible — a wide vocabulary used naturally with only occasional slips; a wide range of structures where the majority of sentences are error-free; well-developed ideas; well-managed cohesion and paragraphing.
+- Band 7.0–7.5: good but with visible limits — sufficient range with some less-common vocabulary; frequent error-free complex sentences, though a few errors persist without impeding communication; clear, organised argument that may lack full development in places.
+- Band 6.0–6.5: competent — adequate vocabulary with some imprecision; a mix of simple and complex sentences, where errors occur but rarely impede communication; relevant ideas, some not fully developed; clear overall progression.
+- Band 5.0–5.5: limited — narrow, repetitive vocabulary; frequent errors that cause the reader some difficulty; ideas underdeveloped, mechanical, or repetitive.
 
 Do NOT cluster essays at Band 7. Band 7 means "good, but with visible limitations." Judge each essay against the descriptors and award what it has earned: a fluent, precise, fully developed essay is a Band 8 or 9, and an essay with persistent errors, narrow vocabulary or thin ideas is a Band 5 or 6. Excellent, competent and weak essays must all end up with clearly different scores. Point to specific evidence from the essay for the band you award.`;
 }
@@ -474,7 +475,7 @@ function scoresSchema(taskType: string, gapCoaching: boolean): string {
   "topic": "<2-5 word topic label e.g. 'Technology and Society'>",
   "wordCount": <the word count given with the essay below>,
   "bandRationale": {
-    "taskAchievement": "<which band descriptor is fully met and why, citing the essay${gapCoaching ? "; note the next band up and what's missing to reach it" : ''}>",
+    "taskAchievement": "<which band descriptor best fits and why, citing the essay${gapCoaching ? "; note the next band up and what's missing to reach it" : ''}>",
     "coherenceCohesion": "<same>",
     "lexicalResource": "<same>",
     "grammaticalRangeAccuracy": "<same>"
@@ -493,7 +494,7 @@ function scoringRules(): string {
   return `- Score each of the 4 criteria INDEPENDENTLY. It is uncommon for all four to land on the exact same band — most essays are stronger in some areas than others. Do NOT default to giving every criterion 7.0; give matching scores only when each criterion genuinely best-fits that band on its own.
 - scores.* must be internally consistent with bandRationale.* — the score must reflect the best-fit band you described
 - Award the band the evidence supports, in either direction: give Band 8.0–9.0 when the essay's profile genuinely matches those descriptors, and give Band 4.0–6.0 when it does not. Occasional slips do not block a high band; persistent errors and undeveloped ideas do.
-- Do NOT compress scores toward the middle. Never inflate a score to encourage the student, and never deflate one to appear rigorous. This student is preparing for a real exam where a stranger will mark them — a score that is too generous does more harm than one that is too harsh, because it tells them they are ready when they are not. The same applies to the written feedback: name the real weaknesses plainly instead of softening them.`;
+- Do NOT compress scores toward the middle. Never inflate a score to encourage the student, and never deflate one to appear rigorous. This student is preparing for a real exam, and a wrong score hurts them in either direction: too high tells them they are ready when they are not, too low makes a ready student delay and pay for an exam they could already pass. When the evidence sits between two bands, give the half band between them rather than defaulting to the lower one. The same applies to the written feedback: name the real weaknesses plainly, and give real credit for what the essay does well.`;
 }
 
 /**
