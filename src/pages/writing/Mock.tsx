@@ -6,7 +6,8 @@ import {
   type CSSProperties,
 } from "react";
 import { auth, db } from "@/firebase/firebase";
-import { collection, doc, getDoc, getDocs } from "firebase/firestore";
+import { doc, getDoc } from "firebase/firestore";
+import { loadPrompts } from "@/lib/promptCache";
 import { downloadEssayPdf } from "@/lib/essayPdf";
 import { useSingleRun } from "@/hooks/useSingleRun";
 import { BusyLabel } from "@/components/ui/BusyLabel";
@@ -93,14 +94,12 @@ function Mock() {
     const fetchTasks = async () => {
       setLoading(true);
       try {
-        const t1Snap = await getDocs(collection(db, "task1_reports"));
-        const t1Docs = t1Snap.docs.map((d) => ({ id: d.id, ...(d.data() as Omit<Task1, "id">) }));
+        // Saved in the browser between visits; see src/lib/promptCache.ts.
+        const { task1: t1Docs, task2: t2Docs } = await loadPrompts(db);
         setTask1List(t1Docs);
         task1BagRef.current.setItems(t1Docs);
         setTask1(task1BagRef.current.next());
 
-        const t2Snap = await getDocs(collection(db, "task2_reports"));
-        const t2Docs = t2Snap.docs.map((d) => d.data() as Task2);
         setTask2List(t2Docs);
         task2BagRef.current.setItems(t2Docs);
         setTask2(task2BagRef.current.next());

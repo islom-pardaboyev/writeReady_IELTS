@@ -3,6 +3,13 @@ import { addDoc, collection, deleteDoc, doc, getDocs, query, updateDoc, where } 
 import { FileText, ImagePlus, Loader2, Plus, Trash2, Upload } from "lucide-react";
 import { adminDb as db } from "@/firebase/adminConfig";
 import { compressChartFile, deleteTask1Chart, forgetTask1Chart, loadTask1Chart, saveTask1Chart } from "@/lib/task1Chart";
+import { bumpPromptsVersion } from "@/lib/promptCache";
+
+// Students keep the prompt list in their browser (src/lib/promptCache.ts);
+// this tells their next visit to fetch it again. Failing it only delays the
+// change for them, so it never fails the admin's save.
+const markPromptsChanged = () =>
+  bumpPromptsVersion(db).catch((e) => console.error("Could not mark the prompts as changed:", e));
 import { isPdfSrc } from "@/lib/loadImageForPdf";
 import { useConfirm } from "@/hooks/useConfirm";
 import { Button } from "@/components/ui/Button";
@@ -142,6 +149,7 @@ export function PromptsSection({
         : { report: newReport, createdAt: new Date() };
       const ref = await addDoc(collection(db, copy.collection), data);
       if (hasImage) await saveTask1Chart(db, ref.id, newImage);
+      await markPromptsChanged();
       const created: Prompt = hasImage
         ? { id: ref.id, chart: newImage, thumb: newThumb, report: newReport }
         : { id: ref.id, report: newReport };
@@ -170,6 +178,7 @@ export function PromptsSection({
       const chartChanged = hasImage && draftImage !== (selected.chart ?? "");
       const updates = hasImage ? { thumb: draftThumb, report: draftReport } : { report: draftReport };
       await updateDoc(doc(db, copy.collection, selected.id), updates);
+      await markPromptsChanged();
       if (chartChanged) {
         await saveTask1Chart(db, selected.id, draftImage);
         forgetTask1Chart(selected.id);
@@ -188,6 +197,7 @@ export function PromptsSection({
     if (!selected) return;
     if (!(await confirm(`Delete this ${copy.singular}? Students will stop getting it. This cannot be undone.`, { title: "Delete prompt?", destructive: true, confirmLabel: "Delete" }))) return;
     await deleteDoc(doc(db, copy.collection, selected.id));
+    await markPromptsChanged();
     if (hasImage) {
       await deleteTask1Chart(db, selected.id);
       forgetTask1Chart(selected.id);

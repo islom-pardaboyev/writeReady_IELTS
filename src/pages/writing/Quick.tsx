@@ -6,7 +6,8 @@ import {
   type CSSProperties,
 } from "react";
 import { auth, db } from "@/firebase/firebase";
-import { collection, doc, getDoc, getDocs } from "firebase/firestore";
+import { doc, getDoc } from "firebase/firestore";
+import { loadPrompts } from "@/lib/promptCache";
 import { downloadEssayPdf } from "@/lib/essayPdf";
 import { useSingleRun } from "@/hooks/useSingleRun";
 import { BusyLabel } from "@/components/ui/BusyLabel";
@@ -87,12 +88,8 @@ function Quick() {
     const fetchTasks = async () => {
       setLoading(true);
       try {
-        const [t1Snap, t2Snap] = await Promise.all([
-          getDocs(collection(db, "task1_reports")),
-          getDocs(collection(db, "task2_reports")),
-        ]);
-        const t1Docs = t1Snap.docs.map((d) => ({ id: d.id, ...(d.data() as Omit<Task1, "id">) }));
-        const t2Docs = t2Snap.docs.map((d) => d.data() as Task2);
+        // Saved in the browser between visits; see src/lib/promptCache.ts.
+        const { task1: t1Docs, task2: t2Docs } = await loadPrompts(db);
         task1BagRef.current.setItems(t1Docs);
         task2BagRef.current.setItems(t2Docs);
         setTask1(task1BagRef.current.next());

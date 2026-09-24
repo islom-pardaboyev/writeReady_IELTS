@@ -5,8 +5,9 @@ import { doc, deleteDoc, getDoc, setDoc, type Firestore } from "firebase/firesto
 // teacher photos already are (src/firebase/teachers.ts).
 //
 // They sit in their own collection rather than on the prompt document,
-// because all three modes download the WHOLE task1_reports collection on load
-// to fill the shuffle bag (Mock.tsx, Quick.tsx, Practice.tsx), and the Web SDK
+// because all three modes download the WHOLE task1_reports collection to fill
+// the shuffle bag (Mock.tsx, Quick.tsx, Practice.tsx; on a first visit, and
+// again whenever the admin changes a prompt, see src/lib/promptCache.ts), and the Web SDK
 // has no way to fetch part of a document — there is no select() outside the
 // Admin SDK. A chart on the prompt would mean every student downloading every
 // chart on every page load. The prompt keeps only a thumbnail, small enough to
