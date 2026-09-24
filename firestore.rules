@@ -186,6 +186,25 @@ service cloud.firestore {
       allow read: if (isStudent() && resource.data.uid == request.auth.uid) || isCenter();
     }
 
+    // ── Same essay, same score, and score-card verification ───────────────
+
+    // Written and read only by api/ with the Admin SDK (api/_lib/savedReports.ts,
+    // api/_lib/verification.ts). saved_reports holds a student's whole report,
+    // sealed with a server key; score_locks and score_verifications are signed.
+    // So they stay private and honest even under looser rules, but no client
+    // should touch them. The admin rule above still lets the admin panel
+    // delete a user's copies. The public verification page reads through
+    // api/verify.ts, never from here.
+    match /saved_reports/{id} {
+      allow read, write: if false;
+    }
+    match /score_locks/{id} {
+      allow read, write: if false;
+    }
+    match /score_verifications/{code} {
+      allow read, write: if false;
+    }
+
     // ── Human Check ───────────────────────────────────────────────────────
 
     // Students read this list to pick a teacher, so it must stay readable by

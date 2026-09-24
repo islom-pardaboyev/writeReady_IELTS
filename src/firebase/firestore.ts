@@ -71,14 +71,17 @@ export async function createUserProfile(uid: string, email: string): Promise<voi
 }
 
 // Wipes every Firestore record tied to a user (profile, feedback reports,
-// submissions, human-check reviews, notifications). Does NOT remove the
+// saved reports, score-card verifications, submissions, human-check reviews,
+// notifications). A deleted verification makes its QR code read "not found".
+// Score locks (score_locks) hold no account id, only the bands an exact text
+// earned, so they stay. Does NOT remove the
 // Firebase Auth account itself — that needs a server-side Admin SDK call,
 // which this project doesn't have; the admin panel only has Firestore access.
 // Takes an optional Firestore instance so the admin panel (which runs under
 // its own isolated Firebase app/auth session, see teachers.ts) can pass its
 // own `adminDb` instead of the main site's `db`.
 export async function deleteUserAccount(uid: string, dbInstance: Firestore = db): Promise<void> {
-  const uidFilteredCollections = ['feedback_reports', 'submissions', 'humanReviews'];
+  const uidFilteredCollections = ['feedback_reports', 'saved_reports', 'score_verifications', 'submissions', 'humanReviews'];
   for (const col of uidFilteredCollections) {
     const snap = await getDocs(query(collection(dbInstance, col), where('uid', '==', uid)));
     await Promise.all(snap.docs.map((d) => deleteDoc(d.ref)));

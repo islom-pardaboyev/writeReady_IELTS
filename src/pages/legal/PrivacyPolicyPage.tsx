@@ -60,6 +60,10 @@ export function PrivacyPolicyPage() {
             <td>When the AI finishes checking your essay.</td>
           </tr>
           <tr>
+            <td>The name you put on a score card, if you add a verification code to it</td>
+            <td>When you download or share that card.</td>
+          </tr>
+          <tr>
             <td>How many checks you have used this month or week</td>
             <td>Automatically, so your plan limit can be counted.</td>
           </tr>
@@ -87,6 +91,19 @@ export function PrivacyPolicyPage() {
         feedback, the text of your essay and its prompt are sent to <strong>an artificial-intelligence company outside
         {LEGAL.country}</strong>, which writes the feedback and the band estimate. The result comes back to us and is
         saved to your account so you can open it again later.
+      </p>
+      <p>
+        Your saved report is encrypted with a key only our server holds, and opening it again, on any device, does
+        not use another check. So that the same essay always gets the same score, we also keep the bands each essay
+        earned, filed under a one-way fingerprint of its text rather than the text itself. If the exact same essay
+        is sent again, by you or by anyone else, it gets the same bands.
+      </p>
+      <p>
+        <strong>Score-card verification.</strong> When you download or share a score card, you can add a
+        verification QR code. It opens a public page at {LEGAL.site}/v/ followed by the card&rsquo;s code, which
+        shows the name on the card, your bands and the dates to anyone who has the code, so they can check the card
+        is real. The page is kept out of search engines. You can withdraw it at any time on your account page, and
+        it is deleted with your account.
       </p>
       <p>
         That company processes your text to answer that one request, and under the terms we have with it your essay is
@@ -203,8 +220,9 @@ export function PrivacyPolicyPage() {
         <li>Payment records: kept while the plan runs and afterwards for our accounts.</li>
       </ul>
       <p>
-        When we delete your account we remove your profile, your feedback reports, your submissions, your Human Check
-        requests and your notifications.
+        When we delete your account we remove your profile, your feedback reports, your saved reports, your
+        score-card verifications, your submissions, your Human Check requests and your notifications. The bands kept
+        against an essay&rsquo;s fingerprint stay, because they are not linked to you.
       </p>
 
       <h2 id="your-rights">10. Your choices and rights</h2>

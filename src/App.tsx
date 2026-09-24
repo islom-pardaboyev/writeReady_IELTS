@@ -34,6 +34,7 @@ const BlogPostPage = lazy(() => import('./pages/blog/BlogPostPage').then(m => ({
 const PrivacyPolicyPage = lazy(() => import('./pages/legal/PrivacyPolicyPage').then(m => ({ default: m.PrivacyPolicyPage })));
 const TermsPage = lazy(() => import('./pages/legal/TermsPage').then(m => ({ default: m.TermsPage })));
 const FaqPage = lazy(() => import('./pages/FaqPage').then(m => ({ default: m.FaqPage })));
+const VerifyPage = lazy(() => import('./pages/VerifyPage').then(m => ({ default: m.VerifyPage })));
 
 const PageSpinner = (
   <div className="min-h-screen flex items-center justify-center">
@@ -80,6 +81,8 @@ export default function App() {
             <Route path="/writing/relax" element={withSuspense(<Relax />)} />
             <Route path="/writing/quick" element={withSuspense(<Quick />)} />
             <Route path="/faq" element={withSuspense(<FaqPage />)} />
+            <Route path="/v" element={withSuspense(<VerifyPage />)} />
+            <Route path="/v/:code" element={withSuspense(<VerifyPage />)} />
             <Route path="/privacy" element={withSuspense(<PrivacyPolicyPage />)} />
             <Route path="/terms" element={withSuspense(<TermsPage />)} />
             <Route path="/blog" element={withSuspense(<BlogIndexPage />)} />

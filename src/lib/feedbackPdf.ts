@@ -383,6 +383,7 @@ export async function downloadFeedbackPdf({
   const overall = band(scores.overall);
   const fixes = (feedback.priorityFixes ?? []).filter(nonEmpty);
   const gapText = nonEmpty(feedback.bandGapAnalysis) ? feedback.bandGapAnalysis : null;
+  const readability = (feedback.readability?.tips ?? []).filter((t) => nonEmpty(t?.problem) && nonEmpty(t?.clearer));
   const criteria = CRITERIA.map((c) => ({ ...c, fb: feedback.feedback?.[c.key] as CategoryFeedback | undefined }))
     .map((c) => ({
       ...c,
@@ -399,6 +400,7 @@ export async function downloadFeedbackPdf({
 
   if (fixes.length) planned.push("What to fix first");
   if (gapText) planned.push("Reaching the next band");
+  if (readability.length) planned.push("Improve readability");
   if (criteria.length) planned.push("Feedback by criterion");
   planned.push("Your essay");
   if (sentences.length) planned.push("Sentence by sentence");
@@ -535,6 +537,42 @@ export async function downloadFeedbackPdf({
       pad: 5,
       fill: SUBTLE,
       edge: BRAND,
+    });
+  }
+
+  // ── 2b. Improve readability ─────────────────────────────────────────────
+  if (readability.length) {
+    section(
+      "Improve readability",
+      nonEmpty(feedback.readability?.summary)
+        ? feedback.readability!.summary
+        : "Places where an examiner has to slow down, and how to make them easier to follow.",
+      null,
+      30,
+    );
+    const cx = X + 6;
+    const cw = W - 11;
+    readability.forEach((tip) => {
+      const blocks: Block[] = [text(tip.problem, 10.5, "bold", INK, cx, cw)];
+      if (nonEmpty(tip.original)) {
+        blocks.push(
+          { kind: "draw", h: 6, draw: (top) => eyebrow("YOUR VERSION", cx, top + 5.2) },
+          text(`"${tip.original}"`, 9.5, "normal", BODY, cx, cw, { before: 1 }),
+        );
+      }
+      blocks.push({
+        kind: "panel",
+        fill: MINT,
+        x: cx,
+        w: cw,
+        pad: 3,
+        before: 3.5,
+        blocks: [
+          { kind: "draw", h: 3.4, draw: (top) => eyebrow("EASIER TO READ", cx + 3, top + 2.6, MET) },
+          text(tip.clearer, 10, "normal", [6, 95, 70], cx + 3, cw - 6, { before: 1.2 }),
+        ],
+      });
+      card(blocks, { pad: 4, border: true, edge: BRAND, after: 3.5 });
     });
   }
 

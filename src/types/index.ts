@@ -68,6 +68,13 @@ export interface SentenceAnalysis {
   improved: string;
 }
 
+/** One place the essay is harder to read than it needs to be, and a clearer version. */
+export interface ReadabilityTip {
+  problem: string;
+  original: string;
+  clearer: string;
+}
+
 export interface EnhancedFeedbackResult {
   taskType: 'Task 1' | 'Task 2';
   topic: string;
@@ -75,12 +82,22 @@ export interface EnhancedFeedbackResult {
   scores: FeedbackScores;
   feedback: EnhancedFeedbackCategories;
   priorityFixes: string[];
+  /** Paid reports only; reports made before it existed have none. */
+  readability?: { summary: string; tips: ReadabilityTip[] };
   bandGapAnalysis: string;
   sampleResponse: string;
   sentenceAnalysis: SentenceAnalysis[];
   vocabulary: VocabItem[];
   grammar: GrammarPoint[];
   limited?: boolean;
+  /** The feedback_reports entry this report is saved as. Needed to verify a score card. */
+  reportId?: string;
+  /**
+   * How the bands were decided (api/feedback.ts): marked fresh, steadied by
+   * a nearly identical earlier version, fixed because this exact essay was
+   * marked before, or the student's saved report opened again.
+   */
+  basis?: 'fresh' | 'anchored' | 'locked' | 'saved';
 }
 
 // ── Human Check (teacher review) ───────────────────────────────────────────

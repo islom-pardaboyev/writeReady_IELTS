@@ -18,6 +18,8 @@ const ROUTE_TITLES: [RegExp, TitleFor][] = [
   [/^\/writing\/relax$/, 'Relax Mode'],
   [/^\/writing\/quick$/, 'Quick Write'],
   [/^\/human-review\/[^/]+$/, 'Human Check'],
+  // A verification swaps in the person's name once it has loaded.
+  [/^\/v(\/[^/]+)?$/i, 'Verify a score'],
   // A blog post swaps in its own title once the post has loaded.
   [/^\/blog(\/[^/]+)?$/, 'IELTS Blog'],
   [/^\/admin$/, 'Admin'],

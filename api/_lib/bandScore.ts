@@ -45,6 +45,23 @@ export function overallBand(ta: number, cc: number, lr: number, gra: number): nu
 }
 
 /**
+ * The Writing band for a full test (Task 1 and Task 2). IELTS counts Task 2
+ * twice as much as Task 1. This works from the two task bands the student
+ * sees on the report, so they can check the sum themselves, and rounds the
+ * result the same way as overallBand: to the nearest half band, with .25 and
+ * .75 rounding up (6.25 -> 6.5, 6.75 -> 7.0).
+ */
+export function writingBand(task1Band: number, task2Band: number): { weighted: number; band: number } {
+  // Task 1 + 2 x Task 2, counted in half bands so the maths stays exact.
+  const h = Math.round(task1Band * 2) + 2 * Math.round(task2Band * 2);
+  return {
+    weighted: h / 6,
+    // The nearest half band to h / 6, rounding up when it sits halfway.
+    band: Math.floor((2 * h + 3) / 6) / 2,
+  };
+}
+
+/**
  * The four criteria cleaned, and the overall band worked out here, never
  * taken from the model's own arithmetic. Null when any criterion is missing,
  * so a broken reply can never turn into a made-up score.

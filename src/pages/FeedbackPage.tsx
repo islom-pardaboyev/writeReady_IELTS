@@ -3,7 +3,7 @@ import { useParams, Link, useNavigate } from 'react-router';
 import {
   ArrowLeft, Download, ChevronLeft, ChevronRight, Loader2, Lock, AlertTriangle,
   LayoutGrid, Target, ListChecks, FileText, PenLine, BookOpen, SpellCheck2, SearchCheck, Brain,
-  TrendingUp, Repeat2, CheckCircle2, XCircle, ChevronDown, ChevronUp, Sparkles, Link2,
+  TrendingUp, Repeat2, CheckCircle2, XCircle, ChevronDown, ChevronUp, Sparkles, Link2, Award, Info,
 } from 'lucide-react';
 import { useAuth } from '../hooks/useAuth';
 import { AppShell } from '../components/layout/AppShell';
@@ -20,6 +20,7 @@ import { downloadFeedbackPdf } from '../lib/feedbackPdf';
 import { useSingleRun } from '../hooks/useSingleRun';
 import { LogoLoader } from '@/components/ui/LogoLoader';
 import { FeedbackRating } from '@/components/ui/FeedbackRating';
+import { ScoreCardDialog } from '@/components/ui/ScoreCardDialog';
 
 type TaskKey = 'task1' | 'task2';
 type Tab = 'overview' | 'priority' | 'detailed' | 'essay' | 'sample' | 'vocabulary' | 'grammar' | 'spelling' | 'quiz';
@@ -230,7 +231,12 @@ function FreeTaskGate({
 }
 
 /** What sits under the score on a free report: the bands, then what a paid plan adds. */
-function FreeReportNotice() {
+/**
+ * `onGetFull` is set when the student can now get the full report (they
+ * upgraded, or hold a bonus report) on an essay whose score-only report they
+ * already have. The bands stay: the full report is written for them.
+ */
+function FreeReportNotice({ onGetFull }: { onGetFull?: () => void }) {
   return (
     <div className="rounded-2xl border border-[var(--border-color)] bg-[var(--bg-card)] p-6 shadow-sm">
       <p className="flex items-center gap-2 font-bold text-[var(--text-primary)]">
@@ -253,12 +259,21 @@ function FreeReportNotice() {
           </li>
         ))}
       </ul>
-      <Link
-        to="/pricing"
-        className="mt-5 inline-flex items-center gap-1.5 rounded-xl bg-[var(--ink-blue-solid)] px-6 py-3 text-sm font-bold text-white no-underline transition-opacity hover:opacity-90"
-      >
-        See plans <ChevronRight className="w-4 h-4" />
-      </Link>
+      {onGetFull ? (
+        <div className="mt-5">
+          <Button onClick={onGetFull}>Get the full report</Button>
+          <p className="mt-2 text-sm text-[var(--text-secondary)]">
+            Your plan now includes it. It uses one report, and your bands stay the same.
+          </p>
+        </div>
+      ) : (
+        <Link
+          to="/pricing"
+          className="mt-5 inline-flex items-center gap-1.5 rounded-xl bg-[var(--ink-blue-solid)] px-6 py-3 text-sm font-bold text-white no-underline transition-opacity hover:opacity-90"
+        >
+          See plans <ChevronRight className="w-4 h-4" />
+        </Link>
+      )}
     </div>
   );
 }
@@ -315,6 +330,11 @@ function toFeedbackResult(parsed: unknown, limited: boolean, taskType: 'Task 1' 
     }]),
   ) as unknown as EnhancedFeedbackCategories;
 
+  const rawReadability = (p.readability && typeof p.readability === 'object' ? p.readability : {}) as Record<string, unknown>;
+  const tips = list<Record<string, unknown>>(rawReadability.tips)
+    .map((t) => ({ problem: text(t?.problem), original: text(t?.original), clearer: text(t?.clearer) }))
+    .filter((t) => t.problem && t.clearer);
+
   return {
     taskType,
     topic: text(p.topic) || 'General',
@@ -322,6 +342,7 @@ function toFeedbackResult(parsed: unknown, limited: boolean, taskType: 'Task 1' 
     scores,
     feedback,
     priorityFixes: strings(p.priorityFixes),
+    readability: tips.length ? { summary: text(rawReadability.summary), tips } : undefined,
     bandGapAnalysis: text(p.bandGapAnalysis),
     sampleResponse: text(p.sampleResponse),
     sentenceAnalysis: list(p.sentenceAnalysis),
@@ -329,6 +350,23 @@ function toFeedbackResult(parsed: unknown, limited: boolean, taskType: 'Task 1' 
     grammar: list(p.grammar),
     limited,
   };
+}
+
+/** A report the server kept for this student (api/pre-check.ts), as this page shows it. */
+interface SavedReport { raw: string; tier: 'full' | 'limited'; reportId: string }
+
+function fromSaved(saved: SavedReport, taskType: 'Task 1' | 'Task 2'): EnhancedFeedbackResult | null {
+  try {
+    const result = toFeedbackResult(extractJson(saved.raw), saved.tier === 'limited', taskType);
+    return result && { ...result, reportId: saved.reportId, basis: 'saved' };
+  } catch {
+    return null;
+  }
+}
+
+/** The fields sessionStorage keeps beside the report itself. */
+function withStoredMeta(result: EnhancedFeedbackResult, stored: EnhancedFeedbackResult): EnhancedFeedbackResult {
+  return { ...result, reportId: stored.reportId, basis: stored.basis };
 }
 
 // Three clearly distinct tiers — gold never doubles as both "great" and "needs work".
@@ -449,6 +487,7 @@ export function FeedbackPage() {
 
   const [recurringIssues, setRecurringIssues] = useState<string[]>([]);
   const { busy: exporting, run: runExport } = useSingleRun();
+  const [scoreCardOpen, setScoreCardOpen] = useState(false);
   const storedChart = useTask1Chart(db, reportData?.task1 ?? null);
   // Quick Write lets a student upload their own chart, which rides along in
   // the link rather than living in the database.
@@ -491,7 +530,7 @@ export function FeedbackPage() {
         // Same staleness check loadFeedback uses: drop pre-`improved` reports.
         const hasImproved = parsed.sentenceAnalysis.some((sa) => 'improved' in sa);
         if (!hasImproved && parsed.sentenceAnalysis.length) continue;
-        restored[t] = parsed;
+        restored[t] = withStoredMeta(parsed, stored);
       } catch { /* ignore a corrupt entry */ }
     }
     if (Object.keys(restored).length) setFeedbacks((prev) => ({ ...restored, ...prev }));
@@ -542,7 +581,9 @@ export function FeedbackPage() {
   // `task` is passed explicitly when the student chooses which essay to spend
   // their free weekly report on: setSelectedTask would not have applied yet,
   // so reading selectedTask here would mark the wrong essay.
-  const loadFeedback = useCallback(async (task?: TaskKey) => {
+  // `fresh` asks the server again instead of reusing this tab's copy: used to
+  // turn a score-only report into the full one once the student can get it.
+  const loadFeedback = useCallback(async (task?: TaskKey, { fresh = false }: { fresh?: boolean } = {}) => {
     if (!reportData || !user) return;
     const taskKey = task ?? selectedTask;
 
@@ -551,7 +592,7 @@ export function FeedbackPage() {
       taskKey === 'task1' ? (reportData.task1?.report ?? '') : (reportData.task2?.report ?? '');
 
     const cacheKey = `feedback_${id}_${taskKey}`;
-    const cached = sessionStorage.getItem(cacheKey);
+    const cached = fresh ? null : sessionStorage.getItem(cacheKey);
     if (cached) {
       try {
         const stored = JSON.parse(cached) as EnhancedFeedbackResult;
@@ -559,13 +600,24 @@ export function FeedbackPage() {
         // Invalidate cache if it's missing the improved field (old format)
         const hasImproved = parsed?.sentenceAnalysis.some(s => 'improved' in s);
         if (parsed && (hasImproved || !parsed.sentenceAnalysis.length)) {
-          setFeedbacks((p) => ({ ...p, [taskKey]: parsed }));
+          setFeedbacks((p) => ({ ...p, [taskKey]: withStoredMeta(parsed, stored) }));
           return;
         }
         sessionStorage.removeItem(cacheKey);
       } catch { /* ignore */ }
     }
 
+    // While the full report is written, the page shows its progress rather
+    // than the score-only report; if it fails, the score-only one comes back.
+    let previous: EnhancedFeedbackResult | undefined;
+    if (fresh) {
+      setFeedbacks((p) => {
+        previous = p[taskKey];
+        const next = { ...p };
+        delete next[taskKey];
+        return next;
+      });
+    }
     setLoadings((p) => ({ ...p, [taskKey]: true }));
     setAnalysisStage((p) => ({ ...p, [taskKey]: 0 }));
     setFeedbackErrors((p) => { const n = { ...p }; delete n[taskKey]; return n; });
@@ -582,11 +634,15 @@ export function FeedbackPage() {
 
       const idToken = await user.getIdToken();
 
-      // Step 1: pre-check — Firebase auth + credit deduction (runs fast, separate timeout)
+      const taskType = taskKey === 'task1' ? 'Task 1' : 'Task 2';
+
+      // Step 1: pre-check — Firebase auth + credit deduction (runs fast, separate timeout).
+      // It gets the essay so it can hand back this student's saved report on
+      // it instead of charging: reopening a report is free, on any device.
       const preRes = await fetch('/api/pre-check', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${idToken}` },
-        body: JSON.stringify({}),
+        body: JSON.stringify({ essayText: essay, questionText: question, taskType }),
       });
       if (!preRes.ok) {
         const errText = await preRes.text();
@@ -594,12 +650,25 @@ export function FeedbackPage() {
         try { errData = JSON.parse(errText); } catch { /* ignore */ }
         throw new Error(errData.error ?? `Server error (${preRes.status})`);
       }
-      const { token: preCheckToken, limited: limitedReport } = await preRes.json() as {
-        token: string;
+      const { token: preCheckToken, limited: limitedReport, saved } = await preRes.json() as {
+        token?: string;
         /** True only for the automatic weekly free report. An admin-granted
          *  bonus is a reward and buys the same full report a paid plan does. */
         limited?: boolean;
+        saved?: SavedReport | null;
       };
+      if (saved) {
+        // Asked for the full report but handed the score-only one back: the
+        // server had no full report it could charge for.
+        if (fresh && saved.tier === 'limited') {
+          throw new Error('You have no full reports left right now, so this essay keeps its score-only report. Your allowance resets next month.');
+        }
+        const reopened = fromSaved(saved, taskType);
+        if (!reopened) throw new Error('Your saved report could not be opened. Please try again.');
+        setFeedbacks((p) => ({ ...p, [taskKey]: reopened }));
+        sessionStorage.setItem(cacheKey, JSON.stringify(reopened));
+        return;
+      }
 
       // Step 2: feedback — token check + Claude stream
       const res = await fetch('/api/feedback', {
@@ -608,7 +677,7 @@ export function FeedbackPage() {
         body: JSON.stringify({
           essayText: essay,
           questionText: question,
-          taskType: taskKey === 'task1' ? 'Task 1' : 'Task 2',
+          taskType,
           preCheckToken,
           chartImage: chart || undefined,
         }),
@@ -649,9 +718,18 @@ export function FeedbackPage() {
       // return a `limited` field, so reading it off the response always gave
       // false: every free report then rendered as a full one and the tabs it
       // has no data for crashed on undefined.
+      // The server says which report it sent: a student's own saved full
+      // report can come back even on a score-only credit. Older servers send
+      // no header, and then pre-check's answer stands.
+      const tierHeader = res.headers.get('X-Report-Tier');
+      const limited = tierHeader ? tierHeader === 'limited' : limitedReport === true;
+      const basisHeader = res.headers.get('X-Score-Basis');
+      const basis = basisHeader === 'fresh' || basisHeader === 'anchored' || basisHeader === 'locked' || basisHeader === 'saved'
+        ? basisHeader : undefined;
       let feedbackWithLimit: EnhancedFeedbackResult | null = null;
       try {
-        feedbackWithLimit = toFeedbackResult(extractJson(raw), limitedReport === true, taskKey === 'task1' ? 'Task 1' : 'Task 2');
+        const parsed = toFeedbackResult(extractJson(raw), limited, taskType);
+        feedbackWithLimit = parsed && { ...parsed, reportId: res.headers.get('X-Report-Id') ?? undefined, basis };
       } catch { /* handled below */ }
       if (!feedbackWithLimit) {
         // The server applies the same test and has already given the report back.
@@ -678,6 +756,8 @@ export function FeedbackPage() {
         .catch(() => {/* non-critical */});
     } catch (err) {
       setFeedbackErrors((p) => ({ ...p, [taskKey]: err instanceof Error ? err.message : 'Something went wrong.' }));
+      const restore = previous;
+      if (restore) setFeedbacks((p) => (p[taskKey] ? p : { ...p, [taskKey]: restore }));
     } finally {
       setLoadings((p) => ({ ...p, [taskKey]: false }));
     }
@@ -686,13 +766,54 @@ export function FeedbackPage() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [reportData, selectedTask, user, id]);
 
+  // Every marked essay is saved on the server (api/_lib/savedReports.ts), so
+  // before this page offers to mark anything, it asks for the student's saved
+  // reports on these essays. The lookup never charges. It is what lets a
+  // report reopen on another device, and lets a free student who has used
+  // this week's report still see the one they got.
+  const [savedChecked, setSavedChecked] = useState(false);
+  useEffect(() => {
+    if (!reportData || !user || savedChecked) return;
+    let cancelled = false;
+    const tasks = (['task1', 'task2'] as const).filter((t) =>
+      t === 'task1' ? reportData.task1?.report && reportData.userText1 : reportData.task2?.report && reportData.userText2);
+    (async () => {
+      try {
+        const idToken = await user.getIdToken();
+        await Promise.all(tasks.map(async (t) => {
+          const taskType = t === 'task1' ? 'Task 1' : 'Task 2';
+          const res = await fetch('/api/pre-check', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${idToken}` },
+            body: JSON.stringify({
+              lookupOnly: true,
+              essayText: t === 'task1' ? reportData.userText1 : reportData.userText2,
+              questionText: t === 'task1' ? reportData.task1?.report : reportData.task2?.report,
+              taskType,
+            }),
+          });
+          if (!res.ok) return;
+          const { saved } = await res.json() as { saved?: SavedReport | null };
+          const reopened = saved ? fromSaved(saved, taskType) : null;
+          if (cancelled || !reopened) return;
+          // A report restored from this tab's session, or one the student
+          // is already loading, wins over the saved copy.
+          setFeedbacks((p) => (p[t] ? p : { ...p, [t]: reopened }));
+          sessionStorage.setItem(`feedback_${id}_${t}`, JSON.stringify(reopened));
+        }));
+      } catch { /* the lookup is a shortcut; without it the page works as before */ }
+      if (!cancelled) setSavedChecked(true);
+    })();
+    return () => { cancelled = true; };
+  }, [reportData, user, savedChecked, id]);
+
   // Auto-load feedback when ready (per task)
   useEffect(() => {
-    if (reportData && user && canGetFeedback && !mustChooseTask && !feedback && !loading && !feedbackError) {
+    if (reportData && user && savedChecked && canGetFeedback && !mustChooseTask && !feedback && !loading && !feedbackError) {
       loadFeedback();
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [reportData, user, canGetFeedback, mustChooseTask, selectedTask]);
+  }, [reportData, user, savedChecked, canGetFeedback, mustChooseTask, selectedTask]);
 
   const runSpellCheck = async (text: string) => {
     if (!text.trim()) return;
@@ -818,6 +939,17 @@ export function FeedbackPage() {
     );
   }
 
+  if (profile && !canGetFeedback && !hasAnyFeedback && !savedChecked) {
+    return (
+      <AppShell minimal>
+        <div className="flex flex-col items-center justify-center py-24 text-[var(--text-muted)] gap-3">
+          <LogoLoader size={56} />
+          <span>Opening your report…</span>
+        </div>
+      </AppShell>
+    );
+  }
+
   if (profile && !canGetFeedback && !hasAnyFeedback) {
     return (
       <AppShell minimal>
@@ -887,9 +1019,14 @@ export function FeedbackPage() {
                 </h1>
               </div>
               {feedback && (
-                <Button onClick={exportPDF} loading={exporting} variant="secondary" size="sm">
-                  {!exporting && <Download className="w-3.5 h-3.5" />} {exporting ? 'Saving PDF…' : 'Download PDF'}
-                </Button>
+                <div className="flex items-center gap-2">
+                  <Button onClick={() => setScoreCardOpen(true)} size="sm">
+                    <Award className="w-3.5 h-3.5" /> {hasBothTasks ? 'Score report' : 'Score card'}
+                  </Button>
+                  <Button onClick={exportPDF} loading={exporting} variant="secondary" size="sm">
+                    {!exporting && <Download className="w-3.5 h-3.5" />} {exporting ? 'Saving PDF…' : 'Full feedback PDF'}
+                  </Button>
+                </div>
               )}
             </div>
 
@@ -963,8 +1100,15 @@ export function FeedbackPage() {
             </p>
           </div>
 
+          {!savedChecked && !feedback && !loading && (
+            <div className="flex items-center justify-center gap-3 py-16 text-[var(--text-secondary)]">
+              <LogoLoader size={40} />
+              <span className="text-sm">Opening your report…</span>
+            </div>
+          )}
+
           {/* ── Free plan: one report a week, two essays in this exam ── */}
-          {mustChooseTask && !feedback && !loading && !feedbackError && (
+          {savedChecked && mustChooseTask && !feedback && !loading && !feedbackError && (
             <FreeTaskGate
               hasCredit={canGetFeedback}
               markedTask={markedTask}
@@ -1150,6 +1294,16 @@ export function FeedbackPage() {
                 </div>
               </div>
 
+              {/* Why the bands are what they are, when that is not obvious */}
+              {(feedback.basis === 'locked' || feedback.basis === 'anchored') && (
+                <p role="status" className="flex items-start gap-2.5 rounded-xl border border-[var(--border-color)] bg-[var(--bg-subtle)] px-4 py-3 mb-5 text-sm text-[var(--text-secondary)]">
+                  <Info className="w-4 h-4 mt-0.5 shrink-0 text-[var(--ink-blue)]" aria-hidden />
+                  {feedback.basis === 'locked'
+                    ? 'This exact essay was marked before, so it keeps the same bands. The same essay always gets the same score.'
+                    : 'This is nearly the same as an essay you had marked before, so a band only moves where your changes earn it.'}
+                </p>
+              )}
+
               {/* Recurring issues */}
               {!feedback.limited && recurringIssues.length > 0 && (
                 <div className="flex items-start gap-3 bg-amber-50 border border-amber-200 dark:bg-amber-900/20 dark:border-amber-800 rounded-2xl px-5 py-4 mb-5">
@@ -1246,7 +1400,11 @@ export function FeedbackPage() {
                   </div>
 
                   {feedback.limited ? (
-                    <FreeReportNotice />
+                    <FreeReportNotice
+                      onGetFull={isPro || (profile?.bonusAnalyses ?? 0) > 0
+                        ? () => loadFeedback(selectedTask, { fresh: true })
+                        : undefined}
+                    />
                   ) : (
                     <div className="bg-[var(--bg-card)] rounded-2xl p-6 border border-[var(--border-color)] border-l-4 border-l-[var(--gold)] shadow-sm transition-shadow duration-200 hover:shadow-md">
                       <p className="flex items-center gap-2 font-bold text-[var(--text-primary)] mb-3">
@@ -1292,6 +1450,34 @@ export function FeedbackPage() {
                       </div>
                     );
                   })}
+
+                  {feedback.readability && (
+                    <section aria-labelledby="fp-readability" className="mt-4">
+                      <h3 id="fp-readability" className="flex items-center gap-2 text-lg font-bold text-[var(--text-primary)]">
+                        <BookOpen className="w-[18px] h-[18px] text-[var(--ink-blue)]" aria-hidden /> Improve readability
+                      </h3>
+                      <p className="mt-1 max-w-prose text-[0.9375rem] leading-relaxed text-[var(--text-secondary)]">
+                        {feedback.readability.summary || 'Places where an examiner has to slow down, and how to make them easier to follow.'}
+                      </p>
+                      <ol className="mt-4 flex flex-col gap-3 list-none p-0">
+                        {feedback.readability.tips.map((tip, i) => (
+                          <li key={i} className="rounded-2xl border border-[var(--border-color)] bg-[var(--bg-card)] px-5 py-4 shadow-sm">
+                            <p className="m-0 font-semibold text-[var(--text-primary)]">{tip.problem}</p>
+                            {tip.original && (
+                              <blockquote className="mt-3 mb-0 rounded-lg bg-[var(--bg-subtle)] px-3.5 py-2.5 text-[0.9375rem] leading-relaxed text-[var(--text-secondary)]">
+                                <span className="block text-xs font-semibold text-[var(--text-secondary)] mb-1">Your version</span>
+                                &ldquo;{tip.original}&rdquo;
+                              </blockquote>
+                            )}
+                            <div className="mt-2 rounded-lg bg-emerald-50 px-3.5 py-2.5 text-[0.9375rem] leading-relaxed text-emerald-900 dark:bg-emerald-900/25 dark:text-emerald-200">
+                              <span className="block text-xs font-semibold text-emerald-700 dark:text-emerald-400 mb-1">Easier to read</span>
+                              {tip.clearer}
+                            </div>
+                          </li>
+                        ))}
+                      </ol>
+                    </section>
+                  )}
                 </div>
               )}
 
@@ -1793,6 +1979,19 @@ export function FeedbackPage() {
         </div>
       </div>
 
+      {scoreCardOpen && feedback && (
+        <ScoreCardDialog
+          onClose={() => setScoreCardOpen(false)}
+          defaultName={user?.displayName?.trim() ?? ''}
+          source={hasBothTasks
+            ? {
+                kind: 'full',
+                task1: feedbacks.task1 ? { scores: feedbacks.task1.scores, reportId: feedbacks.task1.reportId } : null,
+                task2: feedbacks.task2 ? { scores: feedbacks.task2.scores, reportId: feedbacks.task2.reportId } : null,
+              }
+            : { kind: 'task', taskType: feedback.taskType, report: { scores: feedback.scores, reportId: feedback.reportId } }}
+        />
+      )}
     </AppShell>
   );
 }

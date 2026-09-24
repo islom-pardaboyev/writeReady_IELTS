@@ -2,6 +2,7 @@ import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { getFirestore, FieldValue } from 'firebase-admin/firestore';
 import { createHmac } from 'crypto';
 import { initFirebase, getUid, currentMonthKey, currentWeekKey, resolvePaidStatus, PLAN_LIMITS } from './_lib/shared.js';
+import { LIMITS, essayKeys, loadSavedReport, type SavedReport } from './_lib/savedReports.js';
 
 // Free-plan users (no subscription) get 1 AI feedback report per calendar
 // week instead of a single lifetime bonus report.
@@ -21,7 +22,7 @@ const FREE_WEEKLY_LIMIT = 1;
  */
 export type CreditSource = 'paid' | 'bonus' | 'free';
 
-type CreditErrorCode = 'USER_NOT_FOUND' | 'NOT_PRO' | 'LIMIT_REACHED' | 'FREE_LIMIT_REACHED';
+type CreditErrorCode = 'USER_NOT_FOUND' | 'NOT_PRO' | 'LIMIT_REACHED' | 'FREE_LIMIT_REACHED' | 'FULL_ONLY';
 class CreditError extends Error {
   constructor(public code: CreditErrorCode) { super(code); }
 }
@@ -38,7 +39,12 @@ function signToken(uid: string, source: CreditSource): string {
   return `${payload}.${sig}`;
 }
 
-async function consumeCredit(uid: string, monthKey: string): Promise<CreditSource> {
+/**
+ * `fullOnly` is for a student who already holds the score-only report on
+ * this essay: another score-only one would change nothing, so it may only
+ * spend an allowance that buys the full report, and never the weekly free one.
+ */
+async function consumeCredit(uid: string, monthKey: string, { fullOnly = false } = {}): Promise<CreditSource> {
   const db = getFirestore();
   const userRef = db.collection('users').doc(uid);
   let source: CreditSource = 'paid';
@@ -68,6 +74,8 @@ async function consumeCredit(uid: string, monthKey: string): Promise<CreditSourc
         source = 'bonus';
         return;
       }
+
+      if (fullOnly) throw new CreditError('FULL_ONLY');
 
       // Free plan: 1 AI feedback report per calendar week.
       const weekKey = currentWeekKey();
@@ -110,6 +118,10 @@ async function consumeCredit(uid: string, monthKey: string): Promise<CreditSourc
   return source;
 }
 
+function savedResponse(saved: SavedReport) {
+  return { saved: { raw: saved.raw, tier: saved.tier, reportId: saved.reportId } };
+}
+
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
@@ -138,9 +150,36 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   const monthKey = currentMonthKey();
   let source: CreditSource = 'paid';
 
+  // A report is saved once it is marked. When the browser says which essay
+  // it wants, look for this student's saved report on it first: opening it
+  // again never costs a credit, on any device. `lookupOnly` asks without
+  // ever charging, for a page that only wants to know. Older browsers send
+  // no essay and go straight to charging, as before.
+  const { essayText, questionText, taskType, lookupOnly } = req.body ?? {};
+  const hasEssay =
+    typeof essayText === 'string' && essayText.trim() !== '' && essayText.length <= LIMITS.essayChars &&
+    typeof questionText === 'string' && questionText.trim() !== '' && questionText.length <= LIMITS.questionChars &&
+    (taskType === 'Task 1' || taskType === 'Task 2');
+  if (lookupOnly === true && !hasEssay) return res.status(400).json({ error: 'The essay to look up is missing.' });
+
+  let saved: SavedReport | null = null;
+  if (hasEssay) {
+    try {
+      saved = await loadSavedReport(uid, essayKeys(taskType, questionText, essayText).contentKey);
+    } catch (e) {
+      // Not finding a saved report costs the student at most a fresh marking.
+      console.error('pre-check: could not read saved reports:', e);
+    }
+    if (saved && (saved.tier === 'full' || lookupOnly === true)) return res.status(200).json(savedResponse(saved));
+    if (!saved && lookupOnly === true) return res.status(200).json({ saved: null });
+  }
+
   try {
-    source = await consumeCredit(uid, monthKey);
+    source = await consumeCredit(uid, monthKey, { fullOnly: saved !== null });
   } catch (e: unknown) {
+    // The student holds the score-only report and cannot buy the full one
+    // right now: give them what they have rather than an error.
+    if (saved) return res.status(200).json(savedResponse(saved));
     if (e instanceof CreditError) {
       if (e.code === 'NOT_PRO') return res.status(403).json({ error: 'AI feedback requires a paid plan (Basic, Standard, Premium, or Lifetime).' });
       if (e.code === 'LIMIT_REACHED') return res.status(429).json({ error: 'Monthly analysis limit reached. Quota resets next month.' });

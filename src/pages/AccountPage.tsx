@@ -12,6 +12,7 @@ import { Input } from '../components/ui/input';
 import { Label } from '../components/ui/label';
 import { PasswordInput } from '../components/ui/PasswordInput';
 import { ShortcutSettings } from '../components/shortcuts/ShortcutSettings';
+import { VerifiedCards } from '../components/ui/VerifiedCards';
 
 function friendlyAuthError(err: unknown, fallback: string): string {
   const msg = err instanceof Error ? err.message : fallback;
@@ -310,6 +311,8 @@ export function AccountPage() {
               </p>
             )}
           </Card>
+
+          <VerifiedCards className="gs-edit-card mb-4" />
 
           <ShortcutSettings className="gs-edit-card mb-4" />
 

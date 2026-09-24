@@ -7,6 +7,8 @@
     { "source": "/(auth|dashboard|pricing|account|admin|center-admin|teacher-portal|blog|privacy|terms|faq)", "destination": "/index.html" },
     { "source": "/(feedback|human-review|blog)/([^/]+)", "destination": "/index.html" },
     { "source": "/writing/(mock|practice|relax|quick)", "destination": "/index.html" },
+    { "source": "/(v|V)", "destination": "/index.html" },
+    { "source": "/(v|V)/([^/]+)", "destination": "/index.html" },
 
     { "source": "/((?!api/|@|src/|node_modules/|.*\\.[a-zA-Z0-9]+$).*)", "destination": "/api/not-found" }
   ],
@@ -14,6 +16,10 @@
     {
       "source": "/sw.js",
       "headers": [{ "key": "Cache-Control", "value": "public, max-age=0, must-revalidate" }]
+    },
+    {
+      "source": "/(v|V)(/.*)?",
+      "headers": [{ "key": "X-Robots-Tag", "value": "noindex, nofollow" }]
     }
   ],
   "functions": {
@@ -25,6 +31,9 @@
     },
     "api/check-practice.ts": {
       "maxDuration": 30
+    },
+    "api/verify.ts": {
+      "maxDuration": 15
     }
   }
 }
