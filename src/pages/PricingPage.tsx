@@ -7,6 +7,7 @@ import { Layout } from "../components/layout/Layout";
 import { Button } from "../components/ui/Button";
 import { Card } from "../components/ui/Card";
 import { useAuth } from "../hooks/useAuth";
+import { PLAN_INFO } from "../lib/plans";
 
 gsap.registerPlugin(ScrollTrigger);
 
@@ -18,6 +19,21 @@ const MIN_TOPUP_UZS = 50000;
 const FONT_MONO = "[font-family:'IBM_Plex_Mono',monospace]";
 
 type PlanId = "basic" | "standard" | "premium";
+
+/**
+ * What one analysis works out at on each plan: the monthly price divided by
+ * the analyses in it. It is a comparison, not a separate charge. Worked out
+ * from PLAN_INFO, so it follows any price change. Savings compare with Basic
+ * and round DOWN, so the page never claims more than a student can save
+ * (48.4% shows as 48%); "up to" because they assume the whole month is used.
+ */
+const perAnalysis = (id: PlanId) => PLAN_INFO[id].monthlyPriceUZS / PLAN_INFO[id].monthlyAnalyses;
+const perAnalysisText = (id: PlanId) => {
+  const exact = perAnalysis(id);
+  const shown = (Math.round(exact / 10) * 10).toLocaleString("en-US");
+  return Number.isInteger(exact / 10) ? shown : `≈ ${shown}`;
+};
+const savingVsBasic = (id: PlanId) => Math.floor((1 - perAnalysis(id) / perAnalysis("basic")) * 100);
 
 interface SelectedPlan {
   id: PlanId;
@@ -253,6 +269,9 @@ export function PricingPage() {
                 <span className="text-sm text-[var(--text-secondary)] ml-1.5">
                   UZS / month
                 </span>
+                <p className="mt-1.5 text-xs text-[var(--text-secondary)]">
+                  That&rsquo;s {perAnalysisText("basic")} UZS per analysis
+                </p>
               </div>
               <ul className="flex flex-col gap-2.5 mb-7 flex-1 text-[0.875rem]">
                 <li className="flex items-start gap-2.5 text-[var(--text-primary)]">
@@ -314,6 +333,10 @@ export function PricingPage() {
                 <span className="text-sm text-[var(--text-secondary)] ml-1.5">
                   UZS / month
                 </span>
+                <p className="mt-1.5 text-xs text-[var(--text-secondary)]">
+                  That&rsquo;s {perAnalysisText("standard")} UZS per analysis ·{" "}
+                  <span className="whitespace-nowrap font-semibold text-[var(--ink-blue)]">save up to {savingVsBasic("standard")}%</span>
+                </p>
               </div>
               <ul className="flex flex-col gap-2.5 mb-7 flex-1 text-[0.875rem]">
                 <li className="flex items-start gap-2.5 text-[var(--text-primary)]">
@@ -339,7 +362,10 @@ export function PricingPage() {
             </Card>
 
             {/* Premium */}
-            <Card className="gs-plan-card hover:-translate-y-1 hover:shadow-xl transition-[transform,box-shadow] duration-200 p-7 flex flex-col bg-linear-to-br from-slate-900 to-[#312E81] border-indigo-800">
+            <Card className="gs-plan-card hover:-translate-y-1 hover:shadow-xl transition-[transform,box-shadow] duration-200 p-7 flex flex-col relative bg-linear-to-br from-slate-900 to-[#312E81] border-indigo-800">
+              <div className="absolute -top-[13px] left-1/2 -translate-x-1/2 bg-[var(--gold)] text-slate-900 text-[0.6875rem] font-bold tracking-[0.08em] uppercase px-4 py-[0.3rem] rounded-[20px] whitespace-nowrap">
+                Best value · save up to {savingVsBasic("premium")}%
+              </div>
               <div className="mb-5">
                 <div
                   className={`text-[1.25rem] font-bold text-white mb-1`}
@@ -359,6 +385,10 @@ export function PricingPage() {
                 <span className="text-sm text-white/75 ml-1.5">
                   UZS / month
                 </span>
+                <p className="mt-1.5 text-xs text-white/75">
+                  That&rsquo;s just {perAnalysisText("premium")} UZS per analysis ·{" "}
+                  <span className="whitespace-nowrap font-semibold text-amber-300">save up to {savingVsBasic("premium")}%</span>
+                </p>
               </div>
               <ul className="flex flex-col gap-2.5 mb-7 flex-1 text-[0.875rem]">
                 <li className="flex items-start gap-2.5 text-white/85">
@@ -389,6 +419,10 @@ export function PricingPage() {
               </Button>
             </Card>
           </div>
+          <p className="mx-auto mt-5 max-w-[68ch] text-center text-xs leading-relaxed text-[var(--text-secondary)]">
+            The price per analysis is the monthly price divided by the analyses in the plan; you still pay monthly.
+            Savings compare with Basic and assume you use all of the month&rsquo;s analyses.
+          </p>
 
           {/* Balance top-up */}
           {user && (
