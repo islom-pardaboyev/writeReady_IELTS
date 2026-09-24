@@ -21,6 +21,9 @@ const TOKEN_MAX_AGE_MS = 3 * 60 * 1000; // 3 minutes
 const MAX_ESSAY_WORDS = 1000;
 const MAX_ESSAY_CHARS = 10_000;
 const MAX_QUESTION_CHARS = 3_000;
+// A stored chart is at most ~850 KB as a data URL (src/lib/task1Chart.ts), and
+// one a student uploads in Relax at most ~150 KB. This leaves room over both.
+const MAX_CHART_CHARS = 1_200_000;
 
 // One document per spent pre-check token. The token is the only thing that
 // proves a report was paid for, so each one may start exactly one report.
@@ -31,6 +34,31 @@ const USED_TOKENS = 'used_report_tokens';
  * 'paid' and 'bonus' both earn the full report, 'free' is the score-only one.
  */
 type CreditSource = 'paid' | 'bonus' | 'free';
+
+/** A Task 1 chart as the AI receives it: an image, or a PDF the admin uploaded. */
+type ChartBlock = Anthropic.ImageBlockParam | Anthropic.DocumentBlockParam;
+
+/**
+ * The Task 1 chart, sent by the browser as a data URL, turned into a block the
+ * AI can read. Null when there is no chart or it is not something we can send
+ * (an old ImgBB link, a type the API does not take, or a file that is too big),
+ * and the essay is then marked from the question alone.
+ */
+function chartBlock(raw: unknown): ChartBlock | null {
+  if (typeof raw !== 'string' || !raw || raw.length > MAX_CHART_CHARS) return null;
+  const header = /^data:([a-z]+\/[a-z]+);base64,/.exec(raw);
+  if (!header) return null;
+  const data = raw.slice(header[0].length);
+  if (!/^[A-Za-z0-9+/]+={0,2}$/.test(data)) return null;
+  const type = header[1];
+  if (type === 'application/pdf') {
+    return { type: 'document', source: { type: 'base64', media_type: type, data } };
+  }
+  if (type === 'image/jpeg' || type === 'image/png' || type === 'image/gif' || type === 'image/webp') {
+    return { type: 'image', source: { type: 'base64', media_type: type, data } };
+  }
+  return null;
+}
 
 function verifyToken(raw: string): { uid: string; source: CreditSource; sig: string } {
   const secret = process.env.NONCE_SECRET;
@@ -114,7 +142,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (req.method === 'OPTIONS') return res.status(200).end();
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
 
-  const { essayText, questionText, taskType, preCheckToken } = req.body ?? {};
+  const { essayText, questionText, taskType, preCheckToken, chartImage } = req.body ?? {};
   if (typeof preCheckToken !== 'string' || !preCheckToken) {
     return res.status(401).json({ error: 'preCheckToken is required. Call /api/pre-check first.' });
   }
@@ -178,18 +206,21 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   // admin-granted bonus is a reward, so it buys the same full report a paying
   // student gets.
   const isScoreOnly = source === 'free';
-  const { cacheable, variable } = isScoreOnly
-    ? limitedPromptParts(essayText, questionText, taskType, wordCount)
-    : promptParts(essayText, questionText, taskType, wordCount);
 
-  res.setHeader('Content-Type', 'text/plain; charset=utf-8');
-  res.setHeader('Transfer-Encoding', 'chunked');
-  res.setHeader('X-Accel-Buffering', 'no');
-  res.status(200);
+  // Task 1 is marked against the chart itself, on free and paid reports alike,
+  // so the AI can check the student's figures instead of guessing them from
+  // the question.
+  const chart = taskType === 'Task 1' ? chartBlock(chartImage) : null;
+  if (taskType === 'Task 1' && chartImage && !chart) {
+    console.error('feedback: a Task 1 chart was sent but cannot be used; marking without it');
+  }
 
-  let raw = '';
-  try {
-    const stream = await anthropic.messages.stream({
+  const startStream = (sendChart: ChartBlock | null) => {
+    const chartNote = taskType === 'Task 1' ? (sendChart ? 'attached' : 'missing') : undefined;
+    const { cacheable, variable } = isScoreOnly
+      ? limitedPromptParts(essayText, questionText, taskType, wordCount, chartNote)
+      : promptParts(essayText, questionText, taskType, wordCount, chartNote);
+    return anthropic.messages.stream({
       model: ALLOWED_MODEL,
       max_tokens: isScoreOnly ? LIMITED_MAX_TOKENS : MAX_TOKENS,
       // Sonnet 5 runs adaptive thinking when `thinking` is omitted. Thinking
@@ -203,20 +234,46 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       // at ~0.1x instead of full price, which is most of the cost of a report;
       // on a miss the write costs ~1.25x, so it pays from the second request
       // sharing this task type within the 5-minute window.
+      // The chart goes after the fixed half, so the cache still matches, and
+      // before the essay, which tells the AI to read it first.
       messages: [{
         role: 'user',
         content: [
           { type: 'text', text: cacheable, cache_control: { type: 'ephemeral' } },
+          ...(sendChart ? [sendChart] : []),
           { type: 'text', text: variable },
         ],
       }],
     });
+  };
 
-    for await (const chunk of stream) {
+  res.setHeader('Content-Type', 'text/plain; charset=utf-8');
+  res.setHeader('Transfer-Encoding', 'chunked');
+  res.setHeader('X-Accel-Buffering', 'no');
+  res.status(200);
+
+  let raw = '';
+  const relay = async (s: ReturnType<typeof startStream>) => {
+    for await (const chunk of s) {
       if (chunk.type === 'content_block_delta' && chunk.delta.type === 'text_delta') {
         raw += chunk.delta.text;
         res.write(chunk.delta.text);
       }
+    }
+  };
+
+  try {
+    let stream = startStream(chart);
+    try {
+      await relay(stream);
+    } catch (err) {
+      // A chart the AI cannot open (a corrupt or odd file) must not cost the
+      // student their report, or block every report on that prompt. The API
+      // refuses it before writing anything, so mark the essay again without it.
+      if (!chart || raw || !(err instanceof Anthropic.BadRequestError)) throw err;
+      console.error('feedback: the AI could not read the Task 1 chart; marking without it:', err.message);
+      stream = startStream(null);
+      await relay(stream);
     }
 
     res.end();
@@ -353,16 +410,41 @@ GRAMMATICAL RANGE & ACCURACY (both tasks):
  *
  * Edit a scoring rule here and it changes for both. That is the point: the
  * two prompts used to keep their own condensed copies, and the free one drifted
- * into a softer, vaguer version that scored the same essay differently.        */
+ * into a softer, vaguer version that scored the same essay differently.
+ * The Task 1 chart and its scoring note (chartLine) go to both as well.       */
 
 function examinerPreamble(): string {
   return `You are a certified, experienced IELTS examiner. Score this essay accurately using the official IELTS best-fit method and the band descriptors below — not your own idea of "good writing." Be fair and calibrated: award high bands (8.0–9.0) to genuinely strong essays and low bands to weak ones. Under-scoring a strong essay is just as wrong as over-scoring a weak one. Return ONLY valid JSON — no markdown, no backticks, no extra text.`;
 }
 
-function essayBlock(essay: string, question: string, taskType: string, wordCount: number): string {
+/**
+ * Whether the Task 1 chart came with the essay. Undefined for Task 2, which
+ * has no chart. It sits in the essay block, not the fixed half, because it
+ * changes from essay to essay and the fixed half must stay the same to cache.
+ */
+export type ChartNote = 'attached' | 'missing';
+
+/**
+ * The scoring half is the same for the free and the paid report, so both
+ * award the same band. Only the paid report is told where to explain each
+ * mistake, because the free one returns scores alone and has no room for more.
+ */
+function chartLine(chart: ChartNote, fullReport: boolean): string {
+  if (chart === 'missing') {
+    return `TASK 1 VISUAL: none was sent with this task. If the question refers to a chart, graph, table, map or diagram, you cannot see it: judge Task Achievement on what the question text shows, and do not mark the student down for figures you cannot check.`;
+  }
+  const scoring = `TASK 1 VISUAL: the chart, graph, table, map or diagram the student had to describe is attached above. Study it before you mark. Check every trend, figure and comparison the student reports against it: for example, a line the student says fell while the visual shows it rising, a wrong number, a wrong overview, or a key feature left out. These are Task Achievement weaknesses. Weigh them with the descriptors above as part of the best-fit judgement: mistakes in details point toward Band 6 ("inaccurate info in details"), mistakes in the main trends or the overview toward Band 5 ("inaccurate material in key areas").`;
+  return fullReport
+    ? `${scoring} Name each mistake in feedback.taskAchievement.issues, quoting the student's words and saying what the visual actually shows. In sentenceAnalysis, never mark a sentence with wrong data as ok: use word_choice when a wrong trend word or figure is the fault, and say in its feedback what the visual shows.`
+    : scoring;
+}
+
+function essayBlock(
+  essay: string, question: string, taskType: string, wordCount: number, chart: ChartNote | undefined, fullReport: boolean,
+): string {
   return `=== THE ESSAY TO MARK ===
 TASK TYPE: ${taskType}
-QUESTION: ${question}
+QUESTION: ${question}${chart ? `\n${chartLine(chart, fullReport)}` : ''}
 STUDENT ESSAY (${wordCount} words):
 ${essay}`;
 }
@@ -419,8 +501,9 @@ function scoringRules(): string {
  *
  * It runs the identical preamble, descriptors, scoring method, rationale and
  * scoring rules, so the four criteria and the overall band are reached exactly
- * the way a paid report reaches them. It then stops: no sentence analysis, no
- * vocabulary, no grammar points, no sample answer, no band-gap analysis.
+ * the way a paid report reaches them, Task 1 chart included. It then stops: no
+ * sentence analysis, no vocabulary, no grammar points, no sample answer, no
+ * band-gap analysis.
  *
  * Exported for the same reason as buildPrompt, so scripts/compare-band-scores.ts
  * can grade the real free prompt rather than a copy of it.
@@ -479,7 +562,7 @@ ${scoresSchema(taskType, true)}
     "<third most impactful fix>"
   ],
   "bandGapAnalysis": "<Specific measurable steps to the next band level>",
-  "sampleResponse": "<A band-8/9 model answer for THIS exact question. Task 1: ~150 words — intro paraphrasing the question, an overview of the 2-3 main trends, and the key figures/comparisons. Task 2: ~200 words — intro, 2 body paragraphs (each one main point with a brief example), and a conclusion. Precise academic vocabulary, varied structures, no filler — every sentence carries meaning.>",
+  "sampleResponse": "<A band-8/9 model answer for THIS exact question. Task 1: ~150 words — intro paraphrasing the question, an overview of the 2-3 main trends, and the key figures/comparisons, taken from the attached visual. Never invent a figure that neither the visual nor the question shows; with no visual, describe the trends without made-up numbers. Task 2: ~200 words — intro, 2 body paragraphs (each one main point with a brief example), and a conclusion. Precise academic vocabulary, varied structures, no filler — every sentence carries meaning.>",
   "sentenceAnalysis": [
     {
       "sentence": "<copy the EXACT sentence from the student essay>",
@@ -534,15 +617,15 @@ export interface PromptParts {
 }
 
 export function limitedPromptParts(
-  essay: string, question: string, taskType: string, wordCount: number,
+  essay: string, question: string, taskType: string, wordCount: number, chart?: ChartNote,
 ): PromptParts {
-  return { cacheable: buildLimitedPromptParts(taskType), variable: essayBlock(essay, question, taskType, wordCount) };
+  return { cacheable: buildLimitedPromptParts(taskType), variable: essayBlock(essay, question, taskType, wordCount, chart, false) };
 }
 
 export function promptParts(
-  essay: string, question: string, taskType: string, wordCount: number,
+  essay: string, question: string, taskType: string, wordCount: number, chart?: ChartNote,
 ): PromptParts {
-  return { cacheable: buildPromptParts(taskType), variable: essayBlock(essay, question, taskType, wordCount) };
+  return { cacheable: buildPromptParts(taskType), variable: essayBlock(essay, question, taskType, wordCount, chart, true) };
 }
 
 /* The joined forms. scripts/compare-band-scores.ts grades these, so it sees the

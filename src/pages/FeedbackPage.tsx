@@ -12,7 +12,7 @@ import { decodeReport } from '../lib/reportEncoding';
 import type { ReportData } from '../lib/reportEncoding';
 import { getFeedbackReportHistory } from '../firebase/firestore';
 import { db } from '../firebase/config';
-import { useTask1Chart } from '../lib/task1Chart';
+import { loadTask1Chart, useTask1Chart } from '../lib/task1Chart';
 import type { CategoryFeedback, EnhancedFeedbackCategories, EnhancedFeedbackResult } from '../types';
 import { CRITERIA, bandLabel, extractJson, normalizeScores } from '@shared/bandScore';
 import { hasFreeReportThisWeek } from '../lib/weeklyFree';
@@ -571,6 +571,15 @@ export function FeedbackPage() {
     setFeedbackErrors((p) => { const n = { ...p }; delete n[taskKey]; return n; });
 
     try {
+      // The AI marks Task 1 against the chart itself, on free and paid reports
+      // alike, so it can check the student's figures. Mock, Practice and Quick Write keep the chart in
+      // Firestore (usually fetched already for this page, so no extra read);
+      // a chart the student uploaded in Relax travels in the link. Fetched
+      // before pre-check, so it never eats into the token's 3 minutes.
+      const chart = taskKey === 'task1' && reportData.task1
+        ? (await loadTask1Chart(db, reportData.task1)) || (reportData.task1.image ?? '')
+        : '';
+
       const idToken = await user.getIdToken();
 
       // Step 1: pre-check — Firebase auth + credit deduction (runs fast, separate timeout)
@@ -601,6 +610,7 @@ export function FeedbackPage() {
           questionText: question,
           taskType: taskKey === 'task1' ? 'Task 1' : 'Task 2',
           preCheckToken,
+          chartImage: chart || undefined,
         }),
       });
 

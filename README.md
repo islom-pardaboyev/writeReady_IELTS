@@ -16,6 +16,7 @@ Students write Task 1 and Task 2 answers in four modes (Mock exam, Practice, Qui
 1. `api/pre-check.ts` checks the student's plan and takes one report from their allowance (monthly plan, bonus, or the free weekly report). It returns a signed token that is valid for 3 minutes and can be used once.
 2. `api/feedback.ts` spends the token, sends the essay to Claude and streams the report back.
 3. The prompt contains the official IELTS Writing band descriptors (public version, May 2023, kept in `scripts/ielts-official-band-descriptors.md`) and the examiners' best-fit method.
+   For Task 1, the chart itself (image or PDF) is sent with the essay in every mode, on free and paid reports alike, so the AI checks the student's trends and figures against it. A paid report also names each mistake. If the AI cannot open the file, the essay is marked from the question alone rather than failing.
 4. The overall band is always worked out in code with the official IELTS rounding (`api/_lib/bandScore.ts`), never taken from the model's own sum. The browser, the database and every chart use this same file.
 5. A report that fails or comes back without real scores is refunded automatically and never saved.
 
