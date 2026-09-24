@@ -31,21 +31,21 @@ export function SubscriptionBadge({
   }
   if (plan === "premium") {
     return (
-      <span className="inline-flex items-center gap-1 text-[0.65rem] font-bold uppercase tracking-wider bg-indigo-50 text-indigo-700 border border-indigo-200 rounded-full px-2 py-0.5 dark:bg-indigo-900/30 dark:text-indigo-300 dark:border-indigo-700">
+      <span className="inline-flex items-center gap-1 text-[0.65rem] font-bold uppercase tracking-wider bg-brand-50 text-brand-700 border border-brand-200 rounded-full px-2 py-0.5 dark:bg-brand-900/30 dark:text-brand-300 dark:border-brand-700">
         <span aria-hidden="true">✓</span> PREMIUM
       </span>
     );
   }
   if (plan === "standard") {
     return (
-      <span className="inline-flex items-center gap-1 text-[0.65rem] font-bold uppercase tracking-wider bg-indigo-50 text-indigo-700 border border-indigo-200 rounded-full px-2 py-0.5 dark:bg-indigo-900/30 dark:text-indigo-300 dark:border-indigo-700">
+      <span className="inline-flex items-center gap-1 text-[0.65rem] font-bold uppercase tracking-wider bg-brand-50 text-brand-700 border border-brand-200 rounded-full px-2 py-0.5 dark:bg-brand-900/30 dark:text-brand-300 dark:border-brand-700">
         <span aria-hidden="true">⭐</span> STANDARD
       </span>
     );
   }
   if (plan === "basic") {
     return (
-      <span className="inline-flex items-center gap-1 text-[0.65rem] font-bold uppercase tracking-wider bg-indigo-50 text-indigo-600 border border-indigo-200 rounded-full px-2 py-0.5 dark:bg-indigo-900/30 dark:text-indigo-300 dark:border-indigo-700">
+      <span className="inline-flex items-center gap-1 text-[0.65rem] font-bold uppercase tracking-wider bg-brand-50 text-brand-600 border border-brand-200 rounded-full px-2 py-0.5 dark:bg-brand-900/30 dark:text-brand-300 dark:border-brand-700">
         <span aria-hidden="true">✓</span> BASIC
       </span>
     );
@@ -167,7 +167,7 @@ export function Header() {
                     {profile?.studentLogin ?? user.displayName ?? firstName}
                   </p>
                   {profile?.centerName ? (
-                    <p className="text-xs text-blue-600 font-medium truncate mt-0.5">
+                    <p className="text-xs text-brand-blue-600 font-medium truncate mt-0.5">
                       <span aria-hidden="true">🏫</span> {profile.centerName}
                     </p>
                   ) : (
@@ -241,7 +241,7 @@ export function Header() {
               </Link>
               <Link
                 to="/auth?mode=signup"
-                className="ml-1 bg-[var(--ink-blue-solid)] text-white text-sm font-semibold px-3 md:px-5 py-2 rounded-lg no-underline whitespace-nowrap hover:opacity-90 transition-opacity dark:bg-indigo-600"
+                className="ml-1 bg-[var(--ink-blue-solid)] text-white text-sm font-semibold px-3 md:px-5 py-2 rounded-lg no-underline whitespace-nowrap hover:opacity-90 transition-opacity dark:bg-brand-600"
               >
                 Start Free
               </Link>

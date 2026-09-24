@@ -22,6 +22,7 @@ import {
   UploadIcon,
   Bot,
   GraduationCap,
+  FlaskConical,
 } from "lucide-react";
 import { ModeBrand } from "@/components/writing/ModeBrand";
 import { useHumanCheck } from "@/hooks/useHumanCheck";
@@ -31,6 +32,10 @@ import { TeacherPickerModal } from "@/components/ui/TeacherPickerModal";
 import { ModalCard, ModalTitle, ModalDescription } from "@/components/ui/ModalCard";
 import { HumanCheckConfirmModal } from "@/components/ui/HumanCheckConfirmModal";
 import { FullscreenButton } from "@/components/ui/FullscreenButton";
+import { WritingSettingsButton } from "@/components/appearance/WritingSettingsButton";
+import { ScoreTestButton, ScoreTestDialog, type ScoreTestTask } from "@/components/writing/ScoreTestDialog";
+import { useScoreTest } from "@/lib/scoreTest";
+import { answerTextStyle, useWritingSettings } from "@/lib/writingSettings";
 import { isPdfSrc as isPdf } from "@/lib/loadImageForPdf";
 import { compressChartFile, LINK_CHART_MAX_BYTES } from "@/lib/task1Chart";
 import { hasAccess } from "@/lib/reportAccess";
@@ -49,6 +54,17 @@ function Relax() {
   const [checkingAccess, setCheckingAccess] = useState(false);
   const humanCheck = useHumanCheck("relax");
   const humanCheckEnabled = useFeatureFlag("humanCheck");
+  const writing = useWritingSettings();
+  // Admin -> Settings -> Score test: a scores-only check for the chosen account.
+  const scoreTest = useScoreTest();
+  const [scoreTestOpen, setScoreTestOpen] = useState(false);
+  const scoreTestTasks: ScoreTestTask[] = !userText.trim()
+    ? []
+    : activeTask === 1 && prompt.trim()
+      ? [{ taskType: "Task 1", question: prompt, essay: userText, chart: { image: imageUrl ?? undefined } }]
+      : activeTask === 2 && task2Prompt.trim()
+        ? [{ taskType: "Task 2", question: task2Prompt, essay: userText }]
+        : [];
 
   const [splitRatio, setSplitRatio] = useState(0.46);
   const confirmLeave = useUnsavedWork(
@@ -264,10 +280,10 @@ function Relax() {
                 <button
                   key={task}
                   onClick={() => handleSelectTask(task)}
-                  className="group p-7 text-left bg-white dark:bg-neutral-900 border-2 border-slate-200 dark:border-neutral-800 rounded-xl hover:border-blue-500 dark:hover:border-blue-400 hover:shadow-md transition-[border-color,box-shadow]"
+                  className="group p-7 text-left bg-white dark:bg-neutral-900 border-2 border-slate-200 dark:border-neutral-800 rounded-xl hover:border-brand-blue-500 dark:hover:border-brand-blue-400 hover:shadow-md transition-[border-color,box-shadow]"
                 >
                   <div className="flex items-center justify-between mb-3">
-                    <span className="inline-flex items-center justify-center w-8 h-8 rounded-full bg-slate-100 dark:bg-neutral-800 group-hover:bg-blue-600 text-slate-600 dark:text-neutral-300 group-hover:text-white text-sm font-bold transition-colors">
+                    <span className="inline-flex items-center justify-center w-8 h-8 rounded-full bg-slate-100 dark:bg-neutral-800 group-hover:bg-brand-blue-600 text-slate-600 dark:text-neutral-300 group-hover:text-white text-sm font-bold transition-colors">
                       {task}
                     </span>
                   </div>
@@ -338,7 +354,7 @@ function Relax() {
                       aria-label="Task 1 prompt"
                       onChange={(e) => setPrompt(e.target.value)}
                       placeholder="The chart below shows… Summarise the information by selecting and reporting the main features…"
-                      className="w-full h-28 px-4 py-3 text-sm text-slate-800 dark:text-neutral-200 border border-slate-200 dark:border-neutral-800 outline-none resize-none rounded-lg focus:border-blue-500 focus:ring-1 focus:ring-blue-500 bg-white dark:bg-neutral-900 transition placeholder:text-slate-300 dark:placeholder:text-neutral-600"
+                      className="w-full h-28 px-4 py-3 text-sm text-slate-800 dark:text-neutral-200 border border-slate-200 dark:border-neutral-800 outline-none resize-none rounded-lg focus:border-brand-blue-500 focus:ring-1 focus:ring-brand-blue-500 bg-white dark:bg-neutral-900 transition placeholder:text-slate-300 dark:placeholder:text-neutral-600"
                     />
                   </div>
 
@@ -350,7 +366,7 @@ function Relax() {
                       </span>
                     </label>
                     <label
-                      className={`flex flex-col items-center justify-center gap-2 h-28 border-2 border-dashed rounded-lg cursor-pointer transition-colors ${imageLoading ? "opacity-50 pointer-events-none" : "border-slate-200 dark:border-neutral-800 hover:border-blue-400 dark:hover:border-blue-500 hover:bg-blue-50/40 dark:hover:bg-blue-950/30"}`}
+                      className={`flex flex-col items-center justify-center gap-2 h-28 border-2 border-dashed rounded-lg cursor-pointer transition-colors ${imageLoading ? "opacity-50 pointer-events-none" : "border-slate-200 dark:border-neutral-800 hover:border-brand-blue-400 dark:hover:border-brand-blue-500 hover:bg-brand-blue-50/40 dark:hover:bg-brand-blue-950/30"}`}
                     >
                       <UploadIcon className="w-5 h-5 text-slate-400 dark:text-neutral-400" />
                       <span className="text-sm text-slate-400 dark:text-neutral-400">
@@ -405,7 +421,7 @@ function Relax() {
                     aria-label="Task 2 prompt"
                     onChange={(e) => setTask2Prompt(e.target.value)}
                     placeholder="Some people believe that… To what extent do you agree or disagree?"
-                    className="w-full h-36 px-4 py-3 text-sm text-slate-800 dark:text-neutral-200 bg-slate-50 dark:bg-neutral-950 border border-slate-200 dark:border-neutral-800 outline-none resize-none rounded-lg focus:border-blue-500 focus:ring-1 focus:ring-blue-500 focus:bg-white dark:focus:bg-neutral-900 transition placeholder:text-slate-300 dark:placeholder:text-neutral-600"
+                    className="w-full h-36 px-4 py-3 text-sm text-slate-800 dark:text-neutral-200 bg-slate-50 dark:bg-neutral-950 border border-slate-200 dark:border-neutral-800 outline-none resize-none rounded-lg focus:border-brand-blue-500 focus:ring-1 focus:ring-brand-blue-500 focus:bg-white dark:focus:bg-neutral-900 transition placeholder:text-slate-300 dark:placeholder:text-neutral-600"
                   />
                 </div>
               )}
@@ -418,7 +434,7 @@ function Relax() {
                   (activeTask === 1 && prompt.trim() === "") ||
                   (activeTask === 2 && task2Prompt.trim() === "")
                 }
-                className="flex-1 px-5 py-2.5 text-sm font-semibold text-white bg-blue-600 rounded-lg hover:bg-blue-700 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                className="flex-1 px-5 py-2.5 text-sm font-semibold text-white bg-brand-blue-600 rounded-lg hover:bg-brand-blue-700 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
               >
                 Start writing
               </button>
@@ -442,18 +458,22 @@ function Relax() {
     >
       {/* Top bar */}
       <div className="sticky top-0 z-30 border-b border-slate-200 bg-white text-slate-900 dark:border-neutral-800 dark:bg-neutral-900 dark:text-neutral-100">
-        <div className="flex items-center justify-between gap-4 px-5 py-2.5">
+        <div className="flex items-center justify-between gap-2 px-5 py-2.5 sm:gap-4">
           <ModeBrand label="Relax Mode" confirmLeave={confirmLeave} />
 
           {/* Centre: timer */}
           <div className="flex items-center gap-2">
-            <ClockIcon className="w-3.5 h-3.5 text-black/60 dark:text-neutral-400" />
+            <ClockIcon aria-hidden="true" className="hidden w-3.5 h-3.5 text-black/60 dark:text-neutral-400 sm:block" />
             <span className="text-sm font-mono font-semibold tabular-nums text-black/90 dark:text-neutral-100">
               {elapsed}
             </span>
           </div>
 
           <div className="flex items-center gap-2">
+            {scoreTest && (
+              <ScoreTestButton onClick={() => setScoreTestOpen(true)} disabled={scoreTestTasks.length === 0} />
+            )}
+            <WritingSettingsButton className="inline-flex items-center justify-center p-1.5 text-black/70 dark:text-neutral-300 hover:text-black dark:hover:text-white border border-black/20 dark:border-neutral-700 hover:border-black/40 dark:hover:border-neutral-600 rounded-md transition-colors" />
             <FullscreenButton className="inline-flex items-center justify-center p-1.5 text-black/70 dark:text-neutral-300 hover:text-black dark:hover:text-white border border-black/20 dark:border-neutral-700 hover:border-black/40 dark:hover:border-neutral-600 rounded-md transition-colors" />
             <button
               onClick={handleReset}
@@ -491,7 +511,7 @@ function Relax() {
               onClick={handleDownloadPDF}
               disabled={finishing}
               aria-busy={finishing}
-              className="flex items-center gap-1.5 px-4 py-1.5 text-xs font-semibold text-white dark:text-neutral-900 bg-slate-900 dark:bg-neutral-100 hover:bg-slate-800 dark:hover:bg-white rounded-md transition-colors disabled:opacity-60"
+              className="flex shrink-0 items-center gap-1.5 whitespace-nowrap px-4 py-1.5 text-xs font-semibold text-white dark:text-neutral-900 bg-slate-900 dark:bg-neutral-100 hover:bg-slate-800 dark:hover:bg-white rounded-md transition-colors disabled:opacity-60"
             >
               <BusyLabel busy={finishing} busyText="Saving PDF…">Save PDF</BusyLabel>
             </button>
@@ -509,7 +529,7 @@ function Relax() {
 
       {/* Task info strip */}
       <div className="flex items-center gap-3 px-5 py-2.5 bg-slate-50 dark:bg-neutral-950 border-b border-slate-200 dark:border-neutral-800">
-        <span className="shrink-0 inline-flex items-center justify-center w-6 h-6 rounded-full bg-blue-600 text-white text-[10px] font-bold">
+        <span className="shrink-0 inline-flex items-center justify-center w-6 h-6 rounded-full bg-brand-blue-600 text-white text-[10px] font-bold">
           {activeTask}
         </span>
         <p className="text-xs text-slate-600 dark:text-neutral-300">
@@ -546,12 +566,12 @@ function Relax() {
           onPointerDown={handleSplitPointerDown}
           onPointerMove={handleSplitPointerMove}
           onPointerUp={handleSplitPointerUp}
-          className="relative hidden w-1.5 shrink-0 cursor-col-resize select-none touch-none bg-slate-100 dark:bg-neutral-800 hover:bg-blue-200 dark:hover:bg-blue-900 active:bg-blue-300 dark:active:bg-blue-800 transition-colors md:flex items-center justify-center group"
+          className="relative hidden w-1.5 shrink-0 cursor-col-resize select-none touch-none bg-slate-100 dark:bg-neutral-800 hover:bg-brand-blue-200 dark:hover:bg-brand-blue-900 active:bg-brand-blue-300 dark:active:bg-brand-blue-800 transition-colors md:flex items-center justify-center group"
         >
           <div className="flex flex-col gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-            <span className="w-1 h-1 rounded-full bg-blue-400" />
-            <span className="w-1 h-1 rounded-full bg-blue-400" />
-            <span className="w-1 h-1 rounded-full bg-blue-400" />
+            <span className="w-1 h-1 rounded-full bg-brand-blue-400" />
+            <span className="w-1 h-1 rounded-full bg-brand-blue-400" />
+            <span className="w-1 h-1 rounded-full bg-brand-blue-400" />
           </div>
         </div>
 
@@ -571,14 +591,15 @@ function Relax() {
             data-gramm="false"
             data-gramm_editor="false"
             data-enable-grammarly="false"
-            className="flex-1 w-full p-6 text-[15px] leading-relaxed text-slate-800 dark:text-neutral-200 bg-transparent outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-inset resize-none placeholder:text-slate-300 dark:placeholder:text-neutral-600 focus:bg-white dark:focus:bg-neutral-900 transition-colors duration-200 min-h-[300px] [scrollbar-gutter:stable]"
+            style={answerTextStyle(writing)}
+            className="flex-1 w-full p-6 text-slate-800 dark:text-neutral-200 caret-[var(--ink-blue)] bg-transparent outline-none focus-visible:ring-2 focus-visible:ring-brand-blue-500 focus-visible:ring-inset resize-none placeholder:text-slate-300 dark:placeholder:text-neutral-600 focus:bg-white dark:focus:bg-neutral-900 transition-colors duration-200 min-h-[300px] [scrollbar-gutter:stable]"
           />
 
           <div className="flex items-center justify-between gap-4 px-5 py-3 border-t border-slate-200 dark:border-neutral-800 bg-white dark:bg-neutral-900">
             <div className="flex items-center gap-3">
               <div className="w-24 h-1.5 bg-slate-100 dark:bg-neutral-800 rounded-full overflow-hidden">
                 <div
-                  className={`h-full rounded-full transition-[width,background-color] duration-300 ${meetsMinWords ? "bg-emerald-500" : "bg-blue-400"}`}
+                  className={`h-full rounded-full transition-[width,background-color] duration-300 ${meetsMinWords ? "bg-emerald-500" : "bg-brand-blue-400"}`}
                   style={{ width: `${currentProgress}%` }}
                 />
               </div>
@@ -602,7 +623,7 @@ function Relax() {
                 onClick={handleDownloadPDF}
                 disabled={finishing}
                 aria-busy={finishing}
-                className="text-xs font-medium text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300 transition-colors disabled:opacity-60"
+                className="text-xs font-medium text-brand-blue-600 dark:text-brand-blue-400 hover:text-brand-blue-800 dark:hover:text-brand-blue-300 transition-colors disabled:opacity-60"
               >
                 <BusyLabel busy={finishing} busyText="Saving PDF…">Save PDF</BusyLabel>
               </button>
@@ -614,10 +635,10 @@ function Relax() {
       {/* Feedback modal */}
       <ModalCard open={showFeedbackModal} onClose={() => { if (!checkingAccess) setShowFeedbackModal(false); }}>
           <div className="w-full max-w-sm bg-white dark:bg-neutral-900 rounded-2xl shadow-2xl overflow-hidden">
-            <div className="h-1.5 bg-linear-to-r from-blue-500 to-indigo-500" />
+            <div className="h-1.5 bg-linear-to-r from-brand-blue-500 to-brand-500" />
             <div className="p-7">
-              <div className="flex items-center justify-center w-11 h-11 mx-auto rounded-full bg-blue-50 dark:bg-blue-950/40">
-                <CheckIcon className="w-5 h-5 text-blue-600 dark:text-blue-400" />
+              <div className="flex items-center justify-center w-11 h-11 mx-auto rounded-full bg-brand-blue-50 dark:bg-brand-blue-950/40">
+                <CheckIcon className="w-5 h-5 text-brand-blue-600 dark:text-brand-blue-400" />
               </div>
               <ModalTitle className="mt-4 text-base font-semibold text-center text-slate-900 dark:text-neutral-100">
                 Session saved
@@ -630,11 +651,22 @@ function Relax() {
                 <Button
                   onClick={handleAcceptFeedback}
                   disabled={checkingAccess}
-                  className="w-full bg-blue-600 hover:bg-blue-700 text-white"
+                  className="w-full bg-brand-blue-600 hover:bg-brand-blue-700 text-white"
                 >
                   <Bot className="w-4 h-4 mr-1.5" />
                   {checkingAccess ? "Checking…" : "Get AI feedback"}
                 </Button>
+                {scoreTest && scoreTestTasks.length > 0 && (
+                  <Button
+                    onClick={() => { setShowFeedbackModal(false); setScoreTestOpen(true); }}
+                    disabled={checkingAccess}
+                    variant="outline"
+                    className="w-full"
+                  >
+                    <FlaskConical aria-hidden="true" className="w-4 h-4 mr-1.5" />
+                    Scores only (test)
+                  </Button>
+                )}
                 {humanCheckEnabled && (
                   <Button
                     onClick={handleHumanCheck}
@@ -657,6 +689,8 @@ function Relax() {
             </div>
           </div>
         </ModalCard>
+
+      <ScoreTestDialog open={scoreTestOpen} onClose={() => setScoreTestOpen(false)} tasks={scoreTestTasks} />
 
       <HumanCheckConfirmModal
         open={humanCheck.showCostConfirm}
@@ -691,7 +725,7 @@ function Relax() {
               </ModalDescription>
               <Button
                 onClick={() => humanCheck.setSuccess(false)}
-                className="w-full mt-6 bg-blue-600 hover:bg-blue-700 text-white"
+                className="w-full mt-6 bg-brand-blue-600 hover:bg-brand-blue-700 text-white"
               >
                 Done
               </Button>

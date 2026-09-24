@@ -48,8 +48,8 @@ export function BlogIndexPage() {
               onClick={() => setActiveCategory(cat)}
               className={`px-4 py-1.5 rounded-full text-sm font-medium border transition-colors ${
                 activeCategory === cat
-                  ? 'bg-indigo-600 text-white border-indigo-600'
-                  : 'bg-[var(--bg-card)] text-[var(--text-secondary)] border-[var(--border-color)] hover:border-indigo-400'
+                  ? 'bg-brand-600 text-white border-brand-600'
+                  : 'bg-[var(--bg-card)] text-[var(--text-secondary)] border-[var(--border-color)] hover:border-brand-400'
               }`}
             >
               {cat}
@@ -94,7 +94,7 @@ export function BlogIndexPage() {
                     <Badge variant="info" className="mb-2 text-[0.7rem] uppercase tracking-wide">
                       {post.category}
                     </Badge>
-                    <h2 className="text-base font-bold text-[var(--text-primary)] group-hover:text-indigo-600 transition-colors mb-1 line-clamp-2">
+                    <h2 className="text-base font-bold text-[var(--text-primary)] group-hover:text-brand-600 transition-colors mb-1 line-clamp-2">
                       {post.title}
                     </h2>
                     <p className="text-sm text-[var(--text-secondary)] line-clamp-2 mb-3">{post.excerpt}</p>

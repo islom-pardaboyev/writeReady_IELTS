@@ -114,7 +114,7 @@ export function BlogPostPage() {
       <Layout>
         <div className="text-center py-20">
           <p className="text-xl font-bold">Post not found</p>
-          <Link to="/blog" className="text-indigo-600 mt-4 inline-block">← Back to blog</Link>
+          <Link to="/blog" className="text-brand-600 mt-4 inline-block">← Back to blog</Link>
         </div>
       </Layout>
     );
@@ -139,7 +139,7 @@ export function BlogPostPage() {
       <div className="max-w-[680px] mx-auto px-4 py-10">
         {/* Breadcrumb */}
         <div className="text-sm text-[var(--text-secondary)] mb-6">
-          <Link to="/blog" className="hover:text-indigo-600 no-underline">Blog</Link>
+          <Link to="/blog" className="hover:text-brand-600 no-underline">Blog</Link>
           <span className="mx-2">›</span>
           <span>{post.category}</span>
         </div>
@@ -165,14 +165,14 @@ export function BlogPostPage() {
         {isHtml ? renderContent(beforeCTA) : <div className="prose max-w-none">{renderMarkdown(beforeCTA)}</div>}
 
         {/* CTA block */}
-        <Card className="my-8 p-6 text-center bg-indigo-50 dark:bg-indigo-900/20 border-indigo-200 dark:border-indigo-800">
+        <Card className="my-8 p-6 text-center bg-brand-50 dark:bg-brand-900/20 border-brand-200 dark:border-brand-800">
           <CardContent className="p-0">
             <p className="font-semibold text-[var(--text-primary)] mb-3">
               {post.ctaText || 'Want feedback like this on your own essay? Try WriteReady free.'}
             </p>
             <Link
               to={post.ctaLink || '/auth?mode=signup'}
-              className="inline-block bg-indigo-600 text-white font-semibold px-6 py-2.5 rounded-lg no-underline hover:bg-indigo-700 transition-colors"
+              className="inline-block bg-brand-600 text-white font-semibold px-6 py-2.5 rounded-lg no-underline hover:bg-brand-700 transition-colors"
             >
               Get Started Free
             </Link>
@@ -228,7 +228,7 @@ export function BlogPostPage() {
                     <div className="w-20 h-16 bg-slate-100 dark:bg-neutral-900 rounded-lg shrink-0 flex items-center justify-center text-2xl">📝</div>
                   )}
                   <div>
-                    <p className="text-sm font-semibold text-[var(--text-primary)] group-hover:text-indigo-600 transition-colors line-clamp-2">{r.title}</p>
+                    <p className="text-sm font-semibold text-[var(--text-primary)] group-hover:text-brand-600 transition-colors line-clamp-2">{r.title}</p>
                     <p className="text-xs text-[var(--text-secondary)] mt-1">{r.author}</p>
                   </div>
                 </Link>

@@ -241,7 +241,7 @@ export function SidebarMenuButton({
         collapsed && "justify-center px-2",
         variant === "dark"
           ? isActive
-            ? "bg-white/10 text-white border-l-2 border-indigo-400"
+            ? "bg-white/10 text-white border-l-2 border-brand-400"
             : "text-white/55 hover:text-white hover:bg-white/5 border-l-2 border-transparent"
           : isActive
             ? "bg-[var(--sidebar-accent)] text-[var(--sidebar-primary)] font-semibold"

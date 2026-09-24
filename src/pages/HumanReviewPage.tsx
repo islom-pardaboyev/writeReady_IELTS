@@ -52,7 +52,7 @@ export function HumanReviewPage() {
       <AppShell>
         <div className="py-16 text-center">
           <p className="text-[var(--text-secondary)]">This review could not be found.</p>
-          <Link to="/dashboard" className="text-blue-600 text-sm font-medium">Back to dashboard</Link>
+          <Link to="/dashboard" className="text-brand-blue-600 text-sm font-medium">Back to dashboard</Link>
         </div>
       </AppShell>
     );
@@ -77,7 +77,7 @@ export function HumanReviewPage() {
                 Your teacher hasn&rsquo;t reviewed this yet.
               </div>
             ) : (
-              <Button onClick={handleDownload} className="w-full bg-blue-600 hover:bg-blue-700 text-white">
+              <Button onClick={handleDownload} className="w-full bg-brand-blue-600 hover:bg-brand-blue-700 text-white">
                 <Download className="w-4 h-4 mr-1.5" />
                 Download feedback (.docx)
               </Button>

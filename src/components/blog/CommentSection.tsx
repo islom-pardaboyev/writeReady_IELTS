@@ -110,7 +110,7 @@ export function CommentSection({ postId }: Props) {
         />
         {!user ? (
           <p className="text-xs text-[var(--text-secondary)] mt-1">
-            <a href="/auth?mode=login" className="text-indigo-600 hover:underline">Sign in</a> to leave a comment.
+            <a href="/auth?mode=login" className="text-brand-600 hover:underline">Sign in</a> to leave a comment.
           </p>
         ) : (
           <Button

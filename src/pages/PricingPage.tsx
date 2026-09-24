@@ -179,7 +179,7 @@ export function PricingPage() {
         <div className="container mx-auto px-6">
           {/* Header */}
           <div className="gs-pricing-header text-center mb-14">
-            <div className="inline-block bg-indigo-50 text-indigo-700 text-xs font-bold tracking-[0.08em] uppercase px-4 py-1.5 rounded-[20px] mb-5 dark:bg-indigo-900/30 dark:text-indigo-300">
+            <div className="inline-block bg-brand-50 text-brand-700 text-xs font-bold tracking-[0.08em] uppercase px-4 py-1.5 rounded-[20px] mb-5 dark:bg-brand-900/30 dark:text-brand-300">
               Pricing
             </div>
             <h1
@@ -275,25 +275,25 @@ export function PricingPage() {
               </div>
               <ul className="flex flex-col gap-2.5 mb-7 flex-1 text-[0.875rem]">
                 <li className="flex items-start gap-2.5 text-[var(--text-primary)]">
-                  <span className="text-indigo-500 font-bold shrink-0 mt-px">
+                  <span className="text-brand-500 font-bold shrink-0 mt-px">
                     ✓
                   </span>
                   5 AI analyses / month
                 </li>
                 <li className="flex items-start gap-2.5 text-[var(--text-primary)]">
-                  <span className="text-indigo-500 font-bold shrink-0 mt-px">
+                  <span className="text-brand-500 font-bold shrink-0 mt-px">
                     ✓
                   </span>
                   Full band-score & sentence-level feedback
                 </li>
                 <li className="flex items-start gap-2.5 text-[var(--text-primary)]">
-                  <span className="text-indigo-500 font-bold shrink-0 mt-px">
+                  <span className="text-brand-500 font-bold shrink-0 mt-px">
                     ✓
                   </span>
                   Vocabulary & grammar practice
                 </li>
                 <li className="flex items-start gap-2.5 text-[var(--text-primary)]">
-                  <span className="text-indigo-500 font-bold shrink-0 mt-px">
+                  <span className="text-brand-500 font-bold shrink-0 mt-px">
                     ✓
                   </span>
                   Sample essay + PDF export
@@ -302,7 +302,7 @@ export function PricingPage() {
               <Button
                 onClick={() => openPaymentModal(PLANS[0])}
                 variant="secondary"
-                className={`w-full border-indigo-300 hover:border-indigo-400 ${currentPlan === "basic" ? "opacity-60" : ""}`}
+                className={`w-full border-brand-300 hover:border-brand-400 ${currentPlan === "basic" ? "opacity-60" : ""}`}
                 disabled={currentPlan === "basic"}
               >
                 {currentPlan === "basic" ? "Current plan" : "Get Basic →"}
@@ -310,7 +310,7 @@ export function PricingPage() {
             </Card>
 
             {/* Standard — Popular */}
-            <Card className="gs-plan-card hover:-translate-y-1 transition-[transform,box-shadow] duration-200 p-7 flex flex-col relative border-2 border-[var(--ink-blue)] shadow-[0_8px_32px_rgba(79,70,229,0.18)]">
+            <Card className="gs-plan-card hover:-translate-y-1 transition-[transform,box-shadow] duration-200 p-7 flex flex-col relative border-2 border-[var(--ink-blue)] shadow-[0_8px_32px_color-mix(in_srgb,var(--ink-blue-solid)_18%,transparent)]">
               <div className="absolute -top-[13px] left-1/2 -translate-x-1/2 bg-[var(--ink-blue-solid)] text-white text-[0.6875rem] font-bold tracking-[0.08em] uppercase px-4 py-[0.3rem] rounded-[20px] whitespace-nowrap">
                 ⭐ Most popular
               </div>
@@ -340,13 +340,13 @@ export function PricingPage() {
               </div>
               <ul className="flex flex-col gap-2.5 mb-7 flex-1 text-[0.875rem]">
                 <li className="flex items-start gap-2.5 text-[var(--text-primary)]">
-                  <span className="text-indigo-500 font-bold shrink-0 mt-px">
+                  <span className="text-brand-500 font-bold shrink-0 mt-px">
                     ✓
                   </span>
                   12 AI analyses / month
                 </li>
                 <li className="flex items-start gap-2.5 text-[var(--text-primary)]">
-                  <span className="text-indigo-500 font-bold shrink-0 mt-px">
+                  <span className="text-brand-500 font-bold shrink-0 mt-px">
                     ✓
                   </span>
                   Everything in Basic
@@ -362,7 +362,7 @@ export function PricingPage() {
             </Card>
 
             {/* Premium */}
-            <Card className="gs-plan-card hover:-translate-y-1 hover:shadow-xl transition-[transform,box-shadow] duration-200 p-7 flex flex-col relative bg-linear-to-br from-slate-900 to-[#312E81] border-indigo-800">
+            <Card className="gs-plan-card hover:-translate-y-1 hover:shadow-xl transition-[transform,box-shadow] duration-200 p-7 flex flex-col relative bg-linear-to-br from-slate-900 to-brand-900 border-brand-800">
               <div className="absolute -top-[13px] left-1/2 -translate-x-1/2 bg-[var(--gold)] text-slate-900 text-[0.6875rem] font-bold tracking-[0.08em] uppercase px-4 py-[0.3rem] rounded-[20px] whitespace-nowrap">
                 Best value · save up to {savingVsBasic("premium")}%
               </div>
@@ -392,19 +392,19 @@ export function PricingPage() {
               </div>
               <ul className="flex flex-col gap-2.5 mb-7 flex-1 text-[0.875rem]">
                 <li className="flex items-start gap-2.5 text-white/85">
-                  <span className="text-indigo-300 font-bold shrink-0 mt-px">
+                  <span className="text-brand-300 font-bold shrink-0 mt-px">
                     ✓
                   </span>
                   25 AI analyses / month (highest)
                 </li>
                 <li className="flex items-start gap-2.5 text-white/85">
-                  <span className="text-indigo-300 font-bold shrink-0 mt-px">
+                  <span className="text-brand-300 font-bold shrink-0 mt-px">
                     ✓
                   </span>
                   Everything in Basic & Standard
                 </li>
                 <li className="flex items-start gap-2.5 text-white/85">
-                  <span className="text-indigo-300 font-bold shrink-0 mt-px">
+                  <span className="text-brand-300 font-bold shrink-0 mt-px">
                     ✓
                   </span>
                   Priority support
@@ -513,7 +513,7 @@ export function PricingPage() {
             <div className="bg-[var(--bg-subtle)] rounded-2xl p-5 mb-7 border border-[var(--border-color)]">
               <div className="flex items-center justify-between gap-4">
                 <div className="flex items-center gap-3">
-                  <span className="w-10 h-10 rounded-xl bg-indigo-50 text-[var(--ink-blue)] flex items-center justify-center shrink-0 dark:bg-indigo-900/30 dark:text-indigo-400">
+                  <span className="w-10 h-10 rounded-xl bg-brand-50 text-[var(--ink-blue)] flex items-center justify-center shrink-0 dark:bg-brand-900/30 dark:text-brand-400">
                     <Sparkles size={18} />
                   </span>
                   <div>

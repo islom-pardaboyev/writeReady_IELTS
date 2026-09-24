@@ -1,11 +1,54 @@
-import { defineConfig } from 'vite';
+import { defineConfig, type Plugin } from 'vite';
 import react from '@vitejs/plugin-react';
 import tailwindcss from '@tailwindcss/vite';
 import { VitePWA } from 'vite-plugin-pwa';
-import { resolve } from 'path';
+import { existsSync } from 'fs';
+import { readFile } from 'fs/promises';
+import { join, resolve } from 'path';
+
+const SHARED_DIR = resolve(__dirname, './api/_lib');
+const SHARED_DEV_URL = '/src/__shared__/';
+const SHARED_DEV_DIR = join(__dirname, SHARED_DEV_URL);
+
+/**
+ * Dev only. `vercel dev` sends every /api/... request to the serverless
+ * functions, so the browser could not load the @shared files from Vite at
+ * their real address (/api/_lib/bandScore.ts was a 404, and every page that
+ * imports @shared failed to open). While developing, they are served from a
+ * made-up folder under /src instead, which vercel dev passes to Vite. The
+ * build bundles them into the page code as before and never uses this.
+ */
+function sharedFilesOutsideApi(): Plugin {
+  return {
+    name: 'writeready:shared-files-outside-api',
+    apply: 'serve',
+    enforce: 'pre',
+    resolveId(source) {
+      const path = source.split('?')[0];
+      // An @shared import, after the alias below has turned it into a path.
+      if (path.startsWith(SHARED_DIR + '/')) {
+        const file = /\.[cm]?[jt]s$/.test(path) ? path : `${path}.ts`;
+        if (!existsSync(file)) return null;
+        return join(SHARED_DEV_DIR, file.slice(SHARED_DIR.length + 1));
+      }
+      // The browser asking for one of them.
+      if (path.startsWith(SHARED_DEV_URL)) return join(__dirname, path);
+      if (path.startsWith(SHARED_DEV_DIR)) return path;
+      return null;
+    },
+    async load(id) {
+      const path = id.split('?')[0];
+      if (!path.startsWith(SHARED_DEV_DIR)) return null;
+      const file = join(SHARED_DIR, path.slice(SHARED_DEV_DIR.length));
+      this.addWatchFile(file);
+      return readFile(file, 'utf8');
+    },
+  };
+}
 
 export default defineConfig({
   plugins: [
+    sharedFilesOutsideApi(),
     react(),
     tailwindcss(),
     VitePWA({

@@ -18,6 +18,7 @@ export type ShortcutId =
   | "openQuick"
   | "openRelax"
   | "goHome"
+  | "goDashboard"
   | "toggleAssistant";
 
 export interface ShortcutAction {
@@ -35,6 +36,8 @@ export const SHORTCUT_ACTIONS: ShortcutAction[] = [
   { id: "openQuick", label: "Open Quick Write", path: "/writing/quick", defaultCode: "KeyQ" },
   { id: "openRelax", label: "Open Relax Mode", path: "/writing/relax", defaultCode: "KeyR" },
   { id: "goHome", label: "Go to the home page", path: "/", defaultCode: "KeyW" },
+  // G for "go": D is taken by the browser's address bar (BROWSER_KEYS).
+  { id: "goDashboard", label: "Go to the dashboard page", path: "/dashboard", defaultCode: "KeyG" },
   { id: "toggleAssistant", label: "Open or close the AI assistant", defaultCode: "KeyA" },
 ];
 
@@ -139,10 +142,20 @@ function readOverrides(): Partial<ShortcutBindings> {
 }
 
 function resolve(overrides: Partial<ShortcutBindings>): ShortcutBindings {
+  // Keys the student picked themselves. A default never takes one of them, so
+  // a shortcut added in a later update starts switched off, instead of firing
+  // alongside something the student already put on that key.
+  const chosen = new Set<string>();
+  for (const a of SHORTCUT_ACTIONS) {
+    const o = overrides[a.id];
+    if (typeof o === "string" && isAllowedCode(o)) chosen.add(o);
+  }
   const out = {} as ShortcutBindings;
   for (const a of SHORTCUT_ACTIONS) {
     const o = overrides[a.id];
-    out[a.id] = o === null ? null : typeof o === "string" && isAllowedCode(o) ? o : a.defaultCode;
+    if (o === null) out[a.id] = null;
+    else if (typeof o === "string" && isAllowedCode(o)) out[a.id] = o;
+    else out[a.id] = chosen.has(a.defaultCode) ? null : a.defaultCode;
   }
   return out;
 }

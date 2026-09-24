@@ -16,6 +16,7 @@ import { LandingPage } from './pages/LandingPage';
 import { NotFoundPage } from './pages/NotFoundPage';
 import { AuthPage } from './pages/AuthPage';
 import { LogoLoader } from '@/components/ui/LogoLoader';
+import { AccentPainter } from '@/lib/appearance';
 
 const DashboardPage = lazy(() => import('./pages/DashboardPage').then(m => ({ default: m.DashboardPage })));
 const FeedbackPage = lazy(() => import('./pages/FeedbackPage').then(m => ({ default: m.FeedbackPage })));
@@ -50,6 +51,9 @@ export default function App() {
   return (
     <AuthProvider>
       <BrowserRouter>
+        {/* Outside the maintenance gate, so the maintenance page and the staff
+            portals get the right colour too. */}
+        <AccentPainter />
         {/* Inside the router so a crashed page can still offer a way back,
             and so the report carries the route the user was actually on. */}
         <ErrorBoundary>

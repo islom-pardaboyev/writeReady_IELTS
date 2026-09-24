@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { Link, useLocation, useNavigate } from "react-router";
 import { X } from "lucide-react";
 import { ModalCard, ModalDescription, ModalTitle } from "@/components/ui/ModalCard";
+import { useAuth } from "@/hooks/useAuth";
 import { useTheme } from "@/hooks/useTheme";
 import { confirmLeaveUnsavedWork } from "@/hooks/useUnsavedWork";
 import {
@@ -25,6 +26,7 @@ export function GlobalShortcuts() {
   const navigate = useNavigate();
   const { pathname } = useLocation();
   const { resolvedTheme, setTheme } = useTheme();
+  const { user } = useAuth();
   const bindings = useShortcutBindings();
   const [helpOpen, setHelpOpen] = useState(false);
   const [notice, setNotice] = useState("");
@@ -57,8 +59,11 @@ export function GlobalShortcuts() {
         showNotice(next === "dark" ? "Dark mode on" : "Light mode on");
       } else if (action.id === "toggleAssistant") {
         if (!toggleAssistant()) showNotice("The AI assistant isn't available on this page");
-      } else if (action.path && action.path !== pathname && confirmLeaveUnsavedWork()) {
-        navigate(action.path);
+      } else if (action.path) {
+        // The dashboard is only for signed-in students. A visitor goes to sign
+        // in instead, and signing in lands them on the dashboard.
+        const to = action.id === "goDashboard" && !user ? "/auth" : action.path;
+        if (to !== pathname && confirmLeaveUnsavedWork()) navigate(to);
       }
     };
 
@@ -69,7 +74,7 @@ export function GlobalShortcuts() {
       window.removeEventListener("keydown", onKeyDown);
       window.removeEventListener(SHORTCUTS_HELP_EVENT, onHelp);
     };
-  }, [bindings, navigate, pathname, resolvedTheme, setTheme]);
+  }, [bindings, navigate, pathname, resolvedTheme, setTheme, user]);
 
   useEffect(() => () => window.clearTimeout(noticeTimer.current), []);
 

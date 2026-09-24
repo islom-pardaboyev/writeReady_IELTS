@@ -34,7 +34,7 @@ export function ModeBrand({ label, sub, confirmLeave }: ModeBrandProps) {
         type="button"
         onClick={handleBack}
         title="Back to WriteReady"
-        className="-ml-2 inline-flex size-9 shrink-0 items-center justify-center gap-1.5 rounded-md text-[0.7rem] font-semibold uppercase tracking-[0.14em] opacity-60 transition hover:bg-black/5 hover:opacity-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 sm:-ml-1.5 sm:size-auto sm:px-1.5 sm:py-1 dark:hover:bg-white/10"
+        className="-ml-2 inline-flex size-9 shrink-0 items-center justify-center gap-1.5 rounded-md text-[0.7rem] font-semibold uppercase tracking-[0.14em] opacity-60 transition hover:bg-black/5 hover:opacity-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-blue-500 sm:-ml-1.5 sm:size-auto sm:px-1.5 sm:py-1 dark:hover:bg-white/10"
       >
         <ChevronLeftIcon strokeWidth={3} aria-hidden="true" className="size-3.5" />
         <span className="hidden sm:inline">WriteReady</span>

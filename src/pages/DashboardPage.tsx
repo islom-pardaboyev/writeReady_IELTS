@@ -270,7 +270,7 @@ export function DashboardPage() {
                     <Badge variant="warning">🎁 +{bonusAnalyses} bonus</Badge>
                   )}
                   {isPro && (
-                    <span className={`font-mono text-[0.9375rem] font-medium ${usagePct >= 85 ? 'text-red-500' : 'text-blue-600 dark:text-blue-400'}`}>
+                    <span className={`font-mono text-[0.9375rem] font-medium ${usagePct >= 85 ? 'text-red-500' : 'text-brand-blue-600 dark:text-brand-blue-400'}`}>
                       {usedCount}/{usageLimit}
                     </span>
                   )}
@@ -285,7 +285,7 @@ export function DashboardPage() {
                 <>
                   <div className="h-1.5 bg-[var(--bg-subtle)] rounded-full overflow-hidden mb-2">
                     <div
-                      className={`h-full rounded-full transition-[width] duration-300 ${usagePct >= 85 ? 'bg-red-500' : 'bg-blue-600'}`}
+                      className={`h-full rounded-full transition-[width] duration-300 ${usagePct >= 85 ? 'bg-red-500' : 'bg-brand-blue-600'}`}
                       style={{ width: `${usagePct}%` }}
                     />
                   </div>
@@ -313,7 +313,7 @@ export function DashboardPage() {
                   m.id === 'mock'
                     ? 'bg-[var(--ink-blue-solid)] border-transparent'
                     : m.id === 'quick'
-                    ? 'bg-violet-50 border-violet-200 dark:bg-violet-900/20 dark:border-violet-800'
+                    ? 'bg-brand-violet-50 border-brand-violet-200 dark:bg-brand-violet-900/20 dark:border-brand-violet-800'
                     : m.id === 'relax'
                     ? 'bg-green-50 border-green-200 dark:bg-green-900/20 dark:border-green-800'
                     : 'bg-[var(--bg-card)] border-[var(--border-color)]'
@@ -321,10 +321,10 @@ export function DashboardPage() {
                 onClick={() => navigate(`/writing/${m.id}`)}
               >
                 <div className="text-[1.75rem] mb-2">{m.emoji}</div>
-                <div className={`font-sans font-bold text-lg mb-1 ${m.id === 'mock' ? 'text-white' : m.id === 'quick' ? 'text-violet-800 dark:text-violet-200' : 'text-[var(--text-primary)]'}`}>
+                <div className={`font-sans font-bold text-lg mb-1 ${m.id === 'mock' ? 'text-white' : m.id === 'quick' ? 'text-brand-violet-800 dark:text-brand-violet-200' : 'text-[var(--text-primary)]'}`}>
                   {m.title}
                 </div>
-                <div className={`text-[0.8125rem] ${m.id === 'mock' ? 'text-white/85' : m.id === 'quick' ? 'text-violet-600 dark:text-violet-300' : 'text-[var(--text-secondary)]'}`}>
+                <div className={`text-[0.8125rem] ${m.id === 'mock' ? 'text-white/85' : m.id === 'quick' ? 'text-brand-violet-600 dark:text-brand-violet-300' : 'text-[var(--text-secondary)]'}`}>
                   {m.desc}
                 </div>
               </button>
@@ -478,7 +478,7 @@ export function DashboardPage() {
           )}
 
           {!isPro && (
-            <div className="gs-db-upsell mt-4 bg-linear-to-br from-slate-900 to-[#312E81] rounded-2xl p-8 flex items-center justify-between gap-4 flex-wrap">
+            <div className="gs-db-upsell mt-4 bg-linear-to-br from-slate-900 to-brand-900 rounded-2xl p-8 flex items-center justify-between gap-4 flex-wrap">
               <div>
                 <h3 className="font-sans font-bold text-white mb-1.5 text-xl">
                   Unlock AI Feedback

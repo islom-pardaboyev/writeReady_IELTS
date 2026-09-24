@@ -21,7 +21,7 @@ import { effectivePlan } from "@/lib/plans";
 import { Button } from "@/components/ui/Button";
 import WritingTask2Preview from "@/components/writingTask2Preview/WritingTask2Preview";
 import { encodeReport } from "@/lib/reportEncoding";
-import { CheckIcon, ClockIcon, Bot, GraduationCap } from "lucide-react";
+import { CheckIcon, ClockIcon, Bot, GraduationCap, FlaskConical } from "lucide-react";
 import { ModeBrand } from "@/components/writing/ModeBrand";
 import { useHumanCheck } from "@/hooks/useHumanCheck";
 import { useFeatureFlag } from "@/hooks/useFeatureFlag";
@@ -29,6 +29,10 @@ import { TeacherPickerModal } from "@/components/ui/TeacherPickerModal";
 import { ModalCard, ModalTitle, ModalDescription } from "@/components/ui/ModalCard";
 import { HumanCheckConfirmModal } from "@/components/ui/HumanCheckConfirmModal";
 import { FullscreenButton } from "@/components/ui/FullscreenButton";
+import { WritingSettingsButton } from "@/components/appearance/WritingSettingsButton";
+import { ScoreTestButton, ScoreTestDialog, type ScoreTestTask } from "@/components/writing/ScoreTestDialog";
+import { useScoreTest } from "@/lib/scoreTest";
+import { answerTextStyle, useWritingSettings } from "@/lib/writingSettings";
 import { ShuffleBag } from "@/lib/shuffleBag";
 import { useTask1Chart } from "@/lib/task1Chart";
 
@@ -69,6 +73,14 @@ function Practice() {
   const [checkingAccess, setCheckingAccess] = useState(false);
   const humanCheck = useHumanCheck("practice");
   const humanCheckEnabled = useFeatureFlag("humanCheck");
+  const writing = useWritingSettings();
+  // Admin -> Settings -> Score test: a scores-only check for the chosen account.
+  const scoreTest = useScoreTest();
+  const [scoreTestOpen, setScoreTestOpen] = useState(false);
+  const scoreTestTasks: ScoreTestTask[] = [
+    ...(task1 && userText1.trim() ? [{ taskType: "Task 1" as const, question: task1.report, essay: userText1, chart: task1 }] : []),
+    ...(task2 && userText2.trim() ? [{ taskType: "Task 2" as const, question: task2.report, essay: userText2 }] : []),
+  ];
 
   const [splitRatio, setSplitRatio] = useState(0.46);
   const confirmLeave = useUnsavedWork(
@@ -243,18 +255,22 @@ function Practice() {
     >
       {/* ── Top bar ── */}
       <div className="sticky top-0 z-30 border-b border-slate-200 bg-white text-slate-900 dark:border-neutral-800 dark:bg-neutral-900 dark:text-neutral-100">
-        <div className="flex items-center justify-between gap-4 px-5 py-2.5">
+        <div className="flex items-center justify-between gap-2 px-5 py-2.5 sm:gap-4">
           <ModeBrand label="Practice Mode" confirmLeave={confirmLeave} />
 
           {/* Centre: timer */}
           <div className="flex items-center gap-2 text-slate-600 dark:text-neutral-300">
-            <ClockIcon aria-hidden="true" className="w-3.5 h-3.5" />
+            <ClockIcon aria-hidden="true" className="hidden w-3.5 h-3.5 sm:block" />
             <span className="text-sm font-mono font-semibold tabular-nums">
               {elapsed}
             </span>
           </div>
 
           <div id="right-actions" className="flex items-center gap-2">
+            {scoreTest && (
+              <ScoreTestButton onClick={() => setScoreTestOpen(true)} disabled={scoreTestTasks.length === 0} />
+            )}
+            <WritingSettingsButton className="inline-flex items-center justify-center p-1.5 text-slate-500 dark:text-neutral-400 hover:text-slate-900 dark:hover:text-white border border-slate-200 dark:border-neutral-700 hover:border-slate-300 dark:hover:border-neutral-600 rounded-md transition-colors" />
             <FullscreenButton className="inline-flex items-center justify-center p-1.5 text-slate-500 dark:text-neutral-400 hover:text-slate-900 dark:hover:text-white border border-slate-200 dark:border-neutral-700 hover:border-slate-300 dark:hover:border-neutral-600 rounded-md transition-colors" />
             <button
               onClick={() => setShowHeader((p) => !p)}
@@ -272,7 +288,7 @@ function Practice() {
               onClick={handleDownloadPDF}
               disabled={finishing}
               aria-busy={finishing}
-              className="flex items-center gap-1.5 px-4 py-1.5 text-xs font-semibold text-white bg-blue-600 hover:bg-blue-500 rounded-md transition-colors disabled:opacity-60"
+              className="flex shrink-0 items-center gap-1.5 whitespace-nowrap px-4 py-1.5 text-xs font-semibold text-white bg-brand-blue-600 hover:bg-brand-blue-500 rounded-md transition-colors disabled:opacity-60"
             >
               <BusyLabel busy={finishing} busyText="Saving PDF…">Save PDF</BusyLabel>
             </button>
@@ -282,7 +298,7 @@ function Practice() {
         {/* Progress bar */}
         <div className="h-0.5 bg-slate-100 dark:bg-neutral-800">
           <div
-            className="h-full bg-blue-600 transition-[width] duration-500"
+            className="h-full bg-brand-blue-600 transition-[width] duration-500"
             style={{ width: `${currentProgress}%` }}
           />
         </div>
@@ -302,7 +318,7 @@ function Practice() {
                     onClick={() => setActiveTask(t)}
                     className={`relative flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-lg transition-[color,background-color,box-shadow] ${
                       activeTask === t
-                        ? "bg-blue-600 text-white shadow-sm"
+                        ? "bg-brand-blue-600 text-white shadow-sm"
                         : "text-slate-600 dark:text-neutral-300 hover:bg-slate-100 dark:hover:bg-neutral-800"
                     }`}
                   >
@@ -348,7 +364,7 @@ function Practice() {
           </div>
 
           <div className="flex items-center gap-3 px-5 py-2.5 bg-slate-50 dark:bg-neutral-950 border-t border-slate-100 dark:border-neutral-800">
-            <span className="shrink-0 inline-flex items-center justify-center w-6 h-6 rounded-full bg-blue-600 text-white text-[10px] font-bold">
+            <span className="shrink-0 inline-flex items-center justify-center w-6 h-6 rounded-full bg-brand-blue-600 text-white text-[10px] font-bold">
               {activeTask}
             </span>
             <p className="text-xs text-slate-600 dark:text-neutral-300">
@@ -367,7 +383,7 @@ function Practice() {
               <button
                 key={t}
                 onClick={() => setActiveTask(t)}
-                className={`px-3 py-1 text-xs font-medium rounded-md transition-colors ${activeTask === t ? "bg-blue-600 text-white" : "text-slate-500 dark:text-neutral-400 hover:bg-slate-100 dark:hover:bg-neutral-800"}`}
+                className={`px-3 py-1 text-xs font-medium rounded-md transition-colors ${activeTask === t ? "bg-brand-blue-600 text-white" : "text-slate-500 dark:text-neutral-400 hover:bg-slate-100 dark:hover:bg-neutral-800"}`}
               >
                 Task {t}
               </button>
@@ -419,12 +435,12 @@ function Practice() {
               setSplitRatio((r) => Math.min(0.72, r + 0.02));
             }
           }}
-          className="relative hidden w-1.5 shrink-0 cursor-col-resize select-none touch-none bg-slate-100 dark:bg-neutral-800 hover:bg-blue-200 dark:hover:bg-blue-900 active:bg-blue-300 dark:active:bg-blue-800 transition-colors md:flex items-center justify-center group focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
+          className="relative hidden w-1.5 shrink-0 cursor-col-resize select-none touch-none bg-slate-100 dark:bg-neutral-800 hover:bg-brand-blue-200 dark:hover:bg-brand-blue-900 active:bg-brand-blue-300 dark:active:bg-brand-blue-800 transition-colors md:flex items-center justify-center group focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-blue-500"
         >
           <div className="flex flex-col gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-            <span className="w-1 h-1 rounded-full bg-blue-400" />
-            <span className="w-1 h-1 rounded-full bg-blue-400" />
-            <span className="w-1 h-1 rounded-full bg-blue-400" />
+            <span className="w-1 h-1 rounded-full bg-brand-blue-400" />
+            <span className="w-1 h-1 rounded-full bg-brand-blue-400" />
+            <span className="w-1 h-1 rounded-full bg-brand-blue-400" />
           </div>
         </div>
 
@@ -451,14 +467,15 @@ function Practice() {
             data-gramm="false"
             data-gramm_editor="false"
             data-enable-grammarly="false"
-            className="flex-1 w-full p-6 text-[15px] leading-relaxed text-slate-800 dark:text-neutral-200 bg-white dark:bg-neutral-900 outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-inset resize-none placeholder:text-slate-300 dark:placeholder:text-neutral-600 focus:bg-white dark:focus:bg-neutral-900 transition-colors duration-200 min-h-[300px] [scrollbar-gutter:stable]"
+            style={answerTextStyle(writing)}
+            className="flex-1 w-full p-6 text-slate-800 dark:text-neutral-200 caret-[var(--ink-blue)] bg-white dark:bg-neutral-900 outline-none focus-visible:ring-2 focus-visible:ring-brand-blue-500 focus-visible:ring-inset resize-none placeholder:text-slate-300 dark:placeholder:text-neutral-600 focus:bg-white dark:focus:bg-neutral-900 transition-colors duration-200 min-h-[300px] [scrollbar-gutter:stable]"
           />
 
           <div className="flex items-center justify-between gap-4 px-5 py-3 border-t border-slate-200 dark:border-neutral-800 bg-white dark:bg-neutral-900">
             <div className="flex items-center gap-3">
               <div className="w-24 h-1.5 bg-slate-100 dark:bg-neutral-800 rounded-full overflow-hidden">
                 <div
-                  className={`h-full rounded-full transition-[width,background-color] duration-300 ${meetsMinWords ? "bg-emerald-500" : "bg-blue-400"}`}
+                  className={`h-full rounded-full transition-[width,background-color] duration-300 ${meetsMinWords ? "bg-emerald-500" : "bg-brand-blue-400"}`}
                   style={{ width: `${currentProgress}%` }}
                 />
               </div>
@@ -482,7 +499,7 @@ function Practice() {
                 onClick={handleDownloadPDF}
                 disabled={finishing}
                 aria-busy={finishing}
-                className="text-xs font-medium text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300 transition-colors disabled:opacity-60"
+                className="text-xs font-medium text-brand-blue-600 dark:text-brand-blue-400 hover:text-brand-blue-800 dark:hover:text-brand-blue-300 transition-colors disabled:opacity-60"
               >
                 <BusyLabel busy={finishing} busyText="Saving PDF…">Save PDF</BusyLabel>
               </button>
@@ -494,10 +511,10 @@ function Practice() {
       {/* ── Feedback modal ── */}
       <ModalCard open={showFeedbackModal} onClose={() => { if (!checkingAccess) setShowFeedbackModal(false); }}>
           <div className="w-full max-w-sm bg-white dark:bg-neutral-900 rounded-2xl shadow-2xl overflow-hidden">
-            <div className="h-1.5 bg-linear-to-r from-blue-500 to-indigo-500" />
+            <div className="h-1.5 bg-linear-to-r from-brand-blue-500 to-brand-500" />
             <div className="p-7">
-              <div className="flex items-center justify-center w-11 h-11 mx-auto rounded-full bg-blue-50 dark:bg-blue-950/40">
-                <CheckIcon aria-hidden="true" className="w-5 h-5 text-blue-600 dark:text-blue-400" />
+              <div className="flex items-center justify-center w-11 h-11 mx-auto rounded-full bg-brand-blue-50 dark:bg-brand-blue-950/40">
+                <CheckIcon aria-hidden="true" className="w-5 h-5 text-brand-blue-600 dark:text-brand-blue-400" />
               </div>
               <ModalTitle className="mt-4 text-base font-semibold text-center text-slate-900 dark:text-neutral-100">
                 Session saved
@@ -521,7 +538,7 @@ function Practice() {
                   <Button
                     onClick={() => { setShowFeedbackModal(false); setActiveTask(emptyTask); }}
                     disabled={checkingAccess}
-                    className="w-full bg-blue-600 hover:bg-blue-700 text-white"
+                    className="w-full bg-brand-blue-600 hover:bg-brand-blue-700 text-white"
                   >
                     Write Task {emptyTask} first
                   </Button>
@@ -530,7 +547,7 @@ function Practice() {
                   onClick={handleAcceptFeedback}
                   disabled={checkingAccess}
                   variant={emptyTask ? "outline" : undefined}
-                  className={emptyTask ? "w-full" : "w-full bg-blue-600 hover:bg-blue-700 text-white"}
+                  className={emptyTask ? "w-full" : "w-full bg-brand-blue-600 hover:bg-brand-blue-700 text-white"}
                 >
                   <Bot aria-hidden="true" className="w-4 h-4 mr-1.5" />
                   {checkingAccess
@@ -539,6 +556,17 @@ function Practice() {
                       ? `Get feedback for Task ${writtenTask} only`
                       : "Get AI feedback"}
                 </Button>
+                {scoreTest && scoreTestTasks.length > 0 && (
+                  <Button
+                    onClick={() => { setShowFeedbackModal(false); setScoreTestOpen(true); }}
+                    disabled={checkingAccess}
+                    variant="outline"
+                    className="w-full"
+                  >
+                    <FlaskConical aria-hidden="true" className="w-4 h-4 mr-1.5" />
+                    Scores only (test)
+                  </Button>
+                )}
                 {humanCheckEnabled && (
                   <Button
                     onClick={handleHumanCheck}
@@ -561,6 +589,8 @@ function Practice() {
             </div>
           </div>
         </ModalCard>
+
+      <ScoreTestDialog open={scoreTestOpen} onClose={() => setScoreTestOpen(false)} tasks={scoreTestTasks} />
 
       <HumanCheckConfirmModal
         open={humanCheck.showCostConfirm}
@@ -590,7 +620,7 @@ function Practice() {
               <ModalDescription className="mt-2 text-sm leading-6 text-slate-500 dark:text-neutral-400">
                 You'll get a notification once your teacher has reviewed your essay.
               </ModalDescription>
-              <Button onClick={() => humanCheck.setSuccess(false)} className="w-full mt-6 bg-blue-600 hover:bg-blue-700 text-white">
+              <Button onClick={() => humanCheck.setSuccess(false)} className="w-full mt-6 bg-brand-blue-600 hover:bg-brand-blue-700 text-white">
                 Done
               </Button>
             </div>

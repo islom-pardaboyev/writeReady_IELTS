@@ -22,6 +22,8 @@ Students write Task 1 and Task 2 answers in four modes (Mock exam, Practice, Qui
 
 The free weekly report uses exactly the same scoring rules as a paid report. It only leaves out the extra sections.
 
+**Score test (admin only).** Admin → Settings → Score test adds a "Test scores" button to the top bar of every writing mode (and "Scores only (test)" next to Get AI feedback), for one chosen account. Use Relax mode for outside sample essays, since it is the mode where you type the question yourself. It marks the essay with the free report's prompt and shows only the band scores. It spends no report, saves nothing, and marks fresh every time, so it shows how the site grades an essay. Each run is still one paid AI call. `api/feedback.ts` (`runScoreTest`) checks the switch and the account on every request.
+
 ## Project layout
 
 ```

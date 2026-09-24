@@ -9,6 +9,7 @@ import {
   setHumanCheckPrice,
 } from "@/hooks/useFeatureFlag";
 import { MaintenanceControl } from "@/components/admin/MaintenanceControl";
+import { ScoreTestControl } from "@/components/admin/ScoreTestControl";
 import { adminDb as db } from "@/firebase/adminConfig";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/input";
@@ -94,6 +95,8 @@ export function SettingsSection() {
       <PageHeading title="Settings" description="Site-wide switches. Changes apply to every visitor right away." />
       <div className="flex flex-col gap-6">
         <MaintenanceControl />
+
+        <ScoreTestControl />
 
         <section className="rounded-xl border border-[var(--border-color)] bg-[var(--bg-card)]">
           <header className="flex flex-wrap items-start justify-between gap-4 px-5 pt-4 pb-4">

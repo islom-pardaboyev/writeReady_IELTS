@@ -6,6 +6,48 @@
 @theme {
   --font-mono: "IBM Plex Mono", monospace;
   --font-sans: "Inter", sans-serif;
+
+  /* Brand ink that follows the student's accent colour (see "Accent colours"
+     below). brand-* replaces indigo, brand-blue-* the blue of Mock, Practice
+     and Relax, brand-violet-* the violet of Quick Write. With no accent chosen
+     each one falls back to the exact Tailwind colour it replaces. Colours that
+     carry a meaning (band scores, criteria, plan tiers) keep plain Tailwind
+     names, so an accent can never change what they say. */
+  --color-brand-50: var(--acc-50, oklch(96.2% 0.018 272.314));
+  --color-brand-100: var(--acc-100, oklch(93% 0.034 272.788));
+  --color-brand-200: var(--acc-200, oklch(87% 0.065 274.039));
+  --color-brand-300: var(--acc-300, oklch(78.5% 0.115 274.713));
+  --color-brand-400: var(--acc-400, oklch(67.3% 0.182 276.935));
+  --color-brand-500: var(--acc-500, oklch(58.5% 0.233 277.117));
+  --color-brand-600: var(--acc-600, oklch(51.1% 0.262 276.966));
+  --color-brand-700: var(--acc-700, oklch(45.7% 0.24 277.023));
+  --color-brand-800: var(--acc-800, oklch(39.8% 0.195 277.366));
+  --color-brand-900: var(--acc-900, oklch(35.9% 0.144 278.697));
+  --color-brand-950: var(--acc-950, oklch(25.7% 0.09 281.288));
+
+  --color-brand-blue-50: var(--acc-50, oklch(97% 0.014 254.604));
+  --color-brand-blue-100: var(--acc-100, oklch(93.2% 0.032 255.585));
+  --color-brand-blue-200: var(--acc-200, oklch(88.2% 0.059 254.128));
+  --color-brand-blue-300: var(--acc-300, oklch(80.9% 0.105 251.813));
+  --color-brand-blue-400: var(--acc-400, oklch(70.7% 0.165 254.624));
+  --color-brand-blue-500: var(--acc-500, oklch(62.3% 0.214 259.815));
+  --color-brand-blue-600: var(--acc-600, oklch(54.6% 0.245 262.881));
+  --color-brand-blue-700: var(--acc-700, oklch(48.8% 0.243 264.376));
+  --color-brand-blue-800: var(--acc-800, oklch(42.4% 0.199 265.638));
+  --color-brand-blue-900: var(--acc-900, oklch(37.9% 0.146 265.522));
+  --color-brand-blue-950: var(--acc-950, oklch(28.2% 0.091 267.935));
+
+  --color-brand-violet-50: var(--acc-50, oklch(96.9% 0.016 293.756));
+  --color-brand-violet-100: var(--acc-100, oklch(94.3% 0.029 294.588));
+  --color-brand-violet-200: var(--acc-200, oklch(89.4% 0.057 293.283));
+  --color-brand-violet-300: var(--acc-300, oklch(81.1% 0.111 293.571));
+  --color-brand-violet-400: var(--acc-400, oklch(70.2% 0.183 293.541));
+  --color-brand-violet-500: var(--acc-500, oklch(60.6% 0.25 292.717));
+  --color-brand-violet-600: var(--acc-600, oklch(54.1% 0.281 293.009));
+  --color-brand-violet-700: var(--acc-700, oklch(49.1% 0.27 292.581));
+  --color-brand-violet-800: var(--acc-800, oklch(43.2% 0.232 292.759));
+  --color-brand-violet-900: var(--acc-900, oklch(38% 0.189 293.745));
+  --color-brand-violet-950: var(--acc-950, oklch(28.3% 0.141 291.089));
 }
 
 html,
@@ -225,6 +267,165 @@ button:disabled {
   --sidebar-ring: #818cf8;
 }
 
+/* ── Accent colours (student side) ────────────────────────────────────────
+   A student can swap the indigo ink for another colour on My Account
+   (src/lib/appearance.ts). The choice sets <html data-accent="…">; indigo sets
+   nothing. Staff portals never get the attribute.
+
+   Each accent is one 50–950 scale (--acc-*). Every step has the same
+   lightness as the indigo step it replaces, so text and buttons keep indigo's
+   contrast: white on 600 and 600 on white are 5.4:1 or better, 400 on the
+   dark card is 5.4:1 or better. Hues stay clear of emerald, amber and red,
+   which only ever mean done, waiting and wrong. The swatch colours in
+   src/lib/appearance.ts are --acc-600 (graphite: --acc-800); change both
+   together. */
+html[data-accent="ocean"] {
+  --acc-50: #ebf4fa;
+  --acc-100: #d8ebf7;
+  --acc-200: #aedcf4;
+  --acc-300: #65c6f3;
+  --acc-400: #00a3dd;
+  --acc-500: #0085be;
+  --acc-600: #006da5;
+  --acc-700: #005c8f;
+  --acc-800: #004c74;
+  --acc-900: #004164;
+  --acc-950: #00263f;
+}
+
+html[data-accent="teal"] {
+  --acc-50: #e9f6f3;
+  --acc-100: #c4f4ea;
+  --acc-200: #88e9d7;
+  --acc-300: #1bd5be;
+  --acc-400: #00ae9c;
+  --acc-500: #009081;
+  --acc-600: #00776d;
+  --acc-700: #00655e;
+  --acc-800: #00534e;
+  --acc-900: #004743;
+  --acc-950: #002a29;
+}
+
+html[data-accent="violet"] {
+  --acc-50: #f3f1fd;
+  --acc-100: #e9e5fa;
+  --acc-200: #d5cef7;
+  --acc-300: #bcabfa;
+  --acc-400: #9b82e7;
+  --acc-500: #845be5;
+  --acc-600: #7239d8;
+  --acc-700: #6229c1;
+  --acc-800: #50219f;
+  --acc-900: #442282;
+  --acc-950: #271154;
+}
+
+html[data-accent="berry"] {
+  --acc-50: #faeff5;
+  --acc-100: #f6e1ed;
+  --acc-200: #f2c5df;
+  --acc-300: #f099c9;
+  --acc-400: #eb55a8;
+  --acc-500: #dc0085;
+  --acc-600: #ba0060;
+  --acc-700: #a1004b;
+  --acc-800: #85003d;
+  --acc-900: #730036;
+  --acc-950: #47001e;
+}
+
+html[data-accent="graphite"] {
+  --acc-50: #f2f4f5;
+  --acc-100: #e4e8ec;
+  --acc-200: #cfd5dd;
+  --acc-300: #afbac7;
+  --acc-400: #8798af;
+  --acc-500: #45566f;
+  --acc-600: #324157;
+  --acc-700: #243349;
+  --acc-800: #1d293d;
+  --acc-900: #111a2e;
+  --acc-950: #050c1f;
+}
+
+html:not(.dark)[data-accent] {
+  --ink-blue: var(--acc-600);
+  --ink-blue-solid: var(--acc-600);
+  --ink-light: var(--acc-500);
+  --primary: var(--acc-600);
+  --accent: var(--acc-50);
+  --accent-foreground: var(--acc-600);
+  --ring: var(--acc-600);
+  --chart-1: var(--acc-600);
+  --sidebar-primary: var(--acc-600);
+  --sidebar-accent: var(--acc-50);
+  --sidebar-accent-foreground: var(--acc-600);
+  --sidebar-ring: var(--acc-600);
+}
+
+html.dark[data-accent] {
+  --ink-blue: var(--acc-400);
+  --ink-blue-solid: var(--acc-600);
+  --ink-light: var(--acc-300);
+  --primary: var(--acc-400);
+  --accent: var(--acc-900);
+  --accent-foreground: var(--acc-100);
+  --ring: var(--acc-400);
+  --chart-1: var(--acc-400);
+  --sidebar-primary: var(--acc-400);
+  --sidebar-accent: var(--acc-900);
+  --sidebar-accent-foreground: var(--acc-100);
+  --sidebar-ring: var(--acc-400);
+}
+
+/* Graphite is ink without a hue: near-black in light mode, near-white in dark
+   mode, with a grey wash one step deeper than the hover grey so a selected
+   item never looks merely hovered. Its greys follow each theme's own
+   neutrals: slate in light mode, and plain grey in dark mode, where the page
+   itself is plain grey. */
+html.dark[data-accent="graphite"] {
+  --acc-50: #f3f3f3;
+  --acc-100: #e8e8e8;
+  --acc-200: #d4d4d4;
+  --acc-300: #b9b9b9;
+  --acc-400: #969696;
+  --acc-500: #555555;
+  --acc-600: #404040;
+  --acc-700: #333333;
+  --acc-800: #292929;
+  --acc-900: #1b1b1b;
+  --acc-950: #0d0d0d;
+}
+
+html:not(.dark)[data-accent="graphite"] {
+  --ink-blue: var(--acc-800);
+  --ink-blue-solid: var(--acc-800);
+  --primary: var(--acc-800);
+  --accent: var(--acc-100);
+  --accent-foreground: var(--acc-800);
+  --ring: var(--acc-800);
+  --chart-1: var(--acc-800);
+  --sidebar-primary: var(--acc-800);
+  --sidebar-accent: var(--acc-100);
+  --sidebar-accent-foreground: var(--acc-800);
+  --sidebar-ring: var(--acc-800);
+}
+
+html.dark[data-accent="graphite"] {
+  --ink-blue: var(--acc-200);
+  --ink-light: var(--acc-100);
+  --primary: var(--acc-200);
+  --accent: var(--acc-700);
+  --accent-foreground: var(--acc-100);
+  --ring: var(--acc-200);
+  --chart-1: var(--acc-200);
+  --sidebar-primary: var(--acc-200);
+  --sidebar-accent: var(--acc-700);
+  --sidebar-accent-foreground: var(--acc-100);
+  --sidebar-ring: var(--acc-200);
+}
+
 /* ── Global base ──────────────────────────────────────────────────────────── */
 @layer base {
   * {
@@ -240,7 +441,12 @@ button:disabled {
     transition:
       background-color 0.2s ease,
       color 0.2s ease;
+    /* Checkboxes, radios and range sliders take the ink too. */
+    accent-color: var(--ink-blue-solid);
     @apply font-sans;
+  }
+  ::selection {
+    background: color-mix(in srgb, var(--ink-blue) 24%, transparent);
   }
   body {
     background-color: var(--bg-base);
@@ -294,6 +500,62 @@ button:disabled {
   .staff-detail-in {
     animation: none;
   }
+}
+
+/* ── Mock Exam: exam look ──────────────────────────────────────────────────
+   A switch in the writing settings (src/lib/writingSettings.ts). The Mock
+   Exam screen sets [data-exam-look] on its root: every word turns to Arial and
+   the brand ink turns to plain black, grey and white, like a test screen.
+   Emerald, amber and red stay, because they still mean done, time running out
+   and time up. Dialogs render outside this root and keep the accent.
+   The two neutral scales mirror the indigo steps' roles: in light mode 600 is
+   near-black under white text; in dark mode 600 stays mid-grey so white text
+   still reads on it, and 400 is light enough to read on the dark card. */
+[data-exam-look] {
+  font-family: Arial, "Helvetica Neue", Helvetica, sans-serif;
+}
+
+html:not(.dark) [data-exam-look] {
+  --color-brand-blue-50: #f5f5f5;
+  --color-brand-blue-100: #e5e5e5;
+  --color-brand-blue-200: #d4d4d4;
+  --color-brand-blue-300: #a3a3a3;
+  --color-brand-blue-400: #737373;
+  --color-brand-blue-500: #525252;
+  --color-brand-blue-600: #262626;
+  --color-brand-blue-700: #171717;
+  --color-brand-blue-800: #0a0a0a;
+  --color-brand-blue-900: #0a0a0a;
+  --color-brand-blue-950: #000000;
+  --ink-blue: #262626;
+  --ring: #262626;
+}
+
+html.dark [data-exam-look] {
+  --color-brand-blue-50: #262626;
+  --color-brand-blue-100: #262626;
+  --color-brand-blue-200: #404040;
+  --color-brand-blue-300: #d4d4d4;
+  --color-brand-blue-400: #a3a3a3;
+  --color-brand-blue-500: #737373;
+  --color-brand-blue-600: #525252;
+  --color-brand-blue-700: #404040;
+  --color-brand-blue-800: #404040;
+  --color-brand-blue-900: #262626;
+  --color-brand-blue-950: #171717;
+  --ink-blue: #d4d4d4;
+  --ring: #d4d4d4;
+}
+
+/* The answer itself in full-strength black or white, and the caret with it. */
+html:not(.dark) [data-exam-look] .exam-answer {
+  color: #000000;
+  caret-color: #000000;
+}
+
+html.dark [data-exam-look] .exam-answer {
+  color: #ffffff;
+  caret-color: #ffffff;
 }
 
 @layer utilities {

@@ -3,7 +3,7 @@ import { getFirestore, FieldValue, Timestamp } from 'firebase-admin/firestore';
 import { getApps } from 'firebase-admin/app';
 import { createHmac, timingSafeEqual } from 'crypto';
 import Anthropic from '@anthropic-ai/sdk';
-import { initFirebase, currentMonthKey, currentWeekKey } from './_lib/shared.js';
+import { initFirebase, currentMonthKey, currentWeekKey, getUid } from './_lib/shared.js';
 import { CRITERIA, extractJson, normalizeScores, type BandScores, type Criterion } from './_lib/bandScore.js';
 import {
   LIMITS, SIGNATURE_VERSION, essayKeys, essaySignature, findSimilarReport, loadSavedReport, loadScoreLock,
@@ -142,7 +142,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (req.method === 'OPTIONS') return res.status(200).end();
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
 
-  const { essayText, questionText, taskType, preCheckToken, chartImage } = req.body ?? {};
+  const { essayText, questionText, taskType, preCheckToken, chartImage, scoreTest } = req.body ?? {};
+  // The admin's score test needs no pre-check token: it spends no report.
+  if (scoreTest === true) return runScoreTest(req, res);
   if (typeof preCheckToken !== 'string' || !preCheckToken) {
     return res.status(401).json({ error: 'preCheckToken is required. Call /api/pre-check first.' });
   }
@@ -290,37 +292,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     console.error('feedback: a Task 1 chart was sent but cannot be used; marking without it');
   }
 
-  const startStream = (sendChart: ChartBlock | null) => {
-    const chartNote = taskType === 'Task 1' ? (sendChart ? 'attached' : 'missing') : undefined;
-    const { cacheable, variable } = isScoreOnly
-      ? limitedPromptParts(essayText, questionText, taskType, wordCount, chartNote, consistency)
-      : promptParts(essayText, questionText, taskType, wordCount, chartNote, consistency);
-    return anthropic.messages.stream({
-      model: ALLOWED_MODEL,
-      max_tokens: isScoreOnly ? LIMITED_MAX_TOKENS : MAX_TOKENS,
-      // Sonnet 5 runs adaptive thinking when `thinking` is omitted. Thinking
-      // tokens bill as output and share the MAX_TOKENS budget with the JSON
-      // report, so leaving it on would push long essays into the cap. The
-      // bandRationale field already makes the model reason before it scores.
-      // Sonnet 5 does not accept `temperature`, so there is no knob for
-      // run-to-run variation; scripts/compare-band-scores.ts measures it.
-      thinking: { type: 'disabled' },
-      // The fixed half carries the cache breakpoint. On a hit those tokens bill
-      // at ~0.1x instead of full price, which is most of the cost of a report;
-      // on a miss the write costs ~1.25x, so it pays from the second request
-      // sharing this task type within the 5-minute window.
-      // The chart goes after the fixed half, so the cache still matches, and
-      // before the essay, which tells the AI to read it first.
-      messages: [{
-        role: 'user',
-        content: [
-          { type: 'text', text: cacheable, cache_control: { type: 'ephemeral' } },
-          ...(sendChart ? [sendChart] : []),
-          { type: 'text', text: variable },
-        ],
-      }],
-    });
-  };
+  const startStream = (sendChart: ChartBlock | null) => startMarking(anthropic, {
+    essayText, questionText, taskType, wordCount, scoreOnly: isScoreOnly, consistency,
+  }, sendChart);
 
   startResponse(reportRef.id, tier, basis);
 
@@ -386,6 +360,151 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       return res.status(503).json({ error: 'AI feedback is temporarily unavailable right now — you were not charged. Please try again shortly, or contact @writeready_admin on Telegram if it keeps happening.' });
     }
     try { res.end(); } catch { /* stream already closed */ }
+  }
+}
+
+/** One marking, as the AI is asked for it. */
+interface Marking {
+  essayText: string;
+  questionText: string;
+  taskType: string;
+  wordCount: number;
+  /** The score-only prompt (the free weekly report, and the admin's score test). */
+  scoreOnly: boolean;
+  consistency: Consistency | null;
+}
+
+/**
+ * Starts the AI marking an essay. Every report and the admin's score test go
+ * through here, so a test is always asked exactly what a student's report is.
+ */
+function startMarking(anthropic: Anthropic, m: Marking, sendChart: ChartBlock | null) {
+  const chartNote = m.taskType === 'Task 1' ? (sendChart ? 'attached' : 'missing') : undefined;
+  const { cacheable, variable } = m.scoreOnly
+    ? limitedPromptParts(m.essayText, m.questionText, m.taskType, m.wordCount, chartNote, m.consistency)
+    : promptParts(m.essayText, m.questionText, m.taskType, m.wordCount, chartNote, m.consistency);
+  return anthropic.messages.stream({
+    model: ALLOWED_MODEL,
+    max_tokens: m.scoreOnly ? LIMITED_MAX_TOKENS : MAX_TOKENS,
+    // Sonnet 5 runs adaptive thinking when `thinking` is omitted. Thinking
+    // tokens bill as output and share the MAX_TOKENS budget with the JSON
+    // report, so leaving it on would push long essays into the cap. The
+    // bandRationale field already makes the model reason before it scores.
+    // Sonnet 5 does not accept `temperature`, so there is no knob for
+    // run-to-run variation; scripts/compare-band-scores.ts measures it.
+    thinking: { type: 'disabled' },
+    // The fixed half carries the cache breakpoint. On a hit those tokens bill
+    // at ~0.1x instead of full price, which is most of the cost of a report;
+    // on a miss the write costs ~1.25x, so it pays from the second request
+    // sharing this task type within the 5-minute window.
+    // The chart goes after the fixed half, so the cache still matches, and
+    // before the essay, which tells the AI to read it first.
+    messages: [{
+      role: 'user',
+      content: [
+        { type: 'text', text: cacheable, cache_control: { type: 'ephemeral' } },
+        ...(sendChart ? [sendChart] : []),
+        { type: 'text', text: variable },
+      ],
+    }],
+  });
+}
+
+/**
+ * Admin -> Settings -> Score test. While the switch is on, the one account
+ * chosen there gets a "Scores only (test)" button in the writing modes, to see
+ * how the site grades an essay. It is a pure test: it spends no report and
+ * saves nothing (no history entry, no saved copy, no score lock), and it
+ * ignores earlier markings of the same essay, so every run is marked fresh.
+ * The marking is the free weekly report's, through startMarking, so the scores
+ * are reached exactly the way a student's are.
+ */
+async function runScoreTest(req: VercelRequest, res: VercelResponse) {
+  const { essayText, questionText, taskType, chartImage } = req.body ?? {};
+
+  try {
+    initFirebase();
+  } catch (e) {
+    console.error('score test: Firebase init failed:', e);
+    return res.status(500).json({ error: 'The server is not set up correctly.' });
+  }
+  let uid: string;
+  try {
+    uid = await getUid(req);
+  } catch {
+    return res.status(401).json({ error: 'Please sign in again.' });
+  }
+
+  // Checked on every request, so switching the test off in the admin panel
+  // takes effect at once, even for a tab that still shows the button.
+  try {
+    const flags = (await getFirestore().collection('config').doc('featureFlags').get()).data() ?? {};
+    if (flags.scoreTestMode !== true || flags.scoreTestUid !== uid) {
+      return res.status(403).json({ error: 'Score test is off for this account. Turn it on in Admin, Settings.' });
+    }
+  } catch (e) {
+    console.error('score test: could not read the switch:', e);
+    return res.status(503).json({ error: 'Could not check the score test switch. Please try again.' });
+  }
+
+  if (typeof essayText !== 'string' || !essayText.trim() || typeof questionText !== 'string' || !questionText.trim()) {
+    return res.status(400).json({ error: 'The essay and the question are both needed.' });
+  }
+  if (taskType !== 'Task 1' && taskType !== 'Task 2') {
+    return res.status(400).json({ error: 'taskType must be "Task 1" or "Task 2".' });
+  }
+  const wordCount = essayText.trim().split(/\s+/).filter(Boolean).length;
+  if (wordCount > LIMITS.essayWords || essayText.length > LIMITS.essayChars) {
+    return res.status(413).json({ error: `This essay is ${wordCount} words. The checker accepts up to ${LIMITS.essayWords}.` });
+  }
+  if (questionText.length > LIMITS.questionChars) {
+    return res.status(413).json({ error: 'The question is too long to mark.' });
+  }
+
+  const apiKey = process.env.ANTHROPIC_API_KEY;
+  if (!apiKey) {
+    console.error('score test: ANTHROPIC_API_KEY is not set');
+    return res.status(500).json({ error: 'AI marking is not set up correctly.' });
+  }
+  const anthropic = new Anthropic({ apiKey });
+
+  const chart = taskType === 'Task 1' ? chartBlock(chartImage) : null;
+  if (taskType === 'Task 1' && chartImage && !chart) {
+    console.error('score test: a Task 1 chart was sent but cannot be used; marking without it');
+  }
+  const marking: Marking = { essayText, questionText, taskType, wordCount, scoreOnly: true, consistency: null };
+
+  try {
+    let sentChart = chart;
+    let message: Anthropic.Message;
+    try {
+      message = await startMarking(anthropic, marking, chart).finalMessage();
+    } catch (err) {
+      // Same fallback as a real report: a chart the AI cannot open is dropped
+      // and the essay is marked from the question alone.
+      if (!chart || !(err instanceof Anthropic.BadRequestError)) throw err;
+      console.error('score test: the AI could not read the Task 1 chart; marking without it:', err.message);
+      sentChart = null;
+      message = await startMarking(anthropic, marking, null).finalMessage();
+    }
+
+    const raw = message.content.map((b) => (b.type === 'text' ? b.text : '')).join('');
+    const report = message.stop_reason === 'max_tokens' ? null : readReport(raw);
+    if (!report) {
+      return res.status(502).json({ error: 'The AI reply had no complete scores. Please try again.' });
+    }
+    return res.status(200).json({
+      taskType,
+      scores: report.scores,
+      // The examiner's reason for each band, written before the score as part
+      // of every marking. The admin reads these to see why a band was given.
+      reasons: readRationale(raw),
+      chart: taskType === 'Task 1' ? (sentChart ? 'attached' : 'missing') : null,
+    });
+  } catch (err) {
+    // Never pass the provider's own message on: it can carry billing details.
+    console.error('score test error:', err);
+    return res.status(503).json({ error: 'The AI is not available right now. Please try again shortly.' });
   }
 }
 
@@ -485,6 +604,22 @@ export class ScorePatch {
   }
 }
 
+/** The bandRationale of a finished marking, one string per criterion. Empty when it cannot be read. */
+function readRationale(raw: string): Partial<Record<Criterion, string>> {
+  try {
+    const parsed = extractJson(raw) as { bandRationale?: Record<string, unknown> } | null;
+    const r = parsed?.bandRationale ?? {};
+    const out: Partial<Record<Criterion, string>> = {};
+    for (const k of CRITERIA) {
+      const v = r[k];
+      if (typeof v === 'string' && v.trim()) out[k] = v.trim();
+    }
+    return out;
+  } catch {
+    return {};
+  }
+}
+
 /** What gets saved from a finished report, or null when it has no real scores. */
 function readReport(raw: string): { topic: string; scores: BandScores; issues: string[] } | null {
   let parsed: Record<string, unknown>;
@@ -532,7 +667,7 @@ function bandDescriptors(taskType: string): string {
 
   return `${taskCriterion}
 
-LENGTH (official rules, not a soft guideline): minimum ${minWords} words for ${taskType}. Count only the student's own words: words copied from the question do not count. Responses of 20 words or fewer are automatically Band 1 on ALL four criteria. Significantly underlength responses can be capped around Band 3 on Lexical Resource / Grammatical Range & Accuracy since the resource/structures used can't be judged. For a moderately underlength response, treat it as a genuine weakness in Task Achievement/Response (main ideas or key features will usually be underdeveloped) rather than applying an arbitrary numeric cap.
+LENGTH (official rules, not a soft guideline): minimum ${minWords} words for ${taskType}. Count only the student's own words: words copied from the question do not count. Responses of 20 words or fewer are automatically Band 1 on ALL four criteria. Significantly underlength responses can be capped around Band 3 on Lexical Resource / Grammatical Range & Accuracy since the resource/structures used can't be judged. A response only slightly under the minimum (up to about 10% short) is a minor issue: mention it in the Task Achievement/Response rationale, where it may cost at most half a band, and never let it lower the other three criteria. A response more than about 10% short is a genuine weakness in Task Achievement/Response, because main ideas or key features will usually be underdeveloped, rather than a reason for an arbitrary numeric cap.
 
 COHERENCE & COHESION (both tasks):
 - Band 9: Message followed effortlessly; cohesion rarely draws attention; lapses minimal; paragraphing skilfully managed.
@@ -658,7 +793,7 @@ function scoringMethod(): string {
   return `=== SCORING METHOD (the official IELTS rule) ===
 The official descriptors say: "A script must fully fit the positive features of the descriptor at a particular level", and a weakness they name at a band limits the rating to that band. Apply this to EACH of the 4 criteria on its own, in three steps:
 1. Base band: the highest band whose positive features this essay fully shows. Fully fitting a band never means flawless. Each descriptor sets its own tolerance for error, and the essay only has to stay within it: Band 9 allows rare slips, Band 8 occasional errors, Band 7 a few errors that persist, Band 6 errors that rarely impede communication.
-2. Limiting weaknesses: a weakness a descriptor names at a band holds the criterion at that band, however strong the rest is. For example: no clear overview in Task 1, a position the reader has to search for, no paragraphing, errors that impede meaning.
+2. Limiting weaknesses: a serious weakness a descriptor names at a band holds the criterion at that band, however strong the rest is. For example: no clear overview in Task 1, a position the reader has to search for, no paragraphing, errors that impede meaning. Slips of the kind and number the band above allows are not limiting weaknesses. Band 7 itself allows a few grammar errors, occasional inappropriate word choices or collocations, and some inaccuracy or over/under-use of cohesive devices, so a handful of such slips does not hold a criterion at Band 6. Judge errors by how many sentences they affect and whether they reduce clarity: a few scattered slips fit Band 7; errors in many sentences, or complex sentences that are usually faulty, fit Band 6.
 3. Half band: award the base band plus 0.5 when the essay fully fits the base band AND clearly shows some of the next band's positive features, with no weakness holding it at the base band. Choose between the whole and the half band on the evidence, rounding up or down as the evidence points rather than by habit.
 
 Apply the band descriptors exactly as written, in both directions. Do not withhold a band over errors its own descriptor allows, and do not award a band whose positive features are missing, however hard the student has clearly worked.
@@ -672,7 +807,7 @@ Calibration anchors — use them to check each criterion, never in place of the 
 - Band 4.0–4.5: a real attempt at the task in very basic English — frequent errors that may impede meaning; ideas hard to identify or poorly organised.
 - Below 4.0: only for the cases in BANDS 0–3.
 
-Do NOT cluster essays at Band 7. Band 7 means "good, but with visible limitations." Judge each essay against the descriptors and award what it has earned: a fluent, precise, fully developed essay is a Band 8 or 9, and an essay with persistent errors, narrow vocabulary or thin ideas is a Band 5 or 6. Excellent, competent and weak essays must all end up with clearly different scores. Point to specific evidence from the essay for the band you award.`;
+Do not default to any band. Band 7 means "good, but with visible limitations": award it when the essay fits it, and never push an essay that fits Band 7 down to 6 or up to 8. Judge each essay against the descriptors and award what it has earned: a fluent, precise, fully developed essay is a Band 8 or 9, and an essay with errors in many of its sentences, narrow vocabulary or thin ideas is a Band 5 or 6. Excellent, competent and weak essays must all end up with clearly different scores. Point to specific evidence from the essay for the band you award.`;
 }
 
 /**

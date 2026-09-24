@@ -19,7 +19,7 @@ import { useUnsavedWork } from "@/hooks/useUnsavedWork";
 import { Button } from "@/components/ui/Button";
 import WritingTask2Preview from "@/components/writingTask2Preview/WritingTask2Preview";
 import { encodeReport } from "@/lib/reportEncoding";
-import { CheckIcon, ChevronRightIcon, ClockIcon, ZapIcon, Bot, GraduationCap } from "lucide-react";
+import { CheckIcon, ChevronRightIcon, ClockIcon, ZapIcon, Bot, GraduationCap, FlaskConical } from "lucide-react";
 import { ModeBrand } from "@/components/writing/ModeBrand";
 import { useStopwatch } from "@/hooks/useStopwatch";
 import { useHumanCheck } from "@/hooks/useHumanCheck";
@@ -28,6 +28,10 @@ import { TeacherPickerModal } from "@/components/ui/TeacherPickerModal";
 import { ModalCard, ModalTitle, ModalDescription } from "@/components/ui/ModalCard";
 import { HumanCheckConfirmModal } from "@/components/ui/HumanCheckConfirmModal";
 import { FullscreenButton } from "@/components/ui/FullscreenButton";
+import { WritingSettingsButton } from "@/components/appearance/WritingSettingsButton";
+import { ScoreTestButton, ScoreTestDialog, type ScoreTestTask } from "@/components/writing/ScoreTestDialog";
+import { useScoreTest } from "@/lib/scoreTest";
+import { answerTextStyle, useWritingSettings } from "@/lib/writingSettings";
 import { ShuffleBag } from "@/lib/shuffleBag";
 import { useTask1Chart } from "@/lib/task1Chart";
 import { hasAccess } from "@/lib/reportAccess";
@@ -62,6 +66,17 @@ function Quick() {
   const [checkingAccess, setCheckingAccess] = useState(false);
   const humanCheck = useHumanCheck("quick");
   const humanCheckEnabled = useFeatureFlag("humanCheck");
+  const writing = useWritingSettings();
+  // Admin -> Settings -> Score test: a scores-only check for the chosen account.
+  const scoreTest = useScoreTest();
+  const [scoreTestOpen, setScoreTestOpen] = useState(false);
+  const scoreTestTasks: ScoreTestTask[] = !userText.trim()
+    ? []
+    : selectedTaskType === 1 && task1
+      ? [{ taskType: "Task 1", question: task1.report, essay: userText, chart: task1 }]
+      : selectedTaskType === 2 && task2
+        ? [{ taskType: "Task 2", question: task2.report, essay: userText }]
+        : [];
 
   const [splitRatio, setSplitRatio] = useState(0.46);
   const confirmLeave = useUnsavedWork(
@@ -206,7 +221,7 @@ function Quick() {
         <div className="w-full max-w-xl">
           {/* Header */}
           <div className="text-center mb-10">
-            <div className="inline-flex items-center justify-center w-14 h-14 rounded-2xl bg-violet-600 mb-4">
+            <div className="inline-flex items-center justify-center w-14 h-14 rounded-2xl bg-brand-violet-600 mb-4">
               <ZapIcon className="w-7 h-7 text-white" />
             </div>
             <h1 className="text-3xl font-bold text-slate-900 dark:text-neutral-100 mb-2">Quick Write</h1>
@@ -220,14 +235,14 @@ function Quick() {
             {/* Task 1 */}
             <button
               onClick={() => setSelectedTaskType(1)}
-              className="group relative rounded-2xl border-2 border-slate-200 dark:border-neutral-800 bg-white dark:bg-neutral-900 p-6 text-left hover:border-violet-400 dark:hover:border-violet-500 hover:shadow-lg transition-[border-color,box-shadow] duration-200 cursor-pointer"
+              className="group relative rounded-2xl border-2 border-slate-200 dark:border-neutral-800 bg-white dark:bg-neutral-900 p-6 text-left hover:border-brand-violet-400 dark:hover:border-brand-violet-500 hover:shadow-lg transition-[border-color,box-shadow] duration-200 cursor-pointer"
             >
               <div className="text-3xl mb-3">🖼️</div>
               <h2 className="text-lg font-bold text-slate-900 dark:text-neutral-100 mb-1">Task 1</h2>
               <p className="text-sm text-slate-500 dark:text-neutral-400 leading-relaxed">
                 Describe a graph, chart, diagram or map. Minimum <strong>150 words</strong>.
               </p>
-              <div className="mt-4 inline-flex items-center gap-1 text-xs font-semibold text-violet-600 dark:text-violet-400">
+              <div className="mt-4 inline-flex items-center gap-1 text-xs font-semibold text-brand-violet-600 dark:text-brand-violet-400">
                 Start Task 1 <ChevronRightIcon className="w-3.5 h-3.5 group-hover:translate-x-1 transition-transform" />
               </div>
             </button>
@@ -235,14 +250,14 @@ function Quick() {
             {/* Task 2 */}
             <button
               onClick={() => setSelectedTaskType(2)}
-              className="group relative rounded-2xl border-2 border-slate-200 dark:border-neutral-800 bg-white dark:bg-neutral-900 p-6 text-left hover:border-violet-400 dark:hover:border-violet-500 hover:shadow-lg transition-[border-color,box-shadow] duration-200 cursor-pointer"
+              className="group relative rounded-2xl border-2 border-slate-200 dark:border-neutral-800 bg-white dark:bg-neutral-900 p-6 text-left hover:border-brand-violet-400 dark:hover:border-brand-violet-500 hover:shadow-lg transition-[border-color,box-shadow] duration-200 cursor-pointer"
             >
               <div className="text-3xl mb-3">✍️</div>
               <h2 className="text-lg font-bold text-slate-900 dark:text-neutral-100 mb-1">Task 2</h2>
               <p className="text-sm text-slate-500 dark:text-neutral-400 leading-relaxed">
                 Respond to an argument or opinion question. Minimum <strong>250 words</strong>.
               </p>
-              <div className="mt-4 inline-flex items-center gap-1 text-xs font-semibold text-violet-600 dark:text-violet-400">
+              <div className="mt-4 inline-flex items-center gap-1 text-xs font-semibold text-brand-violet-600 dark:text-brand-violet-400">
                 Start Task 2 <ChevronRightIcon className="w-3.5 h-3.5 group-hover:translate-x-1 transition-transform" />
               </div>
             </button>
@@ -269,7 +284,7 @@ function Quick() {
 
       {/* ── Top bar ── */}
       <div className="sticky top-0 z-30 border-b border-slate-200 bg-white text-slate-900 dark:border-neutral-800 dark:bg-neutral-900 dark:text-neutral-100">
-        <div className="flex items-center justify-between gap-4 px-5 py-2.5">
+        <div className="flex items-center justify-between gap-2 px-5 py-2.5 sm:gap-4">
           {/* Left */}
           <ModeBrand
             label="Quick Write"
@@ -279,7 +294,7 @@ function Quick() {
 
           {/* Centre: timer */}
           <div className="flex items-center gap-2 text-slate-600 dark:text-neutral-300">
-            <ClockIcon aria-hidden="true" className="w-3.5 h-3.5" />
+            <ClockIcon aria-hidden="true" className="hidden w-3.5 h-3.5 sm:block" />
             <span className="text-sm font-mono font-semibold tabular-nums">
               {elapsed}
             </span>
@@ -287,6 +302,10 @@ function Quick() {
 
           {/* Right: actions */}
           <div className="flex items-center gap-2">
+            {scoreTest && (
+              <ScoreTestButton onClick={() => setScoreTestOpen(true)} disabled={scoreTestTasks.length === 0} />
+            )}
+            <WritingSettingsButton className="inline-flex items-center justify-center p-1.5 text-slate-500 dark:text-neutral-400 hover:text-slate-900 dark:hover:text-white border border-slate-200 dark:border-neutral-700 hover:border-slate-300 dark:hover:border-neutral-600 rounded-md transition-colors" />
             <FullscreenButton className="inline-flex items-center justify-center p-1.5 text-slate-500 dark:text-neutral-400 hover:text-slate-900 dark:hover:text-white border border-slate-200 dark:border-neutral-700 hover:border-slate-300 dark:hover:border-neutral-600 rounded-md transition-colors" />
             <button
               onClick={() => setShowHeader((p) => !p)}
@@ -310,9 +329,13 @@ function Quick() {
               onClick={handleFinish}
               disabled={finishing}
               aria-busy={finishing}
-              className="flex items-center gap-1.5 px-4 py-1.5 text-xs font-semibold text-white bg-violet-600 hover:bg-violet-500 rounded-md transition-colors disabled:opacity-60"
+              className="flex shrink-0 items-center gap-1.5 whitespace-nowrap px-4 py-1.5 text-xs font-semibold text-white bg-brand-violet-600 hover:bg-brand-violet-500 rounded-md transition-colors disabled:opacity-60"
             >
-              <BusyLabel busy={finishing} busyText="Saving PDF…">Finish & save PDF</BusyLabel>
+              <BusyLabel busy={finishing} busyText="Saving PDF…">
+                {/* Phones get the short label, so the top bar stays one line. */}
+                <span className="sm:hidden">Finish</span>
+                <span className="hidden sm:inline">Finish & save PDF</span>
+              </BusyLabel>
             </button>
           </div>
         </div>
@@ -320,7 +343,7 @@ function Quick() {
         {/* Word count progress stripe */}
         <div className="h-0.5 bg-slate-100 dark:bg-neutral-800">
           <div
-            className="h-full bg-violet-600 transition-[width] duration-500"
+            className="h-full bg-brand-violet-600 transition-[width] duration-500"
             style={{ width: `${progress}%` }}
           />
         </div>
@@ -331,7 +354,7 @@ function Quick() {
         <div className="sticky top-[45px] z-20 bg-white dark:bg-neutral-900 border-b border-slate-200 dark:border-neutral-800 shadow-sm">
           <div className="flex items-center justify-between gap-4 px-5 py-3">
             <div className="flex items-center gap-2">
-              <span className="inline-flex items-center justify-center w-6 h-6 rounded-full bg-violet-600 text-white text-[10px] font-bold">
+              <span className="inline-flex items-center justify-center w-6 h-6 rounded-full bg-brand-violet-600 text-white text-[10px] font-bold">
                 {selectedTaskType}
               </span>
               <span className="text-sm font-medium text-slate-900 dark:text-neutral-100">Task {selectedTaskType}</span>
@@ -357,7 +380,7 @@ function Quick() {
       {/* Minimal task bar when header hidden */}
       {!showHeader && (
         <div className="flex items-center gap-3 px-5 py-2 bg-white dark:bg-neutral-900 border-b border-slate-200 dark:border-neutral-800">
-          <span className="inline-flex items-center justify-center w-5 h-5 rounded-full bg-violet-600 text-white text-[10px] font-bold">{selectedTaskType}</span>
+          <span className="inline-flex items-center justify-center w-5 h-5 rounded-full bg-brand-violet-600 text-white text-[10px] font-bold">{selectedTaskType}</span>
           <span className="text-xs text-slate-500 dark:text-neutral-400">Task {selectedTaskType} · {minWords} words minimum</span>
         </div>
       )}
@@ -386,12 +409,12 @@ function Quick() {
           onPointerDown={handleSplitPointerDown}
           onPointerMove={handleSplitPointerMove}
           onPointerUp={handleSplitPointerUp}
-          className="relative hidden w-1.5 shrink-0 cursor-col-resize select-none touch-none bg-slate-100 dark:bg-neutral-800 hover:bg-violet-200 dark:hover:bg-violet-900 active:bg-violet-300 dark:active:bg-violet-800 transition-colors md:flex items-center justify-center group"
+          className="relative hidden w-1.5 shrink-0 cursor-col-resize select-none touch-none bg-slate-100 dark:bg-neutral-800 hover:bg-brand-violet-200 dark:hover:bg-brand-violet-900 active:bg-brand-violet-300 dark:active:bg-brand-violet-800 transition-colors md:flex items-center justify-center group"
         >
           <div className="flex flex-col gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-            <span className="w-1 h-1 rounded-full bg-violet-400" />
-            <span className="w-1 h-1 rounded-full bg-violet-400" />
-            <span className="w-1 h-1 rounded-full bg-violet-400" />
+            <span className="w-1 h-1 rounded-full bg-brand-violet-400" />
+            <span className="w-1 h-1 rounded-full bg-brand-violet-400" />
+            <span className="w-1 h-1 rounded-full bg-brand-violet-400" />
           </div>
         </div>
 
@@ -412,7 +435,8 @@ function Quick() {
             data-gramm="false"
             data-gramm_editor="false"
             data-enable-grammarly="false"
-            className="flex-1 w-full p-6 text-sm text-slate-900 dark:text-neutral-100 bg-white dark:bg-neutral-900 outline-none focus-visible:ring-2 focus-visible:ring-violet-500 focus-visible:ring-inset resize-none placeholder:text-slate-500/40 dark:placeholder:text-neutral-500 focus:bg-white dark:focus:bg-neutral-900 transition-colors min-h-[300px] [scrollbar-gutter:stable]"
+            style={answerTextStyle(writing)}
+            className="flex-1 w-full p-6 text-slate-900 dark:text-neutral-100 caret-[var(--ink-blue)] bg-white dark:bg-neutral-900 outline-none focus-visible:ring-2 focus-visible:ring-brand-violet-500 focus-visible:ring-inset resize-none placeholder:text-slate-500/40 dark:placeholder:text-neutral-500 focus:bg-white dark:focus:bg-neutral-900 transition-colors min-h-[300px] [scrollbar-gutter:stable]"
           />
 
           {/* Status bar */}
@@ -420,7 +444,7 @@ function Quick() {
             <div className="flex items-center gap-3">
               <div className="w-24 h-1.5 bg-slate-100 dark:bg-neutral-800 rounded-full overflow-hidden">
                 <div
-                  className={`h-full rounded-full transition-[width,background-color] duration-300 ${meetsMinWords ? "bg-emerald-500" : "bg-violet-500"}`}
+                  className={`h-full rounded-full transition-[width,background-color] duration-300 ${meetsMinWords ? "bg-emerald-500" : "bg-brand-violet-500"}`}
                   style={{ width: `${progress}%` }}
                 />
               </div>
@@ -441,7 +465,7 @@ function Quick() {
                 onClick={handleFinish}
                 disabled={finishing}
                 aria-busy={finishing}
-                className="text-xs font-medium text-violet-600 dark:text-violet-400 hover:text-violet-800 dark:hover:text-violet-300 transition-colors disabled:opacity-60"
+                className="text-xs font-medium text-brand-violet-600 dark:text-brand-violet-400 hover:text-brand-violet-800 dark:hover:text-brand-violet-300 transition-colors disabled:opacity-60"
               >
                 <BusyLabel busy={finishing} busyText="Saving PDF…">Finish & save PDF</BusyLabel>
               </button>
@@ -453,10 +477,10 @@ function Quick() {
       {/* ── Feedback modal ── */}
       <ModalCard open={showFeedbackModal} onClose={() => { if (!checkingAccess) setShowFeedbackModal(false); }}>
           <div className="w-full max-w-sm bg-white dark:bg-neutral-900 rounded-2xl shadow-2xl overflow-hidden">
-            <div className="h-1.5 bg-linear-to-r from-violet-500 to-purple-500" />
+            <div className="h-1.5 bg-linear-to-r from-brand-violet-500 to-brand-violet-600" />
             <div className="p-7">
-              <div className="flex items-center justify-center w-11 h-11 mx-auto rounded-full bg-violet-50">
-                <CheckIcon className="w-5 h-5 text-violet-600 dark:text-violet-400" />
+              <div className="flex items-center justify-center w-11 h-11 mx-auto rounded-full bg-brand-violet-50 dark:bg-brand-violet-950/40">
+                <CheckIcon className="w-5 h-5 text-brand-violet-600 dark:text-brand-violet-400" />
               </div>
               <ModalTitle className="mt-4 text-base font-semibold text-center text-slate-900 dark:text-neutral-100">
                 Essay saved!
@@ -468,11 +492,22 @@ function Quick() {
                 <Button
                   onClick={handleAcceptFeedback}
                   disabled={checkingAccess}
-                  className="w-full bg-violet-600 hover:bg-violet-700 text-white"
+                  className="w-full bg-brand-violet-600 hover:bg-brand-violet-700 text-white"
                 >
                   <Bot className="w-4 h-4 mr-1.5" />
                   {checkingAccess ? "Checking…" : "Get AI feedback"}
                 </Button>
+                {scoreTest && scoreTestTasks.length > 0 && (
+                  <Button
+                    onClick={() => { setShowFeedbackModal(false); setScoreTestOpen(true); }}
+                    disabled={checkingAccess}
+                    variant="outline"
+                    className="w-full"
+                  >
+                    <FlaskConical aria-hidden="true" className="w-4 h-4 mr-1.5" />
+                    Scores only (test)
+                  </Button>
+                )}
                 {humanCheckEnabled && (
                   <Button
                     onClick={handleHumanCheck}
@@ -495,6 +530,8 @@ function Quick() {
             </div>
           </div>
         </ModalCard>
+
+      <ScoreTestDialog open={scoreTestOpen} onClose={() => setScoreTestOpen(false)} tasks={scoreTestTasks} />
 
       <HumanCheckConfirmModal
         open={humanCheck.showCostConfirm}
@@ -524,7 +561,7 @@ function Quick() {
               <ModalDescription className="mt-2 text-sm leading-6 text-slate-500 dark:text-neutral-400">
                 You'll get a notification once your teacher has reviewed your essay.
               </ModalDescription>
-              <Button onClick={() => humanCheck.setSuccess(false)} className="w-full mt-6 bg-violet-600 hover:bg-violet-700 text-white">
+              <Button onClick={() => humanCheck.setSuccess(false)} className="w-full mt-6 bg-brand-violet-600 hover:bg-brand-violet-700 text-white">
                 Done
               </Button>
             </div>

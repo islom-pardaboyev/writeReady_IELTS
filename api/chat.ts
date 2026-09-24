@@ -106,6 +106,7 @@ Every shortcut is **Alt** (Option on a Mac) plus one key, so it never fires by a
 - Alt+Q — open Quick Write
 - Alt+R — open Relax Mode
 - Alt+W — go to the home page
+- Alt+G — go to the dashboard page (a visitor who is not signed in goes to sign in first)
 - Alt+L — switch dark / light mode
 - Alt+A — open or close this AI assistant
 Press **?** (question mark) anywhere outside a text box to see the full list.

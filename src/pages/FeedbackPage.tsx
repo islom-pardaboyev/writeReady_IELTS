@@ -1824,7 +1824,7 @@ export function FeedbackPage() {
                                   <button
                                     key={i}
                                     onClick={() => applyLtFix(ltPopover.match, r.value)}
-                                    className="px-2.5 py-1 bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-semibold rounded cursor-pointer border-none"
+                                    className="px-2.5 py-1 bg-brand-600 hover:bg-brand-500 text-white text-xs font-semibold rounded cursor-pointer border-none"
                                   >{r.value}</button>
                                 ))}
                               </div>

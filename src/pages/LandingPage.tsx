@@ -91,14 +91,14 @@ export function LandingPage() {
       <section className="max-w-[1160px] mx-auto px-6 pt-20 pb-16 grid grid-cols-2 gap-16 items-center max-[768px]:grid-cols-1">
         {/* Left */}
         <div>
-          <div className="gs-hero-badge inline-flex items-center gap-2 bg-indigo-50 border border-indigo-200 text-indigo-700 text-[0.75rem] font-bold tracking-[0.06em] uppercase px-[0.875rem] py-[0.35rem] rounded-[20px] mb-7 dark:bg-indigo-900/30 dark:border-indigo-700 dark:text-indigo-300">
+          <div className="gs-hero-badge inline-flex items-center gap-2 bg-brand-50 border border-brand-200 text-brand-700 text-[0.75rem] font-bold tracking-[0.06em] uppercase px-[0.875rem] py-[0.35rem] rounded-[20px] mb-7 dark:bg-brand-900/30 dark:border-brand-700 dark:text-brand-300">
             <span className="w-[6px] h-[6px] rounded-full bg-green-500 inline-block" />
             AI-Powered · Uzbek & English
           </div>
 
           <h1 className="gs-hero-title text-[clamp(2.25rem,4.5vw,3.25rem)] font-black leading-[1.1] text-[var(--text-primary)] mb-5 tracking-[-0.02em]">
             IELTS Writing{' '}
-            <span className="text-indigo-600 dark:text-indigo-400">Feedback.</span>
+            <span className="text-brand-600 dark:text-brand-400">Feedback.</span>
             <br />
             Delivered instantly
             <br />
@@ -171,7 +171,7 @@ export function LandingPage() {
             {[['Task Achievement', '7.0'], ['Coherence', '7.5'], ['Lexical Resource', '6.5'], ['Grammar', '7.0']].map(([k, v]) => (
               <div key={k} className="flex justify-between gap-4 text-[0.8rem] text-[var(--text-secondary)] py-[0.125rem]">
                 <span>{k}</span>
-                <span className="font-bold text-indigo-600 dark:text-indigo-400">{v}</span>
+                <span className="font-bold text-brand-600 dark:text-brand-400">{v}</span>
               </div>
             ))}
           </div>
@@ -199,7 +199,7 @@ export function LandingPage() {
       {/* ── How it works ── */}
       <section className="gs-how max-w-[1160px] mx-auto px-6 py-20">
         <div className="gs-how-header mb-12">
-          <p className="text-[0.8125rem] font-bold uppercase tracking-[0.08em] text-indigo-600 dark:text-indigo-400 mb-2">Simple process</p>
+          <p className="text-[0.8125rem] font-bold uppercase tracking-[0.08em] text-brand-600 dark:text-brand-400 mb-2">Simple process</p>
           <h2 className="text-[clamp(1.75rem,3vw,2.25rem)] font-black text-[var(--text-primary)] tracking-[-0.02em]">Three steps to a higher band</h2>
         </div>
         <div className="grid grid-cols-[repeat(auto-fit,minmax(260px,1fr))] gap-6">
@@ -221,7 +221,7 @@ export function LandingPage() {
       <section className="gs-modes bg-[var(--bg-card)] border-t border-[var(--border-color)]">
         <div className="max-w-[1160px] mx-auto px-6 py-20">
           <div className="gs-modes-header mb-12">
-            <p className="text-[0.8125rem] font-bold uppercase tracking-[0.08em] text-indigo-600 dark:text-indigo-400 mb-2">Practice modes</p>
+            <p className="text-[0.8125rem] font-bold uppercase tracking-[0.08em] text-brand-600 dark:text-brand-400 mb-2">Practice modes</p>
             <h2 className="text-[clamp(1.75rem,3vw,2.25rem)] font-black text-[var(--text-primary)] tracking-[-0.02em]">One goal, four ways to train</h2>
           </div>
           <div className="grid grid-cols-[repeat(auto-fit,minmax(260px,1fr))] gap-5">
@@ -231,13 +231,13 @@ export function LandingPage() {
               { emoji: '⚡', title: 'Quick Write', tag: 'Speed training', desc: 'One random task, no timer, instant submission. Great for daily warm-up and building writing habits.', dark: false, tinted: false, href: '/writing/quick' },
               { emoji: '☕', title: 'Relax Mode', tag: 'Free writing', desc: 'Use your own custom prompt. Enter any question you like, optionally upload a chart, and write freely.', dark: false, tinted: true, href: '/writing/relax' },
             ].map((m) => (
-              <Link key={m.title} to={m.href} className="no-underline group focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:ring-offset-2 rounded-xl block">
+              <Link key={m.title} to={m.href} className="no-underline group focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500 focus-visible:ring-offset-2 rounded-xl block">
                 <div
                   className={`gs-mode-card rounded-xl p-8 h-full block cursor-pointer transition-[transform,box-shadow] duration-150 border group-hover:-translate-y-0.5 group-hover:shadow-[0_8px_24px_rgba(0,0,0,0.1)] group-focus-visible:-translate-y-0.5 group-focus-visible:shadow-[0_8px_24px_rgba(0,0,0,0.1)] ${
                     m.dark
-                      ? 'bg-[#312E81] border-transparent dark:bg-indigo-900'
+                      ? 'bg-brand-900 border-transparent'
                       : m.tinted
-                      ? 'bg-indigo-50 border-indigo-100 dark:bg-indigo-900/20 dark:border-indigo-800'
+                      ? 'bg-brand-50 border-brand-100 dark:bg-brand-900/20 dark:border-brand-800'
                       : 'bg-[var(--bg-base)] border-[var(--border-color)]'
                   }`}
                 >
@@ -255,7 +255,7 @@ export function LandingPage() {
       {/* ── Questions ── */}
       <section className="gs-faq max-w-[760px] mx-auto px-6 py-20">
         <div className="gs-faq-header mb-8">
-          <p className="text-[0.8125rem] font-bold uppercase tracking-[0.08em] text-indigo-600 dark:text-indigo-400 mb-2">
+          <p className="text-[0.8125rem] font-bold uppercase tracking-[0.08em] text-brand-600 dark:text-brand-400 mb-2">
             Before you start
           </p>
           <h2 className="text-[clamp(1.75rem,3vw,2.25rem)] font-black text-[var(--text-primary)] tracking-[-0.02em]">
@@ -294,7 +294,7 @@ export function LandingPage() {
           href={TELEGRAM_CHANNEL_URL}
           target="_blank"
           rel="noopener noreferrer"
-          className="group mb-3 inline-flex items-center gap-2 rounded-lg px-3 py-1.5 text-sm font-medium text-white/70 no-underline transition-colors hover:bg-white/[0.06] hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-400"
+          className="group mb-3 inline-flex items-center gap-2 rounded-lg px-3 py-1.5 text-sm font-medium text-white/70 no-underline transition-colors hover:bg-white/[0.06] hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-400"
         >
           <Send size={15} aria-hidden="true" />
           Follow us on Telegram
@@ -302,13 +302,13 @@ export function LandingPage() {
           <span className="sr-only">(opens in a new tab)</span>
         </a>
         <nav aria-label="Legal" className="mb-3 flex flex-wrap items-center justify-center gap-x-4 gap-y-1 text-[0.8125rem]">
-          <Link to="/faq" className="rounded text-white/60 no-underline hover:text-white hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-400">
+          <Link to="/faq" className="rounded text-white/60 no-underline hover:text-white hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-400">
             FAQ
           </Link>
-          <Link to="/privacy" className="rounded text-white/60 no-underline hover:text-white hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-400">
+          <Link to="/privacy" className="rounded text-white/60 no-underline hover:text-white hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-400">
             Privacy Policy
           </Link>
-          <Link to="/terms" className="rounded text-white/60 no-underline hover:text-white hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-400">
+          <Link to="/terms" className="rounded text-white/60 no-underline hover:text-white hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-400">
             Terms of Service
           </Link>
         </nav>

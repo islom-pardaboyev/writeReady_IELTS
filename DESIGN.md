@@ -41,6 +41,23 @@ colors:
   info-ink: "oklch(45.7% 0.24 277.023)"
   purple-soft: "oklch(94.6% 0.033 307.174)"
   purple-ink: "oklch(49.6% 0.265 301.924)"
+  accent-ocean: "#006da5"
+  accent-ocean-dark: "#00a3dd"
+  accent-teal: "#00776d"
+  accent-teal-dark: "#00ae9c"
+  accent-violet: "#7239d8"
+  accent-violet-dark: "#9b82e7"
+  accent-berry: "#ba0060"
+  accent-berry-dark: "#eb55a8"
+  accent-graphite: "#1d293d"
+  accent-graphite-dark: "#d4d4d4"
+  exam-ink: "#262626"
+  exam-ink-dark: "#525252"
+  exam-text: "#000000"
+  exam-text-dark: "#ffffff"
+  exam-hover: "#404040"
+  exam-page-dark: "#171717"
+  exam-deep: "#0a0a0a"
 typography:
   display:
     fontFamily: "Inter, sans-serif"
@@ -114,6 +131,21 @@ typography:
     fontWeight: 600
     lineHeight: 1.333
     fontFeature: "tnum"
+  answer:
+    fontFamily: "Inter, sans-serif"
+    fontSize: "1rem"
+    fontWeight: 400
+    lineHeight: 1.7
+  answer-serif:
+    fontFamily: "Source Serif 4, Georgia, serif"
+    fontSize: "1rem"
+    fontWeight: 400
+    lineHeight: 1.7
+  answer-exam:
+    fontFamily: "Arial, Helvetica, sans-serif"
+    fontSize: "1rem"
+    fontWeight: 400
+    lineHeight: 1.7
 rounded:
   base: "4px"
   md: "8px"
@@ -301,6 +333,26 @@ components:
   staff-sidebar:
     backgroundColor: "{colors.bg-card}"
     width: "220px"
+  segmented-control:
+    backgroundColor: "{colors.bg-card}"
+    rounded: "{rounded.lg}"
+    padding: "4px"
+    height: "46px"
+  segmented-control-selected:
+    backgroundColor: "{colors.accent}"
+    textColor: "{colors.accent-foreground}"
+    typography: "{typography.label}"
+    rounded: "{rounded.md}"
+    height: "36px"
+  accent-swatch:
+    rounded: "{rounded.full}"
+    width: "36px"
+    height: "36px"
+  text-settings-popover:
+    backgroundColor: "{colors.bg-card}"
+    rounded: "{rounded.xl}"
+    padding: "16px"
+    width: "320px"
 ---
 
 # Design System: WriteReady IELTS
@@ -334,6 +386,13 @@ Token values live in `src/index.css` (`:root` for light, `.dark` for dark). The 
 - **Ink Blue** (`ink-blue`, dark `ink-blue-dark`): the one voice. Primary buttons, the switch's on state, text links, the active nav item's text, shortcut icons on the admin home, the text caret, and the focus ring (`--ring` is the same color). In dark mode it lightens to periwinkle and primary-button text flips to `primary-foreground-dark` for contrast.
 - **Ink Wash** (`accent`, dark `accent-dark`) with **Ink Wash Text** (`accent-foreground`, dark `accent-foreground-dark`): the selection tint. Active sidebar item, selected list row, active filter chip, initials avatars. It is diluted ink, so it reads as "chosen" without competing with the primary button.
 
+### Accent colors (student side)
+A student can swap the indigo ink for one of five other inks on My Account (Appearance card). Indigo stays the brand and the default; staff portals always use it, whatever the browser has saved.
+- **The inks:** Ocean (`accent-ocean`), Teal (`accent-teal`), Violet (`accent-violet`), Berry (`accent-berry`) and Graphite (`accent-graphite`), each with a lighter `-dark` ink for dark mode. The hues stay clear of emerald, amber and red, so an accent never looks like a state.
+- **How it is built:** the choice sets `<html data-accent="…">` (indigo sets nothing). Each accent is one 50 to 950 scale, `--acc-*` in `src/index.css`, and every step has the same lightness as the indigo step it replaces, so contrast never drops below indigo's: white on the ink and the ink on white are 5.4:1 or better, and the dark-mode ink on the dark card is 5.4:1 or better. The ink, wash, ring, chart and sidebar tokens all derive from that scale.
+- **Graphite** is ink without a hue: near-black in light mode and near-white in dark mode, with a wash one step deeper than the hover grey. Its greys follow each theme's own neutrals (slate in light, plain grey in dark).
+- **Tailwind names:** brand ink written as a Tailwind color uses `brand-*` (defaults to indigo), `brand-blue-*` (the blue of Mock, Practice and Relax) or `brand-violet-*` (the violet of Quick Write). With no accent each one is exactly the Tailwind color it replaced.
+
 ### Tertiary
 - **Upgrade Gold** (`gold`): student side only, for the premium upsell (the `gold` button variant, the band-score highlight on the feedback report). Staff surfaces never use it.
 
@@ -362,6 +421,8 @@ Token values live in `src/index.css` (`:root` for light, `.dark` for dark). The 
 
 **The Token Theme Rule.** Surfaces take color from the semantic tokens (`var(--bg-card)`, `var(--text-secondary)`, `var(--border-color)`), so dark mode comes for free. Raw Tailwind hues appear only as state tints, each with its `dark:` counterpart.
 
+**The Meaning Stays Rule.** A student's accent changes the ink, never a meaning. Band-score colors, criterion and mistake categories, plan-tier badges and announcement types keep their plain Tailwind names (`blue-500`, `indigo-*`, `purple-*`), so no accent can make band 6 look like band 7 or a warning look like a button. Only brand ink (actions, selection, focus, links, highlights) is written as `brand-*`.
+
 ## Typography
 
 **Display Font:** Inter (with sans-serif)
@@ -387,6 +448,9 @@ Token values live in `src/index.css` (`:root` for light, `.dark` for dark). The 
 **The Mono Figures Rule.** Every count, amount, band score and ID sits in IBM Plex Mono with tabular numerals; words never do. Counts inside Inter text (chip counts, a title's record count) still take `tabular-nums`.
 
 **The Semibold Ceiling Rule.** Staff headings stop at semibold with slightly tight tracking (-0.01 to -0.02em); bold is kept for the WriteReady wordmark. The bold, extrabold and black headings belong to the student dashboard and landing page.
+
+### Answer text
+The one place a student chooses the type: their own answer in the four writing modes (`src/lib/writingSettings.ts`). Size 14, 16, 18 or 20px (16 by default), line height 1.5, 1.7 or 2 (1.7 by default), and one of three faces: **Answer** (Inter), **Answer Serif** (Source Serif 4, loaded with the other fonts and downloaded only when used) or **Answer Exam** (Arial). Arial exists for the Mock Exam exam look and nowhere else; it is a practice tool, not a brand face.
 
 ## Layout
 
@@ -505,6 +569,21 @@ What every visitor sees while maintenance mode is on (`src/pages/MaintenancePage
 - **Countdown:** one 18px-corner Sheet White card split into four cells by hairlines: days, hours, minutes and seconds in Plex Mono with tabular figures, singular or plural labels in Slate Gray. A 4px Ink Blue bar along its bottom edge shows how much of the planned closure has passed (`role="progressbar"`). Under the card, the exact reopening moment in the visitor's local time.
 - **Contact:** one outline pill (44px tall) linking to the team's Telegram. No emoji, no kicker labels; the countdown updates every second but never fetches again.
 
+### Segmented control
+A single choice from two to four short options (`src/components/appearance/SegmentedControl.tsx`): a 10px-corner Sheet White track with a hairline and 4px padding, holding equal 36px segments with 8px corners and 14px medium text. The chosen segment takes Ink Wash with Ink Wash Text (the weight does not change, so nothing shifts); others are Slate Gray and fill Slate Mist on hover. Underneath it is a radio group: Tab lands on the chosen segment, the arrow keys move the choice, and focus shows as an inset 2px ring. A segment that is only a glyph carries a spoken label ("Large, 18 pixels").
+
+### Accent swatches
+Six 36px circles filled with each accent's ink (the dark-mode ink in dark mode), 10px apart on phones and 12px from 640px, so all six share one row at 375px. The chosen one shows a check in the page's primary-foreground color and a ring of its own color set off by a 2px gap of card color; the focus outline sits 6px out, beyond that ring. The chosen name sits right of the label in Slate Gray.
+
+### Text settings popover
+The "Aa" button in each writing mode's top bar, styled like the bar's other icon buttons, opens a 320px Sheet White popover (14px corners, hairline, Float shadow, 16px padding) with the same fields as the Writing card on My Account: text size, font and line spacing, plus the exam look switch in Mock Exam only. A Reset link at the top right appears only when something differs from the defaults, and puts back only what that popover shows. On phones the top bars keep one line: the main button never wraps, Mock and Quick shorten it to "Finish", and the timer drops its clock icon.
+
+### Score test button (admin only)
+"Test scores" in a writing mode's top bar, shown only to the one account chosen in Admin → Settings → Score test while it is on. It is amber (`warning` tint, border and text), like the test's "On" badge in the admin panel, so it can never pass for a student control; icon only below 640px. It opens the score test window: a 448px dialog with one hairline card per task (overall band in 24px Plex Mono, the four criteria as a definition list), the combined Writing band for a full mock, and Test again / Close.
+
+### Exam look (Mock Exam)
+A switch in the writing settings. The Mock Exam root takes `data-exam-look`: every word turns to Arial, the answer to full black (`exam-text`) or full white (`exam-text-dark`), and the brand ink to plain greys (`exam-ink` near-black in light mode, `exam-ink-dark` mid-grey in dark mode so white text still reads on it). Emerald, amber and red stay, because they still mean done, time running out and time up. Dialogs render outside the root and keep the accent.
+
 ## Do's and Don'ts
 
 ### Do:
@@ -516,6 +595,7 @@ What every visitor sees while maintenance mode is on (`src/pages/MaintenancePage
 - **Do** write each state hue as a light and `dark:` pair, and add `motion-reduce:` to every pulse, spin and transition.
 - **Do** use Lucide line icons (16px in controls, 18px in navigation), `aria-hidden` when a text label is present.
 - **Do** write staff copy in English, in sentence case.
+- **Do** write student-side brand ink as `brand-*`, `brand-blue-*` or `brand-violet-*` so it follows the accent, and keep plain Tailwind names for anything that carries a meaning.
 
 ### Don't:
 - **Don't** use emerald, amber or red for plan tiers, categories or decoration.

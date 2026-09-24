@@ -207,7 +207,7 @@ export function ChatBot() {
             {messages.length === 0 ? (
               <div className="flex flex-col gap-3">
                 <div className="flex gap-2.5">
-                  <div className="w-7 h-7 rounded-full bg-indigo-100 dark:bg-indigo-900/40 text-[var(--ink-blue)] dark:text-indigo-300 flex items-center justify-center shrink-0 mt-0.5">
+                  <div className="w-7 h-7 rounded-full bg-brand-100 dark:bg-brand-900/40 text-[var(--ink-blue)] dark:text-brand-300 flex items-center justify-center shrink-0 mt-0.5">
                     <BotIcon />
                   </div>
                   <div className="bg-[var(--bg-subtle)] rounded-2xl rounded-tl-sm px-4 py-3 text-sm text-[var(--text-primary)] max-w-[85%]">
@@ -221,7 +221,7 @@ export function ChatBot() {
                       key={s}
                       type="button"
                       onClick={() => send(s)}
-                      className="text-left text-xs text-[var(--ink-blue)] dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800 rounded-xl px-3 py-2 bg-indigo-50 dark:bg-indigo-900/20 hover:bg-indigo-100 dark:hover:bg-indigo-900/40 transition-colors cursor-pointer"
+                      className="text-left text-xs text-[var(--ink-blue)] dark:text-brand-300 border border-brand-200 dark:border-brand-800 rounded-xl px-3 py-2 bg-brand-50 dark:bg-brand-900/20 hover:bg-brand-100 dark:hover:bg-brand-900/40 transition-colors cursor-pointer"
                     >
                       {s}
                     </button>
@@ -232,7 +232,7 @@ export function ChatBot() {
               messages.map((m, i) => (
                 <div key={i} className={`flex gap-2.5 ${m.role === 'user' ? 'flex-row-reverse' : ''}`}>
                   {m.role === 'assistant' && (
-                    <div className="w-7 h-7 rounded-full bg-indigo-100 dark:bg-indigo-900/40 text-[var(--ink-blue)] dark:text-indigo-300 flex items-center justify-center shrink-0 mt-0.5">
+                    <div className="w-7 h-7 rounded-full bg-brand-100 dark:bg-brand-900/40 text-[var(--ink-blue)] dark:text-brand-300 flex items-center justify-center shrink-0 mt-0.5">
                       <BotIcon />
                     </div>
                   )}
@@ -249,7 +249,7 @@ export function ChatBot() {
 
             {loading && (
               <div className="flex gap-2.5">
-                <div className="w-7 h-7 rounded-full bg-indigo-100 dark:bg-indigo-900/40 text-[var(--ink-blue)] dark:text-indigo-300 flex items-center justify-center shrink-0">
+                <div className="w-7 h-7 rounded-full bg-brand-100 dark:bg-brand-900/40 text-[var(--ink-blue)] dark:text-brand-300 flex items-center justify-center shrink-0">
                   <BotIcon />
                 </div>
                 <div className="bg-[var(--bg-subtle)] rounded-2xl rounded-tl-sm px-4 py-3 flex items-center gap-1">

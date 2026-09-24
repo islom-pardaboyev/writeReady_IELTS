@@ -13,6 +13,8 @@ import { Label } from '../components/ui/label';
 import { PasswordInput } from '../components/ui/PasswordInput';
 import { ShortcutSettings } from '../components/shortcuts/ShortcutSettings';
 import { VerifiedCards } from '../components/ui/VerifiedCards';
+import { AppearanceSettings } from '../components/appearance/AppearanceSettings';
+import { WritingSettingsCard } from '../components/appearance/WritingSettingsCard';
 
 function friendlyAuthError(err: unknown, fallback: string): string {
   const msg = err instanceof Error ? err.message : fallback;
@@ -184,7 +186,7 @@ export function AccountPage() {
 
           {/* Plan card */}
           {isPro ? (
-            <Card className="gs-plan-card bg-linear-to-br from-slate-900 to-[#312E81] p-8 mb-4 text-white border-0">
+            <Card className="gs-plan-card bg-linear-to-br from-slate-900 to-brand-900 p-8 mb-4 text-white border-0">
               <div className="inline-flex items-center gap-1.5 bg-[rgba(245,158,11,0.2)] border border-[rgba(245,158,11,0.5)] text-amber-400 text-[0.7rem] font-bold tracking-[0.1em] uppercase px-3 py-1.5 rounded-full mb-4">
                 <span>⚡</span> {isForever ? 'LIFETIME' : 'PRO'}
               </div>
@@ -205,7 +207,7 @@ export function AccountPage() {
                 </div>
                 <div className="h-1.5 bg-white/10 rounded-full overflow-hidden">
                   <div
-                    className={`h-full rounded-full transition-[width] duration-[400ms] ${usagePct >= 85 ? 'bg-red-400' : 'bg-indigo-400'}`}
+                    className={`h-full rounded-full transition-[width] duration-[400ms] ${usagePct >= 85 ? 'bg-red-400' : 'bg-brand-400'}`}
                     style={{ width: `${usagePct}%` }}
                   />
                 </div>
@@ -213,8 +215,8 @@ export function AccountPage() {
               <div className="flex flex-col gap-2.5">
                 {PRO_FEATURES.map((f) => (
                   <div key={f} className="flex items-center gap-2.5">
-                    <div className="w-[18px] h-[18px] rounded-full bg-indigo-400/20 border border-indigo-400/40 flex items-center justify-center shrink-0">
-                      <span className="text-indigo-300 text-[0.6rem] font-bold">✓</span>
+                    <div className="w-[18px] h-[18px] rounded-full bg-brand-400/20 border border-brand-400/40 flex items-center justify-center shrink-0">
+                      <span className="text-brand-300 text-[0.6rem] font-bold">✓</span>
                     </div>
                     <span className="text-sm text-white/80">{f}</span>
                   </div>
@@ -314,11 +316,15 @@ export function AccountPage() {
 
           <VerifiedCards className="gs-edit-card mb-4" />
 
+          <AppearanceSettings className="gs-edit-card mb-4" />
+
+          <WritingSettingsCard className="gs-edit-card mb-4" />
+
           <ShortcutSettings className="gs-edit-card mb-4" />
 
           {/* Actions */}
           <Card className="gs-account-actions px-6 py-4 flex items-center justify-between">
-            <Link to="/writing/mock" className="text-sm text-blue-600 dark:text-blue-400 font-medium">
+            <Link to="/writing/mock" className="text-sm text-brand-blue-600 dark:text-brand-blue-400 font-medium">
               Go to Writing →
             </Link>
             <Button
