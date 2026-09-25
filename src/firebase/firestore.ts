@@ -133,14 +133,18 @@ export async function getRecentFeedbackReports(uid: string, n = 5): Promise<Feed
   });
 }
 
-export async function getAllFeedbackReports(uid: string): Promise<FeedbackReport[]> {
+// The newest n reports, oldest first, for the dashboard progress chart. Capped
+// because every report is one Firestore read on every dashboard visit, and a
+// chart with more points than this is too crowded to read anyway.
+export async function getProgressReports(uid: string, n = 30): Promise<FeedbackReport[]> {
   const q = query(
     collection(db, 'feedback_reports'),
     where('uid', '==', uid),
-    orderBy('createdAt', 'asc')
+    orderBy('createdAt', 'desc'),
+    limit(n)
   );
   const snap = await getDocs(q);
-  return snap.docs.map((d) => {
+  return snap.docs.reverse().map((d) => {
     const data = d.data();
     return {
       id: d.id,

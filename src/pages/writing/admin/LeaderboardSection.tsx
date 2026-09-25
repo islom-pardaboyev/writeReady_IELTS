@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
-import { addDoc, collection, doc, getDocs, query, updateDoc, where } from "firebase/firestore";
+import { addDoc, collection, doc, documentId, getDocs, query, updateDoc, where } from "firebase/firestore";
 import { Gift, RefreshCw, Trophy, X } from "lucide-react";
 import { adminDb as db } from "@/firebase/adminConfig";
 import { cn } from "@/lib/utils";
@@ -36,7 +36,9 @@ export function LeaderboardSection() {
       const prevDate = new Date(now.getFullYear(), now.getMonth() - 1, 1);
       const prevMonth = `${prevDate.getFullYear()}-${String(prevDate.getMonth() + 1).padStart(2, "0")}`;
 
-      const repSnap = await getDocs(collection(db, "feedback_reports"));
+      // Only last month and this month count, so only those reports are read.
+      // Reading the whole collection cost one read per report ever written.
+      const repSnap = await getDocs(query(collection(db, "feedback_reports"), where("createdAt", ">=", prevDate)));
       const map: Record<string, { curr: { total: number; count: number }; prev: { total: number; count: number } }> = {};
       repSnap.docs.forEach((d) => {
         const data = d.data();
@@ -54,15 +56,6 @@ export function LeaderboardSection() {
         else if (month === prevMonth) { map[uid].prev.total += avg; map[uid].prev.count += 1; }
       });
 
-      const usersSnap = await getDocs(collection(db, "users"));
-      const emailMap: Record<string, string> = {};
-      const bonusMap: Record<string, number> = {};
-      usersSnap.docs.forEach((d) => {
-        const data = d.data();
-        emailMap[d.id] = data.studentLogin ?? data.email ?? d.id;
-        bonusMap[d.id] = typeof data.bonusAnalyses === "number" ? data.bonusAnalyses : 0;
-      });
-
       // Improvement needs a band in both months. A student new this month
       // used to count their whole band as "improvement" (+6.5 from nothing),
       // which put newcomers above students who had really moved up.
@@ -74,16 +67,29 @@ export function LeaderboardSection() {
           const improvement = currBand - prevBand;
           return {
             uid,
-            email: emailMap[uid] ?? uid,
+            email: uid,
             currBand,
             prevBand,
             improvement: Math.round(improvement * 10) / 10,
             reportCount: curr.count + prev.count,
-            bonusAnalyses: bonusMap[uid] ?? 0,
+            bonusAnalyses: 0,
           };
         });
       rows.sort((a, b) => b.improvement - a.improvement);
-      setEntries(rows.slice(0, 10));
+      const top = rows.slice(0, 10);
+
+      // Names and bonus counts for the ten shown, not for every user.
+      if (top.length > 0) {
+        const usersSnap = await getDocs(query(collection(db, "users"), where(documentId(), "in", top.map((r) => r.uid))));
+        const byId = new Map(usersSnap.docs.map((d) => [d.id, d.data()]));
+        for (const row of top) {
+          const data = byId.get(row.uid);
+          if (!data) continue;
+          row.email = data.studentLogin ?? data.email ?? row.uid;
+          row.bonusAnalyses = typeof data.bonusAnalyses === "number" ? data.bonusAnalyses : 0;
+        }
+      }
+      setEntries(top);
       setLoadFailed(false);
     } catch (e) {
       console.error(e);

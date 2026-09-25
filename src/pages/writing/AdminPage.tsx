@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
-import { collection, getDocs, orderBy, query, where } from "firebase/firestore";
+import { collection, getCountFromServer, getDocs, limit, orderBy, query, where } from "firebase/firestore";
 import { onAuthStateChanged, signOut as fbSignOut } from "firebase/auth";
 import {
   Building2,
@@ -27,6 +27,14 @@ import { BlogSection } from "./admin/BlogSection";
 import { SettingsSection } from "./admin/SettingsSection";
 import type { AdminSection, Intent, PendingReview, UserRow } from "./admin/types";
 
+/**
+ * How many recent essay checks the user list looks through to guess when
+ * someone was last active. Only people who have not opened the site since
+ * api/seen.ts started stamping `lastActiveAt` need it. Reading every report
+ * instead cost one read per report each time the panel opened.
+ */
+const RECENT_REPORTS = 300;
+
 /** The newer of two ISO times, or "" when there is neither. */
 const latest = (...times: (string | undefined)[]) =>
   times.filter(Boolean).sort().at(-1) ?? "";
@@ -42,6 +50,10 @@ export default function Admin() {
   const [task1, setTask1] = useState<Prompt[]>([]);
   const [task2, setTask2] = useState<Prompt[]>([]);
   const [promptsLoading, setPromptsLoading] = useState(false);
+  // The full prompt lists are only downloaded when a prompts section is
+  // opened. The overview needs just the two totals, which cost a read or two.
+  const [promptsLoaded, setPromptsLoaded] = useState(false);
+  const [promptCounts, setPromptCounts] = useState<{ task1: number; task2: number } | null>(null);
   const [pending, setPending] = useState<PendingReview[]>([]);
   const [failed, setFailed] = useState({ users: false, prompts: false, pending: false });
   const markFailed = (key: keyof typeof failed, value: boolean) => setFailed((f) => ({ ...f, [key]: value }));
@@ -80,7 +92,7 @@ export default function Admin() {
       // back newest first, so the first one for a user is their latest.
       const [snap, reportSnap] = await Promise.all([
         getDocs(collection(db, "users")),
-        getDocs(query(collection(db, "feedback_reports"), orderBy("createdAt", "desc"))),
+        getDocs(query(collection(db, "feedback_reports"), orderBy("createdAt", "desc"), limit(RECENT_REPORTS))),
       ]);
       const lastReport: Record<string, string> = {};
       reportSnap.docs.forEach((d) => {
@@ -125,12 +137,27 @@ export default function Admin() {
       // Thumbnails only — the full chart is fetched when a prompt is opened.
       setTask1(s1.docs.map((d) => ({ id: d.id, thumb: d.data().thumb ?? "", report: d.data().report ?? "" })));
       setTask2(s2.docs.map((d) => ({ id: d.id, report: d.data().report ?? "" })));
+      setPromptsLoaded(true);
       markFailed("prompts", false);
     } catch (e) {
       console.error(e);
       markFailed("prompts", true);
     }
     setPromptsLoading(false);
+  }, []);
+
+  const loadPromptCounts = useCallback(async () => {
+    try {
+      const [c1, c2] = await Promise.all([
+        getCountFromServer(collection(db, "task1_reports")),
+        getCountFromServer(collection(db, "task2_reports")),
+      ]);
+      setPromptCounts({ task1: c1.data().count, task2: c2.data().count });
+      markFailed("prompts", false);
+    } catch (e) {
+      console.error(e);
+      markFailed("prompts", true);
+    }
   }, []);
 
   const loadPending = useCallback(async () => {
@@ -153,9 +180,14 @@ export default function Admin() {
   useEffect(() => {
     if (!isLoggedIn) return;
     loadUsers();
-    loadPrompts();
+    loadPromptCounts();
     loadPending();
-  }, [isLoggedIn, loadUsers, loadPrompts, loadPending]);
+  }, [isLoggedIn, loadUsers, loadPromptCounts, loadPending]);
+
+  const inPrompts = section === "task1" || section === "task2";
+  useEffect(() => {
+    if (isLoggedIn && inPrompts && !promptsLoaded) loadPrompts();
+  }, [isLoggedIn, inPrompts, promptsLoaded, loadPrompts]);
 
   const go = useCallback((next: AdminSection, extra?: Omit<Intent, "section">) => {
     setSection(next);
@@ -218,12 +250,12 @@ export default function Admin() {
         <AdminHome
           users={users}
           usersLoading={usersLoading}
-          task1Count={task1.length}
-          task2Count={task2.length}
+          task1Count={promptsLoaded ? task1.length : promptCounts?.task1 ?? null}
+          task2Count={promptsLoaded ? task2.length : promptCounts?.task2 ?? null}
           pending={pending}
           failed={failed}
           go={go}
-          refresh={() => { loadUsers(); loadPrompts(); loadPending(); }}
+          refresh={() => { loadUsers(); if (promptsLoaded) loadPrompts(); else loadPromptCounts(); loadPending(); }}
         />
       )}
       {section === "task1" && <PromptsSection key="task1" task={1} list={task1} setList={setTask1} loading={promptsLoading} failed={failed.prompts} reload={loadPrompts} {...common} />}

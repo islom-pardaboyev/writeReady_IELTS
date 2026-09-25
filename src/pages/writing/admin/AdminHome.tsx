@@ -77,8 +77,9 @@ export function AdminHome({
 }: {
   users: UserRow[];
   usersLoading: boolean;
-  task1Count: number;
-  task2Count: number;
+  /** null until the totals arrive. */
+  task1Count: number | null;
+  task2Count: number | null;
   pending: PendingReview[];
   failed: { users: boolean; prompts: boolean; pending: boolean };
   go: (section: AdminSection, extra?: Omit<Intent, "section">) => void;
@@ -244,8 +245,8 @@ export function AdminHome({
           { label: "New today", value: failed.users ? "…" : users.filter(joinedToday).length, hint: failed.users ? "Not loaded" : undefined, onClick: () => go("users", { filter: "today" }) },
           { label: "Paying users", value: failed.users ? "…" : users.filter(isPaying).length, hint: failed.users ? "Not loaded" : undefined, onClick: () => go("users", { filter: "paying" }) },
           { label: "All users", value: failed.users ? "…" : users.length, hint: failed.users ? "Not loaded" : undefined, onClick: () => go("users") },
-          { label: "Task 1 prompts", value: failed.prompts ? "…" : task1Count, hint: failed.prompts ? "Not loaded" : undefined, onClick: () => go("task1") },
-          { label: "Task 2 prompts", value: failed.prompts ? "…" : task2Count, hint: failed.prompts ? "Not loaded" : undefined, onClick: () => go("task2") },
+          { label: "Task 1 prompts", value: failed.prompts || task1Count === null ? "…" : task1Count, hint: failed.prompts ? "Not loaded" : undefined, onClick: () => go("task1") },
+          { label: "Task 2 prompts", value: failed.prompts || task2Count === null ? "…" : task2Count, hint: failed.prompts ? "Not loaded" : undefined, onClick: () => go("task2") },
         ]}
       />
 

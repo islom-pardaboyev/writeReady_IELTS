@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { getAllFeedbackReports, type FeedbackReport } from '../../firebase/firestore';
+import { getProgressReports, type FeedbackReport } from '../../firebase/firestore';
 import { Card } from './Card';
 import { reportBand } from '@shared/bandScore';
 
@@ -160,7 +160,7 @@ export function ProgressSection({ uid }: { uid: string }) {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    getAllFeedbackReports(uid)
+    getProgressReports(uid)
       // A report with no usable score has nothing to plot.
       .then((all) => setReports(all.filter((r) => reportBand(r.scores) !== null)))
       .catch((e) => console.error('Could not load progress:', e))
