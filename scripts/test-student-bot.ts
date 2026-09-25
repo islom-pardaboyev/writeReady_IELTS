@@ -29,8 +29,14 @@ const table = (name: string) => {
   return collections.get(name)!;
 };
 let autoId = 0;
-const resolve = (data: Data): Data =>
-  Object.fromEntries(Object.entries(data).map(([k, v]) => [k, v instanceof FieldValue ? Timestamp.now() : v]));
+// FieldValue.increment carries its number as `operand`; every other FieldValue
+// here is serverTimestamp().
+const resolve = (data: Data, before: Data): Data =>
+  Object.fromEntries(Object.entries(data).map(([k, v]) => {
+    if (!(v instanceof FieldValue)) return [k, v];
+    const operand = (v as unknown as { operand?: unknown }).operand;
+    return [k, typeof operand === 'number' ? (Number(before[k]) || 0) + operand : Timestamp.now()];
+  }));
 
 function docRef(name: string, id: string) {
   const snapshot = () => {
@@ -43,25 +49,39 @@ function docRef(name: string, id: string) {
     get: async () => snapshot(),
     set: async (data: Data, options?: { merge?: boolean }) => {
       const before = options?.merge ? table(name).get(id) ?? {} : {};
-      table(name).set(id, { ...before, ...resolve(data) });
+      table(name).set(id, { ...before, ...resolve(data, before) });
     },
+    delete: async () => { table(name).delete(id); },
     snapshot,
   };
   return ref;
 }
 type Ref = ReturnType<typeof docRef>;
 
-function query(name: string, filters: [string, unknown][]) {
+// Like Firestore, a range filter only matches values of the same type, so
+// missing fields and nulls never match `>= 0`.
+const comparable = (v: unknown) => (v instanceof Timestamp ? v.toMillis() : v);
+const matches = (actual: unknown, op: string, wanted: unknown): boolean => {
+  const a = comparable(actual);
+  const w = comparable(wanted);
+  if (op === '==') return a === w;
+  if (a === undefined || a === null || typeof a !== typeof w) return false;
+  const [x, y] = [a as number | string, w as number | string];
+  if (op === '>=') return x >= y;
+  if (op === '>') return x > y;
+  if (op === '<=') return x <= y;
+  if (op === '<') return x < y;
+  throw new Error(`stand-in does not support ${op}`);
+};
+
+function query(name: string, filters: [string, string, unknown][]) {
+  const found = () => [...table(name).entries()].filter(([, d]) => filters.every(([f, op, v]) => matches(d[f], op, v)));
   return {
-    where: (field: string, op: string, value: unknown) => {
-      if (op !== '==') throw new Error(`stand-in only supports ==, not ${op}`);
-      return query(name, [...filters, [field, value]]);
-    },
+    where: (field: string, op: string, value: unknown) => query(name, [...filters, [field, op, value]]),
     get: async () => ({
-      docs: [...table(name).entries()]
-        .filter(([, d]) => filters.every(([f, v]) => d[f] === v))
-        .map(([id]) => ({ ...docRef(name, id).snapshot(), ref: docRef(name, id) })),
+      docs: found().map(([id]) => ({ ...docRef(name, id).snapshot(), ref: docRef(name, id) })),
     }),
+    count: () => ({ get: async () => ({ data: () => ({ count: found().length }) }) }),
   };
 }
 
@@ -74,6 +94,7 @@ function runTransaction<T>(fn: (tx: unknown) => Promise<T>): Promise<T> {
     const tx = {
       get: async (ref: Ref) => ref.snapshot(),
       set: (ref: Ref, data: Data, options?: { merge?: boolean }) => { writes.push(() => ref.set(data, options)); },
+      delete: (ref: Ref) => { writes.push(() => ref.delete()); },
     };
     const result = await fn(tx);
     for (const w of writes) await w();
@@ -147,6 +168,12 @@ async function submitEssay(userId: number, essay = ESSAY) {
   await say(userId, essay);
 }
 
+const DAY = 24 * 3600 * 1000;
+/** openLink's essay, when it opened one. */
+const essayOf = (o: Awaited<ReturnType<typeof bot.openLink>>) => (o && typeof o === 'object' && o.kind === 'essay' ? o : null);
+const linkIn = (msg: Record<string, unknown> | undefined) => (buttonsOf(msg).find((b) => b.url?.includes('/tg/'))?.url ?? '').split('/tg/')[1] ?? '';
+process.env.TELEGRAM_ADMIN_IDS = '900, not-an-id';
+
 let failures = 0;
 function check(name: string, ok: boolean, detail = '') {
   if (ok) console.log(`  ok   ${name}`);
@@ -185,7 +212,7 @@ check('a second part joins the first', botUser(101)?.essay === `${half}\n${ESSAY
 await tap(101, 'cancel');
 await submitEssay(101, 'Only a few words here.');
 await tap(101, 'go');
-check('an essay under the minimum is refused without charging', markCalls === 0 && (botUser(101)?.weekCount ?? 0) === 0 && botUser(101)?.step === 'essay');
+check('an essay under the minimum is refused without charging', markCalls === 0 && botUser(101)?.freeCheckAt == null && botUser(101)?.step === 'essay');
 
 await tap(101, 'cancel');
 await submitEssay(101);
@@ -193,7 +220,9 @@ await tap(101, 'go');
 const result = messages(101).at(-1);
 const u101 = botUser(101)!;
 check('the AI marks the essay once', markCalls === 1);
-check("this week's free check is spent", u101.weekKey === currentWeekKey() && u101.weekCount === 1);
+check('the free check is spent', typeof u101.freeCheckAt === 'number' && Date.now() - u101.freeCheckAt < 5000);
+check('and the message that it is back is set for 2 weeks later', u101.remindAt === u101.freeCheckAt! + 14 * DAY);
+check('the result says when the next free check is', String(result?.text).includes('Next free check: <b>'));
 check('the result shows the band', String(result?.text).includes('Estimated band: 6.0') && String(result?.text).includes('Vocabulary: 6.0'));
 check("the mistakes are listed, with the student's text made safe", String(result?.text).includes('1. Use "these"') && String(result?.text).includes('&lt;this&gt;'));
 const fullButton = buttonsOf(result).find((b) => b.url?.includes('/tg/'));
@@ -205,7 +234,29 @@ check('the bands are locked for this exact text, as on the site', table('score_l
 check('an unconnected student is not saved to any account', saved.length === 0);
 
 await tap(101, 'check');
-check('a second check the same week says none are left', lastText(101).includes("You've used this week's free check") && botUser(101)?.step === 'idle');
+check('a second check says none are left, and when the next one is', lastText(101).includes("You've used your free check. The next one is ready on") && botUser(101)?.step === 'idle');
+check('and offers to connect the site account for a weekly one', buttonsOf(messages(101).at(-1)).some((b) => b.callback_data === 'connect') && lastText(101).includes('every week'));
+
+console.log('\nA free check every 2 weeks');
+const spentAt = botUser(101)!.freeCheckAt!;
+table(bot.BOT_USERS).set('101', { ...botUser(101)!, freeCheckAt: Date.now() - 13 * DAY });
+await tap(101, 'check');
+check('13 days later there is still none', lastText(101).includes("You've used your free check"));
+table(bot.BOT_USERS).set('101', { ...botUser(101)!, freeCheckAt: Date.now() - 14 * DAY });
+await tap(101, 'check');
+check('14 days later it is back', botUser(101)?.step === 'question');
+await tap(101, 'cancel');
+table(bot.BOT_USERS).set('101', { ...botUser(101)!, freeCheckAt: spentAt });
+const monday = bot.weekStartMs(currentWeekKey());
+check('weeks start on Monday 00:00 UTC', new Date(monday).getUTCDay() === 1 && new Date(monday).getUTCHours() === 0 && monday <= Date.now() && Date.now() < monday + 7 * DAY);
+check('week 1 is the week with 4 January in it', new Date(bot.weekStartMs('2026-W01')).toISOString() === '2025-12-29T00:00:00.000Z' && bot.weekStartMs('nonsense') === 0);
+table(bot.BOT_USERS).set('150', { telegramId: '150', chatId: 150, createdAt: Date.now(), lastUpdateId: 0, step: 'idle', weekKey: currentWeekKey(), weekCount: 1 });
+await tap(150, 'check');
+check('a check spent before this change still counts', lastText(150).includes("You've used your free check"));
+table(bot.BOT_USERS).set('150', { telegramId: '150', chatId: 150, createdAt: Date.now(), lastUpdateId: 0, step: 'idle', weekKey: '2026-W30', weekCount: 1 });
+await tap(150, 'check');
+check('and one from weeks ago does not', botUser(150)?.step === 'question');
+check('a moment reads in Tashkent time', bot.tashkentTime(Date.UTC(2026, 9, 9, 9, 30)) === '9 Oct, 14:30');
 
 console.log('\nOne check at a time, and failures');
 await say(103, '/start');
@@ -214,17 +265,17 @@ markDelayMs = 20;
 const calls = markCalls;
 await Promise.all([tap(103, 'go'), tap(103, 'go')]);
 markDelayMs = 0;
-check('two taps on the button mark the essay once', markCalls === calls + 1 && botUser(103)?.weekCount === 1);
+check('two taps on the button mark the essay once', markCalls === calls + 1 && typeof botUser(103)?.freeCheckAt === 'number');
 
 await say(104, '/start');
 await submitEssay(104);
 markFails = true;
 await tap(104, 'go');
 markFails = false;
-check('a failed marking gives the check back', (botUser(104)?.weekCount ?? 0) === 0 && botUser(104)?.step === 'essay');
+check('a failed marking gives the check back', botUser(104)?.freeCheckAt == null && botUser(104)?.remindAt == null && botUser(104)?.step === 'essay');
 check('and says the student was not charged', lastText(104).includes('not charged'));
 await tap(104, 'go');
-check('trying again then works', lastText(104).includes('Estimated band') && botUser(104)?.weekCount === 1);
+check('trying again then works', lastText(104).includes('Estimated band') && typeof botUser(104)?.freeCheckAt === 'number');
 
 console.log('\nLocked bands');
 const lockedEssay = `${ESSAY} This version was marked before.`;
@@ -262,38 +313,181 @@ await submitEssay(204);
 await tap(204, 'go');
 check('past the monthly limit the friend still gets theirs, the inviter not', botUser(204)?.bonusChecks === 1 && botUser(101)?.bonusChecks === 1);
 
-console.log('\nConnecting the site account');
+console.log('\nThe full-feedback link');
+// The newest message with a full-feedback button, for a student.
+const codeOf = (userId: number) => {
+  const withLink = messages(userId).filter((m) => buttonsOf(m).some((b) => b.url?.includes('/tg/'))).at(-1);
+  return (buttonsOf(withLink).find((b) => b.url?.includes('/tg/'))?.url ?? '').split('/tg/')[1] ?? '';
+};
+const first204 = codeOf(204);
 check('an unknown code opens nothing', (await bot.openLink('unknowncode123', 'uidA')) === null);
 check('a malformed code opens nothing', (await bot.openLink('../../users', 'uidA')) === null);
 table('users').set('uidA', { email: 'a@example.com', plan: 'free' });
 sent = [];
-const opened = await bot.openLink(code, 'uidA');
+const opened = essayOf(await bot.openLink(code, 'uidA'));
 check('a valid code returns the essay', opened?.essay === ESSAY && opened?.question === QUESTION);
+check('the link is deleted once opened', !table(bot.BOT_LINKS).has(code) && botUser(101)?.linkCode === '');
 check('it connects the Telegram account', botUser(101)?.uid === 'uidA');
 check("this week's bot check carries over to the account", (table('users').get('uidA')?.freeUsage as { count?: number })?.count === 1);
+check('and the message that it is back moves to Monday, with the site week', botUser(101)?.remindAt === monday + 7 * DAY);
 check('the student is told in Telegram', lastText(101).includes('now connected'));
 sent = [];
-await bot.openLink(code, 'uidA');
-await bot.openLink(code, 'uidB');
-check('opening it again changes nothing', botUser(101)?.uid === 'uidA' && messages(101).length === 0);
+check('a second tap finds nothing, so it cannot start a second report', (await bot.openLink(code, 'uidA')) === null && messages(101).length === 0);
+check('and cannot connect someone else', (await bot.openLink(code, 'uidB')) === null && botUser(101)?.uid === 'uidA');
+
+await say(206, '/start');
+await submitEssay(206);
+await tap(206, 'go');
+const code206 = codeOf(206);
+table('users').set('uidD', { email: 'd@example.com', plan: 'standard' });
+const both = await Promise.all([bot.openLink(code206, 'uidD'), bot.openLink(code206, 'uidD')]);
+check('two tabs at the same moment: exactly one gets the essay', both.filter(Boolean).length === 1 && !table(bot.BOT_LINKS).has(code206));
+
 table(bot.BOT_LINKS).set('expiredcode12', { telegramId: '104', question: QUESTION, essay: ESSAY, expiresAt: Date.now() - 1 });
-check('an expired link opens nothing', (await bot.openLink('expiredcode12', 'uidA')) === null);
-const codeOf = (userId: number) => (buttonsOf(messages(userId).at(-1)).find((b) => b.url?.includes('/tg/'))?.url ?? '').split('/tg/')[1];
-await submitEssay(203);
-await tap(203, 'go');
-const code203 = codeOf(203);
-check('an account the site has not finished creating is not connected yet', (await bot.openLink(code203, 'uidNew'))?.essay === ESSAY && botUser(203)?.uid === undefined);
+check('an expired link opens nothing, and is removed', (await bot.openLink('expiredcode12', 'uidA')) === null && !table(bot.BOT_LINKS).has('expiredcode12'));
+
+await submitEssay(204);
+await tap(204, 'go');
+const second204 = codeOf(204);
+check('a new check deletes the unused link from the one before', Boolean(first204) && Boolean(second204) && first204 !== second204 && !table(bot.BOT_LINKS).has(first204) && table(bot.BOT_LINKS).has(second204));
+check('so a student never has more than one link waiting', [...table(bot.BOT_LINKS).values()].filter((l) => l.telegramId === '204').length === 1 && botUser(204)?.linkCode === second204);
+
+await say(205, '/start');
+await submitEssay(205);
+await tap(205, 'go');
+const code205 = codeOf(205);
+check('an account the site has not finished creating still gets the essay, but is not connected yet', essayOf(await bot.openLink(code205, 'uidNew'))?.essay === ESSAY && botUser(205)?.uid === undefined && !table(bot.BOT_LINKS).has(code205));
 
 console.log('\nA connected student');
 table('users').set('uidC', { email: 'c@example.com', plan: 'free', freeUsage: { weekKey: currentWeekKey(), count: 1 } });
 table(bot.BOT_USERS).set('301', { telegramId: '301', chatId: 301, createdAt: 0, lastUpdateId: 0, step: 'idle', uid: 'uidC' });
 await tap(301, 'check');
-check('a free report used on the site this week leaves none in the bot', lastText(301).includes("You've used this week's free check"));
+check('a free report used on the site this week leaves none in the bot', lastText(301).includes("You've used this week's free check (it is shared with the site)"));
+check('with no offer to connect again', !buttonsOf(messages(301).at(-1)).some((b) => b.callback_data === 'connect'));
 table('users').set('uidC', { email: 'c@example.com', plan: 'free' });
 await submitEssay(301);
 await tap(301, 'go');
-check("the check is counted on the account, shared with the site", (table('users').get('uidC')?.freeUsage as { count?: number })?.count === 1 && botUser(301)?.weekCount === undefined);
+check("the check is counted on the account, shared with the site", (table('users').get('uidC')?.freeUsage as { count?: number })?.count === 1 && botUser(301)?.freeCheckAt === undefined);
+check('its message is set for Monday, when the site week starts again', botUser(301)?.remindAt === monday + 7 * DAY);
 check('and saved to their history on the site', saved.some((s) => s.uid === 'uidC' && s.band === 6));
+
+console.log('\nMy account');
+await say(601, '/start');
+await say(601, '/account');
+let acc = lastText(601);
+check('/account shows the free check, the settings and the Telegram ID', acc.includes('not connected') && acc.includes('Free check: <b>ready</b>') && acc.includes('1 every 2 weeks') && acc.includes('Daily word: <b>off</b>') && acc.includes('Telegram ID: <code>601</code>'));
+check('with a button to connect the site account', buttonsOf(messages(601).at(-1)).some((b) => b.callback_data === 'connect'));
+await tap(601, 'account');
+check('the menu button opens it too', lastText(601).includes('Your account'));
+table('users').set('uidC', { ...table('users').get('uidC'), plan: 'standard', usage: { monthKey: currentMonthKey(), count: 5 }, bonusAnalyses: 2 });
+await say(301, '/account');
+acc = lastText(301);
+check('a connected student sees their account and plan', acc.includes('✅ connected, c@example.com') && acc.includes('Plan: <b>Standard</b>, 7 of 12 full reports left this month') && acc.includes('Bonus reports on the site: <b>2</b>'));
+check("a paid plan's free bot check is on top of the plan, not shared", acc.includes("Free bot check: <b>next on") && acc.includes('on top of your plan') && !acc.includes('shared with the site'));
+
+console.log('\nA student with a paid plan');
+await tap(301, 'check');
+const paidNone = messages(301).at(-1);
+check('out of free bot checks, they are sent to their plan on the site', lastText(301).includes("You've used this week's free bot check") && lastText(301).includes('Your Standard plan has <b>7</b> of 12 full reports left this month'));
+check('not to the plans page', !buttonsOf(paidNone).some((b) => b.url?.includes('/pricing')) && !lastText(301).includes('a paid plan gives you') && buttonsOf(paidNone).some((b) => b.url === 'https://www.writeready.uz'));
+table('users').set('uidC', { ...table('users').get('uidC'), freeUsage: {} });
+await submitEssay(301);
+await tap(301, 'go');
+check("the bot check never spends the plan's reports", (table('users').get('uidC')?.usage as { count?: number })?.count === 5 && (table('users').get('uidC')?.freeUsage as { count?: number })?.count === 1);
+check('the result says the full report uses 1 report from the plan', lastText(301).includes('Getting it uses 1 report from your plan.') && lastText(301).includes('Free bot check this week: <b>0</b>') && lastText(301).includes('<b>7</b> of 12 full reports left'));
+
+console.log('\nConnecting from the bot');
+await tap(601, 'connect');
+const connect1 = linkIn(messages(601).at(-1));
+const stored = table(bot.BOT_LINKS).get(connect1);
+const lasts = Number(stored?.expiresAt) - Date.now();
+check('connect sends a sign-in link that lasts an hour and holds no essay', stored?.kind === 'connect' && lasts <= 3600 * 1000 && lasts > 3500 * 1000 && stored?.essay === undefined);
+await tap(601, 'connect');
+const connect2 = linkIn(messages(601).at(-1));
+check('asking again replaces the link, so only one waits', connect1 !== connect2 && !table(bot.BOT_LINKS).has(connect1) && table(bot.BOT_LINKS).has(connect2) && botUser(601)?.connectCode === connect2);
+check('an account the site is still creating: try again, the link is kept', (await bot.openLink(connect2, 'uidE')) === 'not-ready' && table(bot.BOT_LINKS).has(connect2) && botUser(601)?.uid === undefined);
+table(bot.BOT_USERS).set('601', { ...botUser(601)!, freeCheckAt: Math.max(monday, Date.now() - 60_000), remindAt: Date.now() + 14 * DAY });
+table('users').set('uidE', { email: 'e@example.com', plan: 'free' });
+sent = [];
+check('once the account exists, the link connects it', JSON.stringify(await bot.openLink(connect2, 'uidE')) === '{"kind":"connect"}' && botUser(601)?.uid === 'uidE');
+check('and is used up', !table(bot.BOT_LINKS).has(connect2) && botUser(601)?.connectCode === '' && (await bot.openLink(connect2, 'uidE')) === null);
+check('the free check spent in the bot this week counts on the account', (table('users').get('uidE')?.freeUsage as { count?: number })?.count === 1 && botUser(601)?.remindAt === monday + 7 * DAY);
+check('the student is told in Telegram', lastText(601).includes('now connected') && lastText(601).includes('every week'));
+await tap(601, 'connect');
+const switchCode = linkIn(messages(601).at(-1));
+table('users').set('uidF', { email: 'f@example.com', plan: 'free' });
+check('a connect link can move the Telegram to another account', JSON.stringify(await bot.openLink(switchCode, 'uidF')) === '{"kind":"connect"}' && botUser(601)?.uid === 'uidF');
+check('without carrying anything over to it', table('users').get('uidF')?.freeUsage === undefined && botUser(601)?.remindAt === null);
+check('a free account is told the weekly check is shared with the site', lastText(601).includes('shared between the bot and the site'));
+await tap(601, 'connect');
+const lifetimeCode = linkIn(messages(601).at(-1));
+table('users').set('uidH', { email: 'h@example.com', plan: 'forever' });
+await bot.openLink(lifetimeCode, 'uidH');
+check('a paid account is told the weekly check comes on top of the plan', botUser(601)?.uid === 'uidH' && lastText(601).includes('on top of your plan'));
+await say(601, '/account');
+check('Lifetime shows no monthly limit', lastText(601).includes('Plan: <b>Lifetime</b>, no monthly limit'));
+check('a full-feedback link never moves a connected Telegram', Boolean(botUser(301)?.linkCode) && essayOf(await bot.openLink(botUser(301)!.linkCode!, 'uidD'))?.essay === ESSAY && botUser(301)?.uid === 'uidC');
+table(bot.BOT_LINKS).set('oldconnect12', { telegramId: '601', kind: 'connect', expiresAt: Date.now() - 1 });
+check('an expired connect link opens nothing, and is removed', (await bot.openLink('oldconnect12', 'uidA')) === null && !table(bot.BOT_LINKS).has('oldconnect12') && botUser(601)?.uid === 'uidH');
+
+console.log('\nYour free check is back');
+await say(701, '/start');
+await submitEssay(701);
+await tap(701, 'go');
+const due = botUser(701)!.remindAt!;
+sent = [];
+await bot.sendReminders(due - 60_000);
+check('nothing is sent before the free check is back', messages(701).length === 0 && botUser(701)?.remindAt === due);
+await bot.sendReminders(due + 60_000);
+check('then the student is told, once', lastText(701).includes('Your free check is back') && botUser(701)?.remindAt === null);
+check('with a check button and a way to stop these messages', buttonsOf(messages(701).at(-1)).some((b) => b.callback_data === 'check') && buttonsOf(messages(701).at(-1)).some((b) => b.callback_data === 'remind:off'));
+await bot.sendReminders(due + 2 * 60_000);
+check('and not again', messages(701).length === 1);
+await say(702, '/start');
+await submitEssay(702);
+await tap(702, 'go');
+await tap(702, 'remind:off');
+check('turned off, nothing is waiting to be sent', botUser(702)?.remindersOff === true && botUser(702)?.remindAt === null);
+await submitEssay(702);
+sent = [];
+await bot.sendReminders(due + 60_000);
+check('and nothing is sent', messages(702).length === 0);
+await tap(702, 'remind:on');
+check('turned back on, it waits for the next free check', botUser(702)?.remindersOff === false && botUser(702)?.remindAt === botUser(702)!.freeCheckAt! + 14 * DAY);
+table(bot.BOT_USERS).set('301', { ...botUser(301)!, remindAt: Date.now() - 1000 });
+sent = [];
+await bot.sendReminders();
+check('not sent when the free check was already used on the site', messages(301).length === 0 && botUser(301)?.remindAt === null);
+await say(703, '/start');
+await submitEssay(703);
+await tap(703, 'go');
+blocked.add(703);
+const r703 = await bot.sendReminders(due + 60_000);
+check('a student who blocked the bot is not tried again', r703.stopped >= 1 && botUser(703)?.remindAt === null);
+
+console.log('\nAdmin');
+await say(601, '/admin');
+check('/admin is just an unknown command for students', lastText(601).includes('How it works'));
+sent = [];
+await tap(601, 'admin');
+check('and its button does nothing for them', messages(601).length === 0);
+table('humanReviews').set('r1', { status: 'pending' });
+table('humanReviews').set('r2', { status: 'pending' });
+table('humanReviews').set('r3', { status: 'checked' });
+table('users').set('uidG', { email: 'g@example.com', createdAt: Timestamp.now() });
+await say(900, '/start');
+await say(900, '/admin');
+const panel = lastText(900);
+const stats = await bot.adminStats();
+const botUsers = [...table(bot.BOT_USERS).values()];
+check('the admin sees the panel', panel.includes('🛠 <b>Admin</b>') && panel.includes(`Students: <b>${stats.students}</b>`) && buttonsOf(messages(900).at(-1)).some((b) => b.callback_data === 'admin'));
+check('students are counted, and new ones today', stats.students === botUsers.length && stats.newToday > 0 && stats.newToday < stats.students && stats.newWeek >= stats.newToday);
+check('connected students are counted', stats.connected === botUsers.filter((u) => typeof u.uid === 'string' && u.uid !== '').length && stats.connected > 0);
+check("today's checks and failures are counted", stats.checksToday === markCalls - 1 && stats.failedToday === 1 && stats.checksWeek === stats.checksToday && stats.checksAll === stats.checksToday);
+check('with their rough AI cost', panel.includes(`about ${(stats.checksToday * 250).toLocaleString('en-US').replace(/,/g, ' ')} so'm today`));
+check("the site's numbers too", stats.accounts === table('users').size && stats.accountsToday === 1 && stats.reportsToday === 0 && stats.reviewsWaiting === 2 && panel.includes('Human checks waiting: <b>2</b>'));
+await tap(900, 'admin');
+check('refresh shows it again', lastText(900).includes('🛠 <b>Admin</b>'));
 
 console.log('\nDaily word');
 await tap(101, 'word');
@@ -363,7 +557,9 @@ sent = [];
 check('opening the address connects the bot', (await call(undefined, undefined, 'GET')) === 200 && webhookUrl === bot.WEBHOOK_URL);
 const setCall = sent.find((s) => s.method === 'setWebhook')?.body;
 check('with the secret and only the updates the bot uses', setCall?.secret_token === good && JSON.stringify(setCall?.allowed_updates) === '["message","callback_query"]');
-check('and the command menu', JSON.stringify(((sent.find((s) => s.method === 'setMyCommands')?.body.commands ?? []) as { command: string }[]).map((c) => c.command)) === '["check","invite","word","help","cancel"]');
+check('and the command menu', JSON.stringify(((sent.find((s) => s.method === 'setMyCommands')?.body.commands ?? []) as { command: string }[]).map((c) => c.command)) === '["check","account","invite","word","help","cancel"]');
+const adminMenu = sent.find((s) => s.method === 'setMyCommands' && s.body.scope)?.body;
+check("with /admin only in the admin's own chat", JSON.stringify(adminMenu?.scope) === '{"type":"chat","chat_id":900}' && ((adminMenu?.commands ?? []) as { command: string }[]).some((c) => c.command === 'admin'));
 check('the webhook address is the site itself, not a redirect', bot.WEBHOOK_URL === 'https://www.writeready.uz/api/telegram');
 check("and reports Telegram's own status", lastJson.connected === true && lastJson.changed === true && lastJson.pending === 2 && lastJson.lastError === null);
 sent = [];

@@ -1,6 +1,7 @@
 import { randomBytes } from 'crypto';
+import { FieldValue, Timestamp, type Query } from 'firebase-admin/firestore';
 import { db } from './db.js';
-import { currentMonthKey, currentWeekKey } from './shared.js';
+import { currentMonthKey, currentWeekKey, resolvePaidStatus, PLAN_LIMITS } from './shared.js';
 import { LIMITS, essayKeys, loadScoreLock, saveScoreLock, type EssayKeys, type ScoreLock } from './savedReports.js';
 import type { BandScores } from './bandScore.js';
 import { tg, esc, botUsername, webhookSecret, TelegramError } from './telegramApi.js';
@@ -14,11 +15,13 @@ import { DAILY_WORDS } from './dailyWords.js';
  * from the same marking as the site's free weekly report. A button opens the
  * essay on the site for the full report.
  *
- * Free checks: one a week, the same weekly free report the site gives. Until
- * the student connects their site account (by opening that button and
- * signing in) the week is counted on their Telegram account; after that it
- * is counted on the site account, so the two share it. Invites add extra
- * checks: when a friend checks their first essay, both get one.
+ * Free checks: a Telegram account on its own gets one every two weeks
+ * (FREE_CHECK_DAYS), so a second Telegram account is worth little. Once the
+ * student connects their site account (/account, or the full-feedback
+ * button, then signing in) the bot spends the site's weekly free report
+ * instead, which the site gives that account anyway, so connecting costs
+ * nothing extra. Invites add extra checks: when a friend checks their first
+ * essay, both get one.
  *
  * Everything here reads and writes through db(), so scripts/test-student-bot.ts
  * can run it against an in-memory stand-in, and Telegram through tg(), which
@@ -27,8 +30,12 @@ import { DAILY_WORDS } from './dailyWords.js';
 
 export const BOT_USERS = 'bot_users';
 export const BOT_LINKS = 'bot_links';
+/** Checks per Tashkent day (yyyy-mm-dd), and in 'all', for /admin. */
+export const BOT_STATS = 'bot_stats';
 
-/** The same allowance as the site's weekly free report (api/pre-check.ts). */
+/** A Telegram account that is not connected to the site gets one free check this often. */
+export const FREE_CHECK_DAYS = 14;
+/** A connected account: the site's weekly free report (api/pre-check.ts), shared with the site. */
 export const FREE_CHECKS_PER_WEEK = 1;
 /** The most extra checks one student can earn from invites in a month. */
 export const MAX_INVITE_REWARDS_PER_MONTH = 5;
@@ -38,7 +45,12 @@ export const MIN_WORDS = 50;
 export const WORD_HOURS = Array.from({ length: 18 }, (_, i) => i + 6);
 
 const SITE = 'https://www.writeready.uz';
+const DAY_MS = 24 * 3600 * 1000;
 const LINK_DAYS = 7;
+/** A "Connect my account" link is opened straight away, so it lives for an hour. */
+const CONNECT_LINK_MS = 3600 * 1000;
+/** Roughly what one bot check costs in AI (a score-only report plus the mistakes), for /admin. */
+const CHECK_COST_SOM = 250;
 /** A check that has shown no result for this long crashed; let the student try again. */
 const STUCK_CHECK_MS = 3 * 60 * 1000;
 
@@ -57,9 +69,15 @@ export interface BotUser {
   essay?: string;
   /** The site account, once the student has connected it. */
   uid?: string;
-  /** This Telegram account's own weekly free check, used until an account is connected. */
+  /** When this Telegram account last spent its own free check (while not connected). */
+  freeCheckAt?: number | null;
+  /** Before checks every two weeks: the week this account's free check was spent. Only read now. */
   weekKey?: string;
   weekCount?: number;
+  /** When to tell the student their free check is back; null once told. */
+  remindAt?: number | null;
+  /** The student turned that message off. */
+  remindersOff?: boolean;
   /** Extra checks earned from invites. */
   bonusChecks?: number;
   referredBy?: string;
@@ -70,6 +88,25 @@ export interface BotUser {
   wordIndex?: number;
   lastWordDay?: string;
   checks?: number;
+  /** The student's one unused "See full feedback" link, if any. */
+  linkCode?: string;
+  /** The student's one unused "Connect my account" link, if any. */
+  connectCode?: string;
+}
+
+/**
+ * A link the site opens after sign-in (/tg/<code>): the essay behind a "See
+ * full feedback" button, or, for kind 'connect', only connecting the account.
+ * Used once, then deleted.
+ */
+interface StoredLink {
+  telegramId: string;
+  kind?: 'essay' | 'connect';
+  taskType?: 'Task 2';
+  question?: string;
+  essay?: string;
+  createdAt: number;
+  expiresAt: number;
 }
 
 export interface MarkInput {
@@ -126,12 +163,37 @@ export function tashkentDay(now = new Date()): string {
   return new Date(now.getTime() + 5 * 3600 * 1000).toISOString().slice(0, 10);
 }
 
+/** Midnight in Tashkent at the start of that day, in ms. */
+const tashkentDayStart = (now = new Date()) => Date.parse(`${tashkentDay(now)}T00:00:00Z`) - 5 * 3600 * 1000;
+
+const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+const pad = (n: number) => String(n).padStart(2, '0');
+
+/** A moment in Tashkent time, like "9 Oct, 14:30". */
+export function tashkentTime(ms: number): string {
+  const d = new Date(ms + 5 * 3600 * 1000);
+  return `${d.getUTCDate()} ${MONTHS[d.getUTCMonth()]}, ${pad(d.getUTCHours())}:${pad(d.getUTCMinutes())}`;
+}
+
+/** Monday 00:00 UTC of a week key like 2026-W39 (currentWeekKey): when that week's free report starts. */
+export function weekStartMs(weekKey: string): number {
+  const m = /^(\d{4})-W(\d{2})$/.exec(weekKey);
+  if (!m) return 0;
+  // ISO week 1 is the week with 4 January in it.
+  const jan4 = Date.UTC(Number(m[1]), 0, 4);
+  const sinceMonday = (new Date(jan4).getUTCDay() + 6) % 7;
+  return jan4 - sinceMonday * DAY_MS + (Number(m[2]) - 1) * 7 * DAY_MS;
+}
+
+/** 1234567 as "1 234 567", the way prices are written in Uzbekistan. */
+const num = (n: number) => Math.round(n).toLocaleString('en-US').replace(/,/g, ' ');
+
 const userRef = (telegramId: string) => db().collection(BOT_USERS).doc(telegramId);
 
 const MENU: Button[][] = [
   [{ text: '✍️ Check my essay', data: 'check' }],
   [{ text: '🎁 Invite friends', data: 'invite' }, { text: '📚 Daily word', data: 'word' }],
-  [{ text: '🌐 Open WriteReady', url: SITE }],
+  [{ text: '👤 My account', data: 'account' }, { text: '🌐 Open WriteReady', url: SITE }],
 ];
 const CANCEL: Button[][] = [[{ text: 'Cancel', data: 'cancel' }]];
 
@@ -192,9 +254,12 @@ async function onText(user: BotUser, text: string, isNew: boolean): Promise<void
   const command = text.startsWith('/') ? text.split(/\s+/)[0].split('@')[0].toLowerCase() : '';
   if (command === '/start') return welcome(user, text.split(/\s+/)[1] ?? '', isNew);
   if (command === '/check') return startCheck(user);
+  if (command === '/account') return account(user);
   if (command === '/invite') return invite(user);
   if (command === '/word') return wordSettings(user);
   if (command === '/cancel') return cancel(user);
+  // For anyone else /admin is just an unknown command.
+  if (command === '/admin' && isAdmin(user.telegramId)) return adminPanel(user);
   if (command === '/help' || command) return help(user);
 
   const step = user.step === 'checking' && Date.now() - (user.checkingAt ?? 0) > STUCK_CHECK_MS ? 'essay' : user.step;
@@ -211,6 +276,10 @@ async function onButton(user: BotUser, data: string, deps: BotDeps): Promise<voi
   if (data === 'word') return wordSettings(user);
   if (data === 'cancel') return cancel(user);
   if (data === 'menu') return send(user.chatId, 'What would you like to do?', MENU);
+  if (data === 'account') return account(user);
+  if (data === 'connect') return connectLink(user);
+  if (data === 'remind:on' || data === 'remind:off') return setReminders(user, data === 'remind:on');
+  if (data === 'admin' && isAdmin(user.telegramId)) return adminPanel(user);
   if (data.startsWith('hour:')) return setWordHour(user, data.slice(5));
 }
 
@@ -229,7 +298,7 @@ async function welcome(user: BotUser, payload: string, isNew: boolean): Promise<
   await send(
     user.chatId,
     `Hi${name}! 👋\n\nSend me an IELTS Writing Task 2 essay and I'll estimate your band in about 20 seconds, with the mistakes worth fixing first.\n\n` +
-      `You get <b>1 free check every week</b>. Invite friends to get more.` +
+      `You get <b>1 free check every 2 weeks</b>, or every week once you connect your WriteReady account (/account). Invite friends to get more.` +
       (invited ? '\n\n🎁 A friend invited you. After your first check, you both get 1 extra free check.' : ''),
     MENU,
   );
@@ -242,7 +311,8 @@ async function help(user: BotUser): Promise<void> {
       '1. Tap <i>Check my essay</i> or send /check.\n' +
       '2. Send the Task 2 question, then your essay.\n' +
       '3. You get your estimated band and the mistakes to fix first. The button under it opens the full report on the site.\n\n' +
-      '/check: check an essay\n/invite: get free checks for inviting friends\n/word: your daily IELTS word\n/cancel: stop the current check',
+      '<b>Free checks</b>: 1 every 2 weeks. Connect your WriteReady account in /account to get 1 every week, shared with the site.\n\n' +
+      '/check: check an essay\n/account: your free checks and site account\n/invite: get free checks for inviting friends\n/word: your daily IELTS word\n/cancel: stop the current check',
     MENU,
   );
 }
@@ -266,56 +336,134 @@ async function invite(user: BotUser): Promise<void> {
 
 // ── Free checks ──────────────────────────────────────────────────────────────
 
-type Spent = 'weekly-account' | 'weekly-bot' | 'bonus';
-
-interface Allowance { weekly: number; bonus: number }
-
-/** What the student can still spend, without spending it. */
-async function allowance(user: BotUser): Promise<Allowance> {
-  const weekKey = currentWeekKey();
-  let used = user.weekKey === weekKey ? (user.weekCount ?? 0) : 0;
-  if (user.uid) {
-    const account = await db().collection('users').doc(user.uid).get();
-    if (account.exists) {
-      const free = (account.data()?.freeUsage ?? {}) as { weekKey?: string; count?: number };
-      used = free.weekKey === weekKey ? (free.count ?? 0) : 0;
-    }
-  }
-  return { weekly: Math.max(0, FREE_CHECKS_PER_WEEK - used), bonus: user.bonusChecks ?? 0 };
+/** A site account's weekly free reports used this week (api/pre-check.ts writes them). */
+function siteFreeUsed(account: Record<string, unknown> | undefined, weekKey: string): number {
+  const free = (account?.freeUsage ?? {}) as { weekKey?: string; count?: number };
+  return free.weekKey === weekKey ? (free.count ?? 0) : 0;
 }
 
+/** When this Telegram account last spent its own free check, or null if it has not. */
+function lastBotFree(user: BotUser): number | null {
+  if (typeof user.freeCheckAt === 'number') return user.freeCheckAt;
+  // A check spent before checks came every two weeks was counted by week:
+  // read it as spent at the start of that week.
+  return user.weekKey && (user.weekCount ?? 0) > 0 ? weekStartMs(user.weekKey) : null;
+}
+
+/** When this Telegram account's own free check is ready (0: now). */
+function nextBotFree(user: BotUser): number {
+  const last = lastBotFree(user);
+  return last === null ? 0 : last + FREE_CHECK_DAYS * DAY_MS;
+}
+
+/** When the site's weekly free report comes back: next Monday 00:00 UTC. */
+const nextSiteWeek = () => weekStartMs(currentWeekKey()) + 7 * DAY_MS;
+
+const PLAN_NAMES: Record<string, string> = { free: 'Free', basic: 'Basic', standard: 'Standard', premium: 'Premium', forever: 'Lifetime' };
+
+/** A paid plan on the connected account. The bot never spends its reports: they are for full reports on the site. */
+interface PaidPlan {
+  name: string;
+  /** Full reports left this month; null for Lifetime, which has no monthly limit. */
+  left: number | null;
+  limit: number;
+}
+
+function paidPlanOf(account: Record<string, unknown> | null | undefined): PaidPlan | null {
+  if (!account) return null;
+  const { plan, isPaidPlan } = resolvePaidStatus(account);
+  const limit = PLAN_LIMITS[plan];
+  if (!isPaidPlan || !limit) return null;
+  if (plan === 'forever') return { name: PLAN_NAMES.forever, left: null, limit };
+  const usage = (account.usage ?? {}) as { monthKey?: string; count?: number };
+  const used = usage.monthKey === currentMonthKey() ? (usage.count ?? 0) : 0;
+  return { name: PLAN_NAMES[plan] ?? plan, left: Math.max(0, limit - used), limit };
+}
+
+const planLeft = (p: PaidPlan) =>
+  p.left === null
+    ? `Your ${p.name} plan has no monthly limit on full reports`
+    : `Your ${p.name} plan has <b>${p.left}</b> of ${p.limit} full reports left this month`;
+
+interface Allowance {
+  /** Free checks ready now. */
+  free: number;
+  /** When the next free check is ready, while none is. */
+  nextFreeAt: number | null;
+  /** Counted on the connected site account, so shared with the site. */
+  shared: boolean;
+  /** Extra checks from invites. */
+  bonus: number;
+  /**
+   * The connected account's paid plan. The site gives a paid plan no weekly
+   * free report, so for these students the bot's weekly check is not shared
+   * with anything: it is an extra on top of the plan.
+   */
+  plan: PaidPlan | null;
+}
+
+/** The connected site account's profile, or null (not connected, or not created yet). */
+async function loadAccount(user: BotUser): Promise<Record<string, unknown> | null> {
+  if (!user.uid) return null;
+  const snap = await db().collection('users').doc(user.uid).get();
+  return snap.exists ? (snap.data() ?? {}) : null;
+}
+
+function allowanceOf(user: BotUser, account: Record<string, unknown> | null, now = Date.now()): Allowance {
+  const bonus = user.bonusChecks ?? 0;
+  if (account) {
+    const free = Math.max(0, FREE_CHECKS_PER_WEEK - siteFreeUsed(account, currentWeekKey()));
+    return { free, nextFreeAt: free ? null : nextSiteWeek(), shared: true, bonus, plan: paidPlanOf(account) };
+  }
+  const next = nextBotFree(user);
+  return next <= now
+    ? { free: 1, nextFreeAt: null, shared: false, bonus, plan: null }
+    : { free: 0, nextFreeAt: next, shared: false, bonus, plan: null };
+}
+
+/** What the student can still spend, without spending it. */
+async function allowance(user: BotUser, now = Date.now()): Promise<Allowance> {
+  return allowanceOf(user, await loadAccount(user), now);
+}
+
+/** What a check was paid with, and what to put back if the marking fails. */
+type Spent =
+  | { from: 'account'; remindAt: number | null }
+  | { from: 'bot'; freeCheckAt: number | null; remindAt: number | null }
+  | { from: 'bonus' };
+
 /**
- * Takes one check: this week's free one first (on the connected account, so
- * the site and the bot share it), then an extra one from invites. Null when
- * there is none left.
+ * Takes one check: the free one first (on the connected account, so the site
+ * and the bot share it; otherwise this Telegram account's own, every two
+ * weeks), then an extra one from invites. Null when there is none left.
+ * Spending a free check also sets when to say it is back (sendReminders).
  */
-async function spendCheck(telegramId: string): Promise<Spent | null> {
+async function spendCheck(telegramId: string, now = Date.now()): Promise<Spent | null> {
   const store = db();
   const botRef = userRef(telegramId);
-  return store.runTransaction(async (tx) => {
+  return store.runTransaction(async (tx): Promise<Spent | null> => {
     const bot = (await tx.get(botRef)).data() as BotUser;
     const accountRef = bot.uid ? store.collection('users').doc(bot.uid) : null;
     const account = accountRef ? await tx.get(accountRef) : null;
-    const weekKey = currentWeekKey();
+    const remindAt = bot.remindAt ?? null;
+    const remind = (at: number) => (bot.remindersOff ? {} : { remindAt: at });
 
     if (accountRef && account?.exists) {
-      const free = (account.data()?.freeUsage ?? {}) as { weekKey?: string; count?: number };
-      const used = free.weekKey === weekKey ? (free.count ?? 0) : 0;
+      const weekKey = currentWeekKey();
+      const used = siteFreeUsed(account.data(), weekKey);
       if (used < FREE_CHECKS_PER_WEEK) {
         tx.set(accountRef, { freeUsage: { weekKey, count: used + 1 } }, { merge: true });
-        return 'weekly-account';
+        if (!bot.remindersOff) tx.set(botRef, remind(nextSiteWeek()), { merge: true });
+        return { from: 'account', remindAt };
       }
-    } else {
-      const used = bot.weekKey === weekKey ? (bot.weekCount ?? 0) : 0;
-      if (used < FREE_CHECKS_PER_WEEK) {
-        tx.set(botRef, { weekKey, weekCount: used + 1 }, { merge: true });
-        return 'weekly-bot';
-      }
+    } else if (nextBotFree(bot) <= now) {
+      tx.set(botRef, { freeCheckAt: now, ...remind(now + FREE_CHECK_DAYS * DAY_MS) }, { merge: true });
+      return { from: 'bot', freeCheckAt: lastBotFree(bot), remindAt };
     }
     const bonus = bot.bonusChecks ?? 0;
     if (bonus > 0) {
       tx.set(botRef, { bonusChecks: bonus - 1 }, { merge: true });
-      return 'bonus';
+      return { from: 'bonus' };
     }
     return null;
   });
@@ -327,30 +475,137 @@ async function refundCheck(telegramId: string, spent: Spent): Promise<void> {
   const botRef = userRef(telegramId);
   await store.runTransaction(async (tx) => {
     const bot = (await tx.get(botRef)).data() as BotUser;
-    const weekKey = currentWeekKey();
-    if (spent === 'bonus') {
+    const accountRef = spent.from === 'account' && bot.uid ? store.collection('users').doc(bot.uid) : null;
+    const account = accountRef ? await tx.get(accountRef) : null;
+    if (spent.from === 'bonus') {
       tx.set(botRef, { bonusChecks: (bot.bonusChecks ?? 0) + 1 }, { merge: true });
-    } else if (spent === 'weekly-bot') {
-      if (bot.weekKey === weekKey) tx.set(botRef, { weekCount: Math.max(0, (bot.weekCount ?? 1) - 1) }, { merge: true });
-    } else if (bot.uid) {
-      const accountRef = store.collection('users').doc(bot.uid);
-      const free = ((await tx.get(accountRef)).data()?.freeUsage ?? {}) as { weekKey?: string; count?: number };
-      if (free.weekKey === weekKey) tx.set(accountRef, { freeUsage: { weekKey, count: Math.max(0, (free.count ?? 1) - 1) } }, { merge: true });
+    } else if (spent.from === 'bot') {
+      tx.set(botRef, { freeCheckAt: spent.freeCheckAt, remindAt: spent.remindAt }, { merge: true });
+    } else {
+      tx.set(botRef, { remindAt: spent.remindAt }, { merge: true });
+      const weekKey = currentWeekKey();
+      const used = siteFreeUsed(account?.data(), weekKey);
+      if (accountRef && used > 0) tx.set(accountRef, { freeUsage: { weekKey, count: used - 1 } }, { merge: true });
     }
   });
 }
 
 function allowanceLine(a: Allowance): string {
-  return `Free checks left: <b>${a.weekly}</b> this week, <b>${a.bonus}</b> extra.`;
+  const free = a.plan
+    ? `Free bot check this week: <b>${a.free}</b>`
+    : a.shared
+      ? `Free this week: <b>${a.free}</b> (shared with the site)`
+      : a.free ? 'Free check: <b>ready</b>' : `Next free check: <b>${tashkentTime(a.nextFreeAt ?? 0)}</b>`;
+  const line = `${free}. Extra checks: <b>${a.bonus}</b>.`;
+  return a.plan ? `${line}\n${planLeft(a.plan)}.` : line;
 }
 
-async function noChecksLeft(user: BotUser): Promise<void> {
+async function noChecksLeft(user: BotUser, a: Allowance): Promise<void> {
+  const next = tashkentTime(a.nextFreeAt ?? 0);
+  const invite = '🎁 Invite a friend: when they check their first essay, you both get 1 extra check.';
+  if (a.plan) {
+    // A paying student: point them to the full reports they already have, not to the plans.
+    return send(
+      user.chatId,
+      `You've used this week's free bot check. The next one is ready on <b>${next}</b>.\n\n` +
+        `📖 ${planLeft(a.plan)}. Check your essay on writeready.uz for the full report.\n\n${invite}`,
+      [[{ text: '🌐 Open WriteReady', url: SITE }], [{ text: '🎁 Invite friends', data: 'invite' }]],
+    );
+  }
+  const rows: Button[][] = [[{ text: '🎁 Invite friends', data: 'invite' }], [{ text: '💳 See plans', url: `${SITE}/pricing` }]];
+  let text: string;
+  if (a.shared) {
+    text = `You've used this week's free check (it is shared with the site). The next one is ready on <b>${next}</b>.`;
+  } else {
+    text = `You've used your free check. The next one is ready on <b>${next}</b>.\n\n` +
+      '🔗 Connect your WriteReady account to get 1 free check every week, shared with the site.';
+    rows.unshift([{ text: '🔗 Connect my account', data: 'connect' }]);
+  }
   await send(
     user.chatId,
-    "You've used this week's free check. It comes back next week.\n\n" +
-      '🎁 Invite a friend: when they check their first essay, you both get 1 extra check.\n' +
-      '📖 On the site, a paid plan gives you full reports with every sentence corrected.',
-    [[{ text: '🎁 Invite friends', data: 'invite' }], [{ text: '💳 See plans', url: `${SITE}/pricing` }]],
+    `${text}\n\n${invite}\n📖 On the site, a paid plan gives you full reports with every sentence corrected.`,
+    rows,
+  );
+}
+
+// ── Account ──────────────────────────────────────────────────────────────────
+
+/** /account: the student's free checks, their site account and their settings. */
+async function account(user: BotUser): Promise<void> {
+  const profile = await loadAccount(user);
+  const a = allowanceOf(user, profile);
+  const lines = ['👤 <b>Your account</b>', ''];
+
+  if (profile) {
+    const email = typeof profile.email === 'string' ? profile.email : '';
+    lines.push(`WriteReady account: ✅ connected${email ? `, ${esc(email)}` : ''}`);
+    const p = a.plan;
+    lines.push(!p
+      ? 'Plan: <b>Free</b>'
+      : `Plan: <b>${esc(p.name)}</b>${p.left === null ? ', no monthly limit' : `, ${p.left} of ${p.limit} full reports left this month`}`);
+    const siteBonus = typeof profile.bonusAnalyses === 'number' ? profile.bonusAnalyses : 0;
+    if (siteBonus > 0) lines.push(`Bonus reports on the site: <b>${siteBonus}</b>`);
+  } else if (user.uid) {
+    lines.push('WriteReady account: connected, still being set up on the site');
+  } else {
+    lines.push('WriteReady account: ❌ not connected');
+  }
+
+  lines.push('');
+  const freeNow = `<b>${a.free ? 'ready' : `next on ${tashkentTime(a.nextFreeAt ?? 0)}`}</b>`;
+  lines.push(a.plan
+    ? `Free bot check: ${freeNow} (1 a week, on top of your plan; the bot never uses your plan's reports)`
+    : a.shared
+      ? `Free check: ${freeNow} (1 a week, shared with the site)`
+      : `Free check: ${freeNow} (1 every 2 weeks; connect your account for 1 a week)`);
+  lines.push(`Extra checks from invites: <b>${a.bonus}</b>`);
+  lines.push(`Essays checked here: <b>${user.checks ?? 0}</b>`);
+  lines.push(`Daily word: <b>${typeof user.wordHour === 'number' ? `${pad(user.wordHour)}:00` : 'off'}</b>`);
+  lines.push(`Message when a free check is back: <b>${user.remindersOff ? 'off' : 'on'}</b>`);
+  lines.push('', `Telegram ID: <code>${esc(user.telegramId)}</code>`);
+
+  const rows: Button[][] = [];
+  if (!profile) rows.push([{ text: '🔗 Connect my WriteReady account', data: 'connect' }]);
+  rows.push([
+    user.remindersOff ? { text: '🔔 Turn messages on', data: 'remind:on' } : { text: '🔕 Turn messages off', data: 'remind:off' },
+    { text: '📚 Daily word', data: 'word' },
+  ]);
+  if (profile) rows.push([{ text: '🔁 Connect a different account', data: 'connect' }]);
+  rows.push([{ text: '⬅️ Menu', data: 'menu' }]);
+  await send(user.chatId, lines.join('\n'), rows);
+}
+
+/**
+ * A "Connect my account" link: the site connects this Telegram to whichever
+ * account signs in (openLink). One at a time, like the full-feedback link.
+ */
+async function connectLink(user: BotUser): Promise<void> {
+  if (user.connectCode) {
+    await db().collection(BOT_LINKS).doc(user.connectCode).delete()
+      .catch((e) => console.error('bot: could not delete the previous connect link:', e));
+  }
+  const code = randomBytes(9).toString('base64url');
+  const link: StoredLink = { telegramId: user.telegramId, kind: 'connect', createdAt: Date.now(), expiresAt: Date.now() + CONNECT_LINK_MS };
+  await db().collection(BOT_LINKS).doc(code).set({ ...link });
+  await userRef(user.telegramId).set({ connectCode: code }, { merge: true });
+  await send(
+    user.chatId,
+    (user.uid ? 'To connect a different WriteReady account' : 'To connect your WriteReady account') +
+      ', tap the button and sign in. The link works once, within the next hour.\n\n' +
+      'Connected, you get 1 free check every week (shared with the site), and the essays you check here are saved in your history on the site.',
+    [[{ text: '🔗 Connect on writeready.uz', url: `${SITE}/tg/${code}` }]],
+  );
+}
+
+async function setReminders(user: BotUser, on: boolean): Promise<void> {
+  // Turned back on while no free check is ready: say when the next one is.
+  const a = on ? await allowance(user) : null;
+  const remindAt = a && a.free === 0 ? a.nextFreeAt : null;
+  await userRef(user.telegramId).set({ remindersOff: !on, remindAt }, { merge: true });
+  await send(
+    user.chatId,
+    on ? "🔔 Done. I'll send a message when your free check is back." : '🔕 Done. No more messages when your free check is back. Turn them on again in /account.',
+    [[{ text: '⬅️ Menu', data: 'menu' }]],
   );
 }
 
@@ -358,7 +613,7 @@ async function noChecksLeft(user: BotUser): Promise<void> {
 
 async function startCheck(user: BotUser): Promise<void> {
   const left = await allowance(user);
-  if (left.weekly + left.bonus === 0) return noChecksLeft(user);
+  if (left.free + left.bonus === 0) return noChecksLeft(user, left);
   await userRef(user.telegramId).set({ step: 'question', question: '', essay: '' }, { merge: true });
   await send(
     user.chatId,
@@ -427,7 +682,7 @@ async function runCheck(user: BotUser, deps: BotDeps): Promise<void> {
   const spent = await spendCheck(user.telegramId);
   if (!spent) {
     await backToEssay();
-    return noChecksLeft(started);
+    return noChecksLeft(started, await allowance(started));
   }
 
   await send(user.chatId, '⏳ Checking your essay. This takes about 20 seconds.');
@@ -445,12 +700,14 @@ async function runCheck(user: BotUser, deps: BotDeps): Promise<void> {
   } catch (e) {
     console.error('bot: marking failed:', e);
     await refundCheck(user.telegramId, spent).catch((err) => console.error('bot: refund failed:', err));
+    await countCheck('failed');
     await backToEssay();
     return send(user.chatId, 'Sorry, the check failed and you were not charged. Tap the button to try again.', [
       [{ text: '🔁 Try again', data: 'go' }],
       [{ text: 'Cancel', data: 'cancel' }],
     ]);
   }
+  await countCheck('checks');
   // A text marked before keeps its bands, here as on the site.
   const scores = lock ? lock.scores : marked.scores;
   const result: Marked = { ...marked, scores };
@@ -464,17 +721,24 @@ async function runCheck(user: BotUser, deps: BotDeps): Promise<void> {
   }
 
   // The button opens the essay on the site. The link is private to this
-  // student and carries no essay text itself: the site fetches it after sign-in.
+  // student and carries no essay text itself: the site fetches it after
+  // sign-in, once (openLink). A student has one link at a time: the one from
+  // their previous check goes now, so unused links never pile up.
+  if (started.linkCode) {
+    await db().collection(BOT_LINKS).doc(started.linkCode).delete()
+      .catch((e) => console.error('bot: could not delete the previous link:', e));
+  }
   const code = randomBytes(9).toString('base64url');
-  await db().collection(BOT_LINKS).doc(code).set({
+  const link: StoredLink = {
     telegramId: user.telegramId,
     taskType: 'Task 2',
     question,
     essay,
     createdAt: Date.now(),
     expiresAt: Date.now() + LINK_DAYS * 24 * 3600 * 1000,
-  });
-  await ref.set({ step: 'idle', question: '', essay: '', checks: (started.checks ?? 0) + 1 }, { merge: true });
+  };
+  await db().collection(BOT_LINKS).doc(code).set({ ...link });
+  await ref.set({ step: 'idle', question: '', essay: '', checks: (started.checks ?? 0) + 1, linkCode: code }, { merge: true });
 
   const after = await allowance((await ref.get()).data() as BotUser);
   const mistakes = result.mistakes.length
@@ -488,7 +752,8 @@ async function runCheck(user: BotUser, deps: BotDeps): Promise<void> {
       `Vocabulary: ${scores.lexicalResource.toFixed(1)}\n` +
       `Grammar: ${scores.grammaticalRangeAccuracy.toFixed(1)}` +
       mistakes +
-      '\n\n<i>A quick estimate from the same marking as writeready.uz. The full report goes through every sentence and includes a band 8 sample answer.</i>\n\n' +
+      '\n\n<i>A quick estimate from the same marking as writeready.uz. The full report goes through every sentence and includes a band 8 sample answer.' +
+      (after.plan ? ' Getting it uses 1 report from your plan.' : '') + '</i>\n\n' +
       allowanceLine(after),
     [
       [{ text: '📖 See full feedback and a band 8 sample', url: `${SITE}/tg/${code}` }],
@@ -497,6 +762,16 @@ async function runCheck(user: BotUser, deps: BotDeps): Promise<void> {
   );
 
   await rewardInvite(user.telegramId).catch((e) => console.error('bot: invite reward failed:', e));
+}
+
+/** Adds one to today's numbers for /admin (and to all-time checks). Never stops a check. */
+async function countCheck(field: 'checks' | 'failed'): Promise<void> {
+  const stats = db().collection(BOT_STATS);
+  const one = { [field]: FieldValue.increment(1) };
+  await Promise.all([
+    stats.doc(tashkentDay()).set(one, { merge: true }),
+    field === 'checks' ? stats.doc('all').set(one, { merge: true }) : null,
+  ]).catch((e) => console.error('bot: could not count the check:', e));
 }
 
 /**
@@ -529,46 +804,172 @@ async function rewardInvite(telegramId: string): Promise<void> {
 
 // ── Connecting the site account ──────────────────────────────────────────────
 
-export interface LinkedEssay { taskType: 'Task 2'; question: string; essay: string }
+/** What a link opens on the site: an essay, or only the account connected. */
+export type OpenedLink =
+  | { kind: 'essay'; taskType: 'Task 2'; question: string; essay: string }
+  | { kind: 'connect' };
 
 /**
- * Opens a "See full feedback" link for a signed-in student: returns the essay
- * for the site to show, and connects the Telegram account to the site account
- * if it is not connected yet. A free check already spent in the bot this week
- * is carried over, so connecting never hands out a second one. Null when the
- * link is unknown or expired.
+ * Opens a link from the bot for a signed-in student. A "See full feedback"
+ * link returns the essay for the site to show, and connects the Telegram
+ * account to this site account if it is not connected yet. A "Connect my
+ * account" link only connects, and may move the Telegram to another account.
+ * A free check already spent in the bot this week is carried over, so
+ * connecting never hands out a second one.
+ *
+ * A link opens once. It is read and deleted in the same transaction, so a
+ * second tap on the button, or a second tab, finds nothing: it can never start
+ * a second report on the same essay, and used links do not stay in the
+ * database. Null when the link is unknown, used or expired; 'not-ready' when
+ * a connect link meets an account the site is still creating (the link is
+ * kept for the next try).
  */
-export async function openLink(code: string, uid: string): Promise<LinkedEssay | null> {
+export async function openLink(code: string, uid: string): Promise<OpenedLink | 'not-ready' | null> {
   if (!/^[A-Za-z0-9_-]{8,40}$/.test(code)) return null;
   const store = db();
-  const link = (await store.collection(BOT_LINKS).doc(code).get()).data() as
-    | { telegramId: string; question: string; essay: string; expiresAt: number }
-    | undefined;
-  if (!link || link.expiresAt < Date.now()) return null;
-
-  const botRef = userRef(link.telegramId);
+  const linkRef = store.collection(BOT_LINKS).doc(code);
   const accountRef = store.collection('users').doc(uid);
-  const connected = await store.runTransaction(async (tx) => {
+  const opened = await store.runTransaction(async (tx) => {
+    const linkSnap = await tx.get(linkRef);
+    if (!linkSnap.exists) return null;
+    const link = linkSnap.data() as StoredLink;
+    const connectOnly = link.kind === 'connect';
+    const botRef = userRef(link.telegramId);
     const botSnap = await tx.get(botRef);
     const accountSnap = await tx.get(accountRef);
+    const expired = link.expiresAt < Date.now();
+    if (connectOnly && !expired && botSnap.exists && !accountSnap.exists) return 'not-ready' as const;
+
+    tx.delete(linkRef);
+    const bot = botSnap.exists ? (botSnap.data() as BotUser) : null;
+    const botUpdate: Record<string, unknown> = {};
+    const codeField = connectOnly ? 'connectCode' : 'linkCode';
+    if (bot?.[codeField] === code) botUpdate[codeField] = '';
+    let connectedChat: number | null = null;
     // An account the site has not finished creating is left for next time,
     // so this never writes a half profile.
-    if (!botSnap.exists || !accountSnap.exists) return null;
-    const bot = botSnap.data() as BotUser;
-    if (bot.uid) return null;
-    tx.set(botRef, { uid }, { merge: true });
-    const weekKey = currentWeekKey();
-    if (bot.weekKey === weekKey && (bot.weekCount ?? 0) > 0) {
-      const free = (accountSnap.data()?.freeUsage ?? {}) as { weekKey?: string; count?: number };
-      const used = free.weekKey === weekKey ? (free.count ?? 0) : 0;
-      tx.set(accountRef, { freeUsage: { weekKey, count: Math.max(used, bot.weekCount ?? 0) } }, { merge: true });
+    const connects = connectOnly ? bot?.uid !== uid : !bot?.uid;
+    if (bot && !expired && accountSnap.exists && connects) {
+      botUpdate.uid = uid;
+      connectedChat = bot.chatId;
+      const weekKey = currentWeekKey();
+      let used = siteFreeUsed(accountSnap.data(), weekKey);
+      // The Telegram account's own free check, if spent this week, was this
+      // week's free report.
+      const lastFree = lastBotFree(bot);
+      if (!bot.uid && lastFree !== null && lastFree >= weekStartMs(weekKey) && used < FREE_CHECKS_PER_WEEK) {
+        used = FREE_CHECKS_PER_WEEK;
+        tx.set(accountRef, { freeUsage: { weekKey, count: used } }, { merge: true });
+      }
+      // From now on the free check comes back weekly, with the site's.
+      botUpdate.remindAt = used >= FREE_CHECKS_PER_WEEK && !bot.remindersOff ? nextSiteWeek() : null;
     }
-    return bot.chatId;
+    if (Object.keys(botUpdate).length) tx.set(botRef, botUpdate, { merge: true });
+    if (expired || (connectOnly && !bot)) return null;
+    return { link, connectedChat, paid: paidPlanOf(accountSnap.data()) !== null };
   });
-  if (connected !== null) {
-    await send(connected, '✅ Your Telegram is now connected to your WriteReady account. From now on, your weekly free check is shared between the bot and the site.').catch(() => {});
+  if (!opened || opened === 'not-ready') return opened;
+  if (opened.connectedChat !== null) {
+    await send(
+      opened.connectedChat,
+      '✅ Your Telegram is now connected to your WriteReady account. ' +
+        (opened.paid
+          ? 'You get 1 free check every week here, on top of your plan (the bot never uses your plan\'s reports),'
+          : 'You get 1 free check every week, shared between the bot and the site,') +
+        ' and the essays you check here are saved in your history on the site.',
+    ).catch(() => {});
   }
-  return { taskType: 'Task 2', question: link.question, essay: link.essay };
+  const { link } = opened;
+  if (link.kind === 'connect') return { kind: 'connect' };
+  if (!link.question || !link.essay) return null;
+  return { kind: 'essay', taskType: 'Task 2', question: link.question, essay: link.essay };
+}
+
+// ── Admin ────────────────────────────────────────────────────────────────────
+
+/** Telegram user IDs allowed /admin: TELEGRAM_ADMIN_IDS in Vercel, comma separated. */
+function adminIds(): string[] {
+  return (process.env.TELEGRAM_ADMIN_IDS ?? '').split(',').map((id) => id.trim()).filter((id) => /^\d{1,20}$/.test(id));
+}
+
+export const isAdmin = (telegramId: string) => adminIds().includes(telegramId);
+
+export interface AdminStats {
+  students: number;
+  newToday: number;
+  newWeek: number;
+  connected: number;
+  wordOn: number;
+  linksWaiting: number;
+  checksToday: number;
+  failedToday: number;
+  checksWeek: number;
+  checksAll: number;
+  /** The site's numbers; null when a count could not be read. */
+  accounts: number | null;
+  accountsToday: number | null;
+  reportsToday: number | null;
+  reviewsWaiting: number | null;
+}
+
+/**
+ * The numbers /admin shows. Counts are Firestore count queries: one read per
+ * thousand documents counted, so a look costs a few dozen reads at most.
+ */
+export async function adminStats(now = new Date()): Promise<AdminStats> {
+  const store = db();
+  const count = async (q: Query) => (await q.count().get()).data().count;
+  const orNull = (p: Promise<number>) => p.catch((e) => { console.error('bot: an admin count failed:', e); return null; });
+  const dayStart = tashkentDayStart(now);
+  const weekStart = dayStart - 6 * DAY_MS;
+  const since = Timestamp.fromMillis(dayStart);
+  const bots = store.collection(BOT_USERS);
+  const days = Array.from({ length: 7 }, (_, i) => tashkentDay(new Date(now.getTime() - i * DAY_MS)));
+  const statsDocs = await Promise.all([...days, 'all'].map((id) => store.collection(BOT_STATS).doc(id).get()));
+  const stat = (i: number, field: string) => Number(statsDocs[i].data()?.[field] ?? 0);
+
+  const [students, newToday, newWeek, connected, wordOn, linksWaiting, accounts, accountsToday, reportsToday, reviewsWaiting] = await Promise.all([
+    count(bots),
+    count(bots.where('createdAt', '>=', dayStart)),
+    count(bots.where('createdAt', '>=', weekStart)),
+    count(bots.where('uid', '>', '')),
+    count(bots.where('wordHour', '>=', 0)),
+    count(store.collection(BOT_LINKS)),
+    orNull(count(store.collection('users'))),
+    orNull(count(store.collection('users').where('createdAt', '>=', since))),
+    orNull(count(store.collection('feedback_reports').where('createdAt', '>=', since))),
+    orNull(count(store.collection('humanReviews').where('status', '==', 'pending'))),
+  ]);
+  return {
+    students, newToday, newWeek, connected, wordOn, linksWaiting,
+    checksToday: stat(0, 'checks'),
+    failedToday: stat(0, 'failed'),
+    checksWeek: days.reduce((sum, _, i) => sum + stat(i, 'checks'), 0),
+    checksAll: stat(days.length, 'checks'),
+    accounts, accountsToday, reportsToday, reviewsWaiting,
+  };
+}
+
+async function adminPanel(user: BotUser): Promise<void> {
+  const n = await adminStats();
+  const orQ = (v: number | null) => (v === null ? '?' : num(v));
+  await send(
+    user.chatId,
+    `🛠 <b>Admin</b> (${tashkentTime(Date.now())})\n\n` +
+      '<b>Bot</b>\n' +
+      `Students: <b>${num(n.students)}</b> (+${num(n.newToday)} today, +${num(n.newWeek)} in 7 days)\n` +
+      `Connected to the site: ${num(n.connected)}\n` +
+      `Essays checked: <b>${num(n.checksToday)}</b> today, ${num(n.checksWeek)} in 7 days, ${num(n.checksAll)} in all\n` +
+      `Failed checks today: ${num(n.failedToday)}\n` +
+      `AI cost of checks: about ${num(n.checksToday * CHECK_COST_SOM)} so'm today, ${num(n.checksWeek * CHECK_COST_SOM)} so'm in 7 days\n` +
+      `Daily word on: ${num(n.wordOn)}\n` +
+      `Unopened links: ${num(n.linksWaiting)}\n\n` +
+      '<b>Site</b>\n' +
+      `Accounts: <b>${orQ(n.accounts)}</b> (+${orQ(n.accountsToday)} today)\n` +
+      `Reports today: ${orQ(n.reportsToday)}\n` +
+      `Human checks waiting: <b>${orQ(n.reviewsWaiting)}</b>`,
+    [[{ text: '🔄 Refresh', data: 'admin' }, { text: '🌐 Site admin', url: `${SITE}/admin` }]],
+  );
 }
 
 // ── Connecting the bot to Telegram ───────────────────────────────────────────
@@ -578,11 +979,14 @@ export const WEBHOOK_URL = `${SITE}/api/telegram`;
 
 export const COMMANDS = [
   { command: 'check', description: 'Check a Task 2 essay' },
+  { command: 'account', description: 'Your free checks and site account' },
   { command: 'invite', description: 'Get free checks for inviting friends' },
   { command: 'word', description: 'Your daily IELTS word' },
   { command: 'help', description: 'How the bot works' },
   { command: 'cancel', description: 'Stop the current check' },
 ];
+/** Shown in the menu of the admins' own chats only. */
+const ADMIN_COMMAND = { command: 'admin', description: 'Numbers for the bot and the site' };
 
 /**
  * Points Telegram at the webhook, with its secret, and sets the command menu.
@@ -605,11 +1009,16 @@ export async function ensureWebhook(token: string, { force = false } = {}): Prom
       allowed_updates: ['message', 'callback_query'],
     });
     await tg('setMyCommands', { commands: COMMANDS });
+    for (const id of adminIds()) {
+      // Fails for an admin who has not started the bot yet; the command works anyway.
+      await tg('setMyCommands', { commands: [...COMMANDS, ADMIN_COMMAND], scope: { type: 'chat', chat_id: Number(id) } })
+        .catch((e) => console.error(`telegram: could not set the admin menu for ${id}:`, e));
+    }
     await tg('setMyShortDescription', { short_description: 'Check your IELTS Writing Task 2 essay: your estimated band in about 20 seconds.' });
     await tg('setMyDescription', {
       description:
         'Send an IELTS Writing Task 2 essay and get your estimated band, a band for each criterion and the mistakes to fix first, ' +
-        'in about 20 seconds. 1 free check every week, more for inviting friends. Full reports on writeready.uz.',
+        'in about 20 seconds. 1 free check every 2 weeks (every week with a WriteReady account), more for inviting friends. Full reports on writeready.uz.',
     });
     info = await tg<Info>('getWebhookInfo', {});
   }
@@ -686,4 +1095,51 @@ export async function sendDailyWords(hour: number, now = new Date()): Promise<{ 
     await new Promise((r) => setTimeout(r, 50));
   }
   return { sent, stopped };
+}
+
+// ── "Your free check is back" ────────────────────────────────────────────────
+
+/**
+ * Tells students whose free check came back since they spent it in the bot
+ * (spendCheck sets remindAt). Run by the same hourly job as the daily word,
+ * so it only goes out between 06:00 and 23:59 Tashkent time.
+ */
+export async function sendReminders(now = Date.now()): Promise<{ sent: number; stopped: number }> {
+  const snap = await db().collection(BOT_USERS).where('remindAt', '<=', now).get();
+  let sent = 0;
+  let stopped = 0;
+  for (const doc of snap.docs) {
+    const user = doc.data() as BotUser;
+    try {
+      // Not if it was spent on the site in the meantime, or turned off.
+      if (!user.remindersOff && (await allowance(user, now)).free > 0) {
+        await send(
+          user.chatId,
+          '🎁 <b>Your free check is back.</b> Send me a Task 2 essay whenever you are ready.',
+          [[{ text: '✍️ Check my essay', data: 'check' }], [{ text: '🔕 Stop these messages', data: 'remind:off' }]],
+        );
+        sent++;
+      }
+      await clearReminder(user.telegramId, user.remindAt ?? null);
+    } catch (e) {
+      if (e instanceof TelegramError && e.unreachable) {
+        await userRef(user.telegramId).set({ remindAt: null, wordHour: null }, { merge: true });
+        stopped++;
+      } else {
+        // remindAt stays, so the next hour tries again.
+        console.error('bot: a reminder failed for one student:', e);
+      }
+    }
+    await new Promise((r) => setTimeout(r, 50));
+  }
+  return { sent, stopped };
+}
+
+/** Clears a sent reminder, unless a check spent meanwhile has set the next one. */
+async function clearReminder(telegramId: string, was: number | null): Promise<void> {
+  const ref = userRef(telegramId);
+  await db().runTransaction(async (tx) => {
+    const current = (await tx.get(ref)).data() as BotUser | undefined;
+    if (current && (current.remindAt ?? null) === was) tx.set(ref, { remindAt: null }, { merge: true });
+  });
 }

@@ -3,9 +3,10 @@ import { initFirebase, getUid } from '../shared.js';
 import { openLink } from '../studentBot.js';
 
 /**
- * The Telegram bot's "See full feedback" link (src/pages/TelegramLinkPage.tsx).
- * A signed-in student sends the link's code; this returns the essay it holds
- * and connects their Telegram to their site account (api/_lib/studentBot.ts).
+ * The Telegram bot's links (src/pages/TelegramLinkPage.tsx). A signed-in
+ * student sends the link's code; this connects their Telegram to their site
+ * account and, for a "See full feedback" link, returns the essay it holds
+ * (openLink in api/_lib/studentBot.ts).
  */
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   res.setHeader('Access-Control-Allow-Origin', '*');
@@ -26,13 +27,16 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   const code = (req.body ?? {}).code;
   if (typeof code !== 'string') return res.status(400).json({ error: 'The link is incomplete.' });
   try {
-    const essay = await openLink(code, uid);
-    if (!essay) {
-      return res.status(404).json({ error: 'This link has expired. Check the essay again in the Telegram bot to get a new one.' });
+    const opened = await openLink(code, uid);
+    if (opened === 'not-ready') {
+      return res.status(409).json({ error: 'Your account is still being set up. Wait a few seconds, then reload this page.' });
     }
-    return res.status(200).json(essay);
+    if (!opened) {
+      return res.status(404).json({ error: 'This link was already opened, or it has expired. Each link opens once: for a new one, go back to the Telegram bot.' });
+    }
+    return res.status(200).json(opened);
   } catch (e) {
     console.error('bot-link: could not open the link:', e);
-    return res.status(500).json({ error: 'Could not open the essay. Please try again.' });
+    return res.status(500).json({ error: 'Could not open the link. Please try again.' });
   }
 }

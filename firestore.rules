@@ -209,12 +209,16 @@ service cloud.firestore {
 
     // Written and read only by api/ with the Admin SDK (api/_lib/studentBot.ts).
     // bot_users holds each Telegram student's checks, invites and essay in
-    // progress; bot_links holds the essay behind a "See full feedback" link,
-    // which the site opens through api/bot-link.ts after sign-in.
+    // progress; bot_links holds the essay behind a "See full feedback" link
+    // (or a "Connect my account" link), which the site opens through
+    // api/bot-link.ts after sign-in; bot_stats counts checks for /admin.
     match /bot_users/{telegramId} {
       allow read, write: if false;
     }
     match /bot_links/{code} {
+      allow read, write: if false;
+    }
+    match /bot_stats/{day} {
       allow read, write: if false;
     }
 
