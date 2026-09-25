@@ -1,6 +1,7 @@
 import { Component, useState, type ErrorInfo, type ReactNode } from 'react';
 import { Button } from '@/components/ui/Button';
 import { sendReport } from '@/lib/report';
+import { isReloadingForNewBuild, isStaleBuildError, reloadToNewestBuild } from '@/lib/staleBuild';
 
 /**
  * Catches a render crash and offers to report it, instead of leaving the user
@@ -16,16 +17,24 @@ import { sendReport } from '@/lib/report';
  */
 
 interface Props { children: ReactNode }
-interface State { error: Error | null; stack: string }
+interface State { error: Error | null; stack: string; updating: boolean }
 
 export class ErrorBoundary extends Component<Props, State> {
-  state: State = { error: null, stack: '' };
+  state: State = { error: null, stack: '', updating: false };
 
   static getDerivedStateFromError(error: Error): Partial<State> {
-    return { error };
+    // A page file from the previous deploy (src/lib/staleBuild.ts): the page
+    // is about to move to the new build, so it says that, not "crashed".
+    return { error, updating: isReloadingForNewBuild() || isStaleBuildError(error) };
   }
 
   componentDidCatch(error: Error, info: ErrorInfo) {
+    if (isStaleBuildError(error) || isReloadingForNewBuild()) {
+      // Already on its way, or tried within the last minute: in that case this
+      // is a real outage, and the crash card below lets it be reported.
+      if (isReloadingForNewBuild() || reloadToNewestBuild()) return;
+      this.setState({ updating: false });
+    }
     // Keep it in the console too, so it is still visible in Vercel's logs.
     console.error('Unhandled render error:', error, info.componentStack);
     this.setState({ stack: info.componentStack ?? '' });
@@ -33,8 +42,19 @@ export class ErrorBoundary extends Component<Props, State> {
 
   render() {
     if (!this.state.error) return this.props.children;
+    if (this.state.updating) return <UpdatingCard />;
     return <CrashCard error={this.state.error} stack={this.state.stack} />;
   }
+}
+
+function UpdatingCard() {
+  return (
+    <div className="min-h-screen flex items-center justify-center p-6 bg-[var(--bg-base)]">
+      <p role="status" className="text-sm text-[var(--text-secondary)]">
+        Updating WriteReady to the newest version…
+      </p>
+    </div>
+  );
 }
 
 function CrashCard({ error, stack }: { error: Error; stack: string }) {
