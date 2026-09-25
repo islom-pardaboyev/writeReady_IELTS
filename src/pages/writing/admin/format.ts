@@ -103,7 +103,7 @@ export function joinedToday(u: UserRow): boolean {
 }
 
 // ── Activity ─────────────────────────────────────────────────────────────────
-// The last time a person opened the site, stamped by api/seen.ts. Accounts that
+// The last time a person opened the site, stamped by api/_lib/routes/seen.ts. Accounts that
 // have not been back since that was added fall back to their newest essay
 // check — see loadUsers() in AdminPage.tsx.
 

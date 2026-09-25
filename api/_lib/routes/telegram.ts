@@ -2,12 +2,12 @@ import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { timingSafeEqual } from 'crypto';
 import Anthropic from '@anthropic-ai/sdk';
 import { getFirestore } from 'firebase-admin/firestore';
-import { initFirebase } from './_lib/shared.js';
-import { extractJson, normalizeScores } from './_lib/bandScore.js';
-import { essaySignature, loadSavedReport } from './_lib/savedReports.js';
-import { ensureWebhook, handleUpdate, MISTAKES_INSTRUCTION, type BotDeps, type Marked, type TgUpdate } from './_lib/studentBot.js';
-import { webhookSecret } from './_lib/telegramApi.js';
-import { startMarking, storeReport } from './feedback.js';
+import { initFirebase } from '../shared.js';
+import { extractJson, normalizeScores } from '../bandScore.js';
+import { essaySignature, loadSavedReport } from '../savedReports.js';
+import { ensureWebhook, handleUpdate, MISTAKES_INSTRUCTION, type BotDeps, type Marked, type TgUpdate } from '../studentBot.js';
+import { webhookSecret } from '../telegramApi.js';
+import { startMarking, storeReport } from '../../feedback.js';
 
 /**
  * The student Telegram bot's webhook. Telegram posts every message and button
@@ -89,8 +89,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   // Opening this address in a browser connects the bot to it (ensureWebhook).
   if (req.method === 'GET') {
     try {
-      const { changed } = await ensureWebhook(token);
-      return res.status(200).json({ connected: true, changed });
+      const status = await ensureWebhook(token, { force: req.query?.force === '1' });
+      return res.status(200).json({ connected: true, ...status });
     } catch (e) {
       console.error('telegram: could not set the webhook:', e);
       return res.status(502).json({ connected: false, error: 'Telegram did not accept the setup. Check the bot token in Vercel.' });

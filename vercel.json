@@ -1,6 +1,10 @@
 {
   "trailingSlash": false,
   "rewrites": [
+    { "source": "/api/seen", "destination": "/api/combined?route=seen" },
+    { "source": "/api/telegram", "destination": "/api/combined?route=telegram" },
+    { "source": "/api/bot-link", "destination": "/api/combined?route=bot-link" },
+    { "source": "/api/bot-daily", "destination": "/api/combined?route=bot-daily" },
     { "source": "/api/(.*)", "destination": "/api/$1" },
 
     { "source": "/", "destination": "/index.html" },
@@ -35,13 +39,7 @@
     "api/verify.ts": {
       "maxDuration": 15
     },
-    "api/telegram.ts": {
-      "maxDuration": 120
-    },
-    "api/bot-link.ts": {
-      "maxDuration": 15
-    },
-    "api/bot-daily.ts": {
+    "api/combined.ts": {
       "maxDuration": 300
     }
   },

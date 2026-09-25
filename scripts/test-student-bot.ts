@@ -18,7 +18,7 @@ const bot = await import('../api/_lib/studentBot.js');
 const { essayKeys, saveScoreLock } = await import('../api/_lib/savedReports.js');
 const { normalizeScores } = await import('../api/_lib/bandScore.js');
 const { currentWeekKey, currentMonthKey } = await import('../api/_lib/shared.js');
-const { tashkentHour } = await import('../api/bot-daily.js');
+const { tashkentHour } = await import('../api/_lib/routes/botDaily.js');
 
 // ── Firestore stand-in ──────────────────────────────────────────────────────
 
@@ -322,12 +322,12 @@ check('without the header it uses the current Tashkent hour', tashkentHour(undef
 check('the webhook secret is stable and in the allowed characters', webhookSecret('123:abc') === webhookSecret('123:abc') && /^[0-9a-f]{48}$/.test(webhookSecret('123:abc')));
 check('a different token gives a different secret', webhookSecret('123:abc') !== webhookSecret('123:abd'));
 
-console.log('\nReading the AI reply (api/telegram.ts)');
+console.log('\nReading the AI reply (api/_lib/routes/telegram.ts)');
 // The webhook module brings the real marking with it; a Firebase app with no
 // credentials lets its handler run without ever reaching the live database.
 const { initializeApp, getApps } = await import('firebase-admin/app');
 if (!getApps().length) initializeApp({ projectId: 'offline-test' });
-const webhook = await import('../api/telegram.js');
+const webhook = await import('../api/_lib/routes/telegram.js');
 const reply = JSON.stringify({ topic: 'Education', bandRationale: {}, scores: { taskAchievement: 6, coherenceCohesion: 6.5, lexicalResource: 6, grammaticalRangeAccuracy: 5.5 }, topMistakes: ['First.', '', 7, 'Second.', 'Third.', 'Fourth.'] });
 const read = webhook.readCheck(`Here it is:\n${reply}`);
 check('the bands are read and the overall worked out', read.scores.overall === 6 && read.scores.coherenceCohesion === 6.5);
@@ -339,10 +339,11 @@ check('a reply without real scores counts as a failed check', noScores);
 
 console.log('\nWebhook security');
 process.env.TELEGRAM_STUDENT_BOT_TOKEN = '123:abc';
-const call = async (secret: string | undefined, body: unknown, method = 'POST') => {
+let lastJson: Record<string, unknown> = {};
+const call = async (secret: string | undefined, body: unknown, method = 'POST', query: Record<string, string> = {}) => {
   let status = 0;
-  const res = { status: (c: number) => { status = c; return res; }, end: () => res, json: () => res };
-  await webhook.default({ method, headers: secret ? { 'x-telegram-bot-api-secret-token': secret } : {}, body } as never, res as never);
+  const res = { status: (c: number) => { status = c; return res; }, end: () => res, json: (j: Record<string, unknown>) => { lastJson = j; return res; } };
+  await webhook.default({ method, query, headers: secret ? { 'x-telegram-bot-api-secret-token': secret } : {}, body } as never, res as never);
   return status;
 };
 const good = webhookSecret('123:abc');
@@ -354,7 +355,7 @@ console.log('\nConnecting the bot to Telegram');
 let webhookUrl = '';
 setTestTelegram(async (method, body) => {
   sent.push({ method, body });
-  if (method === 'getWebhookInfo') return { url: webhookUrl };
+  if (method === 'getWebhookInfo') return { url: webhookUrl, pending_update_count: 2, last_error_message: webhookUrl ? undefined : 'never set' };
   if (method === 'setWebhook') webhookUrl = String(body.url);
   return true;
 });
@@ -364,13 +365,32 @@ const setCall = sent.find((s) => s.method === 'setWebhook')?.body;
 check('with the secret and only the updates the bot uses', setCall?.secret_token === good && JSON.stringify(setCall?.allowed_updates) === '["message","callback_query"]');
 check('and the command menu', JSON.stringify(((sent.find((s) => s.method === 'setMyCommands')?.body.commands ?? []) as { command: string }[]).map((c) => c.command)) === '["check","invite","word","help","cancel"]');
 check('the webhook address is the site itself, not a redirect', bot.WEBHOOK_URL === 'https://www.writeready.uz/api/telegram');
+check("and reports Telegram's own status", lastJson.connected === true && lastJson.changed === true && lastJson.pending === 2 && lastJson.lastError === null);
 sent = [];
 await call(undefined, undefined, 'GET');
-check('opening it again changes nothing', !sent.some((s) => s.method === 'setWebhook'));
+check('opening it again only reports', !sent.some((s) => s.method === 'setWebhook') && lastJson.changed === false);
+sent = [];
+await call(undefined, undefined, 'GET', { force: '1' });
+check('?force=1 sets it all again, with this server\'s secret', sent.find((s) => s.method === 'setWebhook')?.body.secret_token === good && lastJson.changed === true);
 sent = [];
 check("Telegram's own request is accepted", (await call(good, { update_id: ++updateId, message: { chat: { id: 501, type: 'private' }, from: { id: 501 }, text: '/start' } })) === 200);
 check('and the bot answers it', lastText(501).includes('Send me an IELTS Writing Task 2 essay'));
 check('a malformed update still gets 200, so Telegram does not resend it forever', (await call(good, { nonsense: true })) === 200);
+
+console.log('\nThe shared function (api/combined.ts)');
+const combined = (await import('../api/combined.js')).default;
+const viaRouter = async (route: string | undefined, method: string, headers: Record<string, string> = {}, body: unknown = undefined) => {
+  let status = 0;
+  const res = { status: (c: number) => { status = c; return res; }, end: () => res, json: () => res, setHeader: () => res };
+  await combined({ method, query: route === undefined ? {} : { route }, headers, body } as never, res as never);
+  return status;
+};
+check('an unknown route is not found', (await viaRouter('nope', 'GET')) === 404);
+check('no route is not found', (await viaRouter(undefined, 'GET')) === 404);
+check('a name inherited by every object is not a route', (await viaRouter('constructor', 'GET')) === 404);
+check('/api/telegram reaches the webhook, which still wants the secret', (await viaRouter('telegram', 'POST', {}, { update_id: 1 })) === 401);
+check('/api/bot-link reaches the link handler, which wants a signed-in student', (await viaRouter('bot-link', 'POST', {}, { code: 'x' })) === 401);
+check('/api/seen still answers a browser check before the stamp', (await viaRouter('seen', 'OPTIONS')) === 200 && (await viaRouter('seen', 'GET')) === 405);
 
 console.log(failures ? `\n${failures} check(s) failed.` : '\nAll checks passed.');
 process.exit(failures ? 1 : 0);

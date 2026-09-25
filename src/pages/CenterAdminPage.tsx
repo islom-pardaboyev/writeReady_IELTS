@@ -206,7 +206,7 @@ export default function CenterAdminPage() {
       const studSnap = await getDocs(collection(db, "learningCenters", centerId, "students"));
       const studs = mapStudentSnap(studSnap.docs);
       // "Last active" is when the student last used the site (stamped by
-      // api/seen.ts on their profile), not only when they last got a report:
+      // api/_lib/routes/seen.ts on their profile), not only when they last got a report:
       // a student who logs in and writes without asking for feedback used to
       // show as "not active yet". A center may read its own students' profiles.
       const [reports, profiles] = await Promise.all([

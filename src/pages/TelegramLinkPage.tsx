@@ -10,7 +10,7 @@ import Logo from '/logo.svg';
  *
  * The student signs in (the sign-in page comes back here), the server hands
  * over the essay the code stands for and connects their Telegram to this
- * account (api/bot-link.ts), and the essay opens on the feedback page like
+ * account (api/_lib/routes/botLink.ts), and the essay opens on the feedback page like
  * any other.
  */
 export function TelegramLinkPage() {

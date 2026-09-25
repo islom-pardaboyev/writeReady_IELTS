@@ -31,7 +31,7 @@ function rememberPing(key: string): void {
 let sending = false;
 
 /**
- * Tells api/seen.ts that this person is on the site, so the admin panel can
+ * Tells /api/seen (api/_lib/routes/seen.ts) that this person is on the site, so the admin panel can
  * show when each student was last here.
  *
  * Nothing waits for it and it never throws: a failed stamp only costs a stale

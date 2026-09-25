@@ -1,6 +1,6 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
-import { initFirebase, getUid } from './_lib/shared.js';
-import { openLink } from './_lib/studentBot.js';
+import { initFirebase, getUid } from '../shared.js';
+import { openLink } from '../studentBot.js';
 
 /**
  * The Telegram bot's "See full feedback" link (src/pages/TelegramLinkPage.tsx).

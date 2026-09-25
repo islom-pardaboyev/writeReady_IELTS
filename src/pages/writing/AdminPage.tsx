@@ -30,7 +30,7 @@ import type { AdminSection, Intent, PendingReview, UserRow } from "./admin/types
 /**
  * How many recent essay checks the user list looks through to guess when
  * someone was last active. Only people who have not opened the site since
- * api/seen.ts started stamping `lastActiveAt` need it. Reading every report
+ * api/_lib/routes/seen.ts started stamping `lastActiveAt` need it. Reading every report
  * instead cost one read per report each time the panel opened.
  */
 const RECENT_REPORTS = 300;
@@ -88,7 +88,7 @@ export default function Admin() {
   const loadUsers = useCallback(async () => {
     setUsersLoading(true);
     try {
-      // `lastActiveAt` is stamped by api/seen.ts every time someone opens the
+      // `lastActiveAt` is stamped by api/_lib/routes/seen.ts every time someone opens the
       // site, so it counts a visit even if they never check an essay. It only
       // exists for people who have been back since it was added, so their
       // newest essay check stands in for the ones who have not. Reports come

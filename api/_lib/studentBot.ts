@@ -586,26 +586,34 @@ export const COMMANDS = [
 
 /**
  * Points Telegram at the webhook, with its secret, and sets the command menu.
- * Run by opening the webhook address in a browser (api/telegram.ts), so the
- * token never has to leave Vercel. Anyone may run it: it can only ever set
- * these same values, and does nothing when they are already set.
+ * Run by opening the webhook address in a browser (api/_lib/routes/telegram.ts),
+ * so the token never has to leave Vercel. Anyone may run it: it can only ever
+ * set these same values. When the address is already set it only reports;
+ * ?force=1 sets everything again, so the secret always matches the token this
+ * server holds (after the token changes, for one).
  */
-export async function ensureWebhook(token: string): Promise<{ changed: boolean }> {
-  const info = await tg<{ url?: string }>('getWebhookInfo', {});
-  if (info.url === WEBHOOK_URL) return { changed: false };
-  await tg('setWebhook', {
-    url: WEBHOOK_URL,
-    secret_token: webhookSecret(token),
-    allowed_updates: ['message', 'callback_query'],
-  });
-  await tg('setMyCommands', { commands: COMMANDS });
-  await tg('setMyShortDescription', { short_description: 'Check your IELTS Writing Task 2 essay: your estimated band in about 20 seconds.' });
-  await tg('setMyDescription', {
-    description:
-      'Send an IELTS Writing Task 2 essay and get your estimated band, a band for each criterion and the mistakes to fix first, ' +
-      'in about 20 seconds. 1 free check every week, more for inviting friends. Full reports on writeready.uz.',
-  });
-  return { changed: true };
+export async function ensureWebhook(token: string, { force = false } = {}): Promise<{
+  changed: boolean; pending: number; lastError: string | null;
+}> {
+  type Info = { url?: string; pending_update_count?: number; last_error_message?: string };
+  let info = await tg<Info>('getWebhookInfo', {});
+  const changed = force || info.url !== WEBHOOK_URL;
+  if (changed) {
+    await tg('setWebhook', {
+      url: WEBHOOK_URL,
+      secret_token: webhookSecret(token),
+      allowed_updates: ['message', 'callback_query'],
+    });
+    await tg('setMyCommands', { commands: COMMANDS });
+    await tg('setMyShortDescription', { short_description: 'Check your IELTS Writing Task 2 essay: your estimated band in about 20 seconds.' });
+    await tg('setMyDescription', {
+      description:
+        'Send an IELTS Writing Task 2 essay and get your estimated band, a band for each criterion and the mistakes to fix first, ' +
+        'in about 20 seconds. 1 free check every week, more for inviting friends. Full reports on writeready.uz.',
+    });
+    info = await tg<Info>('getWebhookInfo', {});
+  }
+  return { changed, pending: info.pending_update_count ?? 0, lastError: info.last_error_message ?? null };
 }
 
 // ── Daily word ───────────────────────────────────────────────────────────────
@@ -651,7 +659,7 @@ async function sendWord(user: BotUser, today: string): Promise<void> {
 }
 
 /**
- * Called by the hourly cron job (api/bot-daily.ts): the word for everyone who
+ * Called by the hourly cron job (api/_lib/routes/botDaily.ts): the word for everyone who
  * picked this hour and has not had today's. A student who blocked the bot is
  * switched off, so they are not tried again every day.
  */

@@ -1,6 +1,6 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { getFirestore, FieldValue } from 'firebase-admin/firestore';
-import { initFirebase, getUid } from './_lib/shared.js';
+import { initFirebase, getUid } from '../shared.js';
 
 /**
  * Records that a signed-in person is on the site, so the admin panel can show

@@ -1,6 +1,6 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
-import { initFirebase } from './_lib/shared.js';
-import { sendDailyWords, WORD_HOURS } from './_lib/studentBot.js';
+import { initFirebase } from '../shared.js';
+import { sendDailyWords, WORD_HOURS } from '../studentBot.js';
 
 /**
  * The Telegram bot's daily word. vercel.json runs this once a day for every
