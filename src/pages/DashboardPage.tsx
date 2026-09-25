@@ -1,5 +1,5 @@
 import { useLayoutEffect, useRef, useEffect, useState } from 'react';
-import { useNavigate, Link } from 'react-router';
+import { useNavigate, Link, Navigate } from 'react-router';
 import gsap from 'gsap';
 import { ScrollTrigger } from 'gsap/ScrollTrigger';
 import { useAuth } from '../hooks/useAuth';
@@ -78,7 +78,7 @@ const SCORE_LABELS: Record<string, string> = {
 };
 
 export function DashboardPage() {
-  const { user, profile, refreshProfile } = useAuth();
+  const { user, profile, loading, refreshProfile } = useAuth();
   const { usage } = useUsage(user?.uid ?? null);
   const navigate = useNavigate();
   const rootRef = useRef<HTMLDivElement>(null);
@@ -180,6 +180,10 @@ export function DashboardPage() {
 
   const planName = planDisplayName(profile?.plan ?? 'free');
   const onFreePlan = !isPaidPlan && (!isStudent || centerPlanEnded);
+
+  // Signed-out visitors belong on the landing page, not an empty dashboard.
+  // After every hook above, so the hook count never changes between renders.
+  if (!loading && !user) return <Navigate to="/" replace />;
 
   return (
     <AppShell>

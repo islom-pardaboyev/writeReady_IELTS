@@ -12,7 +12,7 @@ import { CookieNotice } from './components/ui/CookieNotice';
 import { InstallPrompt } from './components/ui/InstallPrompt';
 import { UpdatePrompt } from './components/ui/UpdatePrompt';
 import { OfflineGate } from './components/layout/OfflineGate';
-import { LandingPage } from './pages/LandingPage';
+import { HomeRoute } from './components/layout/HomeRoute';
 import { NotFoundPage } from './pages/NotFoundPage';
 import { AuthPage } from './pages/AuthPage';
 import { LogoLoader } from '@/components/ui/LogoLoader';
@@ -70,7 +70,7 @@ export default function App() {
           {/* vercel.json lists these same paths, so unknown addresses can be
               served with a real 404 status. Add a route there too. */}
           <Routes>
-            <Route path="/" element={<LandingPage />} />
+            <Route path="/" element={<HomeRoute />} />
             <Route path="/auth" element={<AuthPage />} />
             <Route path="/dashboard" element={withSuspense(<DashboardPage />)} />
             <Route path="/feedback/:id" element={withSuspense(<FeedbackPage />)} />
