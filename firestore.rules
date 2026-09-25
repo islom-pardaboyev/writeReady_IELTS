@@ -205,6 +205,19 @@ service cloud.firestore {
       allow read, write: if false;
     }
 
+    // ── Telegram student bot ──────────────────────────────────────────────
+
+    // Written and read only by api/ with the Admin SDK (api/_lib/studentBot.ts).
+    // bot_users holds each Telegram student's checks, invites and essay in
+    // progress; bot_links holds the essay behind a "See full feedback" link,
+    // which the site opens through api/bot-link.ts after sign-in.
+    match /bot_users/{telegramId} {
+      allow read, write: if false;
+    }
+    match /bot_links/{code} {
+      allow read, write: if false;
+    }
+
     // ── Human Check ───────────────────────────────────────────────────────
 
     // Students read this list to pick a teacher, so it must stay readable by

@@ -36,6 +36,7 @@ const PrivacyPolicyPage = lazy(() => import('./pages/legal/PrivacyPolicyPage').t
 const TermsPage = lazy(() => import('./pages/legal/TermsPage').then(m => ({ default: m.TermsPage })));
 const FaqPage = lazy(() => import('./pages/FaqPage').then(m => ({ default: m.FaqPage })));
 const VerifyPage = lazy(() => import('./pages/VerifyPage').then(m => ({ default: m.VerifyPage })));
+const TelegramLinkPage = lazy(() => import('./pages/TelegramLinkPage').then(m => ({ default: m.TelegramLinkPage })));
 
 const PageSpinner = (
   <div className="min-h-screen flex items-center justify-center">
@@ -74,6 +75,7 @@ export default function App() {
             <Route path="/auth" element={<AuthPage />} />
             <Route path="/dashboard" element={withSuspense(<DashboardPage />)} />
             <Route path="/feedback/:id" element={withSuspense(<FeedbackPage />)} />
+            <Route path="/tg/:code" element={withSuspense(<TelegramLinkPage />)} />
             <Route path="/pricing" element={withSuspense(<PricingPage />)} />
             <Route path="/account" element={withSuspense(<AccountPage />)} />
             <Route path="/admin" element={withSuspense(<Admin />)} />

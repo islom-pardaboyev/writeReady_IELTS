@@ -18,6 +18,11 @@ function cleanAuthError(err: unknown, fallback: string): string {
 
 export function AuthPage() {
   const [params] = useSearchParams();
+  // Where to go once signed in: the page that sent the student here (the
+  // Telegram bot's essay link, /tg/...), else the dashboard. Only a path on
+  // this site, never another address.
+  const nextParam = params.get('next') ?? '';
+  const next = /^\/(?![/\\])/.test(nextParam) ? nextParam : '/dashboard';
   const initialMode: Mode = params.get('mode') === 'signup' ? 'signup' : params.get('mode') === 'student' ? 'student' : 'login';
   const [mode, setMode] = useState<Mode>(initialMode);
   const [email, setEmail] = useState('');
@@ -45,7 +50,7 @@ export function AuthPage() {
   // While auth state is loading, show nothing (avoids GSAP flash then redirect)
   if (authLoading) return null;
   // Already logged in — redirect immediately without rendering the form
-  if (user) return <Navigate to="/dashboard" replace />;
+  if (user) return <Navigate to={next} replace />;
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
@@ -57,7 +62,7 @@ export function AuthPage() {
       } else {
         await signIn(email, password);
       }
-      navigate('/dashboard');
+      navigate(next);
     } catch (err: unknown) {
       setError(cleanAuthError(err, 'Authentication failed'));
     } finally {
@@ -85,7 +90,7 @@ export function AuthPage() {
       // Center students keep free premium access even after the center's
       // own subscription expires, so there's no active-center gate here.
       await refreshProfile();
-      navigate('/dashboard');
+      navigate(next);
     } catch (err: unknown) {
       setError(cleanAuthError(err, 'An error occurred'));
     } finally {
@@ -98,7 +103,7 @@ export function AuthPage() {
     setLoading(true);
     try {
       await signInWithGoogle();
-      navigate('/dashboard');
+      navigate(next);
     } catch (err: unknown) {
       setError(cleanAuthError(err, 'Google sign-in failed'));
     } finally {

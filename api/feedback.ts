@@ -364,7 +364,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 }
 
 /** One marking, as the AI is asked for it. */
-interface Marking {
+export interface Marking {
   essayText: string;
   questionText: string;
   taskType: string;
@@ -372,17 +372,25 @@ interface Marking {
   /** The score-only prompt (the free weekly report, and the admin's score test). */
   scoreOnly: boolean;
   consistency: Consistency | null;
+  /**
+   * An extra request after the student's essay, for the Telegram bot's short
+   * list of mistakes (api/_lib/studentBot.ts). It sits after the cached part
+   * of the prompt, so the site's own markings are unchanged and still share
+   * the cache with the bot's.
+   */
+  extraInstruction?: string;
 }
 
 /**
  * Starts the AI marking an essay. Every report and the admin's score test go
  * through here, so a test is always asked exactly what a student's report is.
  */
-function startMarking(anthropic: Anthropic, m: Marking, sendChart: ChartBlock | null) {
+export function startMarking(anthropic: Anthropic, m: Marking, sendChart: ChartBlock | null) {
   const chartNote = m.taskType === 'Task 1' ? (sendChart ? 'attached' : 'missing') : undefined;
-  const { cacheable, variable } = m.scoreOnly
+  const { cacheable, variable: essayPart } = m.scoreOnly
     ? limitedPromptParts(m.essayText, m.questionText, m.taskType, m.wordCount, chartNote, m.consistency)
     : promptParts(m.essayText, m.questionText, m.taskType, m.wordCount, chartNote, m.consistency);
+  const variable = m.extraInstruction ? `${essayPart}\n\n${m.extraInstruction}` : essayPart;
   return anthropic.messages.stream({
     model: ALLOWED_MODEL,
     max_tokens: m.scoreOnly ? LIMITED_MAX_TOKENS : MAX_TOKENS,
@@ -517,7 +525,7 @@ type ScoreBasis = 'fresh' | 'anchored' | 'locked' | 'saved';
  * first time, its score lock. Failures are logged, never thrown: the student
  * already has their report on screen.
  */
-async function storeReport(r: {
+export async function storeReport(r: {
   uid: string; source: CreditSource; taskType: TaskType; keys: EssayKeys; signature: number[] | null;
   tier: Tier; raw: string; scores: BandScores; topic: string; issues: string[];
   reportRef: FirebaseFirestore.DocumentReference; upgrade: boolean; newLock: boolean;

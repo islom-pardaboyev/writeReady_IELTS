@@ -5,7 +5,7 @@
 
     { "source": "/", "destination": "/index.html" },
     { "source": "/(auth|dashboard|pricing|account|admin|center-admin|teacher-portal|blog|privacy|terms|faq)", "destination": "/index.html" },
-    { "source": "/(feedback|human-review|blog)/([^/]+)", "destination": "/index.html" },
+    { "source": "/(feedback|human-review|blog|tg)/([^/]+)", "destination": "/index.html" },
     { "source": "/writing/(mock|practice|relax|quick)", "destination": "/index.html" },
     { "source": "/(v|V)", "destination": "/index.html" },
     { "source": "/(v|V)/([^/]+)", "destination": "/index.html" },
@@ -34,6 +34,35 @@
     },
     "api/verify.ts": {
       "maxDuration": 15
+    },
+    "api/telegram.ts": {
+      "maxDuration": 120
+    },
+    "api/bot-link.ts": {
+      "maxDuration": 15
+    },
+    "api/bot-daily.ts": {
+      "maxDuration": 300
     }
-  }
+  },
+  "crons": [
+    { "path": "/api/bot-daily", "schedule": "0 1 * * *" },
+    { "path": "/api/bot-daily", "schedule": "0 2 * * *" },
+    { "path": "/api/bot-daily", "schedule": "0 3 * * *" },
+    { "path": "/api/bot-daily", "schedule": "0 4 * * *" },
+    { "path": "/api/bot-daily", "schedule": "0 5 * * *" },
+    { "path": "/api/bot-daily", "schedule": "0 6 * * *" },
+    { "path": "/api/bot-daily", "schedule": "0 7 * * *" },
+    { "path": "/api/bot-daily", "schedule": "0 8 * * *" },
+    { "path": "/api/bot-daily", "schedule": "0 9 * * *" },
+    { "path": "/api/bot-daily", "schedule": "0 10 * * *" },
+    { "path": "/api/bot-daily", "schedule": "0 11 * * *" },
+    { "path": "/api/bot-daily", "schedule": "0 12 * * *" },
+    { "path": "/api/bot-daily", "schedule": "0 13 * * *" },
+    { "path": "/api/bot-daily", "schedule": "0 14 * * *" },
+    { "path": "/api/bot-daily", "schedule": "0 15 * * *" },
+    { "path": "/api/bot-daily", "schedule": "0 16 * * *" },
+    { "path": "/api/bot-daily", "schedule": "0 17 * * *" },
+    { "path": "/api/bot-daily", "schedule": "0 18 * * *" }
+  ]
 }

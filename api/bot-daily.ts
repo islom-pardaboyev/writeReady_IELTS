@@ -1,0 +1,33 @@
+import type { VercelRequest, VercelResponse } from '@vercel/node';
+import { initFirebase } from './_lib/shared.js';
+import { sendDailyWords, WORD_HOURS } from './_lib/studentBot.js';
+
+/**
+ * The Telegram bot's daily word. vercel.json runs this once a day for every
+ * hour a student can pick; the free plan allows one daily job per hour,
+ * fired somewhere within that hour. Vercel names the job that fired in
+ * x-vercel-cron-schedule (UTC); Tashkent is UTC+5 all year.
+ *
+ * Opened by hand, it serves the current Tashkent hour, whose students are
+ * due their word now anyway, so it can never send a word early.
+ */
+export function tashkentHour(schedule: string | undefined, now = new Date()): number {
+  const utcHour = schedule ? Number(schedule.trim().split(/\s+/)[1]) : NaN;
+  const hour = Number.isInteger(utcHour) ? utcHour : now.getUTCHours();
+  return (hour + 5) % 24;
+}
+
+export default async function handler(req: VercelRequest, res: VercelResponse) {
+  const schedule = req.headers['x-vercel-cron-schedule'];
+  const hour = tashkentHour(typeof schedule === 'string' ? schedule : undefined);
+  if (!WORD_HOURS.includes(hour)) return res.status(200).json({ skipped: true, hour });
+
+  try {
+    initFirebase();
+    const result = await sendDailyWords(hour);
+    return res.status(200).json({ hour, ...result });
+  } catch (e) {
+    console.error('bot-daily: failed:', e);
+    return res.status(500).json({ error: 'Daily words failed.' });
+  }
+}
