@@ -868,7 +868,10 @@ export async function openLink(code: string, uid: string): Promise<OpenedLink | 
     if (expired || (connectOnly && !bot)) return null;
     return { link, connectedChat, paid: paidPlanOf(accountSnap.data()) !== null };
   });
-  if (!opened || opened === 'not-ready') return opened;
+  // Two plain checks: Vercel type-checks api/ without strict mode, where
+  // `!opened` does not rule the object out.
+  if (opened === null) return null;
+  if (opened === 'not-ready') return 'not-ready';
   if (opened.connectedChat !== null) {
     await send(
       opened.connectedChat,
