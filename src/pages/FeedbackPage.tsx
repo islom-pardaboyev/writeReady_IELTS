@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { useParams, Link, useNavigate } from 'react-router';
 import {
   ArrowLeft, Download, ChevronLeft, ChevronRight, Loader2, Lock, AlertTriangle,
@@ -13,7 +13,7 @@ import type { ReportData } from '../lib/reportEncoding';
 import { getFeedbackReportHistory } from '../firebase/firestore';
 import { db } from '../firebase/config';
 import { loadTask1Chart, useTask1Chart } from '../lib/task1Chart';
-import type { CategoryFeedback, EnhancedFeedbackCategories, EnhancedFeedbackResult } from '../types';
+import type { CategoryFeedback, EnhancedFeedbackCategories, EnhancedFeedbackResult, GrammarPoint, ReadabilityTip, SentenceAnalysis } from '../types';
 import { CRITERIA, bandLabel, extractJson, normalizeScores } from '@shared/bandScore';
 import { hasFreeReportThisWeek } from '../lib/weeklyFree';
 import { downloadFeedbackPdf } from '../lib/feedbackPdf';
@@ -251,7 +251,7 @@ function FreeReportNotice({ onGetFull }: { onGetFull?: () => void }) {
       </p>
       <ul className="mt-3 grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-1.5 text-[0.9375rem] text-[var(--text-secondary)] list-none p-0">
         {['Every sentence reviewed and rewritten', 'Priority fixes and band gap analysis',
-          '15 words with Uzbek meanings', '10 grammar points',
+          'Up to 15 words with Uzbek meanings', 'Up to 10 grammar points from your own mistakes',
           'A band 8 to 9 sample answer', 'Spelling check and practice exercises'].map((item) => (
           <li key={item} className="flex items-start gap-2">
             <span aria-hidden="true" className="text-[var(--ink-blue)] mt-0.5">+</span>
@@ -335,6 +335,22 @@ function toFeedbackResult(parsed: unknown, limited: boolean, taskType: 'Task 1' 
     .map((t) => ({ problem: text(t?.problem), original: text(t?.original), clearer: text(t?.clearer) }))
     .filter((t) => t.problem && t.clearer);
 
+  // `kind` and `yours` are newer fields: kept only when they are what the page
+  // expects, so an older or odd reply still shows as a plain grammar point.
+  const grammar = list<Record<string, unknown>>(p.grammar)
+    .filter((g) => g && typeof g === 'object')
+    .map((g): GrammarPoint => {
+      const yours = text(g.yours).trim();
+      return {
+        point: text(g.point),
+        explanation: text(g.explanation),
+        example: text(g.example),
+        ...(g.kind === 'mistake' || g.kind === 'add' ? { kind: g.kind } : {}),
+        ...(yours ? { yours } : {}),
+      };
+    })
+    .filter((g) => g.point);
+
   return {
     taskType,
     topic: text(p.topic) || 'General',
@@ -347,7 +363,7 @@ function toFeedbackResult(parsed: unknown, limited: boolean, taskType: 'Task 1' 
     sampleResponse: text(p.sampleResponse),
     sentenceAnalysis: list(p.sentenceAnalysis),
     vocabulary: list(p.vocabulary),
-    grammar: list(p.grammar),
+    grammar,
     limited,
   };
 }
@@ -362,6 +378,106 @@ function fromSaved(saved: SavedReport, taskType: 'Task 1' | 'Task 2'): EnhancedF
   } catch {
     return null;
   }
+}
+
+/** Lower case, no quote marks, plain dashes, single spaces: enough to find a quote in a sentence. */
+const looseText = (t: string) =>
+  t.toLowerCase().replace(/[“”"'‘’]/g, '').replace(/[–—]/g, '-').replace(/…/g, '...').replace(/\s+/g, ' ').trim();
+
+/**
+ * Hides a quote the AI says it copied from the essay but did not. It is told
+ * to copy exactly, yet it sometimes fixes a word on the way, and a "Your
+ * version" the student never wrote would only confuse them. The fix itself
+ * stays: a grammar point falls back to a plain example, a readability tip to
+ * its easier version.
+ */
+function withRealQuotes(result: EnhancedFeedbackResult, essay: string): EnhancedFeedbackResult {
+  const text = looseText(essay);
+  if (!text) return result; // nothing to check against
+  const inEssay = (quote: string) => text.includes(looseText(quote));
+  const grammar = result.grammar.map((g) => {
+    if (!g.yours || inEssay(g.yours)) return g;
+    const plain = { ...g };
+    delete plain.yours;
+    return plain;
+  });
+  const readability = result.readability && {
+    ...result.readability,
+    tips: result.readability.tips.map((t) => (t.original && !inEssay(t.original) ? { ...t, original: '' } : t)),
+  };
+  return { ...result, grammar, readability };
+}
+
+/**
+ * Pins each readability tip to the essay sentence it quotes, so the Essay tab
+ * can show it on that sentence. A quote can be part of a sentence or run over
+ * several, so it is matched on its opening words. Tips that match nothing stay
+ * in the Priority fixes list only.
+ */
+function readabilityBySentence(sentences: SentenceAnalysis[], tips: ReadabilityTip[]): Map<number, ReadabilityTip[]> {
+  const found = new Map<number, ReadabilityTip[]>();
+  const loose = sentences.map((s) => looseText(s.sentence));
+  for (const tip of tips) {
+    const quote = looseText(tip.original ?? '');
+    if (!quote) continue;
+    const opening = quote.slice(0, 40);
+    const i = loose.findIndex((l) => l && (l.includes(opening) || quote.includes(l)));
+    if (i >= 0) found.set(i, [...(found.get(i) ?? []), tip]);
+  }
+  return found;
+}
+
+/** The student's sentence a grammar point fixes or rewrites, when it really differs from the fix. */
+function grammarSentence(g: GrammarPoint): string {
+  return g.yours && g.example && looseText(g.yours) !== looseText(g.example) ? g.yours : '';
+}
+
+const GRAMMAR_LABELS = {
+  mistake: { yours: 'Your version', fixed: 'Fixed' },
+  add: { yours: 'Your sentence', fixed: 'With this structure' },
+  other: { yours: 'Your sentence', fixed: 'Improved' },
+} as const;
+
+/**
+ * One point on the Grammar tab. Newer reports pair the student's own sentence
+ * with the fix, the same way the readability tips do; older ones only carry
+ * an example sentence, and keep the old look.
+ */
+function GrammarCard({ g }: { g: GrammarPoint }) {
+  const yours = grammarSentence(g);
+  const labels = GRAMMAR_LABELS[g.kind ?? 'other'];
+  const isAdd = g.kind === 'add';
+  return (
+    <div className="bg-[var(--bg-card)] rounded-2xl px-6 py-5 border border-[var(--border-color)] shadow-sm transition-[transform,box-shadow] duration-200 hover:shadow-md hover:-translate-y-0.5">
+      <div className="flex gap-4 items-start">
+        <div className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 ${isAdd ? 'bg-[var(--ink-blue)]/10 text-[var(--ink-blue)]' : 'bg-amber-500/10 text-amber-600 dark:text-amber-400'}`}>
+          {isAdd ? <Sparkles className="w-4 h-4" aria-hidden /> : <SpellCheck2 className="w-4 h-4" aria-hidden />}
+        </div>
+        <div className="flex-1 min-w-0">
+          <p className="font-bold text-[var(--text-primary)] mb-1.5 text-[0.9375rem]">{g.point}</p>
+          {g.explanation && <p className="text-sm text-[var(--text-secondary)] leading-relaxed mb-2.5">{g.explanation}</p>}
+          {yours ? (
+            <>
+              <blockquote className="m-0 rounded-lg bg-[var(--bg-subtle)] px-3.5 py-2.5 text-[0.9375rem] leading-relaxed text-[var(--text-secondary)]">
+                <span className="block text-xs font-semibold text-[var(--text-secondary)] mb-1">{labels.yours}</span>
+                &ldquo;{yours}&rdquo;
+              </blockquote>
+              <div className="mt-2 rounded-lg bg-emerald-50 px-3.5 py-2.5 text-[0.9375rem] leading-relaxed text-emerald-900 dark:bg-emerald-900/25 dark:text-emerald-200">
+                <span className="block text-xs font-semibold text-emerald-700 dark:text-emerald-400 mb-1">{labels.fixed}</span>
+                {g.example}
+              </div>
+            </>
+          ) : g.example ? (
+            <div className="bg-[var(--gold)]/10 border border-[var(--gold)]/30 rounded-lg px-3.5 py-2.5">
+              <p className="text-[0.8125rem] text-amber-900 dark:text-amber-300 italic m-0">
+                Example: "{g.example}"
+              </p>
+            </div>
+          ) : null}
+        </div>
+      </div>
+    </div>
+  );
 }
 
 /** The fields sessionStorage keeps beside the report itself. */
@@ -432,7 +548,13 @@ export function FeedbackPage() {
   const [activeTab, setActiveTab] = useState<Tab>('overview');
 
   const loading = loadings[selectedTask] ?? false;
-  const feedback = feedbacks[selectedTask] ?? null;
+  const storedFeedback = feedbacks[selectedTask] ?? null;
+  const essayForTask = (selectedTask === 'task1' ? reportData?.userText1 : reportData?.userText2) ?? '';
+  // What the page shows and the PDF exports. The stored copy stays as the AI wrote it.
+  const feedback = useMemo(
+    () => storedFeedback && withRealQuotes(storedFeedback, essayForTask),
+    [storedFeedback, essayForTask],
+  );
   const feedbackError = feedbackErrors[selectedTask] ?? null;
 
   // The tab a free report is allowed to show. Every panel renders off this
@@ -989,9 +1111,11 @@ export function FeedbackPage() {
     <AppShell minimal>
       <style>{`
         .fp-flip-card { perspective: 1000px; cursor: pointer; }
-        .fp-flip-inner { position: relative; width: 100%; height: 100%; transition: transform 0.55s cubic-bezier(.4,0,.2,1); transform-style: preserve-3d; }
+        /* Both faces share one grid cell, so a card grows to fit its longer side
+           instead of spilling text out of a fixed height. */
+        .fp-flip-inner { display: grid; width: 100%; height: 100%; transition: transform 0.55s cubic-bezier(.4,0,.2,1); transform-style: preserve-3d; }
         .fp-flip-inner.is-flipped { transform: rotateY(180deg); }
-        .fp-flip-face { position: absolute; top: 0; left: 0; width: 100%; height: 100%; backface-visibility: hidden; -webkit-backface-visibility: hidden; border-radius: 12px; display: flex; flex-direction: column; justify-content: center; align-items: center; padding: 1.25rem; box-sizing: border-box; text-align: center; }
+        .fp-flip-face { grid-area: 1 / 1; min-height: 185px; backface-visibility: hidden; -webkit-backface-visibility: hidden; border-radius: 12px; display: flex; flex-direction: column; justify-content: center; align-items: center; padding: 1.25rem; box-sizing: border-box; text-align: center; }
         .fp-flip-back { transform: rotateY(180deg); }
         @keyframes fpFadeIn { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
         .fp-tab-panel { animation: fpFadeIn 0.35s ease; }
@@ -1459,6 +1583,17 @@ export function FeedbackPage() {
                       <p className="mt-1 max-w-prose text-[0.9375rem] leading-relaxed text-[var(--text-secondary)]">
                         {feedback.readability.summary || 'Places where an examiner has to slow down, and how to make them easier to follow.'}
                       </p>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setActiveTab('essay');
+                          // The link sits low on a long list: start the essay at its top.
+                          requestAnimationFrame(() => document.getElementById('fp-panel-essay')?.scrollIntoView({ block: 'start' }));
+                        }}
+                        className="mt-2 inline-flex items-center gap-1 text-sm font-semibold text-[var(--ink-blue)] hover:underline underline-offset-4 cursor-pointer bg-transparent border-0 p-0"
+                      >
+                        See them marked in your essay <ChevronRight className="w-4 h-4" aria-hidden />
+                      </button>
                       <ol className="mt-4 flex flex-col gap-3 list-none p-0">
                         {feedback.readability.tips.map((tip, i) => (
                           <li key={i} className="rounded-2xl border border-[var(--border-color)] bg-[var(--bg-card)] px-5 py-4 shadow-sm">
@@ -1573,7 +1708,7 @@ export function FeedbackPage() {
                         type="button"
                         aria-pressed={!!flipped[i]}
                         aria-label={`${v.word}, tap to ${flipped[i] ? 'hide' : 'show'} translation`}
-                        className="fp-flip-card h-[185px] text-left bg-transparent border-0 p-0 cursor-pointer transition-transform duration-200 hover:scale-[1.03]"
+                        className="fp-flip-card text-left bg-transparent border-0 p-0 cursor-pointer transition-transform duration-200 hover:scale-[1.03]"
                         onClick={() => setFlipped((prev) => ({ ...prev, [i]: !prev[i] }))}
                       >
                         <div className={`fp-flip-inner h-full${flipped[i] ? ' is-flipped' : ''}`}>
@@ -1610,32 +1745,42 @@ export function FeedbackPage() {
               ))}
 
               {/* ── GRAMMAR ── */}
-              {shownTab === 'grammar' && (feedback.limited ? <UpgradePrompt /> :(
-                <div id="fp-panel-grammar" role="tabpanel" aria-labelledby="fp-tab-grammar" className="fp-tab-panel flex flex-col gap-3">
-                  {(feedback.grammar ?? []).map((g, i) => (
-                    <div key={i} className="bg-[var(--bg-card)] rounded-2xl px-6 py-5 border border-[var(--border-color)] shadow-sm transition-[transform,box-shadow] duration-200 hover:shadow-md hover:-translate-y-0.5">
-                      <div className="flex gap-4 items-start">
-                        <div className="w-9 h-9 rounded-xl flex items-center justify-center bg-amber-500/10 text-amber-600 dark:text-amber-400 shrink-0">
-                          <SpellCheck2 className="w-4 h-4" />
-                        </div>
-                        <div className="flex-1">
-                          <p className="font-bold text-[var(--text-primary)] mb-1.5 text-[0.9375rem]">{g.point}</p>
-                          <p className="text-sm text-[var(--text-secondary)] leading-relaxed mb-2.5">{g.explanation}</p>
-                          <div className="bg-[var(--gold)]/10 border border-[var(--gold)]/30 rounded-lg px-3.5 py-2.5">
-                            <p className="text-[0.8125rem] text-amber-900 dark:text-amber-300 italic m-0">
-                              Example: "{g.example}"
-                            </p>
+              {shownTab === 'grammar' && (feedback.limited ? <UpgradePrompt /> : (() => {
+                const points = feedback.grammar ?? [];
+                // Newer reports say which points are the student's own mistakes
+                // and which are structures to add. Older ones do not, and stay
+                // one plain list.
+                const groups = points.some((g) => g.kind)
+                  ? [
+                      { key: 'mistake', title: 'Mistakes to fix', hint: 'Grammar mistakes from your essay, most important first.', Icon: SpellCheck2, tone: 'text-amber-600 dark:text-amber-400', items: points.filter((g) => g.kind === 'mistake') },
+                      { key: 'add', title: 'Structures to add', hint: 'Structures your essay does not use yet. Using them well raises your grammar score.', Icon: Sparkles, tone: 'text-[var(--ink-blue)]', items: points.filter((g) => g.kind === 'add') },
+                      { key: 'other', title: 'More grammar points', hint: '', Icon: SpellCheck2, tone: 'text-[var(--text-muted)]', items: points.filter((g) => !g.kind) },
+                    ].filter((group) => group.items.length > 0)
+                  : [{ key: 'all', title: '', hint: '', Icon: SpellCheck2, tone: '', items: points }];
+                return (
+                  <div id="fp-panel-grammar" role="tabpanel" aria-labelledby="fp-tab-grammar" className="fp-tab-panel flex flex-col gap-8">
+                    {groups.map(({ key, title, hint, Icon, tone, items }) => (
+                      <section key={key} aria-labelledby={title ? `fp-grammar-${key}` : undefined} className="flex flex-col gap-3">
+                        {title && (
+                          <div>
+                            <h3 id={`fp-grammar-${key}`} className="flex items-center gap-2 m-0 text-lg font-bold text-[var(--text-primary)]">
+                              <Icon className={`w-[18px] h-[18px] ${tone}`} aria-hidden /> {title}
+                              <span className="rounded-full bg-[var(--bg-subtle)] px-2 py-0.5 text-xs font-semibold text-[var(--text-muted)]">{items.length}</span>
+                            </h3>
+                            {hint && <p className="mt-1 mb-0 max-w-prose text-[0.9375rem] leading-relaxed text-[var(--text-secondary)]">{hint}</p>}
                           </div>
-                        </div>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              ))}
+                        )}
+                        {items.map((g, i) => <GrammarCard key={i} g={g} />)}
+                      </section>
+                    ))}
+                  </div>
+                );
+              })())}
 
               {/* ── ESSAY ANALYSIS ── */}
               {shownTab === 'essay' && (feedback.limited ? <UpgradePrompt /> : (() => {
                 const sentences = feedback.sentenceAnalysis ?? [];
+                const hardToRead = readabilityBySentence(sentences, feedback.readability?.tips ?? []);
                 const typeColor: Record<string, { bg: string; border: string; label: string; dot: string; text: string }> = {
                   word_choice: { bg: 'bg-purple-50 dark:bg-purple-900/20', border: 'border-purple-200 dark:border-purple-800', label: 'Word Choice', dot: 'bg-purple-500', text: 'text-purple-900 dark:text-purple-200' },
                   grammar:     { bg: 'bg-amber-50 dark:bg-amber-900/20',  border: 'border-amber-200 dark:border-amber-800',  label: 'Grammar',     dot: 'bg-amber-500',  text: 'text-amber-900 dark:text-amber-200'  },
@@ -1644,7 +1789,7 @@ export function FeedbackPage() {
                   ok:          { bg: 'bg-green-50 dark:bg-green-900/20',  border: 'border-green-200 dark:border-green-800',  label: 'Good',        dot: 'bg-green-500',  text: 'text-green-900 dark:text-green-200'  },
                 };
                 return (
-                  <div id="fp-panel-essay" role="tabpanel" aria-labelledby="fp-tab-essay" className="fp-tab-panel">
+                  <div id="fp-panel-essay" role="tabpanel" aria-labelledby="fp-tab-essay" className="fp-tab-panel scroll-mt-28">
                     <div className="flex flex-wrap gap-2 mb-5">
                       {Object.entries(typeColor).map(([type, style]) => (
                         <span key={type} className={`flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold border ${style.bg} ${style.border} ${style.text}`}>
@@ -1652,7 +1797,24 @@ export function FeedbackPage() {
                           {style.label}
                         </span>
                       ))}
+                      {hardToRead.size > 0 && (
+                        <span className="flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold border border-[var(--ink-blue)]/30 bg-[var(--ink-blue)]/8 text-[var(--ink-blue)]">
+                          <BookOpen className="w-3 h-3" aria-hidden /> Hard to read
+                        </span>
+                      )}
                     </div>
+                    {hardToRead.size > 0 && (
+                      <div className="mb-5 flex gap-3 items-start rounded-2xl border border-[var(--ink-blue)]/25 bg-[var(--ink-blue)]/6 px-5 py-4">
+                        <BookOpen className="w-[18px] h-[18px] mt-0.5 shrink-0 text-[var(--ink-blue)]" aria-hidden />
+                        <div>
+                          <p className="m-0 font-semibold text-[var(--text-primary)]">Readability</p>
+                          <p className="mt-1 mb-0 text-[0.9375rem] leading-relaxed text-[var(--text-secondary)]">
+                            {feedback.readability?.summary ? `${feedback.readability.summary} ` : ''}
+                            {hardToRead.size === 1 ? 'One sentence is' : `${hardToRead.size} sentences are`} marked &ldquo;Hard to read&rdquo; below. Tap one to see an easier version.
+                          </p>
+                        </div>
+                      </div>
+                    )}
                     {sentences.length === 0 ? (
                       <p className="text-[var(--text-muted)] text-sm">No sentence analysis available.</p>
                     ) : (
@@ -1660,6 +1822,7 @@ export function FeedbackPage() {
                         {sentences.map((s, i) => {
                           const style = typeColor[s.type] ?? typeColor.ok;
                           const isOpen = openSentences.has(i);
+                          const readTips = hardToRead.get(i) ?? [];
                           return (
                             <button
                               key={i}
@@ -1674,6 +1837,11 @@ export function FeedbackPage() {
                                   <p className="text-[0.9375rem] text-gray-800 dark:text-neutral-100 leading-relaxed m-0">
                                     {s.sentence}
                                   </p>
+                                  {readTips.length > 0 && (
+                                    <span className="mt-2 inline-flex items-center gap-1 rounded-full border border-[var(--ink-blue)]/30 bg-[var(--bg-card)] px-2 py-0.5 text-[0.7rem] font-semibold text-[var(--ink-blue)]">
+                                      <BookOpen className="w-3 h-3" aria-hidden /> Hard to read
+                                    </span>
+                                  )}
                                   <div className={`grid transition-[grid-template-rows] duration-300 ease-in-out ${isOpen ? 'grid-rows-[1fr]' : 'grid-rows-[0fr]'}`}>
                                     <div className="overflow-hidden">
                                       <div className="mt-2.5 pt-2.5 border-t border-current/10 flex flex-col gap-2">
@@ -1693,6 +1861,18 @@ export function FeedbackPage() {
                                             </p>
                                           </div>
                                         )}
+                                        {readTips.map((tip, k) => (
+                                          <div key={k} className="rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2.5 dark:border-emerald-800 dark:bg-emerald-900/25">
+                                            <p className="flex items-center gap-1.5 text-[0.65rem] font-bold uppercase tracking-widest text-emerald-700 dark:text-emerald-400 mb-1">
+                                              <BookOpen className="w-3 h-3" aria-hidden /> Easier to read
+                                            </p>
+                                            <p className="text-sm text-gray-700 dark:text-neutral-300 leading-relaxed m-0">{tip.problem}</p>
+                                            {/* Often the same rewrite as the improved version above: then say it once. */}
+                                            {(s.type === 'ok' || looseText(tip.clearer) !== looseText(s.improved ?? '')) && (
+                                              <p className="text-sm text-emerald-900 dark:text-emerald-200 leading-relaxed m-0 mt-1.5">{tip.clearer}</p>
+                                            )}
+                                          </div>
+                                        ))}
                                       </div>
                                     </div>
                                   </div>
@@ -1866,7 +2046,9 @@ export function FeedbackPage() {
               {shownTab === 'quiz' && (feedback.limited ? <UpgradePrompt /> : (
                 <div id="fp-panel-quiz" role="tabpanel" aria-labelledby="fp-tab-quiz" className="fp-tab-panel">
                   <p className="text-sm text-[var(--text-muted)] mb-5">
-                    Write a sentence using each word or grammar rule. Tap <strong>Show example</strong> to check.
+                    {(feedback.grammar ?? []).some((g) => g.kind && grammarSentence(g))
+                      ? <>Write a sentence with each new word, and fix or rewrite your own sentences for grammar. Tap <strong>Show example</strong> or <strong>Show answer</strong> to compare.</>
+                      : <>Write a sentence using each word or grammar rule. Tap <strong>Show example</strong> to check.</>}
                   </p>
                   <div className="flex flex-col gap-4">
                     {(feedback.vocabulary ?? []).map((v, i) => {
@@ -1916,45 +2098,87 @@ export function FeedbackPage() {
                     })}
                     {(feedback.grammar ?? []).map((g, i) => {
                       const key = `grammar_${i}`;
+                      const yours = grammarSentence(g);
+                      // A mistake: correct your own sentence. A structure to add:
+                      // rewrite your sentence with it. Older reports: write any example.
+                      const task = yours && g.kind === 'mistake' ? 'fix' : yours && g.kind === 'add' ? 'rewrite' : 'write';
+                      const input = practiceInputs[key] ?? (task === 'fix' ? yours : '');
+                      const unchanged = task === 'fix' && looseText(input) === looseText(yours);
+                      const matches = task !== 'write' && looseText(input) !== '' && looseText(input) === looseText(g.example);
+                      // The whole sentence must be visible to be corrected. The box grows
+                      // with its text where the browser can (field-sizing); elsewhere,
+                      // enough rows for a phone-width line of about 40 characters.
+                      const rows = task === 'write' ? 2 : Math.min(10, Math.max(3, Math.ceil(Math.max(input.length, yours.length) / 40)));
                       return (
                         <div key={key} className="bg-[var(--bg-card)] rounded-2xl px-5 py-4 border border-[var(--border-color)] border-l-4 border-l-amber-500 shadow-sm transition-shadow duration-200 hover:shadow-md">
                           <div className="flex items-center gap-3 mb-1">
-                            <span className="bg-[var(--gold)]/20 text-amber-800 dark:text-amber-200 text-xs font-bold px-2 py-0.5 rounded-full uppercase tracking-wide">Grammar</span>
+                            <span className="bg-[var(--gold)]/20 text-amber-800 dark:text-amber-200 text-xs font-bold px-2 py-0.5 rounded-full uppercase tracking-wide shrink-0">
+                              {task === 'fix' ? 'Fix it' : task === 'rewrite' ? 'Rewrite' : 'Grammar'}
+                            </span>
                             <span className="font-bold text-[var(--text-primary)] text-sm">{g.point}</span>
                           </div>
                           <p className="text-xs text-[var(--text-muted)] mb-3">{g.explanation}</p>
+                          {task === 'rewrite' && (
+                            <p className="text-sm text-[var(--text-secondary)] leading-relaxed mb-2">
+                              <span className="font-semibold text-[var(--text-primary)]">Your sentence:</span> &ldquo;{yours}&rdquo;
+                            </p>
+                          )}
                           <textarea autoComplete="off"
-                            className="w-full border border-[var(--border-color)] bg-[var(--bg-input)] rounded-lg px-3 py-2 text-sm text-[var(--text-primary)] resize-none outline-hidden focus:border-[var(--gold)] focus-visible:ring-2 focus-visible:ring-[var(--gold)]/40 transition-colors"
-                            rows={2}
+                            className={`w-full border border-[var(--border-color)] bg-[var(--bg-input)] rounded-lg px-3 py-2 text-sm text-[var(--text-primary)] resize-none outline-hidden focus:border-[var(--gold)] focus-visible:ring-2 focus-visible:ring-[var(--gold)]/40 transition-colors${task === 'write' ? '' : ' field-sizing-content min-h-16'}`}
+                            rows={rows}
                             name={`practice-${key}`}
-                            aria-label={`Example for ${g.point}`}
-                            placeholder="Write an example using this rule…"
-                            value={practiceInputs[key] ?? ''}
+                            aria-label={task === 'fix' ? `Correct your sentence: ${g.point}` : task === 'rewrite' ? `Rewrite your sentence using: ${g.point}` : `Example for ${g.point}`}
+                            placeholder={task === 'fix' ? 'Correct your sentence…' : task === 'rewrite' ? 'Rewrite it using this structure…' : 'Write an example using this rule…'}
+                            value={input}
                             onChange={(e) => setPracticeInputs((p) => ({ ...p, [key]: e.target.value }))}
                           />
+                          {unchanged && (
+                            <p className="mt-1 mb-0 text-xs text-[var(--text-muted)]">This is your sentence as you wrote it. Correct it, then check.</p>
+                          )}
                           <div className="mt-2 flex items-center gap-3 flex-wrap">
                             <button
-                              onClick={() => checkPracticeSentence(key, practiceInputs[key] ?? '', g.point, 'grammar', g.example)}
-                              disabled={practiceChecking[key] || !(practiceInputs[key] ?? '').trim()}
+                              type="button"
+                              onClick={() => checkPracticeSentence(key, input, g.point, 'grammar', g.example)}
+                              disabled={practiceChecking[key] || !input.trim() || unchanged}
                               className="inline-flex items-center gap-1.5 text-xs bg-amber-700 text-white px-3 py-1 rounded cursor-pointer border-none disabled:opacity-40 hover:bg-amber-800 transition-colors"
                             >
                               {practiceChecking[key] ? <Loader2 className="w-3 h-3 animate-spin" /> : <Brain className="w-3 h-3" />}
                               {practiceChecking[key] ? 'Checking…' : 'Check with AI'}
                             </button>
                             <button
+                              type="button"
                               onClick={() => setPracticeRevealed((p) => ({ ...p, [key]: !p[key] }))}
                               className="text-xs text-amber-700 dark:text-amber-400 underline cursor-pointer bg-transparent border-none"
                             >
-                              {practiceRevealed[key] ? 'Hide' : 'Show example'}
+                              {task === 'write'
+                                ? (practiceRevealed[key] ? 'Hide' : 'Show example')
+                                : (practiceRevealed[key] ? 'Hide answer' : 'Show answer')}
                             </button>
+                            {task === 'fix' && !unchanged && (
+                              <button
+                                type="button"
+                                onClick={() => setPracticeInputs((p) => ({ ...p, [key]: yours }))}
+                                className="text-xs text-[var(--text-muted)] underline cursor-pointer bg-transparent border-none"
+                              >
+                                Start again
+                              </button>
+                            )}
                           </div>
                           {practiceChecked[key] && (
                             <PracticeResult result={practiceChecked[key]} accentClass="text-amber-800 dark:text-amber-300" />
                           )}
                           {practiceRevealed[key] && (
-                            <p className="mt-2 text-sm text-amber-900 dark:text-amber-200 italic bg-amber-50 dark:bg-amber-900/20 rounded-lg px-3 py-2">
-                              "{g.example}"
-                            </p>
+                            <div className="mt-2 text-sm text-amber-900 dark:text-amber-200 bg-amber-50 dark:bg-amber-900/20 rounded-lg px-3 py-2">
+                              {task !== 'write' && (
+                                <span className="block text-xs font-semibold text-amber-700 dark:text-amber-400 mb-0.5">One correct version</span>
+                              )}
+                              <span className="italic">"{g.example}"</span>
+                              {matches && (
+                                <span className="mt-1.5 flex items-center gap-1.5 text-xs font-semibold text-green-700 dark:text-green-400">
+                                  <CheckCircle2 className="w-3.5 h-3.5" aria-hidden /> Yours matches it.
+                                </span>
+                              )}
+                            </div>
                           )}
                         </div>
                       );

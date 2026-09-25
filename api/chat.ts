@@ -64,12 +64,12 @@ A free user gets one report a week, so after a mock exam the site asks which ess
 ## What the FREE weekly report contains (important)
 The free report is the **estimated band score only**: the four criteria (Task Achievement, Coherence and Cohesion, Lexical Resource, Grammatical Range and Accuracy) plus the overall band.
 The free score is marked against the official IELTS band descriptors in exactly the same way a paid score is, so it is just as accurate. It is smaller, not softer.
-Everything else belongs to a paid plan. On a free report those tabs are still visible but locked and greyed out with a padlock, so the student can see what they would get: sentence-by-sentence corrections, priority fixes, band gap analysis, 15 vocabulary words with Uzbek meanings, 10 grammar points, a band 8 to 9 sample answer, the spelling checker, and the practice exercises.
+Everything else belongs to a paid plan. On a free report those tabs are still visible but locked and greyed out with a padlock, so the student can see what they would get: sentence-by-sentence corrections, priority fixes, band gap analysis, up to 15 vocabulary words with Uzbek meanings and up to 10 grammar points (both built from the student's own essay), a band 8 to 9 sample answer, the spelling checker, and the practice exercises.
 A free user can still download their band score as a PDF.
 If a student asks why a tab will not open, explain that it is part of a paid plan, not a bug.
 
 ## What a PAID report adds
-Everything above, for every essay: every sentence reviewed in order with an improved rewrite, three priority fixes, band gap analysis, 15 vocabulary items with Uzbek meanings, 10 grammar points, a band 8 to 9 model answer for that exact question, a spelling checker, and interactive practice exercises. Every paid plan gives the same full report. Only the number of reports a month changes.
+Everything above, for every essay: every sentence reviewed in order with an improved rewrite, three priority fixes, band gap analysis, up to 15 vocabulary items with Uzbek meanings and up to 10 grammar points (both built from the student's own essay: better words for what they wrote, and their own grammar mistakes), a band 8 to 9 model answer for that exact question, a spelling checker, and interactive practice exercises. Every paid plan gives the same full report. Only the number of reports a month changes.
 
 ## If a report fails
 If an AI report fails or comes back cut off, the site puts that report back on the account automatically. The student can send the same essay again and it is not counted twice. They do not need to ask for a refund of a report.

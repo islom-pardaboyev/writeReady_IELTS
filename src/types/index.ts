@@ -57,6 +57,10 @@ export interface GrammarPoint {
   point: string;
   explanation: string;
   example: string;
+  /** Newer reports only: a mistake in this essay, or a structure it could add. */
+  kind?: 'mistake' | 'add';
+  /** Newer reports only: the student's own sentence that `example` fixes or rewrites. */
+  yours?: string;
 }
 
 export type SentenceIssueType = 'word_choice' | 'grammar' | 'coherence' | 'structure' | 'ok';

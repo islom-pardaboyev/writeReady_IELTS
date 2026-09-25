@@ -796,7 +796,7 @@ export async function downloadFeedbackPdf({
   if (grammar.length) {
     section(
       "Grammar to practise",
-      "Structures that would lift your grammar score, each with a plain explanation and a correct example.",
+      "The grammar mistakes in your essay first, then structures that would lift your score, each with a plain explanation and a corrected example.",
       null,
       32,
     );
@@ -809,7 +809,28 @@ export async function downloadFeedbackPdf({
         text(g.point, 11, "bold", INK, tx, tw, { leading: 1.35 }),
       ];
       if (nonEmpty(g.explanation)) blocks.push(text(g.explanation, 10, "normal", BODY, tx, tw, { before: 1.5 }));
-      if (nonEmpty(g.example)) {
+      // Newer reports pair the student's own sentence with the fix, as the
+      // readability tips do. Older ones have only an example.
+      const yours = nonEmpty(g.yours) && nonEmpty(g.example) && g.yours.trim() !== g.example.trim() ? g.yours.trim() : "";
+      if (yours) {
+        const isAdd = g.kind === "add";
+        blocks.push(
+          { kind: "draw", h: 6, draw: (top) => eyebrow(g.kind === "mistake" ? "YOUR VERSION" : "YOUR SENTENCE", tx, top + 5.2) },
+          text(`"${yours}"`, 9.5, "normal", BODY, tx, tw, { before: 1 }),
+          {
+            kind: "panel",
+            fill: MINT,
+            x: tx,
+            w: tw,
+            pad: 3,
+            before: 3,
+            blocks: [
+              { kind: "draw", h: 3.4, draw: (top) => eyebrow(isAdd ? "WITH THIS STRUCTURE" : g.kind === "mistake" ? "FIXED" : "IMPROVED", tx + 3, top + 2.6, MET) },
+              text(g.example, 10, "normal", [6, 95, 70], tx + 3, tw - 6, { before: 1.2 }),
+            ],
+          },
+        );
+      } else if (nonEmpty(g.example)) {
         blocks.push({
           kind: "panel",
           fill: SUBTLE,

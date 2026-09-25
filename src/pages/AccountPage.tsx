@@ -27,7 +27,7 @@ const PRO_FEATURES = [
   'Sentence-by-sentence feedback',
   'Priority fixes and a plan for the next band',
   'Full essay report (4 criteria)',
-  '15 topic-specific vocabulary words',
+  'Up to 15 better words for your own essay',
   'High-level sample essays',
 ];
 

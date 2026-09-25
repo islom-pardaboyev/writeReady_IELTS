@@ -912,6 +912,32 @@ function readabilityRule(taskType: string): string {
   return `- readability: 3 to 5 tips, most useful first. Readability is how easily an examiner can follow the text: overlong or overloaded sentences, ideas in a confusing order, an unclear "this" or "it", a paragraph doing two jobs, heavy repetition. ${focus} Quote the essay exactly in "original", keep the student's meaning and level of vocabulary in "clearer", and do not repeat corrections already given in sentenceAnalysis. Readability tips never change the scores.`;
 }
 
+/**
+ * The vocabulary list. A list of impressive topic words teaches little, and
+ * the model tends to fill it with memorised "IELTS words" examiners mark down.
+ * Each item instead upgrades something the student actually wrote, so they
+ * see the better word in their own sentence. Output only, like readability:
+ * it never touches the scoring rules.
+ */
+function vocabularyRule(taskType: string): string {
+  const focus = taskType === 'Task 1'
+    ? 'For Task 1, favour the language of describing data: trends (a sharp rise, level off, fluctuate), comparison (twice as many as, the gap narrowed), proportion (account for, the majority of) and approximation (just under, roughly a third), chosen to fit this visual.'
+    : 'For Task 2, favour the language this topic needs: its key collocations (widen the gap, place a burden on), and precise verbs for cause, effect and stance (stem from, undermine, it is debatable whether).';
+  return `- vocabulary: 8 to 15 items, most useful first. Fewer real items are better than padding: stop when the useful ones run out. Each item fixes a real weakness in THIS essay: a word the student repeated, a vague or too-general word (good, bad, big, thing, people, very, a lot of), a wrong or unnatural collocation, or an idea they expressed in a long, clumsy way. Name that weaker wording in "english" as 'instead of: ...'. If the essay has fewer real weaknesses, add collocations this topic clearly needs, but never pad the list with weak or obvious words. ${focus} Prefer collocations and short phrases over single rare words: precise and natural beats rare. The level must be what a Band 7-8 writer really uses, not a thesaurus word. Never suggest memorised or overused "IELTS words" (plethora, myriad, paramount, a double-edged sword, in this day and age, nowadays as an opener, last but not least), a word the student already used correctly, or two items with the same meaning. "exampleFromEssay" must use the word correctly, in the student's own context, with the grammar the word needs (verb patterns, prepositions). Spread the examples across different sentences of the essay: never use one sentence for more than two items.`;
+}
+
+/**
+ * The grammar list, built the same way as vocabulary: from this essay's own
+ * mistakes and gaps, not general tips the student cannot connect to their
+ * writing. Output only: it never touches the scoring rules.
+ */
+function grammarRule(taskType: string): string {
+  const focus = taskType === 'Task 1'
+    ? 'For Task 1, useful structures to suggest include comparatives and superlatives with figures (three times as high as), "while/whereas" to contrast data, passive reporting (was followed by), participle clauses (rising to 40%), and correct tenses for past and projected data.'
+    : 'For Task 2, useful structures to suggest include concession (Although/While ...), conditionals for consequences, relative clauses to add detail, cleft sentences for emphasis (What matters most is ...), and hedging with modals (may, could, tend to).';
+  return `- grammar: 5 to 10 items, most useful first. Fewer real items are better than padding: stop when the useful ones run out. First, items with "kind": "mistake": the grammar mistakes this student makes, especially ones that repeat (articles, verb tenses, subject-verb agreement, plurals, run-on sentences or comma splices, word order, prepositions after verbs). Name the mistake plainly in "point" (for example "Missing articles before singular nouns"). Then, if there is room, items with "kind": "add": structures missing from THIS essay that would raise its Grammatical Range score. ${focus} For every item, "yours" is one of the student's sentences copied exactly, and "example" is that same sentence with this point applied: the mistake fixed, or the structure used. Keep the student's own words and meaning, and fix any other mistake in that sentence too, so the example is fully correct. It is not the band 7-8 rewrite from sentenceAnalysis. Use a different sentence for each item where you can. Never list a structure the student already uses well, never repeat a correction as two items, and keep the level right for this writer: a Band 5 student needs their basic errors fixed before inversion or cleft sentences.`;
+}
+
 export function buildPromptParts(taskType: string): string {
   return `${examinerPreamble()}
 
@@ -965,30 +991,32 @@ ${scoresSchema(taskType, true)}
       "sentence": "<copy the EXACT sentence from the student essay>",
       "type": "<one of: word_choice | grammar | coherence | structure | ok>",
       "feedback": "<specific, actionable feedback for this sentence. If type is ok, write what is good about it>",
-      "improved": "<rewrite this exact sentence at band 7-8 level fixing all issues. If type is ok, keep it the same or make minor enhancements>"
+      "improved": "<rewrite this exact sentence at band 7-8 level fixing all issues. If type is ok, an empty string: the page never shows a rewrite of a good sentence>"
     }
   ],
   "vocabulary": [
     {
-      "word": "<a high-level, topic-specific word or phrase relevant to THIS essay's topic (band 7+ vocabulary)>",
-      "uzbek": "<Uzbek translation>",
-      "english": "<clear English definition>",
-      "exampleFromEssay": "<example sentence tailored to THIS essay topic>"
+      "word": "<a precise word or collocation the student could have used in THIS essay (see the vocabulary rule)>",
+      "uzbek": "<Uzbek translation, Latin script, of the meaning used here>",
+      "english": "<a short plain-English definition, then 'instead of: <the student's own weaker word or phrase>' when there is one>",
+      "exampleFromEssay": "<one of the student's own sentences or ideas, rewritten naturally with this word>"
     }
   ],
   "grammar": [
     {
-      "point": "<an advanced grammar structure useful for high-band IELTS writing>",
-      "explanation": "<clear explanation in plain English>",
-      "example": "<a correct example sentence>"
+      "kind": "<mistake | add (see the grammar rule)>",
+      "point": "<the grammar point, named plainly>",
+      "explanation": "<what is wrong, or what this structure adds, and the rule in plain English. Do not repeat the student's sentence here: it goes in yours>",
+      "yours": "<copy the EXACT sentence from the student essay that example fixes or rewrites>",
+      "example": "<that same sentence, fixed (mistake) or rewritten with the structure (add)>"
     }
   ]
 }
 
 STRICT RULES:
 - sentenceAnalysis: cover EVERY sentence in the essay, in order
-- EXACTLY 15 vocabulary items
-- EXACTLY 10 grammar points
+${vocabularyRule(taskType)}
+${grammarRule(taskType)}
 ${readabilityRule(taskType)}
 - Keep every feedback/strength/issue string to one concise sentence
 - Every category MUST have at least 1 strength

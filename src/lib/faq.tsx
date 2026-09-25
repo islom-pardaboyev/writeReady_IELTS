@@ -47,7 +47,7 @@ export const GROUPS: Group[] = [
         q: "Why is this better than just asking ChatGPT?",
         home: true,
         plain:
-          "Ask ChatGPT for a band score and it will give you one. It marks against whatever you paste in, and it forgets the essay you wrote last week. WriteReady sends your essay with the official IELTS Writing band descriptors and the best-fit method examiners are trained to use, plus wording that stops the model putting everybody on Band 7, and we test that prompt against reference essays so the marking does not drift. Every full report comes back in the same shape: each sentence reviewed in order, 15 words with Uzbek meanings, 10 grammar points, a band 8 to 9 answer to your exact question, and the three fixes worth doing first. Two reports a month apart can be compared, so you can see whether you improved. Around that you get exam-style prompts, a 60-minute timer, every report saved and downloadable, and a teacher you can pay to check the same essay. The colours, the spacing and the type are chosen so your eye lands on what matters first and an hour of practice does not wear you out.",
+          "Ask ChatGPT for a band score and it will give you one. It marks against whatever you paste in, and it forgets the essay you wrote last week. WriteReady sends your essay with the official IELTS Writing band descriptors and the best-fit method examiners are trained to use, plus wording that stops the model putting everybody on Band 7, and we test that prompt against reference essays so the marking does not drift. Every full report comes back in the same shape: each sentence reviewed in order, up to 15 better words and up to 10 grammar points taken from your own essay (the words with Uzbek meanings), a band 8 to 9 answer to your exact question, and the three fixes worth doing first. Two reports a month apart can be compared, so you can see whether you improved. Around that you get exam-style prompts, a 60-minute timer, every report saved and downloadable, and a teacher you can pay to check the same essay. The colours, the spacing and the type are chosen so your eye lands on what matters first and an hour of practice does not wear you out.",
         a: (
           <>
             <p>
@@ -61,8 +61,8 @@ export const GROUPS: Group[] = [
               something.
             </p>
             <p>
-              Every full report comes back in the same shape: each sentence reviewed in order, 15 words with Uzbek
-              meanings, 10 grammar points, a band 8 to 9 answer to your exact question, and the three fixes worth doing
+              Every full report comes back in the same shape: each sentence reviewed in order, up to 15 better
+              words and up to 10 grammar points taken from your own essay (the words with Uzbek meanings), a band 8 to 9 answer to your exact question, and the three fixes worth doing
               first. Two reports a month apart can be compared, so you can see whether you improved.
             </p>
             <p>
