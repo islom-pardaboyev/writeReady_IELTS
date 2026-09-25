@@ -2,7 +2,7 @@ import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { createHash } from 'crypto';
 import Anthropic from '@anthropic-ai/sdk';
 import { getFirestore } from 'firebase-admin/firestore';
-import { initFirebase, currentDayKey } from './_lib/shared.js';
+import { initFirebase, currentDayKey, getUid } from './_lib/shared.js';
 
 // Claude Haiku 4.5: fast and cheap (about $0.0045 a message), and it uses the
 // same Anthropic key and bill as the essay reports. The assistant ran on the
@@ -14,29 +14,46 @@ const MAX_TOKENS = 1500;
 
 // The assistant is open to visitors who are not signed in (the landing page
 // has it), so these limits are what stop someone running long conversations
-// on the site's API key. They are far above what a real chat needs.
+// on the site's API key. Each message costs about 53 som, so an anonymous
+// visitor gets enough to ask about the site, and a signed-in student, who can
+// be traced to an account, gets far more than a real chat needs.
 const MAX_MESSAGES = 20; // only the most recent ones are sent
 const MAX_MESSAGE_CHARS = 4000;
-const DAILY_LIMIT = 150; // messages per visitor (IP address) per day
+const VISITOR_DAILY_LIMIT = 10; // messages per day for a visitor who is not signed in, per IP address
+const STUDENT_DAILY_LIMIT = 150; // messages per day for a signed-in account
+
+/** The signed-in student, or null for a visitor. A missing, bad or expired token is a visitor, never an error. */
+async function signedInUid(req: VercelRequest): Promise<string | null> {
+  if (!req.headers.authorization) return null;
+  try {
+    initFirebase();
+    return await getUid(req);
+  } catch {
+    return null;
+  }
+}
 
 /**
- * One counter per visitor per day, keyed by a hash of their IP so no raw
- * address is stored. Returns false once the day's allowance is used. If the
- * count cannot be checked the message goes through: a broken counter must
- * not break the assistant.
+ * One counter per day: per account for a signed-in student, and per visitor
+ * otherwise, keyed by a hash of their IP so no raw address is stored. Returns
+ * false once the day's allowance is used. If the count cannot be checked the
+ * message goes through: a broken counter must not break the assistant.
  */
-async function withinDailyLimit(req: VercelRequest): Promise<boolean> {
+async function withinDailyLimit(req: VercelRequest, uid: string | null): Promise<boolean> {
   try {
     initFirebase();
     const ip = String(req.headers['x-real-ip'] ?? req.headers['x-forwarded-for'] ?? '').split(',')[0].trim();
-    const key = `chat_${createHash('sha256').update(ip || 'unknown').digest('hex').slice(0, 24)}`;
+    const key = uid
+      ? `user_${uid}`
+      : `chat_${createHash('sha256').update(ip || 'unknown').digest('hex').slice(0, 24)}`;
+    const limit = uid ? STUDENT_DAILY_LIMIT : VISITOR_DAILY_LIMIT;
     const db = getFirestore();
     const ref = db.collection('chat_limits').doc(key);
     const dayKey = currentDayKey();
     return await db.runTransaction(async (tx) => {
       const d = (await tx.get(ref)).data() as { dayKey?: string; count?: number } | undefined;
       const used = d?.dayKey === dayKey ? (d.count ?? 0) : 0;
-      if (used >= DAILY_LIMIT) return false;
+      if (used >= limit) return false;
       tx.set(ref, { dayKey, count: used + 1 });
       return true;
     });
@@ -149,7 +166,7 @@ If a student reports a bug, a band score that looks clearly wrong, a payment or 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
 
   if (req.method === 'OPTIONS') return res.status(200).end();
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
@@ -176,8 +193,13 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     return res.status(500).json({ error: 'The assistant is not set up yet.' });
   }
 
-  if (!(await withinDailyLimit(req))) {
-    return res.status(429).json({ error: "You've sent a lot of messages today. Please come back tomorrow, or write to @writeready_admin on Telegram." });
+  const uid = await signedInUid(req);
+  if (!(await withinDailyLimit(req, uid))) {
+    return res.status(429).json({
+      error: uid
+        ? "You've sent a lot of messages today. Please come back tomorrow, or write to @writeready_admin on Telegram."
+        : "You've used today's free messages. Sign in (it's free) to keep chatting, or come back tomorrow.",
+    });
   }
 
   try {

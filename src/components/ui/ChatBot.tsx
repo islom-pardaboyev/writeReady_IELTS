@@ -1,5 +1,6 @@
 import { useState, useRef, useEffect, type ReactNode } from 'react';
 import { TOGGLE_ASSISTANT_EVENT } from '@/lib/shortcuts';
+import { useAuth } from '@/hooks/useAuth';
 
 function renderMarkdown(text: string): ReactNode[] {
   const lines = text.split('\n');
@@ -83,6 +84,7 @@ function CloseIcon() {
 }
 
 export function ChatBot() {
+  const { user } = useAuth();
   const [open, setOpen] = useState(false);
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState('');
@@ -134,9 +136,13 @@ export function ChatBot() {
     setLoading(true);
 
     try {
+      // A signed-in student gets their own, larger daily allowance (api/chat.ts).
+      const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+      const token = await user?.getIdToken().catch(() => null);
+      if (token) headers.Authorization = `Bearer ${token}`;
       const res = await fetch('/api/chat', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers,
         body: JSON.stringify({ messages: newMessages }),
       });
       const data = await res.json() as { reply?: string; error?: string };

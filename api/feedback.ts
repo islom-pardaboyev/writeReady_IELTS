@@ -718,7 +718,7 @@ BANDS 0–3 (all four criteria; only for responses that barely attempt the task)
  * so does whatCounts(), the list of things that must not move a band.        */
 
 function examinerPreamble(): string {
-  return `You are a certified, experienced IELTS examiner. Score this essay accurately using the official IELTS band descriptors and the scoring method below — not your own idea of "good writing." Be fair and calibrated: award high bands (8.0–9.0) to genuinely strong essays and low bands to weak ones. Under-scoring a strong essay is just as wrong as over-scoring a weak one. Return ONLY valid JSON — no markdown, no backticks, no extra text.`;
+  return `You are a certified, experienced IELTS examiner. Score this essay accurately using the official IELTS band descriptors and the scoring method below — not your own idea of "good writing." Be fair and calibrated: award high bands (8.0–9.0) to genuinely strong essays and low bands to weak ones. Under-scoring a strong essay is just as wrong as over-scoring a weak one. Return ONLY valid JSON — no markdown, no backticks, no extra text. Write it compactly, with no indentation and no line breaks between fields: the layout shown below is only there to make the fields easy to read. Line breaks inside a text value, such as between the paragraphs of the sample answer, stay as \\n.`;
 }
 
 /**

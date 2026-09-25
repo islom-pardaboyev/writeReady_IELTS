@@ -53,6 +53,9 @@ export default function Admin() {
   // The full prompt lists are only downloaded when a prompts section is
   // opened. The overview needs just the two totals, which cost a read or two.
   const [promptsLoaded, setPromptsLoaded] = useState(false);
+  // Kept apart from failed.prompts, which is about the totals on the overview:
+  // a list that failed to load must not hide totals that did.
+  const [listFailed, setListFailed] = useState(false);
   const [promptCounts, setPromptCounts] = useState<{ task1: number; task2: number } | null>(null);
   const [pending, setPending] = useState<PendingReview[]>([]);
   const [failed, setFailed] = useState({ users: false, prompts: false, pending: false });
@@ -138,10 +141,11 @@ export default function Admin() {
       setTask1(s1.docs.map((d) => ({ id: d.id, thumb: d.data().thumb ?? "", report: d.data().report ?? "" })));
       setTask2(s2.docs.map((d) => ({ id: d.id, report: d.data().report ?? "" })));
       setPromptsLoaded(true);
+      setListFailed(false);
       markFailed("prompts", false);
     } catch (e) {
       console.error(e);
-      markFailed("prompts", true);
+      setListFailed(true);
     }
     setPromptsLoading(false);
   }, []);
@@ -185,6 +189,9 @@ export default function Admin() {
   }, [isLoggedIn, loadUsers, loadPromptCounts, loadPending]);
 
   const inPrompts = section === "task1" || section === "task2";
+  // The list shows its skeleton from the moment the section opens, not only
+  // once the request has started a render later.
+  const listPending = promptsLoading || (!promptsLoaded && !listFailed);
   useEffect(() => {
     if (isLoggedIn && inPrompts && !promptsLoaded) loadPrompts();
   }, [isLoggedIn, inPrompts, promptsLoaded, loadPrompts]);
@@ -258,8 +265,8 @@ export default function Admin() {
           refresh={() => { loadUsers(); if (promptsLoaded) loadPrompts(); else loadPromptCounts(); loadPending(); }}
         />
       )}
-      {section === "task1" && <PromptsSection key="task1" task={1} list={task1} setList={setTask1} loading={promptsLoading} failed={failed.prompts} reload={loadPrompts} {...common} />}
-      {section === "task2" && <PromptsSection key="task2" task={2} list={task2} setList={setTask2} loading={promptsLoading} failed={failed.prompts} reload={loadPrompts} {...common} />}
+      {section === "task1" && <PromptsSection key="task1" task={1} list={task1} setList={setTask1} loading={listPending} failed={listFailed} reload={loadPrompts} {...common} />}
+      {section === "task2" && <PromptsSection key="task2" task={2} list={task2} setList={setTask2} loading={listPending} failed={listFailed} reload={loadPrompts} {...common} />}
       {section === "users" && <UsersSection users={users} setUsers={setUsers} loading={usersLoading} failed={failed.users} reload={loadUsers} {...common} />}
       {section === "leaderboard" && <LeaderboardSection />}
       {section === "announcements" && <AnnouncementsSection {...common} />}

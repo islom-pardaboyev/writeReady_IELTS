@@ -381,8 +381,8 @@ function fromSaved(saved: SavedReport, taskType: 'Task 1' | 'Task 2'): EnhancedF
 }
 
 /** Lower case, no quote marks, plain dashes, single spaces: enough to find a quote in a sentence. */
-const looseText = (t: string) =>
-  t.toLowerCase().replace(/[“”"'‘’]/g, '').replace(/[–—]/g, '-').replace(/…/g, '...').replace(/\s+/g, ' ').trim();
+const looseText = (t: string | null | undefined) =>
+  (t ?? '').toLowerCase().replace(/[“”"'‘’]/g, '').replace(/[–—]/g, '-').replace(/…/g, '...').replace(/\s+/g, ' ').trim();
 
 /**
  * Hides a quote the AI says it copied from the essay but did not. It is told
@@ -395,7 +395,7 @@ function withRealQuotes(result: EnhancedFeedbackResult, essay: string): Enhanced
   const text = looseText(essay);
   if (!text) return result; // nothing to check against
   const inEssay = (quote: string) => text.includes(looseText(quote));
-  const grammar = result.grammar.map((g) => {
+  const grammar = (result.grammar ?? []).map((g) => {
     if (!g.yours || inEssay(g.yours)) return g;
     const plain = { ...g };
     delete plain.yours;
@@ -416,15 +416,24 @@ function withRealQuotes(result: EnhancedFeedbackResult, essay: string): Enhanced
  */
 function readabilityBySentence(sentences: SentenceAnalysis[], tips: ReadabilityTip[]): Map<number, ReadabilityTip[]> {
   const found = new Map<number, ReadabilityTip[]>();
-  const loose = sentences.map((s) => looseText(s.sentence));
+  const loose = sentences.map((s) => looseText(s?.sentence));
   for (const tip of tips) {
-    const quote = looseText(tip.original ?? '');
-    if (!quote) continue;
-    const opening = quote.slice(0, 40);
-    const i = loose.findIndex((l) => l && (l.includes(opening) || quote.includes(l)));
+    const i = findSentence(loose, tip.original ?? '');
     if (i >= 0) found.set(i, [...(found.get(i) ?? []), tip]);
   }
   return found;
+}
+
+/**
+ * The essay sentence a quote comes from, as an index into `loose` (the
+ * sentences already passed through looseText), or -1. A quote can be part of
+ * a sentence or run over several, so it is matched on its opening words.
+ */
+function findSentence(loose: string[], quote: string): number {
+  const q = looseText(quote);
+  if (!q) return -1;
+  const opening = q.slice(0, 40);
+  return loose.findIndex((l) => l && (l.includes(opening) || q.includes(l)));
 }
 
 /** The student's sentence a grammar point fixes or rewrites, when it really differs from the fix. */
@@ -443,7 +452,7 @@ const GRAMMAR_LABELS = {
  * with the fix, the same way the readability tips do; older ones only carry
  * an example sentence, and keep the old look.
  */
-function GrammarCard({ g }: { g: GrammarPoint }) {
+function GrammarCard({ g, onShowInEssay }: { g: GrammarPoint; onShowInEssay?: () => void }) {
   const yours = grammarSentence(g);
   const labels = GRAMMAR_LABELS[g.kind ?? 'other'];
   const isAdd = g.kind === 'add';
@@ -466,6 +475,15 @@ function GrammarCard({ g }: { g: GrammarPoint }) {
                 <span className="block text-xs font-semibold text-emerald-700 dark:text-emerald-400 mb-1">{labels.fixed}</span>
                 {g.example}
               </div>
+              {onShowInEssay && (
+                <button
+                  type="button"
+                  onClick={onShowInEssay}
+                  className="mt-2.5 inline-flex items-center gap-1 text-sm font-semibold text-[var(--ink-blue)] hover:underline underline-offset-4 cursor-pointer bg-transparent border-0 p-0"
+                >
+                  See it in your essay <ChevronRight className="w-4 h-4" aria-hidden />
+                </button>
+              )}
             </>
           ) : g.example ? (
             <div className="bg-[var(--gold)]/10 border border-[var(--gold)]/30 rounded-lg px-3.5 py-2.5">
@@ -586,6 +604,27 @@ export function FeedbackPage() {
 
   // Essay sentence analysis — Set so multiple can be open simultaneously
   const [openSentences, setOpenSentences] = useState<Set<number>>(new Set());
+  // The sentence a "See it in your essay" link just jumped to, outlined for a moment.
+  const [flashSentence, setFlashSentence] = useState<number | null>(null);
+  const showInEssay = (index: number) => {
+    setActiveTab('essay');
+    setOpenSentences((prev) => new Set(prev).add(index));
+    setFlashSentence(index);
+    // Once the Essay tab is on screen: bring the sentence into view and move
+    // keyboard focus to it, so the jump works without a mouse too.
+    requestAnimationFrame(() => {
+      const row = document.getElementById(`fp-sentence-${index}`);
+      row?.scrollIntoView({ block: 'center' });
+      row?.focus({ preventScroll: true });
+    });
+  };
+  // Sentence numbers and card numbers belong to one task's report: forget
+  // which were opened or flipped when the student switches to the other task.
+  const resetTaskView = () => {
+    setOpenSentences(new Set());
+    setFlipped({});
+    setFlashSentence(null);
+  };
   const toggleSentence = (i: number) =>
     setOpenSentences((prev) => {
       const next = new Set(prev);
@@ -975,7 +1014,9 @@ export function FeedbackPage() {
       const res = await fetch('/api/check-practice', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${idToken}` },
-        body: JSON.stringify({ userSentence: text, targetItem, targetType, example }),
+        // api/check-practice.ts refuses a reference over 600 characters; the
+        // check works without one, so a very long sentence leaves it out.
+        body: JSON.stringify({ userSentence: text, targetItem, targetType, example: example && example.length <= 600 ? example : undefined }),
       });
       const data = await res.json() as { score?: number; correct?: boolean; feedback?: string; improved?: string; error?: string };
       if (!res.ok || data.error) {
@@ -1118,6 +1159,8 @@ export function FeedbackPage() {
         .fp-flip-face { grid-area: 1 / 1; min-height: 185px; backface-visibility: hidden; -webkit-backface-visibility: hidden; border-radius: 12px; display: flex; flex-direction: column; justify-content: center; align-items: center; padding: 1.25rem; box-sizing: border-box; text-align: center; }
         .fp-flip-back { transform: rotateY(180deg); }
         @keyframes fpFadeIn { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
+        @keyframes fpFlash { 0%, 100% { outline-color: transparent; } 25%, 60% { outline-color: var(--ink-blue); } }
+        .fp-flash { outline: 3px solid transparent; outline-offset: 3px; animation: fpFlash 1.6s ease; }
         .fp-tab-panel { animation: fpFadeIn 0.35s ease; }
         @media (prefers-reduced-motion: reduce) {
           .fp-tab-panel { animation: none; }
@@ -1163,7 +1206,7 @@ export function FeedbackPage() {
                   return (
                     <button
                       key={t}
-                      onClick={() => { setSelectedTask(t); setActiveTab('overview'); }}
+                      onClick={() => { setSelectedTask(t); setActiveTab('overview'); resetTaskView(); }}
                       className={`px-5 py-1.5 rounded-full border-2 font-semibold text-sm transition-colors cursor-pointer flex items-center gap-2 ${
                         selectedTask === t
                           ? 'border-[var(--ink-blue)] bg-[var(--ink-blue-solid)] text-white'
@@ -1239,6 +1282,7 @@ export function FeedbackPage() {
               onChoose={(t) => {
                 setSelectedTask(t);
                 setActiveTab('overview');
+                resetTaskView();
                 loadFeedback(t);
               }}
             />
@@ -1747,6 +1791,7 @@ export function FeedbackPage() {
               {/* ── GRAMMAR ── */}
               {shownTab === 'grammar' && (feedback.limited ? <UpgradePrompt /> : (() => {
                 const points = feedback.grammar ?? [];
+                const essaySentences = (feedback.sentenceAnalysis ?? []).map((s) => looseText(s?.sentence));
                 // Newer reports say which points are the student's own mistakes
                 // and which are structures to add. Older ones do not, and stay
                 // one plain list.
@@ -1770,7 +1815,10 @@ export function FeedbackPage() {
                             {hint && <p className="mt-1 mb-0 max-w-prose text-[0.9375rem] leading-relaxed text-[var(--text-secondary)]">{hint}</p>}
                           </div>
                         )}
-                        {items.map((g, i) => <GrammarCard key={i} g={g} />)}
+                        {items.map((g, i) => {
+                          const at = grammarSentence(g) ? findSentence(essaySentences, g.yours ?? '') : -1;
+                          return <GrammarCard key={i} g={g} onShowInEssay={at >= 0 ? () => showInEssay(at) : undefined} />;
+                        })}
                       </section>
                     ))}
                   </div>
@@ -1826,9 +1874,11 @@ export function FeedbackPage() {
                           return (
                             <button
                               key={i}
+                              id={`fp-sentence-${i}`}
                               type="button"
-                              className={`w-full text-left block rounded-xl border px-5 py-3.5 cursor-pointer transition-[transform,box-shadow] duration-200 hover:shadow-md hover:-translate-y-0.5 ${style.bg} ${style.border}`}
+                              className={`w-full text-left block rounded-xl border px-5 py-3.5 cursor-pointer transition-[transform,box-shadow] duration-200 hover:shadow-md hover:-translate-y-0.5 ${style.bg} ${style.border}${flashSentence === i ? ' fp-flash' : ''}`}
                               onClick={() => toggleSentence(i)}
+                              onAnimationEnd={() => setFlashSentence((f) => (f === i ? null : f))}
                               aria-expanded={isOpen}
                             >
                               <div className="flex items-start gap-3">
@@ -2052,7 +2102,8 @@ export function FeedbackPage() {
                   </p>
                   <div className="flex flex-col gap-4">
                     {(feedback.vocabulary ?? []).map((v, i) => {
-                      const key = `vocab_${i}`;
+                      // Keyed by task too: Task 1 and Task 2 each keep their own answers.
+                      const key = `${selectedTask}_vocab_${i}`;
                       return (
                         <div key={key} className="bg-[var(--bg-card)] rounded-2xl px-5 py-4 border border-[var(--border-color)] border-l-4 border-l-purple-500 shadow-sm transition-shadow duration-200 hover:shadow-md">
                           <div className="flex items-center gap-3 mb-3">
@@ -2097,7 +2148,7 @@ export function FeedbackPage() {
                       );
                     })}
                     {(feedback.grammar ?? []).map((g, i) => {
-                      const key = `grammar_${i}`;
+                      const key = `${selectedTask}_grammar_${i}`;
                       const yours = grammarSentence(g);
                       // A mistake: correct your own sentence. A structure to add:
                       // rewrite your sentence with it. Older reports: write any example.
