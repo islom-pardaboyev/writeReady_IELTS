@@ -2,7 +2,7 @@ import { useEffect, useState, type ReactNode } from 'react';
 import { useLocation } from 'react-router';
 import { onAuthStateChanged } from 'firebase/auth';
 import { adminAuth, ADMIN_EMAIL } from '@/firebase/adminConfig';
-import { getMaintenanceStatus, type MaintenanceStatus } from '@/hooks/useFeatureFlag';
+import { loadSiteStatus, type MaintenanceStatus } from '@/hooks/useFeatureFlag';
 import { MaintenancePage } from '@/pages/MaintenancePage';
 import { LogoLoader } from '@/components/ui/LogoLoader';
 
@@ -36,7 +36,7 @@ export function MaintenanceGate({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     let cancelled = false;
-    getMaintenanceStatus().then((s) => { if (!cancelled) setStatus(s); });
+    loadSiteStatus().then((s) => { if (!cancelled) setStatus(s); });
     return () => { cancelled = true; };
   }, []);
 

@@ -45,6 +45,8 @@ export const MIN_WORDS = 50;
 export const WORD_HOURS = Array.from({ length: 18 }, (_, i) => i + 6);
 
 const SITE = 'https://www.writeready.uz';
+/** The WriteReady team on Telegram, the same contact the site gives (src/lib/legal.ts). */
+export const CONTACT_URL = 'https://t.me/writeready_admin';
 const DAY_MS = 24 * 3600 * 1000;
 const LINK_DAYS = 7;
 /** A "Connect my account" link is opened straight away, so it lives for an hour. */
@@ -78,6 +80,10 @@ export interface BotUser {
   remindAt?: number | null;
   /** The student turned that message off. */
   remindersOff?: boolean;
+  /** The student pressed "Stop announcements" under a post from the admin (api/_lib/broadcast.ts). */
+  announcementsOff?: boolean;
+  /** Telegram said the bot can no longer write to them (they blocked it). Cleared when they write again. */
+  blocked?: boolean;
   /** Extra checks earned from invites. */
   bonusChecks?: number;
   referredBy?: string;
@@ -105,6 +111,8 @@ interface StoredLink {
   taskType?: 'Task 2';
   question?: string;
   essay?: string;
+  /** The check the student was shown, which the site shows when the link opens instead of marking again. */
+  result?: Marked;
   createdAt: number;
   expiresAt: number;
 }
@@ -194,6 +202,7 @@ const MENU: Button[][] = [
   [{ text: '✍️ Check my essay', data: 'check' }],
   [{ text: '🎁 Invite friends', data: 'invite' }, { text: '📚 Daily word', data: 'word' }],
   [{ text: '👤 My account', data: 'account' }, { text: '🌐 Open WriteReady', url: SITE }],
+  [{ text: '💬 Contact us', url: CONTACT_URL }],
 ];
 const CANCEL: Button[][] = [[{ text: 'Cancel', data: 'cancel' }]];
 
@@ -220,7 +229,8 @@ async function claim(updateId: number, from: TgUser, chatId: number): Promise<{ 
     }
     const existing = snap.data() as BotUser;
     if ((existing.lastUpdateId ?? -1) >= updateId) return null;
-    tx.set(ref, base, { merge: true });
+    // Writing to the bot again means they unblocked it.
+    tx.set(ref, existing.blocked ? { ...base, blocked: false } : base, { merge: true });
     return { user: { ...existing, ...base }, isNew: false };
   });
 }
@@ -258,6 +268,7 @@ async function onText(user: BotUser, text: string, isNew: boolean): Promise<void
   if (command === '/invite') return invite(user);
   if (command === '/word') return wordSettings(user);
   if (command === '/cancel') return cancel(user);
+  if (command === '/contact') return contact(user);
   // For anyone else /admin is just an unknown command.
   if (command === '/admin' && isAdmin(user.telegramId)) return adminPanel(user);
   if (command === '/help' || command) return help(user);
@@ -279,6 +290,7 @@ async function onButton(user: BotUser, data: string, deps: BotDeps): Promise<voi
   if (data === 'account') return account(user);
   if (data === 'connect') return connectLink(user);
   if (data === 'remind:on' || data === 'remind:off') return setReminders(user, data === 'remind:on');
+  if (data === 'news:on' || data === 'news:off') return setAnnouncements(user, data === 'news:on');
   if (data === 'admin' && isAdmin(user.telegramId)) return adminPanel(user);
   if (data.startsWith('hour:')) return setWordHour(user, data.slice(5));
 }
@@ -312,8 +324,17 @@ async function help(user: BotUser): Promise<void> {
       '2. Send the Task 2 question, then your essay.\n' +
       '3. You get your estimated band and the mistakes to fix first. The button under it opens the full report on the site.\n\n' +
       '<b>Free checks</b>: 1 every 2 weeks. Connect your WriteReady account in /account to get 1 every week, shared with the site.\n\n' +
-      '/check: check an essay\n/account: your free checks and site account\n/invite: get free checks for inviting friends\n/word: your daily IELTS word\n/cancel: stop the current check',
+      '/check: check an essay\n/account: your free checks and site account\n/invite: get free checks for inviting friends\n/word: your daily IELTS word\n/cancel: stop the current check\n/contact: write to the WriteReady team\n\n' +
+      'Questions about the bot, your account or paying for a plan? Write to @writeready_admin.',
     MENU,
+  );
+}
+
+async function contact(user: BotUser): Promise<void> {
+  await send(
+    user.chatId,
+    '💬 <b>Contact the WriteReady team</b>\n\nFor questions about the bot, your account or paying for a plan, write to @writeready_admin.',
+    [[{ text: '💬 Write to @writeready_admin', url: CONTACT_URL }], [{ text: '⬅️ Menu', data: 'menu' }]],
   );
 }
 
@@ -562,6 +583,7 @@ async function account(user: BotUser): Promise<void> {
   lines.push(`Essays checked here: <b>${user.checks ?? 0}</b>`);
   lines.push(`Daily word: <b>${typeof user.wordHour === 'number' ? `${pad(user.wordHour)}:00` : 'off'}</b>`);
   lines.push(`Message when a free check is back: <b>${user.remindersOff ? 'off' : 'on'}</b>`);
+  lines.push(`Announcements from WriteReady: <b>${user.announcementsOff ? 'off' : 'on'}</b>`);
   lines.push('', `Telegram ID: <code>${esc(user.telegramId)}</code>`);
 
   const rows: Button[][] = [];
@@ -569,6 +591,9 @@ async function account(user: BotUser): Promise<void> {
   rows.push([
     user.remindersOff ? { text: '🔔 Turn messages on', data: 'remind:on' } : { text: '🔕 Turn messages off', data: 'remind:off' },
     { text: '📚 Daily word', data: 'word' },
+  ]);
+  rows.push([
+    user.announcementsOff ? { text: '📣 Turn announcements on', data: 'news:on' } : { text: '🔕 Turn announcements off', data: 'news:off' },
   ]);
   if (profile) rows.push([{ text: '🔁 Connect a different account', data: 'connect' }]);
   rows.push([{ text: '⬅️ Menu', data: 'menu' }]);
@@ -605,6 +630,18 @@ async function setReminders(user: BotUser, on: boolean): Promise<void> {
   await send(
     user.chatId,
     on ? "🔔 Done. I'll send a message when your free check is back." : '🔕 Done. No more messages when your free check is back. Turn them on again in /account.',
+    [[{ text: '⬅️ Menu', data: 'menu' }]],
+  );
+}
+
+/** The "Stop announcements" button under every post from the admin, and its switch in /account. */
+async function setAnnouncements(user: BotUser, on: boolean): Promise<void> {
+  await userRef(user.telegramId).set({ announcementsOff: !on }, { merge: true });
+  await send(
+    user.chatId,
+    on
+      ? '📣 Done. You will get announcements from WriteReady again.'
+      : '🔕 Done. No more announcements from WriteReady. Your daily word and essay checks work as before. Turn announcements back on in /account.',
     [[{ text: '⬅️ Menu', data: 'menu' }]],
   );
 }
@@ -734,6 +771,7 @@ async function runCheck(user: BotUser, deps: BotDeps): Promise<void> {
     taskType: 'Task 2',
     question,
     essay,
+    result,
     createdAt: Date.now(),
     expiresAt: Date.now() + LINK_DAYS * 24 * 3600 * 1000,
   };
@@ -811,7 +849,8 @@ export type OpenedLink =
 
 /**
  * Opens a link from the bot for a signed-in student. A "See full feedback"
- * link returns the essay for the site to show, and connects the Telegram
+ * link returns the essay for the site to show, saves the check the student
+ * already got to this account (saveToAccount), and connects the Telegram
  * account to this site account if it is not connected yet. A "Connect my
  * account" link only connects, and may move the Telegram to another account.
  * A free check already spent in the bot this week is carried over, so
@@ -824,7 +863,11 @@ export type OpenedLink =
  * a connect link meets an account the site is still creating (the link is
  * kept for the next try).
  */
-export async function openLink(code: string, uid: string): Promise<OpenedLink | 'not-ready' | null> {
+export async function openLink(
+  code: string,
+  uid: string,
+  saveToAccount?: BotDeps['saveToAccount'],
+): Promise<OpenedLink | 'not-ready' | null> {
   if (!/^[A-Za-z0-9_-]{8,40}$/.test(code)) return null;
   const store = db();
   const linkRef = store.collection(BOT_LINKS).doc(code);
@@ -866,7 +909,7 @@ export async function openLink(code: string, uid: string): Promise<OpenedLink | 
     }
     if (Object.keys(botUpdate).length) tx.set(botRef, botUpdate, { merge: true });
     if (expired || (connectOnly && !bot)) return null;
-    return { link, connectedChat, paid: paidPlanOf(accountSnap.data()) !== null };
+    return { link, connectedChat, paid: paidPlanOf(accountSnap.data()) !== null, accountExists: accountSnap.exists };
   });
   // Two plain checks: Vercel type-checks api/ without strict mode, where
   // `!opened` does not rule the object out.
@@ -885,13 +928,21 @@ export async function openLink(code: string, uid: string): Promise<OpenedLink | 
   const { link } = opened;
   if (link.kind === 'connect') return { kind: 'connect' };
   if (!link.question || !link.essay) return null;
+  // The check the student already has goes into this account's history
+  // before the site opens the essay, so the site finds it there and shows it:
+  // no second marking, and this week's free report stays unspent. Links made
+  // before the check was kept in them skip this.
+  if (link.result && saveToAccount && opened.accountExists) {
+    await saveToAccount(uid, essayKeys('Task 2', link.question, link.essay), link.essay, link.result)
+      .catch((e) => console.error('bot: could not save the check to the account:', e));
+  }
   return { kind: 'essay', taskType: 'Task 2', question: link.question, essay: link.essay };
 }
 
 // ── Admin ────────────────────────────────────────────────────────────────────
 
 /** Telegram user IDs allowed /admin: TELEGRAM_ADMIN_IDS in Vercel, comma separated. */
-function adminIds(): string[] {
+export function adminIds(): string[] {
   return (process.env.TELEGRAM_ADMIN_IDS ?? '').split(',').map((id) => id.trim()).filter((id) => /^\d{1,20}$/.test(id));
 }
 
@@ -987,9 +1038,63 @@ export const COMMANDS = [
   { command: 'word', description: 'Your daily IELTS word' },
   { command: 'help', description: 'How the bot works' },
   { command: 'cancel', description: 'Stop the current check' },
+  { command: 'contact', description: 'Write to the WriteReady team' },
 ];
 /** Shown in the menu of the admins' own chats only. */
 const ADMIN_COMMAND = { command: 'admin', description: 'Numbers for the bot and the site' };
+
+const SHORT_DESCRIPTION = 'Check your IELTS Writing Task 2 essay: your estimated band in about 20 seconds.';
+const DESCRIPTION =
+  'Send an IELTS Writing Task 2 essay and get your estimated band, a band for each criterion and the mistakes to fix first, ' +
+  'in about 20 seconds. 1 free check every 2 weeks (every week with a WriteReady account), more for inviting friends. Full reports on writeready.uz.';
+
+type Command = { command: string; description: string };
+const sameCommands = (a: Command[], b: Command[]) =>
+  JSON.stringify(a.map((c) => [c.command, c.description])) === JSON.stringify(b.map((c) => [c.command, c.description]));
+const adminScope = (id: string) => ({ type: 'chat', chat_id: Number(id) });
+
+/** The command menus (everyone's, and each admin's with /admin) and the bot's descriptions, as Telegram shows them. */
+async function setBotProfile(): Promise<void> {
+  await tg('setMyCommands', { commands: COMMANDS });
+  for (const id of adminIds()) {
+    // Fails for an admin who has not started the bot yet; the command works anyway.
+    await tg('setMyCommands', { commands: [...COMMANDS, ADMIN_COMMAND], scope: adminScope(id) })
+      .catch((e) => console.error(`telegram: could not set the admin menu for ${id}:`, e));
+  }
+  await tg('setMyShortDescription', { short_description: SHORT_DESCRIPTION });
+  await tg('setMyDescription', { description: DESCRIPTION });
+}
+
+/**
+ * Telegram keeps the command menu and the descriptions itself, so a deploy
+ * that changes them does not reach it on its own. The hourly job
+ * (api/_lib/routes/botDaily.ts) runs this: whatever Telegram has that differs
+ * from the code is set again, so a change shows up within the hour. When
+ * nothing changed it only reads. True when it set something.
+ */
+export async function syncBotProfile(): Promise<boolean> {
+  const [commands, short, long] = await Promise.all([
+    tg<Command[]>('getMyCommands', {}),
+    tg<{ short_description?: string }>('getMyShortDescription', {}),
+    tg<{ description?: string }>('getMyDescription', {}),
+  ]);
+  let changed = false;
+  if (!sameCommands(commands ?? [], COMMANDS) || short?.short_description !== SHORT_DESCRIPTION || long?.description !== DESCRIPTION) {
+    await setBotProfile();
+    return true;
+  }
+  // An admin added in Vercel since: their menu, with /admin. An admin who has
+  // not started the bot cannot have one yet, and is tried again next hour.
+  const adminCommands = [...COMMANDS, ADMIN_COMMAND];
+  for (const id of adminIds()) {
+    const theirs = await tg<Command[]>('getMyCommands', { scope: adminScope(id) }).catch(() => null);
+    if (theirs && !sameCommands(theirs, adminCommands)) {
+      const set = await tg('setMyCommands', { commands: adminCommands, scope: adminScope(id) }).then(() => true, () => false);
+      if (set) changed = true;
+    }
+  }
+  return changed;
+}
 
 /**
  * Points Telegram at the webhook, with its secret, and sets the command menu.
@@ -1011,18 +1116,7 @@ export async function ensureWebhook(token: string, { force = false } = {}): Prom
       secret_token: webhookSecret(token),
       allowed_updates: ['message', 'callback_query'],
     });
-    await tg('setMyCommands', { commands: COMMANDS });
-    for (const id of adminIds()) {
-      // Fails for an admin who has not started the bot yet; the command works anyway.
-      await tg('setMyCommands', { commands: [...COMMANDS, ADMIN_COMMAND], scope: { type: 'chat', chat_id: Number(id) } })
-        .catch((e) => console.error(`telegram: could not set the admin menu for ${id}:`, e));
-    }
-    await tg('setMyShortDescription', { short_description: 'Check your IELTS Writing Task 2 essay: your estimated band in about 20 seconds.' });
-    await tg('setMyDescription', {
-      description:
-        'Send an IELTS Writing Task 2 essay and get your estimated band, a band for each criterion and the mistakes to fix first, ' +
-        'in about 20 seconds. 1 free check every 2 weeks (every week with a WriteReady account), more for inviting friends. Full reports on writeready.uz.',
-    });
+    await setBotProfile();
     info = await tg<Info>('getWebhookInfo', {});
   }
   return { changed, pending: info.pending_update_count ?? 0, lastError: info.last_error_message ?? null };
@@ -1088,7 +1182,7 @@ export async function sendDailyWords(hour: number, now = new Date()): Promise<{ 
       sent++;
     } catch (e) {
       if (e instanceof TelegramError && e.unreachable) {
-        await userRef(user.telegramId).set({ wordHour: null }, { merge: true });
+        await userRef(user.telegramId).set({ wordHour: null, blocked: true }, { merge: true });
         stopped++;
       } else {
         console.error('bot: daily word failed for one student:', e);
@@ -1126,7 +1220,7 @@ export async function sendReminders(now = Date.now()): Promise<{ sent: number; s
       await clearReminder(user.telegramId, user.remindAt ?? null);
     } catch (e) {
       if (e instanceof TelegramError && e.unreachable) {
-        await userRef(user.telegramId).set({ remindAt: null, wordHour: null }, { merge: true });
+        await userRef(user.telegramId).set({ remindAt: null, wordHour: null, blocked: true }, { merge: true });
         stopped++;
       } else {
         // remindAt stays, so the next hour tries again.
@@ -1145,4 +1239,18 @@ async function clearReminder(telegramId: string, was: number | null): Promise<vo
     const current = (await tx.get(ref)).data() as BotUser | undefined;
     if (current && (current.remindAt ?? null) === was) tx.set(ref, { remindAt: null }, { merge: true });
   });
+}
+
+// ── Housekeeping ─────────────────────────────────────────────────────────────
+
+/**
+ * Deletes links that expired without being opened. An opened link is deleted
+ * straight away (openLink) and a new check replaces the previous one, so
+ * these are the only links that would otherwise stay. Run by the hourly job;
+ * at most `limit` a run, and the next hour takes the rest.
+ */
+export async function deleteExpiredLinks(now = Date.now(), limit = 200): Promise<number> {
+  const snap = await db().collection(BOT_LINKS).where('expiresAt', '<', now).limit(limit).get();
+  await Promise.all(snap.docs.map((doc) => doc.ref.delete()));
+  return snap.docs.length;
 }

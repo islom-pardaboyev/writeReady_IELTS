@@ -7,11 +7,13 @@ import {
   User as UserIcon,
   LogOut,
   Send,
+  Bot,
   ArrowUpRight,
 } from "lucide-react";
 import Logo from "/logo.svg";
 import { useAuth } from "../../hooks/useAuth";
-import { TELEGRAM_CHANNEL_URL } from "@/lib/links";
+import { TELEGRAM_BOT_URL, TELEGRAM_CHANNEL_URL } from "@/lib/links";
+import { useShowTelegramBot } from "@/hooks/useFeatureFlag";
 import { cn } from "@/lib/utils";
 import { SubscriptionBadge } from "./Header";
 import { ThemeToggle } from "@/components/ui/ThemeToggle";
@@ -44,6 +46,8 @@ export function AppSidebar() {
   const navigate = useNavigate();
   const { open, isMobile, setMobileOpen } = useSidebar();
   const collapsed = !open && !isMobile;
+  // Admin -> Telegram bot: hidden from the site until the admin announces it.
+  const botShown = useShowTelegramBot();
 
   const firstName = user?.displayName
     ? user.displayName.split(" ")[0]
@@ -95,33 +99,38 @@ export function AppSidebar() {
                 </SidebarMenuItem>
               );
             })}
-            {/* Leaves the site, so it sits apart from the pages above. */}
-            <SidebarMenuItem className="mt-2 border-t border-[var(--border-color)] pt-2">
-              <a
-                href={TELEGRAM_CHANNEL_URL}
-                target="_blank"
-                rel="noopener noreferrer"
-                title={collapsed ? "Telegram channel" : undefined}
-                onClick={handleNavClick}
-                className={cn(
-                  "group flex w-full items-center gap-3 rounded-lg px-3.5 py-2.5 text-sm font-medium no-underline transition-colors",
-                  "text-[var(--sidebar-foreground)]/70 hover:bg-[var(--sidebar-accent)]/60 hover:text-[var(--sidebar-foreground)]",
-                  "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ink-blue)]",
-                  collapsed ? "justify-center px-2" : "pr-2.5",
-                )}
-              >
-                <Send size={18} className="shrink-0" aria-hidden="true" />
-                {collapsed ? (
-                  <span className="sr-only">Telegram channel (opens in a new tab)</span>
-                ) : (
-                  <>
-                    <span className="flex-1 truncate">Telegram channel</span>
-                    <ArrowUpRight size={14} className="-ml-1.5 shrink-0 opacity-60 transition-opacity group-hover:opacity-100" aria-hidden="true" />
-                    <span className="sr-only">(opens in a new tab)</span>
-                  </>
-                )}
-              </a>
-            </SidebarMenuItem>
+            {/* These leave the site, so they sit apart from the pages above. */}
+            {[
+              { href: TELEGRAM_CHANNEL_URL, label: "Telegram channel", Icon: Send },
+              ...(botShown ? [{ href: TELEGRAM_BOT_URL, label: "Telegram bot", Icon: Bot }] : []),
+            ].map(({ href, label, Icon }, i) => (
+              <SidebarMenuItem key={href} className={i === 0 ? "mt-2 border-t border-[var(--border-color)] pt-2" : undefined}>
+                <a
+                  href={href}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  title={collapsed ? label : undefined}
+                  onClick={handleNavClick}
+                  className={cn(
+                    "group flex w-full items-center gap-3 rounded-lg px-3.5 py-2.5 text-sm font-medium no-underline transition-colors",
+                    "text-[var(--sidebar-foreground)]/70 hover:bg-[var(--sidebar-accent)]/60 hover:text-[var(--sidebar-foreground)]",
+                    "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ink-blue)]",
+                    collapsed ? "justify-center px-2" : "pr-2.5",
+                  )}
+                >
+                  <Icon size={18} className="shrink-0" aria-hidden="true" />
+                  {collapsed ? (
+                    <span className="sr-only">{label} (opens in a new tab)</span>
+                  ) : (
+                    <>
+                      <span className="flex-1 truncate">{label}</span>
+                      <ArrowUpRight size={14} className="-ml-1.5 shrink-0 opacity-60 transition-opacity group-hover:opacity-100" aria-hidden="true" />
+                      <span className="sr-only">(opens in a new tab)</span>
+                    </>
+                  )}
+                </a>
+              </SidebarMenuItem>
+            ))}
           </SidebarMenu>
 
           {/* Reachable from inside the app too, not only from the public pages. */}

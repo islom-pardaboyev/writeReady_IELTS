@@ -1,13 +1,12 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { timingSafeEqual } from 'crypto';
 import Anthropic from '@anthropic-ai/sdk';
-import { getFirestore } from 'firebase-admin/firestore';
 import { initFirebase } from '../shared.js';
 import { extractJson, normalizeScores } from '../bandScore.js';
-import { essaySignature, loadSavedReport } from '../savedReports.js';
 import { ensureWebhook, handleUpdate, MISTAKES_INSTRUCTION, type BotDeps, type Marked, type TgUpdate } from '../studentBot.js';
 import { webhookSecret } from '../telegramApi.js';
-import { startMarking, storeReport } from '../../feedback.js';
+import { saveBotReport } from '../botSave.js';
+import { startMarking } from '../../feedback.js';
 
 /**
  * The student Telegram bot's webhook. Telegram posts every message and button
@@ -54,29 +53,7 @@ const deps: BotDeps = {
 
   // A connected student's check goes into their history on the site like a
   // weekly free report, so opening the essay there shows it again for free.
-  async saveToAccount(uid, keys, essay, marked) {
-    // Never over a report the student already has on this essay: it may be
-    // the full one.
-    if (await loadSavedReport(uid, keys.contentKey)) return;
-    // The saved copy shows the bands the student was shown, which for a text
-    // marked before are its locked ones.
-    const raw = JSON.stringify({ ...(extractJson(marked.raw) as Record<string, unknown>), scores: marked.scores });
-    await storeReport({
-      uid,
-      source: 'free',
-      taskType: 'Task 2',
-      keys,
-      signature: essaySignature(essay),
-      tier: 'limited',
-      raw,
-      scores: marked.scores,
-      topic: marked.topic,
-      issues: marked.mistakes,
-      reportRef: getFirestore().collection('feedback_reports').doc(),
-      upgrade: false,
-      newLock: false,
-    });
-  },
+  saveToAccount: saveBotReport,
 };
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {

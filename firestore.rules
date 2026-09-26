@@ -221,6 +221,10 @@ service cloud.firestore {
     match /bot_stats/{day} {
       allow read, write: if false;
     }
+    // Posts the admin sent to every bot student (api/_lib/broadcast.ts).
+    match /bot_broadcasts/{id} {
+      allow read, write: if false;
+    }
 
     // ── Human Check ───────────────────────────────────────────────────────
 

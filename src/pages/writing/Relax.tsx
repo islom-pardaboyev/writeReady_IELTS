@@ -1,6 +1,7 @@
 import {
   useState,
   useEffect,
+  useMemo,
   useRef,
   type PointerEvent,
   type CSSProperties,
@@ -27,6 +28,9 @@ import {
 import { ModeBrand } from "@/components/writing/ModeBrand";
 import { useHumanCheck } from "@/hooks/useHumanCheck";
 import { useUnsavedWork } from "@/hooks/useUnsavedWork";
+import { useAuth } from "@/hooks/useAuth";
+import { useDraft } from "@/hooks/useDraft";
+import { DraftRestoredNotice } from "@/components/ui/DraftRestoredNotice";
 import { useFeatureFlag } from "@/hooks/useFeatureFlag";
 import { TeacherPickerModal } from "@/components/ui/TeacherPickerModal";
 import { ModalCard, ModalTitle, ModalDescription } from "@/components/ui/ModalCard";
@@ -88,6 +92,34 @@ function Relax() {
   useEffect(() => {
     if (step === "write") setTimerRunning(true);
   }, [step]);
+
+  // The prompt and essay as they stand, kept in this browser, so a page the
+  // browser reloads (a laptop waking from sleep) opens with them
+  // (src/hooks/useDraft.ts). The chart is small (compressChartFile), and is
+  // the part let go if the browser's storage is full.
+  const { user, loading: authLoading } = useAuth();
+  const draftValue = useMemo(
+    () => ({ step, activeTask, prompt, task2Prompt, userText, imageUrl }),
+    [step, activeTask, prompt, task2Prompt, userText, imageUrl],
+  );
+  const draft = useDraft({
+    page: "relax",
+    uid: user?.uid,
+    value: draftValue,
+    ready: !authLoading,
+    isEmpty: (d) => !d.userText?.trim() && !d.prompt?.trim() && !d.task2Prompt?.trim(),
+    shrink: (d) => ({ ...d, imageUrl: null }),
+    restore: (d) => {
+      const task = d.activeTask === 1 || d.activeTask === 2 ? d.activeTask : null;
+      if (!task) return;
+      setActiveTask(task);
+      setStep(d.step === "write" ? "write" : "configure");
+      setPrompt(typeof d.prompt === "string" ? d.prompt : "");
+      setTask2Prompt(typeof d.task2Prompt === "string" ? d.task2Prompt : "");
+      setUserText(typeof d.userText === "string" ? d.userText : "");
+      setImageUrl(typeof d.imageUrl === "string" && d.imageUrl.startsWith("data:image/") ? d.imageUrl : null);
+    },
+  });
 
   const handleSelectTask = (task: 1 | 2) => {
     setActiveTask(task);
@@ -192,6 +224,8 @@ function Relax() {
               userText1: "",
               userText2: userText,
             });
+      // The essay goes with the report from here, and is saved there.
+      draft.clear();
       navigate(`/feedback/${encoded}`);
     } catch (err) {
       console.error(err);
@@ -738,6 +772,14 @@ function Relax() {
           {humanCheck.error}
         </div>
       )}
+      <DraftRestoredNotice
+        savedAt={draft.restoredAt}
+        onStartOver={() => {
+          draft.clear();
+          handleReset();
+        }}
+        onDismiss={draft.dismiss}
+      />
     </div>
   );
 }

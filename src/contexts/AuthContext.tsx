@@ -17,6 +17,7 @@ import { createUserProfile, getUserProfile } from '../firebase/firestore';
 import { markSeen, watchSeen } from '../lib/seen';
 import type { UserProfile } from '../types';
 import { AuthContext } from './authContextDef';
+import { clearAllDrafts } from '../hooks/useDraft';
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
@@ -76,6 +77,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const logOut = async () => {
     await signOut(auth);
+    // Essays being written stay in this browser (src/hooks/useDraft.ts); the
+    // next person to sign in on this computer must not find them.
+    clearAllDrafts();
   };
 
   const refreshProfile = async () => {

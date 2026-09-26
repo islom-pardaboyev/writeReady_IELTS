@@ -9,6 +9,7 @@ import {
   LayoutDashboard,
   Megaphone,
   Newspaper,
+  Send,
   Settings,
   Trophy,
   Users,
@@ -21,6 +22,7 @@ import { PromptsSection, type Prompt } from "./admin/PromptsSection";
 import { UsersSection } from "./admin/UsersSection";
 import { LeaderboardSection } from "./admin/LeaderboardSection";
 import { AnnouncementsSection } from "./admin/AnnouncementsSection";
+import { TelegramBotSection } from "./admin/TelegramBotSection";
 import { CentersSection } from "./admin/CentersSection";
 import { TeachersSection } from "./admin/TeachersSection";
 import { BlogSection } from "./admin/BlogSection";
@@ -222,6 +224,7 @@ export default function Admin() {
         { id: "task2", label: "Task 2 prompts", icon: FileText },
         { id: "blog", label: "Blog", icon: Newspaper },
         { id: "announcements", label: "Announcements", icon: Megaphone },
+        { id: "telegram", label: "Telegram bot", icon: Send },
       ],
     },
     {
@@ -270,6 +273,7 @@ export default function Admin() {
       {section === "users" && <UsersSection users={users} setUsers={setUsers} loading={usersLoading} failed={failed.users} reload={loadUsers} {...common} />}
       {section === "leaderboard" && <LeaderboardSection />}
       {section === "announcements" && <AnnouncementsSection {...common} />}
+      {section === "telegram" && <TelegramBotSection />}
       {section === "centers" && <CentersSection {...common} />}
       {section === "teachers" && <TeachersSection {...common} pending={pending} onCountsChange={loadPending} />}
       {section === "blog" && <BlogSection {...common} />}

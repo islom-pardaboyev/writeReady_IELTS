@@ -1,12 +1,14 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { initFirebase, getUid } from '../shared.js';
 import { openLink } from '../studentBot.js';
+import { saveBotReport } from '../botSave.js';
 
 /**
  * The Telegram bot's links (src/pages/TelegramLinkPage.tsx). A signed-in
  * student sends the link's code; this connects their Telegram to their site
- * account and, for a "See full feedback" link, returns the essay it holds
- * (openLink in api/_lib/studentBot.ts).
+ * account and, for a "See full feedback" link, saves the check they got in
+ * the bot to this account and returns the essay, which the site then opens
+ * with that check already in place (openLink in api/_lib/studentBot.ts).
  */
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   res.setHeader('Access-Control-Allow-Origin', '*');
@@ -27,7 +29,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   const code = (req.body ?? {}).code;
   if (typeof code !== 'string') return res.status(400).json({ error: 'The link is incomplete.' });
   try {
-    const opened = await openLink(code, uid);
+    const opened = await openLink(code, uid, saveBotReport);
     if (opened === 'not-ready') {
       return res.status(409).json({ error: 'Your account is still being set up. Wait a few seconds, then reload this page.' });
     }

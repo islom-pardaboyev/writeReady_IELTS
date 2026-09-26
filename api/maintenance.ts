@@ -19,13 +19,19 @@ interface StoredFlags {
   maintenanceMode?: boolean;
   maintenanceStartedAt?: Timestamp | null;
   maintenanceEndsAt?: Timestamp | null;
+  /** Admin -> Telegram bot: whether the site shows the student bot to visitors. */
+  showTelegramBot?: boolean;
 }
 
+// The site asks for this once when it opens, so the other switch visitors
+// need rides along: whether to show the Telegram bot. Same document, no
+// extra read.
 function toStatus(data: StoredFlags | undefined) {
   return {
     enabled: data?.maintenanceMode === true,
     startedAt: data?.maintenanceStartedAt?.toMillis() ?? null,
     endsAt: data?.maintenanceEndsAt?.toMillis() ?? null,
+    showTelegramBot: data?.showTelegramBot === true,
   };
 }
 
@@ -49,7 +55,7 @@ export function planMaintenanceUpdate(
   body: unknown,
   current: StoredFlags | undefined,
   now: Date,
-): { error: string } | { fields: Required<StoredFlags> } {
+): { error: string } | { fields: Required<Omit<StoredFlags, 'showTelegramBot'>> } {
   const { enabled, amount, unit } = (body ?? {}) as Record<string, unknown>;
   if (typeof enabled !== 'boolean') return { error: 'enabled must be a boolean.' };
   if (!enabled) {
@@ -111,7 +117,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     if ('error' in plan) return res.status(400).json({ error: plan.error });
 
     await flagRef.set(plan.fields, { merge: true });
-    return res.status(200).json(toStatus(plan.fields));
+    return res.status(200).json(toStatus({ ...current, ...plan.fields }));
   }
 
   return res.status(405).json({ error: 'Method not allowed' });

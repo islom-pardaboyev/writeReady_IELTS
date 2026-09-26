@@ -6,6 +6,7 @@ export type AdminSection =
   | "task2"
   | "blog"
   | "announcements"
+  | "telegram"
   | "users"
   | "leaderboard"
   | "centers"

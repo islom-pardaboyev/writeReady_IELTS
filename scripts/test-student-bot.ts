@@ -74,13 +74,30 @@ const matches = (actual: unknown, op: string, wanted: unknown): boolean => {
   throw new Error(`stand-in does not support ${op}`);
 };
 
-function query(name: string, filters: [string, string, unknown][]) {
-  const found = () => [...table(name).entries()].filter(([, d]) => filters.every(([f, op, v]) => matches(d[f], op, v)));
+// orderBy a field, or by document id (FieldPath.documentId()), and startAfter a value of it.
+interface Order { field: string | null; desc: boolean }
+function query(name: string, filters: [string, string, unknown][], max = Infinity, order?: Order, after?: unknown) {
+  const keyOf = (id: string, d: Data) => (order?.field ? comparable(d[order.field]) : id) as string | number;
+  const found = () => {
+    let rows = [...table(name).entries()].filter(([, d]) => filters.every(([f, op, v]) => matches(d[f], op, v)));
+    if (order) {
+      rows.sort(([ia, a], [ib, b]) => {
+        const [x, y] = [keyOf(ia, a), keyOf(ib, b)];
+        return (x < y ? -1 : x > y ? 1 : 0) * (order.desc ? -1 : 1);
+      });
+      if (after !== undefined) rows = rows.filter(([id, d]) => (order.desc ? keyOf(id, d) < (after as string) : keyOf(id, d) > (after as string)));
+    }
+    return rows.slice(0, max);
+  };
   return {
-    where: (field: string, op: string, value: unknown) => query(name, [...filters, [field, op, value]]),
-    get: async () => ({
-      docs: found().map(([id]) => ({ ...docRef(name, id).snapshot(), ref: docRef(name, id) })),
-    }),
+    where: (field: string, op: string, value: unknown) => query(name, [...filters, [field, op, value]], max, order, after),
+    limit: (n: number) => query(name, filters, n, order, after),
+    orderBy: (field: unknown, dir?: string) => query(name, filters, max, { field: typeof field === 'string' ? field : null, desc: dir === 'desc' }, after),
+    startAfter: (value: unknown) => query(name, filters, max, order, value),
+    get: async () => {
+      const docs = found().map(([id]) => ({ ...docRef(name, id).snapshot(), ref: docRef(name, id) }));
+      return { docs, empty: docs.length === 0, size: docs.length };
+    },
     count: () => ({ get: async () => ({ data: () => ({ count: found().length }) }) }),
   };
 }
@@ -118,12 +135,13 @@ setTestFirestore({
 interface Sent { method: string; body: Record<string, unknown> }
 let sent: Sent[] = [];
 const blocked = new Set<number>();
-setTestTelegram(async (method, body) => {
+const baseTelegram = async (method: string, body: Record<string, unknown>) => {
   if (method === 'sendMessage' && blocked.has(body.chat_id as number)) throw new TelegramError(method, 403, 'Forbidden: bot was blocked by the user');
   sent.push({ method, body });
   if (method === 'getMe') return { username: 'WriteReadyTestBot' };
   return true;
-});
+};
+setTestTelegram(baseTelegram);
 const messages = (chatId?: number) =>
   sent.filter((s) => s.method === 'sendMessage' && (chatId === undefined || s.body.chat_id === chatId)).map((s) => s.body);
 const lastText = (chatId: number) => String(messages(chatId).at(-1)?.text ?? '');
@@ -137,6 +155,13 @@ let markCalls = 0;
 let markFails = false;
 let markDelayMs = 0;
 const saved: { uid: string; band: number }[] = [];
+/** Checks handed to the site when a full-feedback link opens (openLink's saveToAccount). */
+const linkSaves: { uid: string; key: string; band: number; essay: string }[] = [];
+let linkSaveFails = false;
+const saveFromLink = async (uid: string, keys: { contentKey: string }, essay: string, marked: { scores: { overall: number } }) => {
+  if (linkSaveFails) throw new Error('the database is down');
+  linkSaves.push({ uid, key: keys.contentKey, band: marked.scores.overall, essay });
+};
 const deps = {
   async mark() {
     markCalls++;
@@ -195,6 +220,10 @@ await say(101, '', { text: undefined });
 check('a message without text gets a hint', lastText(101).includes('as text messages'));
 await say(101, '/nonsense');
 check('an unknown command shows the help', lastText(101).includes('How it works'));
+check('the help says how to reach the team', lastText(101).includes('@writeready_admin') && lastText(101).includes('/contact'));
+await say(101, '/contact');
+check("/contact gives the team's Telegram", lastText(101).includes('@writeready_admin') && buttonsOf(messages(101).at(-1)).some((b) => b.url === 'https://t.me/writeready_admin'));
+check('and the menu has a Contact us button', buttonsOf(messages(101)[0]).some((b) => b.text.includes('Contact us') && b.url === bot.CONTACT_URL));
 
 console.log('\nChecking an essay');
 await tap(101, 'check');
@@ -323,16 +352,18 @@ const first204 = codeOf(204);
 check('an unknown code opens nothing', (await bot.openLink('unknowncode123', 'uidA')) === null);
 check('a malformed code opens nothing', (await bot.openLink('../../users', 'uidA')) === null);
 table('users').set('uidA', { email: 'a@example.com', plan: 'free' });
+check('the link keeps the check the student was shown', (table(bot.BOT_LINKS).get(code)?.result as { scores?: { overall?: number } } | undefined)?.scores?.overall === 6);
 sent = [];
-const opened = essayOf(await bot.openLink(code, 'uidA'));
+const opened = essayOf(await bot.openLink(code, 'uidA', saveFromLink));
 check('a valid code returns the essay', opened?.essay === ESSAY && opened?.question === QUESTION);
+check("the check is saved to the account that opened it, under the site's own key for the essay", linkSaves.length === 1 && linkSaves[0].uid === 'uidA' && linkSaves[0].key === lockKey && linkSaves[0].band === 6 && linkSaves[0].essay === ESSAY);
 check('the link is deleted once opened', !table(bot.BOT_LINKS).has(code) && botUser(101)?.linkCode === '');
 check('it connects the Telegram account', botUser(101)?.uid === 'uidA');
 check("this week's bot check carries over to the account", (table('users').get('uidA')?.freeUsage as { count?: number })?.count === 1);
 check('and the message that it is back moves to Monday, with the site week', botUser(101)?.remindAt === monday + 7 * DAY);
 check('the student is told in Telegram', lastText(101).includes('now connected'));
 sent = [];
-check('a second tap finds nothing, so it cannot start a second report', (await bot.openLink(code, 'uidA')) === null && messages(101).length === 0);
+check('a second tap finds nothing, so it cannot start a second report', (await bot.openLink(code, 'uidA', saveFromLink)) === null && messages(101).length === 0 && linkSaves.length === 1);
 check('and cannot connect someone else', (await bot.openLink(code, 'uidB')) === null && botUser(101)?.uid === 'uidA');
 
 await say(206, '/start');
@@ -356,7 +387,19 @@ await say(205, '/start');
 await submitEssay(205);
 await tap(205, 'go');
 const code205 = codeOf(205);
-check('an account the site has not finished creating still gets the essay, but is not connected yet', essayOf(await bot.openLink(code205, 'uidNew'))?.essay === ESSAY && botUser(205)?.uid === undefined && !table(bot.BOT_LINKS).has(code205));
+check('an account the site has not finished creating still gets the essay, but is not connected yet', essayOf(await bot.openLink(code205, 'uidNew', saveFromLink))?.essay === ESSAY && botUser(205)?.uid === undefined && !table(bot.BOT_LINKS).has(code205));
+check('and nothing is saved to an account that does not exist yet', !linkSaves.some((l) => l.uid === 'uidNew'));
+const savesBefore = linkSaves.length;
+table(bot.BOT_LINKS).set('oldlinkcode1', { telegramId: '205', kind: 'essay', taskType: 'Task 2', question: QUESTION, essay: ESSAY, createdAt: Date.now(), expiresAt: Date.now() + DAY });
+check('a link made before checks were kept in it still opens, with nothing to save', essayOf(await bot.openLink('oldlinkcode1', 'uidA', saveFromLink))?.essay === ESSAY && linkSaves.length === savesBefore);
+table(bot.BOT_LINKS).set('expiredwith1', { telegramId: '205', kind: 'essay', taskType: 'Task 2', question: QUESTION, essay: ESSAY, result: { scores: scores(6), topic: 'x', mistakes: [], raw: '{}' }, createdAt: 0, expiresAt: Date.now() - 1 });
+check('an expired link saves nothing', (await bot.openLink('expiredwith1', 'uidA', saveFromLink)) === null && linkSaves.length === savesBefore);
+await say(207, '/start');
+await submitEssay(207);
+await tap(207, 'go');
+linkSaveFails = true;
+check('if saving fails, the essay still opens', essayOf(await bot.openLink(codeOf(207), 'uidA', saveFromLink))?.essay === ESSAY);
+linkSaveFails = false;
 
 console.log('\nA connected student');
 table('users').set('uidC', { email: 'c@example.com', plan: 'free', freeUsage: { weekKey: currentWeekKey(), count: 1 } });
@@ -429,6 +472,10 @@ check('Lifetime shows no monthly limit', lastText(601).includes('Plan: <b>Lifeti
 check('a full-feedback link never moves a connected Telegram', Boolean(botUser(301)?.linkCode) && essayOf(await bot.openLink(botUser(301)!.linkCode!, 'uidD'))?.essay === ESSAY && botUser(301)?.uid === 'uidC');
 table(bot.BOT_LINKS).set('oldconnect12', { telegramId: '601', kind: 'connect', expiresAt: Date.now() - 1 });
 check('an expired connect link opens nothing, and is removed', (await bot.openLink('oldconnect12', 'uidA')) === null && !table(bot.BOT_LINKS).has('oldconnect12') && botUser(601)?.uid === 'uidH');
+await tap(601, 'connect');
+const connect3 = linkIn(messages(601).at(-1));
+const savesBeforeConnect = linkSaves.length;
+check('a connect link has no check to save', JSON.stringify(await bot.openLink(connect3, 'uidH', saveFromLink)) === '{"kind":"connect"}' && linkSaves.length === savesBeforeConnect);
 
 console.log('\nYour free check is back');
 await say(701, '/start');
@@ -510,6 +557,109 @@ check('a student who blocked the bot is switched off', r.stopped === 1 && botUse
 await tap(101, 'hour:off');
 check('the word can be turned off', botUser(101)?.wordHour === null);
 
+console.log('\nPosts to every student (api/_lib/broadcast.ts)');
+const cast = await import('../api/_lib/broadcast.js');
+const text = await import('../api/_lib/telegramText.js');
+check('**bold** and _italic_ become Telegram HTML, and everything else is escaped', text.postToHtml('**Hi** <b> & _you_') === '<b>Hi</b> &lt;b&gt; &amp; <i>you</i>');
+check('underscores inside a name are left alone', text.postToHtml('@writeready_student_bot') === '@writeready_student_bot');
+check('the length counts what students see, not the marks', text.postLength('**Hi** _you_') === 6);
+const castError = (fn: () => unknown) => { try { fn(); return ''; } catch (e) { return e instanceof cast.BroadcastError ? e.message : `other: ${String(e)}`; } };
+check('an empty post is refused', castError(() => cast.readPost({ text: '  ' })).includes('Write the post'));
+check('a post over the caption limit with a picture is refused', castError(() => cast.readPost({ text: 'x'.repeat(1100) }, { photoComing: true })).includes('1024'));
+check('a button needs a full https link', castError(() => cast.readPost({ text: 'Hi', button: { text: 'Open', url: 'writeready.uz' } })).includes('https://'));
+check('and both its parts', castError(() => cast.readPost({ text: 'Hi', button: { text: '', url: 'https://www.writeready.uz' } })).includes('both'));
+const goodPost = cast.readPost({ text: '**New** mock tests are out', button: { text: 'Open WriteReady', url: 'https://www.writeready.uz' } });
+check('a good post keeps its text, HTML and button', goodPost.html === '<b>New</b> mock tests are out' && goodPost.button?.url === 'https://www.writeready.uz' && goodPost.photoFileId === null);
+check('only JPG, PNG or WebP pictures', castError(() => cast.readPhoto({ name: 'a.gif', type: 'image/gif', base64: 'AAAA' })).includes('JPG'));
+check('up to 5 MB', castError(() => cast.readPhoto({ name: 'a.png', type: 'image/png', base64: Buffer.alloc(cast.MAX_PHOTO_BYTES + 1).toString('base64') })).includes('5 MB'));
+const upload = cast.readPhoto({ name: 'poster.png', type: 'image/png', base64: Buffer.from('png-bytes').toString('base64') });
+check('a picture is read as a file to upload', upload?.field === 'photo' && upload.data.toString() === 'png-bytes' && upload.name === 'poster.png');
+
+// Telegram for this part: pictures get an id, blocked students refuse, one chat is "too fast" once.
+const rateLimitedOnce = new Set<number>([204]);
+setTestTelegram(async (method, body) => {
+  const chat = body.chat_id as number;
+  if ((method === 'sendMessage' || method === 'sendPhoto') && blocked.has(chat)) throw new TelegramError(method, 403, 'Forbidden: bot was blocked by the user');
+  if ((method === 'sendMessage' || method === 'sendPhoto') && rateLimitedOnce.delete(chat)) throw new TelegramError(method, 429, 'Too Many Requests: retry after 0', 0);
+  sent.push({ method, body });
+  if (method === 'sendPhoto') return { photo: [{ file_id: 'small-id' }, { file_id: 'big-id' }] };
+  return true;
+});
+
+sent = [];
+const savedAdmins = process.env.TELEGRAM_ADMIN_IDS;
+process.env.TELEGRAM_ADMIN_IDS = '';
+let testError = '';
+await cast.sendTest(goodPost, null).catch((e) => { testError = e.message; });
+check('a test needs your Telegram ID in Vercel', testError.includes('TELEGRAM_ADMIN_IDS') && messages().length === 0);
+process.env.TELEGRAM_ADMIN_IDS = savedAdmins;
+const test = await cast.sendTest(cast.readPost({ text: 'With a picture' }, { photoComing: true }), upload);
+const testMsg = sent.find((m) => m.method === 'sendPhoto')?.body;
+check('the test goes to the admin, uploading the picture once', test.sentTo === 1 && testMsg?.chat_id === 900 && String(testMsg?.photo).startsWith('<upload poster.png'));
+check("and hands back Telegram's id for the picture, the biggest size", test.photoFileId === 'big-id');
+check('with the Stop announcements button, as students will see it', JSON.stringify(testMsg?.reply_markup).includes('news:off'));
+
+// Who a post reaches.
+table(bot.BOT_USERS).set('801', { telegramId: '801', chatId: 801, createdAt: Date.now(), lastUpdateId: 0, step: 'idle', announcementsOff: true });
+table(bot.BOT_USERS).set('802', { telegramId: '802', chatId: 802, createdAt: Date.now(), lastUpdateId: 0, step: 'idle' });
+blocked.add(802);
+const everyone = [...table(bot.BOT_USERS).values()] as bot.BotUser[];
+const aud = await cast.audience();
+const expectedReach = everyone.filter((u) => !u.announcementsOff && !u.blocked).length;
+check('the audience leaves out students who turned posts off or blocked the bot', aud.students === everyone.length && aud.off === 1 && aud.reach === expectedReach && aud.blocked === everyone.filter((u) => u.blocked).length);
+
+// Send to everyone.
+sent = [];
+const post = cast.readPost({ text: 'Mock exam week! **All** tests are open.', button: { text: 'Open WriteReady', url: 'https://www.writeready.uz' } });
+await cast.startBroadcast('postaaaaaaaa1', post);
+check('a post is recorded with who it can reach', table(cast.BROADCASTS).get('postaaaaaaaa1')?.status === 'sending' && table(cast.BROADCASTS).get('postaaaaaaaa1')?.total === expectedReach);
+const steps: number[] = [];
+const done1 = await cast.runBroadcast('postaaaaaaaa1', Date.now() + 60_000, (p) => steps.push(p.sent));
+const receivers = sent.filter((m) => m.method === 'sendMessage').map((m) => m.body.chat_id as number);
+check('every student who can receive it gets it once', done1.status === 'done' && receivers.length === new Set(receivers).size && receivers.length === done1.sent);
+check('not the ones who turned posts off', !receivers.includes(801));
+check('a student who blocked the bot is counted and remembered', done1.blocked >= 1 && botUser(802)?.blocked === true && !receivers.includes(802));
+check('"too many at once" waits and tries again', receivers.includes(204));
+check('the counts add up', done1.sent + done1.blocked + done1.failed + done1.skipped === everyone.length);
+check('progress was reported along the way', steps.length >= 2);
+check('with the button and the Stop announcements button', JSON.stringify(sent[0]?.body.reply_markup) === JSON.stringify({ inline_keyboard: [[{ text: 'Open WriteReady', url: 'https://www.writeready.uz' }], [{ text: '🔕 Stop announcements', callback_data: 'news:off' }]] }));
+const stored1 = table(cast.BROADCASTS).get('postaaaaaaaa1');
+check('the post is marked done, with its numbers', stored1?.status === 'done' && stored1?.sent === done1.sent && typeof stored1?.finishedAt === 'number' && stored1?.leaseUntil === 0);
+sent = [];
+await cast.startBroadcast('postaaaaaaaa1', post);
+const again = await cast.runBroadcast('postaaaaaaaa1', Date.now() + 60_000);
+check('pressing send twice (same id) never sends it twice', again.status === 'done' && messages().length === 0 && table(cast.BROADCASTS).size === 1);
+
+// A post cut short by the time limit carries on from where it stopped.
+sent = [];
+await cast.startBroadcast('postaaaaaaaa2', cast.readPost({ text: 'Second post' }));
+const paused = await cast.runBroadcast('postaaaaaaaa2', Date.now() + 150);
+check('at the time limit it pauses, part way', paused.paused && paused.status === 'sending' && paused.sent > 0 && paused.sent < expectedReach);
+let secondError = '';
+await cast.startBroadcast('postaaaaaaaa3', cast.readPost({ text: 'Third post' })).catch((e) => { secondError = e.message; });
+check('a new post waits until that one is finished', secondError.includes('still being sent') && !table(cast.BROADCASTS).has('postaaaaaaaa3'));
+table(cast.BROADCASTS).set('postaaaaaaaa2', { ...table(cast.BROADCASTS).get('postaaaaaaaa2'), leaseUntil: Date.now() + 60_000 });
+const held = await cast.runBroadcast('postaaaaaaaa2', Date.now() + 60_000);
+check('while another run holds it, a second run sends nothing', held.busy && sent.length === paused.sent);
+table(cast.BROADCASTS).set('postaaaaaaaa2', { ...table(cast.BROADCASTS).get('postaaaaaaaa2'), leaseUntil: 0 });
+check('the hourly job finishes it', (await cast.continueBroadcasts(Date.now() + 60_000)) === 1 && table(cast.BROADCASTS).get('postaaaaaaaa2')?.status === 'done');
+const second = sent.filter((m) => m.method === 'sendMessage').map((m) => m.body.chat_id as number);
+check('and nobody got it twice', second.length === new Set(second).size && second.length === table(cast.BROADCASTS).get('postaaaaaaaa2')?.sent);
+const recentPosts = await cast.recentBroadcasts();
+check('recent posts come newest first, with their numbers', recentPosts.length === 2 && recentPosts[0].createdAt >= recentPosts[1].createdAt && recentPosts.every((r) => r.status === 'done' && !r.active));
+
+// The student's side.
+setTestTelegram(baseTelegram);
+await tap(301, 'news:off');
+check('"Stop announcements" turns them off, and says what still works', botUser(301)?.announcementsOff === true && lastText(301).includes('No more announcements') && lastText(301).includes('daily word'));
+await say(301, '/account');
+check('/account shows it, with a switch to turn them back on', lastText(301).includes('Announcements from WriteReady: <b>off</b>') && buttonsOf(messages(301).at(-1)).some((b) => b.callback_data === 'news:on'));
+await tap(301, 'news:on');
+check('and back on', botUser(301)?.announcementsOff === false);
+blocked.delete(802);
+await say(802, '/start');
+check('a student who blocked the bot and writes again is no longer skipped', botUser(802)?.blocked === false);
+
 console.log('\nCron hour and webhook secret');
 check('the cron header maps to Tashkent time', tashkentHour('0 3 * * *') === 8 && tashkentHour('0 18 * * *') === 23);
 check('without the header it uses the current Tashkent hour', tashkentHour(undefined, new Date(Date.UTC(2026, 0, 1, 20))) === 1);
@@ -557,7 +707,7 @@ sent = [];
 check('opening the address connects the bot', (await call(undefined, undefined, 'GET')) === 200 && webhookUrl === bot.WEBHOOK_URL);
 const setCall = sent.find((s) => s.method === 'setWebhook')?.body;
 check('with the secret and only the updates the bot uses', setCall?.secret_token === good && JSON.stringify(setCall?.allowed_updates) === '["message","callback_query"]');
-check('and the command menu', JSON.stringify(((sent.find((s) => s.method === 'setMyCommands')?.body.commands ?? []) as { command: string }[]).map((c) => c.command)) === '["check","account","invite","word","help","cancel"]');
+check('and the command menu', JSON.stringify(((sent.find((s) => s.method === 'setMyCommands')?.body.commands ?? []) as { command: string }[]).map((c) => c.command)) === '["check","account","invite","word","help","cancel","contact"]');
 const adminMenu = sent.find((s) => s.method === 'setMyCommands' && s.body.scope)?.body;
 check("with /admin only in the admin's own chat", JSON.stringify(adminMenu?.scope) === '{"type":"chat","chat_id":900}' && ((adminMenu?.commands ?? []) as { command: string }[]).some((c) => c.command === 'admin'));
 check('the webhook address is the site itself, not a redirect', bot.WEBHOOK_URL === 'https://www.writeready.uz/api/telegram');
@@ -573,6 +723,42 @@ check("Telegram's own request is accepted", (await call(good, { update_id: ++upd
 check('and the bot answers it', lastText(501).includes('Send me an IELTS Writing Task 2 essay'));
 check('a malformed update still gets 200, so Telegram does not resend it forever', (await call(good, { nonsense: true })) === 200);
 
+console.log('\nKeeping the menu up to date');
+const onTelegram: Record<string, unknown> = { commands: [{ command: 'check', description: 'Check a Task 2 essay' }], short: 'old', long: 'old' };
+let setCalls: Sent[] = [];
+setTestTelegram(async (method, body) => {
+  const key = body.scope ? `admin${(body.scope as { chat_id: number }).chat_id}` : 'commands';
+  if (method === 'getMyCommands') return onTelegram[key] ?? [];
+  if (method === 'getMyShortDescription') return { short_description: onTelegram.short };
+  if (method === 'getMyDescription') return { description: onTelegram.long };
+  setCalls.push({ method, body });
+  if (method === 'setMyCommands') onTelegram[key] = body.commands;
+  if (method === 'setMyShortDescription') onTelegram.short = body.short_description;
+  if (method === 'setMyDescription') onTelegram.long = body.description;
+  return true;
+});
+check('an old menu on Telegram is brought up to date', (await bot.syncBotProfile()) === true && JSON.stringify(onTelegram.commands) === JSON.stringify(bot.COMMANDS));
+check('with the descriptions and the admin menu', onTelegram.short !== 'old' && String(onTelegram.long).includes('every 2 weeks') && ((onTelegram.admin900 ?? []) as { command: string }[]).some((c) => c.command === 'admin'));
+setCalls = [];
+check('when nothing changed it only reads', (await bot.syncBotProfile()) === false && setCalls.length === 0);
+onTelegram.admin900 = [];
+check("a new admin's menu is set on its own", (await bot.syncBotProfile()) === true && setCalls.length === 1 && setCalls[0].method === 'setMyCommands');
+
+console.log('\nHousekeeping');
+for (const id of [...table(bot.BOT_LINKS).keys()]) table(bot.BOT_LINKS).delete(id);
+table(bot.BOT_LINKS).set('goneaaaaaaa1', { telegramId: '1', expiresAt: Date.now() - 1 });
+table(bot.BOT_LINKS).set('goneaaaaaaa2', { telegramId: '2', expiresAt: Date.now() - DAY });
+table(bot.BOT_LINKS).set('keptaaaaaaaa', { telegramId: '3', expiresAt: Date.now() + DAY });
+check('expired links are deleted, at most the limit in one run', (await bot.deleteExpiredLinks(Date.now(), 1)) === 1 && table(bot.BOT_LINKS).size === 2);
+check('the next run takes the rest, and live links stay', (await bot.deleteExpiredLinks()) === 1 && [...table(bot.BOT_LINKS).keys()].join() === 'keptaaaaaaaa');
+table(bot.BOT_LINKS).set('goneaaaaaaa3', { telegramId: '4', expiresAt: Date.now() - 1 });
+const daily = (await import('../api/_lib/routes/botDaily.js')).default;
+let dailyJson: Record<string, unknown> = {};
+let dailyStatus = 0;
+const dailyRes = { status: (c: number) => { dailyStatus = c; return dailyRes; }, json: (j: Record<string, unknown>) => { dailyJson = j; return dailyRes; } };
+await daily({ headers: { 'x-vercel-cron-schedule': '0 3 * * *' } } as never, dailyRes as never);
+check('the hourly job runs it all', dailyStatus === 200 && dailyJson.hour === 8 && dailyJson.linksDeleted === 1 && dailyJson.profileUpdated === false && typeof dailyJson.words === 'object' && typeof dailyJson.reminders === 'object');
+
 console.log('\nThe shared function (api/combined.ts)');
 const combined = (await import('../api/combined.js')).default;
 const viaRouter = async (route: string | undefined, method: string, headers: Record<string, string> = {}, body: unknown = undefined) => {
@@ -586,6 +772,9 @@ check('no route is not found', (await viaRouter(undefined, 'GET')) === 404);
 check('a name inherited by every object is not a route', (await viaRouter('constructor', 'GET')) === 404);
 check('/api/telegram reaches the webhook, which still wants the secret', (await viaRouter('telegram', 'POST', {}, { update_id: 1 })) === 401);
 check('/api/bot-link reaches the link handler, which wants a signed-in student', (await viaRouter('bot-link', 'POST', {}, { code: 'x' })) === 401);
+check('/api/bot-broadcast wants the admin signed in', (await viaRouter('bot-broadcast', 'POST', {}, { action: 'overview' })) === 401);
+check('and a real token, not any text', (await viaRouter('bot-broadcast', 'POST', { authorization: 'Bearer not-a-token' }, { action: 'overview' })) === 401);
+check('and only takes POST', (await viaRouter('bot-broadcast', 'GET')) === 405);
 check('/api/seen still answers a browser check before the stamp', (await viaRouter('seen', 'OPTIONS')) === 200 && (await viaRouter('seen', 'GET')) === 405);
 
 console.log(failures ? `\n${failures} check(s) failed.` : '\nAll checks passed.');

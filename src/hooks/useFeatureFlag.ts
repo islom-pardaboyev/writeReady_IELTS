@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { doc, getDoc, setDoc, type Firestore } from 'firebase/firestore';
 import { db } from '../firebase/config';
 
-export type FeatureFlagKey = 'humanCheck';
+export type FeatureFlagKey = 'humanCheck' | 'showTelegramBot';
 
 export async function getFeatureFlag(key: FeatureFlagKey, dbInstance: Firestore = db): Promise<boolean> {
   const snap = await getDoc(doc(dbInstance, 'config', 'featureFlags'));
@@ -50,13 +50,15 @@ export interface MaintenanceStatus {
   enabled: boolean;
   startedAt: number | null; // epoch ms
   endsAt: number | null; // epoch ms; planned reopening, shown to visitors as a countdown
+  /** Admin -> Telegram bot: show the student bot on the site. Off until the admin turns it on. */
+  showTelegramBot?: boolean;
 }
 
 export type MaintenanceUpdate =
   | { enabled: false }
   | { enabled: true; amount: number; unit: MaintenanceUnit };
 
-const MAINTENANCE_OFF: MaintenanceStatus = { enabled: false, startedAt: null, endsAt: null };
+const MAINTENANCE_OFF: MaintenanceStatus = { enabled: false, startedAt: null, endsAt: null, showTelegramBot: false };
 
 /**
  * The site gate fails open (treats errors as "off"); pass `strict` where a
@@ -72,6 +74,37 @@ export async function getMaintenanceStatus({ fresh = false, strict = false } = {
     if (strict) throw e;
     return MAINTENANCE_OFF;
   }
+}
+
+let siteStatus: Promise<MaintenanceStatus> | null = null;
+
+/**
+ * The status every visitor asks for once when the site opens (MaintenanceGate),
+ * shared with everything else that needs it, so it is one request a visit.
+ */
+export function loadSiteStatus(): Promise<MaintenanceStatus> {
+  if (!siteStatus) siteStatus = getMaintenanceStatus();
+  return siteStatus;
+}
+
+/**
+ * Whether the site shows the Telegram bot (the links to it and the dashboard
+ * card). Admin -> Telegram bot turns it on; until then, and if the status
+ * cannot be read, it stays hidden. `?preview=telegramBot` in the address
+ * shows it anyway, to check before turning it on.
+ */
+export function useShowTelegramBot(): boolean {
+  const preview = typeof window !== 'undefined' && new URLSearchParams(window.location.search).get('preview') === 'telegramBot';
+  const [show, setShow] = useState(preview);
+  useEffect(() => {
+    if (preview) return;
+    let cancelled = false;
+    loadSiteStatus().then((status) => {
+      if (!cancelled) setShow(status.showTelegramBot === true);
+    });
+    return () => { cancelled = true; };
+  }, [preview]);
+  return show;
 }
 
 export async function updateMaintenance(update: MaintenanceUpdate, idToken: string): Promise<MaintenanceStatus> {

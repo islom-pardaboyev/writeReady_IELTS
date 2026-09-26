@@ -2,8 +2,9 @@ import { useRef, useLayoutEffect } from 'react';
 import gsap from 'gsap';
 import { ScrollTrigger } from 'gsap/ScrollTrigger';
 import { Link } from 'react-router';
-import { ArrowUpRight, Send } from 'lucide-react';
-import { TELEGRAM_CHANNEL_URL } from '@/lib/links';
+import { ArrowUpRight, Bot, Send } from 'lucide-react';
+import { TELEGRAM_BOT_URL, TELEGRAM_CHANNEL_URL } from '@/lib/links';
+import { useShowTelegramBot } from '@/hooks/useFeatureFlag';
 import { Header } from '@/components/layout/Header';
 import { SkipLink } from '@/components/layout/SkipLink';
 import { FaqAccordion, FaqAnswerStyles } from '@/components/ui/FaqAccordion';
@@ -14,6 +15,8 @@ gsap.registerPlugin(ScrollTrigger);
 
 export function LandingPage() {
   const rootRef = useRef<HTMLDivElement>(null);
+  // Admin -> Telegram bot: the bot is left off the page until the admin announces it.
+  const botShown = useShowTelegramBot();
 
   useLayoutEffect(() => {
     const prefersReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
@@ -109,7 +112,7 @@ export function LandingPage() {
             Write against IELTS-style exam prompts and get the essay marked: notes on every sentence, stronger vocabulary with Uzbek meanings, and an estimated band score.
           </p>
 
-          <div className="gs-hero-ctas flex gap-[0.875rem] items-center mb-8 flex-wrap">
+          <div className={`gs-hero-ctas flex gap-[0.875rem] items-center flex-wrap ${botShown ? 'mb-4' : 'mb-8'}`}>
             <Link to="/auth?mode=signup" className="inline-flex items-center gap-2 bg-[var(--ink-blue-solid)] text-white font-bold text-[0.9375rem] px-7 py-3 rounded-[50px] no-underline hover:opacity-90 transition-opacity">
               Check My Essay →
             </Link>
@@ -117,6 +120,20 @@ export function LandingPage() {
               Try a Test →
             </Link>
           </div>
+          {/* For a visitor not ready to sign up: the bot checks an essay with no account. */}
+          {botShown && <p className="gs-hero-ctas mb-8 text-sm text-[var(--text-secondary)]">
+            No account yet?{' '}
+            <a
+              href={TELEGRAM_BOT_URL}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-0.5 rounded font-semibold text-[var(--ink-blue)] underline-offset-4 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ring)]"
+            >
+              Try a free check in our Telegram bot
+              <ArrowUpRight size={14} aria-hidden="true" />
+              <span className="sr-only">(opens in a new tab)</span>
+            </a>
+          </p>}
 
           <ul className="grid grid-cols-2 gap-x-6 gap-y-2 list-none m-0 p-0">
             {['One free analysis a week', 'No credit card required', 'Exam-style prompts', 'Sentence-level feedback'].map((t) => (
@@ -290,17 +307,25 @@ export function LandingPage() {
 
       {/* ── Footer ── */}
       <footer className="bg-slate-900 border-t border-white/[0.06] px-6 py-6 text-center dark:bg-black">
-        <a
-          href={TELEGRAM_CHANNEL_URL}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="group mb-3 inline-flex items-center gap-2 rounded-lg px-3 py-1.5 text-sm font-medium text-white/70 no-underline transition-colors hover:bg-white/[0.06] hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-400"
-        >
-          <Send size={15} aria-hidden="true" />
-          Follow us on Telegram
-          <ArrowUpRight size={14} className="opacity-60 transition-opacity group-hover:opacity-100" aria-hidden="true" />
-          <span className="sr-only">(opens in a new tab)</span>
-        </a>
+        <div className="mb-3 flex flex-wrap items-center justify-center gap-x-2 gap-y-1">
+          {[
+            { href: TELEGRAM_CHANNEL_URL, label: 'Follow us on Telegram', Icon: Send },
+            ...(botShown ? [{ href: TELEGRAM_BOT_URL, label: 'Essay checker bot', Icon: Bot }] : []),
+          ].map(({ href, label, Icon }) => (
+            <a
+              key={href}
+              href={href}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="group inline-flex items-center gap-2 rounded-lg px-3 py-1.5 text-sm font-medium text-white/70 no-underline transition-colors hover:bg-white/[0.06] hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-400"
+            >
+              <Icon size={15} aria-hidden="true" />
+              {label}
+              <ArrowUpRight size={14} className="opacity-60 transition-opacity group-hover:opacity-100" aria-hidden="true" />
+              <span className="sr-only">(opens in a new tab)</span>
+            </a>
+          ))}
+        </div>
         <nav aria-label="Legal" className="mb-3 flex flex-wrap items-center justify-center gap-x-4 gap-y-1 text-[0.8125rem]">
           <Link to="/faq" className="rounded text-white/60 no-underline hover:text-white hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-400">
             FAQ

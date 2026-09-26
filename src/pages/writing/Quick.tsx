@@ -1,6 +1,7 @@
 import {
   useState,
   useEffect,
+  useMemo,
   useRef,
   type PointerEvent,
   type CSSProperties,
@@ -16,6 +17,8 @@ import WritingTask1Preview from "@/components/writingTask1Preview/WritingTask1Pr
 import { NavLink, useNavigate } from "react-router";
 import { useAuth } from "@/hooks/useAuth";
 import { useUnsavedWork } from "@/hooks/useUnsavedWork";
+import { useDraft } from "@/hooks/useDraft";
+import { DraftRestoredNotice } from "@/components/ui/DraftRestoredNotice";
 import { Button } from "@/components/ui/Button";
 import WritingTask2Preview from "@/components/writingTask2Preview/WritingTask2Preview";
 import { encodeReport } from "@/lib/reportEncoding";
@@ -123,6 +126,32 @@ function Quick() {
     if (selectedTaskType !== null) setTimerRunning(true);
   }, [selectedTaskType]);
 
+  // The essay as it stands, kept in this browser, so a page the browser
+  // reloads (a laptop waking from sleep) opens with it (src/hooks/useDraft.ts).
+  const draftValue = useMemo(
+    () => ({ selectedTaskType, task1, task2, userText }),
+    [selectedTaskType, task1, task2, userText],
+  );
+  const draft = useDraft({
+    page: "quick",
+    uid: user?.uid,
+    value: draftValue,
+    ready: Boolean(user) && !loading,
+    isEmpty: (d) => !d.userText?.trim(),
+    restore: (d) => {
+      if (typeof d.task1?.report === "string") setTask1(d.task1);
+      if (typeof d.task2?.report === "string") setTask2(d.task2);
+      setUserText(typeof d.userText === "string" ? d.userText : "");
+      setSelectedTaskType(d.selectedTaskType === 1 || d.selectedTaskType === 2 ? d.selectedTaskType : null);
+    },
+  });
+
+  const startOver = () => {
+    draft.clear();
+    setUserText("");
+    setSelectedTaskType(null);
+  };
+
   const handleGetAnother = () => {
     setUserText("");
     if (selectedTaskType === 1) setTask1(task1BagRef.current.next());
@@ -182,6 +211,8 @@ function Quick() {
           ? { task1, task2: null, userText1: userText, userText2: "" }
           : { task1: null, task2, userText1: "", userText2: userText }
       );
+      // The essay goes with the report from here, and is saved there.
+      draft.clear();
       navigate(`/feedback/${encoded}`);
     } catch (err) {
       console.error(err);
@@ -573,6 +604,7 @@ function Quick() {
           {humanCheck.error}
         </div>
       )}
+      <DraftRestoredNotice savedAt={draft.restoredAt} onStartOver={startOver} onDismiss={draft.dismiss} />
     </div>
   );
 }

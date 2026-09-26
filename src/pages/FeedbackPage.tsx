@@ -243,7 +243,7 @@ function FreeReportNotice({ onGetFull }: { onGetFull?: () => void }) {
         <span className="inline-flex items-center justify-center w-7 h-7 rounded-lg bg-[var(--ink-blue)]/10">
           <Lock className="w-4 h-4 text-[var(--ink-blue)]" />
         </span>
-        Your free weekly report is the band score
+        Your free report is the band score
       </p>
       <p className="mt-3 text-[0.9375rem] leading-relaxed text-[var(--text-secondary)]">
         The four criteria above are marked against the official IELTS band descriptors, the same way a

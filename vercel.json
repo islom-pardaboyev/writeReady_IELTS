@@ -5,6 +5,7 @@
     { "source": "/api/telegram", "destination": "/api/combined?route=telegram" },
     { "source": "/api/bot-link", "destination": "/api/combined?route=bot-link" },
     { "source": "/api/bot-daily", "destination": "/api/combined?route=bot-daily" },
+    { "source": "/api/bot-broadcast", "destination": "/api/combined?route=bot-broadcast" },
     { "source": "/api/(.*)", "destination": "/api/$1" },
 
     { "source": "/", "destination": "/index.html" },

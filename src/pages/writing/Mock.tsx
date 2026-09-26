@@ -1,6 +1,7 @@
 import {
   useState,
   useEffect,
+  useMemo,
   useRef,
   type PointerEvent,
   type CSSProperties,
@@ -16,6 +17,8 @@ import WritingTask1Preview from "@/components/writingTask1Preview/WritingTask1Pr
 import { NavLink, useNavigate } from "react-router";
 import { useAuth } from "@/hooks/useAuth";
 import { useUnsavedWork } from "@/hooks/useUnsavedWork";
+import { useDraft } from "@/hooks/useDraft";
+import { DraftRestoredNotice } from "@/components/ui/DraftRestoredNotice";
 import { Button } from "@/components/ui/Button";
 import WritingTask2Preview from "@/components/writingTask2Preview/WritingTask2Preview";
 import { encodeReport } from "@/lib/reportEncoding";
@@ -143,6 +146,47 @@ function Mock() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [timeLeft]);
 
+  // The exam as it stands, kept in this browser, so a page the browser
+  // reloads (a laptop waking from sleep) opens with it (src/hooks/useDraft.ts).
+  const draftValue = useMemo(
+    () => ({ task1, task2, userText1, userText2, activeTask, timeLeft }),
+    [task1, task2, userText1, userText2, activeTask, timeLeft],
+  );
+  const draft = useDraft({
+    page: "mock",
+    uid: user?.uid,
+    value: draftValue,
+    ready: Boolean(user) && !loading,
+    isEmpty: (d) => !d.userText1?.trim() && !d.userText2?.trim(),
+    restore: (d) => {
+      if (typeof d.task1?.report === "string") setTask1(d.task1);
+      if (typeof d.task2?.report === "string") setTask2(d.task2);
+      setUserText1(typeof d.userText1 === "string" ? d.userText1 : "");
+      setUserText2(typeof d.userText2 === "string" ? d.userText2 : "");
+      setActiveTask(d.activeTask === 2 ? 2 : 1);
+      const left = typeof d.timeLeft === "number" ? Math.max(0, Math.min(TIMER_SECONDS, Math.floor(d.timeLeft))) : TIMER_SECONDS;
+      if (left === 0) {
+        // Its time ran out before, and it was handed in then: show it ended,
+        // without downloading it a second time.
+        autoSubmitRef.current = true;
+        setAutoSubmittedByTimer(true);
+      }
+      setTimeLeft(left);
+    },
+  });
+
+  const startOver = () => {
+    draft.clear();
+    setUserText1("");
+    setUserText2("");
+    setActiveTask(1);
+    if (task1List.length) setTask1(task1BagRef.current.next());
+    if (task2List.length) setTask2(task2BagRef.current.next());
+    autoSubmitRef.current = false;
+    setAutoSubmittedByTimer(false);
+    setTimeLeft(TIMER_SECONDS);
+  };
+
   const activeText = activeTask === 1 ? userText1 : userText2;
 
   // A mock has two tasks, and one report marks one essay. If a student wrote
@@ -246,6 +290,8 @@ function Mock() {
       }
 
       const encoded = encodeReport({ task1, task2, userText1, userText2 });
+      // The essay goes with the report from here, and is saved there.
+      draft.clear();
       navigate(`/feedback/${encoded}`);
     } catch (err) {
       console.error("Failed to verify account/subscription status:", err);
@@ -748,6 +794,7 @@ function Mock() {
           {humanCheck.error}
         </div>
       )}
+      <DraftRestoredNotice savedAt={draft.restoredAt} onStartOver={startOver} onDismiss={draft.dismiss} />
     </div>
   );
 }

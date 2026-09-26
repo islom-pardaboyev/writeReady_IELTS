@@ -12,6 +12,7 @@ import { getRecentFeedbackReports, type FeedbackReport } from '../firebase/fires
 import { getHumanReviewsForStudent } from '../firebase/teachers';
 import type { HumanReview } from '../types';
 import { ProgressSection } from '../components/ui/ProgressSection';
+import { TelegramBotCard } from '../components/ui/TelegramBotCard';
 import { doc, updateDoc } from 'firebase/firestore';
 import { hasFreeReportThisWeek } from '../lib/weeklyFree';
 import { db } from '../firebase/config';
@@ -334,6 +335,8 @@ export function DashboardPage() {
               </button>
             ))}
           </div>
+
+          <TelegramBotCard paidPlan={isPaidPlan} />
 
           {/* Progress Section */}
           {user?.uid && <ProgressSection uid={user.uid} />}
