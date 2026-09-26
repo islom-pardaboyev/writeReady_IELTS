@@ -122,7 +122,9 @@ async function deliver(chatId: number, post: Post, upload?: Upload | null): Prom
   const common = { chat_id: chatId, parse_mode: 'HTML', reply_markup: keyboard(post.button) };
   if (upload) {
     const message = await tgUpload<{ photo?: { file_id: string }[] }>('sendPhoto', { ...common, caption: post.html || undefined }, upload);
-    return message.photo?.at(-1)?.file_id ?? null;
+    // The last size is the biggest. (Index, not .at(): Vercel type-checks api/ against an older library.)
+    const sizes = message.photo ?? [];
+    return sizes[sizes.length - 1]?.file_id ?? null;
   }
   if (post.photoFileId) {
     await tg('sendPhoto', { ...common, photo: post.photoFileId, caption: post.html || undefined });
