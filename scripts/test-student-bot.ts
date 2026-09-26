@@ -536,6 +536,38 @@ check("the site's numbers too", stats.accounts === table('users').size && stats.
 await tap(900, 'admin');
 check('refresh shows it again', lastText(900).includes('🛠 <b>Admin</b>'));
 
+console.log('\nPausing checks (Admin -> Telegram bot -> Essay checks)');
+const setPaused = (paused: boolean) => { table('config').set('featureFlags', { botChecksPaused: paused }); bot.forgetCachedFlags(); };
+setPaused(true);
+await say(950, '/start');
+const marksBeforePause = markCalls;
+await tap(950, 'check');
+check('while paused, starting a check says so', lastText(950).includes('paused for now') && botUser(950)?.step === 'idle');
+check('with the daily word and a way to contact the team', buttonsOf(messages(950).at(-1)).some((b) => b.callback_data === 'word') && buttonsOf(messages(950).at(-1)).some((b) => b.url === bot.CONTACT_URL));
+setPaused(false);
+await submitEssay(950);
+setPaused(true);
+await tap(950, 'go');
+check('an essay sent before the pause is kept, and nothing is spent or marked', lastText(950).includes('paused for now') && botUser(950)?.step === 'essay' && botUser(950)?.essay === ESSAY && botUser(950)?.freeCheckAt == null && markCalls === marksBeforePause);
+table(bot.BOT_USERS).set('951', { telegramId: '951', chatId: 951, createdAt: 0, lastUpdateId: 0, step: 'idle', remindAt: Date.now() - 1000, freeCheckAt: Date.now() - 15 * DAY });
+sent = [];
+const whilePaused = await bot.sendReminders();
+check('the "free check is back" messages wait while paused', whilePaused.sent === 0 && messages(951).length === 0 && typeof botUser(951)?.remindAt === 'number');
+await say(900, '/admin');
+check('/admin shows that checks are paused', lastText(900).includes('Essay checks: <b>⏸ paused</b>'));
+setPaused(false);
+await tap(950, 'go');
+check('turned back on, the kept essay is checked', lastText(950).includes('Estimated band') && markCalls === marksBeforePause + 1);
+await bot.sendReminders();
+check('and the waiting message goes out', lastText(951).includes('Your free check is back'));
+table('config').set('featureFlags', { botChecksPaused: true });
+check('the switch is kept for half a minute, so a busy bot reads it rarely', (await bot.checksOpen()) === true);
+bot.forgetCachedFlags();
+check('then read again', (await bot.checksOpen()) === false);
+table('config').delete('featureFlags');
+bot.forgetCachedFlags();
+check('with the switch never set, checks are on', (await bot.checksOpen()) === true);
+
 console.log('\nDaily word');
 await tap(101, 'word');
 check('the settings offer every hour from 06:00 to 23:00', buttonsOf(messages(101).at(-1)).filter((b) => b.callback_data?.startsWith('hour:')).length === 18);

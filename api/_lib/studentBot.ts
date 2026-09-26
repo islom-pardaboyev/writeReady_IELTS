@@ -654,7 +654,47 @@ async function setAnnouncements(user: BotUser, on: boolean): Promise<void> {
 
 // ── Checking an essay ────────────────────────────────────────────────────────
 
+// ── Pausing checks ───────────────────────────────────────────────────────────
+
+/** How long a server keeps the admin's switch before reading it again. */
+const FLAGS_TTL_MS = 30_000;
+let checksFlag: { paused: boolean; at: number } | null = null;
+
+/**
+ * Admin -> Telegram bot -> Essay checks. False while the admin has paused them
+ * (config/featureFlags.botChecksPaused). Kept for half a minute, so a busy bot
+ * reads it about twice a minute at most. If it cannot be read, checks go on:
+ * the switch is for saving money, not for safety.
+ */
+export async function checksOpen(now = Date.now()): Promise<boolean> {
+  if (checksFlag && Math.abs(now - checksFlag.at) < FLAGS_TTL_MS) return !checksFlag.paused;
+  try {
+    const flags = await db().collection('config').doc('featureFlags').get();
+    checksFlag = { paused: flags.data()?.botChecksPaused === true, at: now };
+  } catch (e) {
+    console.error('bot: could not read whether checks are paused:', e);
+    return checksFlag ? !checksFlag.paused : true;
+  }
+  return !checksFlag.paused;
+}
+
+/** For scripts/test-student-bot.ts: forget the switch, so the next check reads it. */
+export function forgetCachedFlags(): void {
+  checksFlag = null;
+}
+
+async function checksPaused(user: BotUser): Promise<void> {
+  await send(
+    user.chatId,
+    '⏸ <b>Essay checks are paused for now.</b>\n\n' +
+      'The WriteReady team has turned them off for a while. Nothing was taken from your free checks, and anything you already sent is kept.\n\n' +
+      'Your daily word, /account and invites work as usual.',
+    [[{ text: '📚 Daily word', data: 'word' }], [{ text: '💬 Contact us', url: CONTACT_URL }]],
+  );
+}
+
 async function startCheck(user: BotUser): Promise<void> {
+  if (!(await checksOpen())) return checksPaused(user);
   const left = await allowance(user);
   if (left.free + left.bonus === 0) return noChecksLeft(user, left);
   await userRef(user.telegramId).set({ step: 'question', question: '', essay: '' }, { merge: true });
@@ -697,6 +737,8 @@ async function takeEssay(user: BotUser, text: string): Promise<void> {
 }
 
 async function runCheck(user: BotUser, deps: BotDeps): Promise<void> {
+  // Paused after the student started: the essay stays, for when checks are back.
+  if (!(await checksOpen())) return checksPaused(user);
   const ref = userRef(user.telegramId);
   // Only one check at a time: a second tap on the button, or Telegram
   // delivering it twice, finds the check already running and stops here.
@@ -1023,7 +1065,8 @@ async function adminPanel(user: BotUser): Promise<void> {
       `Failed checks today: ${num(n.failedToday)}\n` +
       `AI cost of checks: about ${num(n.checksToday * CHECK_COST_SOM)} so'm today, ${num(n.checksWeek * CHECK_COST_SOM)} so'm in 7 days\n` +
       `Daily word on: ${num(n.wordOn)}\n` +
-      `Unopened links: ${num(n.linksWaiting)}\n\n` +
+      `Unopened links: ${num(n.linksWaiting)}\n` +
+      `Essay checks: <b>${(await checksOpen()) ? 'on' : '⏸ paused'}</b>\n\n` +
       '<b>Site</b>\n' +
       `Accounts: <b>${orQ(n.accounts)}</b> (+${orQ(n.accountsToday)} today)\n` +
       `Reports today: ${orQ(n.reportsToday)}\n` +
@@ -1225,6 +1268,8 @@ export async function sendDailyWords(hour: number, now = new Date()): Promise<{ 
  * so it only goes out between 06:00 and 23:59 Tashkent time.
  */
 export async function sendReminders(now = Date.now()): Promise<{ sent: number; stopped: number }> {
+  // Not while checks are paused: the reminders wait, and go out once they are back.
+  if (!(await checksOpen(now))) return { sent: 0, stopped: 0 };
   const snap = await db().collection(BOT_USERS).where('remindAt', '<=', now).get();
   let sent = 0;
   let stopped = 0;

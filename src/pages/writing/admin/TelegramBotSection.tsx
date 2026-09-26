@@ -1,5 +1,5 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
-import { BellOff, Eye, ImagePlus, Megaphone, Send, X } from "lucide-react";
+import { useCallback, useEffect, useMemo, useState, type ReactNode } from "react";
+import { BellOff, Eye, ImagePlus, Megaphone, PenLine, Send, X, type LucideIcon } from "lucide-react";
 import { adminAuth, adminDb } from "@/firebase/adminConfig";
 import { getFeatureFlag, setFeatureFlag } from "@/hooks/useFeatureFlag";
 import { useConfirm } from "@/hooks/useConfirm";
@@ -145,56 +145,70 @@ function PostPreview({ text, photo, button }: { text: string; photo: Photo | nul
 }
 
 /**
- * Whether the site shows the bot: the home page and footer links, the sidebar
- * link and the dashboard card (useShowTelegramBot). Off until the admin is
- * ready to announce it. Visitors get it with the maintenance status
- * (api/maintenance.ts), so it costs them no extra read.
+ * One of the bot's on/off switches, kept in config/featureFlags like the
+ * site's other switches. `invert` is for a field that means "off" when true
+ * (botChecksPaused), so an unset field is "on".
  */
-function ShowOnSite() {
-  const [shown, setShown] = useState<boolean | null>(null);
+function BotSwitch({
+  flag,
+  invert = false,
+  icon: Icon,
+  title,
+  label,
+  describe,
+}: {
+  flag: "showTelegramBot" | "botChecksPaused";
+  invert?: boolean;
+  icon: LucideIcon;
+  title: string;
+  label: string;
+  describe: (on: boolean) => ReactNode;
+}) {
+  const [on, setOn] = useState<boolean | null>(null);
   const [error, setError] = useState("");
 
   useEffect(() => {
-    getFeatureFlag("showTelegramBot", adminDb)
-      .then(setShown)
+    getFeatureFlag(flag, adminDb)
+      .then((value) => setOn(invert ? !value : value))
       .catch((e) => {
         console.error(e);
         setError("Could not read this switch. Reload the page to try again.");
       });
-  }, []);
+  }, [flag, invert]);
 
   const toggle = async (next: boolean) => {
-    setShown(next);
+    setOn(next);
     setError("");
     try {
-      await setFeatureFlag("showTelegramBot", next, adminDb);
+      await setFeatureFlag(flag, invert ? !next : next, adminDb);
     } catch (e) {
       console.error(e);
-      setShown(!next);
+      setOn(!next);
       setError("Could not change it. Try again.");
     }
   };
 
   return (
-    <section className="mb-6 rounded-xl border border-[var(--border-color)] bg-[var(--bg-card)]">
+    <section className="rounded-xl border border-[var(--border-color)] bg-[var(--bg-card)]">
       <header className="flex flex-wrap items-start justify-between gap-4 px-5 py-4">
         <div className="flex min-w-0 items-start gap-3">
           <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-[var(--bg-subtle)] text-[var(--text-secondary)]">
-            <Eye size={18} aria-hidden="true" />
+            <Icon size={18} aria-hidden="true" />
           </span>
           <div className="min-w-0">
-            <h2 className="text-sm font-semibold text-[var(--text-primary)]">Show the bot on the site</h2>
-            <p className="mt-0.5 max-w-[70ch] text-sm text-[var(--text-secondary)]">
-              {shown
-                ? "On: the home page, the footer, the sidebar and the dashboard link to the bot."
-                : "Off: the site does not mention the bot anywhere."}{" "}
-              The bot works either way for anyone who already has it. Visitors see the change the next time they open the site.
-              To look before turning it on, add <code className="font-mono text-xs">?preview=telegramBot</code> to the site's address.
-            </p>
-            {error && <p role="alert" className="mt-1 text-sm text-red-600 dark:text-red-400">{error}</p>}
+            <h2 className="text-sm font-semibold text-[var(--text-primary)]">{title}</h2>
+            {/* Until the setting is known, say so rather than describe a state that may be wrong. */}
+            {error ? (
+              <p role="alert" className="mt-0.5 text-sm text-red-600 dark:text-red-400">{error}</p>
+            ) : (
+              <p className="mt-0.5 max-w-[70ch] text-sm text-[var(--text-secondary)]">
+                {on === null ? "Checking the current setting…" : describe(on)}
+              </p>
+            )}
           </div>
         </div>
-        <Switch checked={shown === true} onChange={toggle} disabled={shown === null} label="Show the Telegram bot on the site" />
+        {/* Locked until the current setting is known, so it is never flipped blind. */}
+        <Switch checked={on === true} onChange={toggle} disabled={on === null} label={label} />
       </header>
     </section>
   );
@@ -352,7 +366,41 @@ export function TelegramBotSection() {
         }
       />
 
-      <ShowOnSite />
+      <div className="mb-6 grid gap-4 lg:grid-cols-2">
+        {/* Whether the site shows the bot (useShowTelegramBot); visitors get it
+            with the maintenance status (api/maintenance.ts), no extra read. */}
+        <BotSwitch
+          flag="showTelegramBot"
+          icon={Eye}
+          title="Show the bot on the site"
+          label="Show the Telegram bot on the site"
+          describe={(on) => (
+            <>
+              {on
+                ? "On: the home page, the footer, the sidebar and the dashboard link to the bot."
+                : "Off: the site does not mention the bot anywhere."}{" "}
+              The bot works either way for anyone who already has it. Visitors see the change the next time they open the site.
+              To look first, add <code className="font-mono text-xs">?preview=telegramBot</code> to the site's address.
+            </>
+          )}
+        />
+        {/* Whether students can check essays in the bot (checksOpen in api/_lib/studentBot.ts). */}
+        <BotSwitch
+          flag="botChecksPaused"
+          invert
+          icon={PenLine}
+          title="Essay checks in the bot"
+          label="Let students check essays in the bot"
+          describe={(on) => (
+            <>
+              {on
+                ? "On: students can check essays in the bot."
+                : "Off: a student who tries is told checks are paused for now. Nothing is taken from their free checks, and the \"your free check is back\" messages wait until checks are on again."}{" "}
+              The daily word, /account, invites and posts keep working. Takes effect within a minute.
+            </>
+          )}
+        />
+      </div>
 
       {loadFailed ? (
         <LoadError what="the bot's numbers" onRetry={load} className="mb-6" />

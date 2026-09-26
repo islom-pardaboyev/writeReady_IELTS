@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { doc, getDoc, setDoc, type Firestore } from 'firebase/firestore';
 import { db } from '../firebase/config';
 
-export type FeatureFlagKey = 'humanCheck' | 'showTelegramBot';
+export type FeatureFlagKey = 'humanCheck' | 'showTelegramBot' | 'botChecksPaused';
 
 export async function getFeatureFlag(key: FeatureFlagKey, dbInstance: Firestore = db): Promise<boolean> {
   const snap = await getDoc(doc(dbInstance, 'config', 'featureFlags'));
