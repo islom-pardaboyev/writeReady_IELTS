@@ -536,6 +536,22 @@ check("the site's numbers too", stats.accounts === table('users').size && stats.
 await tap(900, 'admin');
 check('refresh shows it again', lastText(900).includes('🛠 <b>Admin</b>'));
 
+console.log('\nThe students list (admin panel)');
+await bot.handleUpdate({ update_id: ++updateId, message: { chat: { id: 960, type: 'private' }, from: { id: 960, first_name: 'Aziz', username: 'aziz_ielts' }, text: '/start' } }, deps);
+check('the bot keeps the @username and when they were last active', botUser(960)?.username === 'aziz_ielts' && Date.now() - (botUser(960)?.lastSeenAt ?? 0) < 5000);
+const roster = await bot.listBotStudents();
+const everyStudent = [...table(bot.BOT_USERS).values()];
+check('the list has every student, newest first', roster.students.length === everyStudent.length && !roster.more && roster.students.every((st, i, a) => i === 0 || a[i - 1].joinedAt >= st.joinedAt));
+const aziz = roster.students.find((st) => st.telegramId === '960');
+check('with name, @username, and whether a free check is ready', aziz?.name === 'Aziz' && aziz.username === 'aziz_ielts' && aziz.freeReady === true && aziz.freeRule === 'two-weeks' && aziz.connected === false && aziz.email === null);
+const withPlan = roster.students.find((st) => st.telegramId === '301');
+check('a connected student shows their Gmail and plan', withPlan?.email === 'c@example.com' && withPlan.plan === 'Standard' && withPlan.freeRule === 'weekly-plan' && withPlan.connected === true);
+const wordStudent = roster.students.find((st) => st.telegramId === '101');
+check('and their message settings', typeof wordStudent?.reminders === 'boolean' && typeof wordStudent?.announcements === 'boolean' && (wordStudent?.wordHour === null || typeof wordStudent?.wordHour === 'number'));
+const page1 = await bot.listBotStudents({ limit: 3 });
+const page2 = await bot.listBotStudents({ limit: 3, before: page1.students[2].joinedAt });
+check('it comes a page at a time', page1.students.length === 3 && page1.more && page2.students.length > 0 && page2.students.every((st) => st.joinedAt < page1.students[2].joinedAt));
+
 console.log('\nPausing checks (Admin -> Telegram bot -> Essay checks)');
 const setPaused = (paused: boolean) => { table('config').set('featureFlags', { botChecksPaused: paused }); bot.forgetCachedFlags(); };
 setPaused(true);

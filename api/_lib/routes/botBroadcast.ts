@@ -4,6 +4,7 @@ import { initFirebase } from '../shared.js';
 import {
   BroadcastError, audience, readPhoto, readPost, recentBroadcasts, runBroadcast, sendTest, startBroadcast,
 } from '../broadcast.js';
+import { listBotStudents } from '../studentBot.js';
 
 /**
  * The admin panel's Telegram bot section (src/pages/writing/admin/TelegramBotSection.tsx):
@@ -16,6 +17,7 @@ import {
  *   test      send the post to the admin's own Telegram; uploads its picture
  *   send      record the post and send it to everyone, streaming progress
  *   continue  carry on a post that paused, streaming progress
+ *   students  the bot's students, newest first ({ before } for the next page)
  */
 const ADMIN_EMAIL = 'admin@writeready.internal';
 /** How long one request sends before pausing; the function may run 300 s (vercel.json). */
@@ -81,6 +83,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       }
       case 'continue':
         return streamRun(res, String(body.id ?? ''));
+      case 'students':
+        return res.status(200).json(await listBotStudents({
+          before: typeof body.before === 'number' ? body.before : undefined,
+        }));
       default:
         return res.status(400).json({ error: 'Unknown action.' });
     }

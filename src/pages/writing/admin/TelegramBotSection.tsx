@@ -1,12 +1,13 @@
-import { useCallback, useEffect, useMemo, useState, type ReactNode } from "react";
-import { BellOff, Eye, ImagePlus, Megaphone, PenLine, Send, X, type LucideIcon } from "lucide-react";
+import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import { BellOff, Eye, ImagePlus, Megaphone, PenLine, Send, Users, X, type LucideIcon } from "lucide-react";
 import { adminAuth, adminDb } from "@/firebase/adminConfig";
 import { getFeatureFlag, setFeatureFlag } from "@/hooks/useFeatureFlag";
 import { useConfirm } from "@/hooks/useConfirm";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { EmptyState, Field, FileButton, LoadError, Notice, PageHeading, Panel, StatStrip, Switch } from "@/components/staff/parts";
+import { EmptyState, Field, FileButton, FilterChips, LoadError, Notice, PageHeading, Panel, RowSkeletons, SearchField, StatStrip, Switch } from "@/components/staff/parts";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { CAPTION_LIMIT, TEXT_LIMIT, postLength, postProblem, postToHtml } from "@shared/telegramText";
 import { TELEGRAM_BOT_URL } from "@/lib/links";
 import { timeAgo } from "./format";
@@ -214,6 +215,223 @@ function BotSwitch({
   );
 }
 
+/** One student, as api/_lib/studentBot.ts listBotStudents sends it. */
+interface BotStudent {
+  telegramId: string;
+  name: string;
+  username: string;
+  joinedAt: number;
+  lastSeenAt: number | null;
+  email: string | null;
+  plan: string | null;
+  connected: boolean;
+  checks: number;
+  freeReady: boolean;
+  nextFreeAt: number | null;
+  freeRule: "two-weeks" | "weekly-site" | "weekly-plan";
+  extraChecks: number;
+  invitesThisMonth: number;
+  invited: boolean;
+  wordHour: number | null;
+  reminders: boolean;
+  announcements: boolean;
+  blocked: boolean;
+  writing: boolean;
+}
+
+type StudentFilter = "all" | "connected" | "not-connected" | "word" | "blocked";
+
+const shortDate = (ms: number) => new Date(ms).toLocaleDateString("en-GB", { day: "numeric", month: "short" });
+const FREE_RULE: Record<BotStudent["freeRule"], string> = {
+  "two-weeks": "1 every 2 weeks",
+  "weekly-site": "1 a week, shared with the site",
+  "weekly-plan": "1 a week, on top of the plan",
+};
+
+function Muted({ children }: { children: ReactNode }) {
+  return <span className="block text-xs text-[var(--text-secondary)]">{children}</span>;
+}
+
+/**
+ * Everyone who uses the bot, newest first, with their site account, what they
+ * did, their free checks and their message settings. Loaded once when the
+ * section opens (a read per student), more on request.
+ */
+function StudentsPanel() {
+  const [students, setStudents] = useState<BotStudent[]>([]);
+  const [more, setMore] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [failed, setFailed] = useState(false);
+  const [search, setSearch] = useState("");
+  const [filter, setFilter] = useState<StudentFilter>("all");
+  const searchRef = useRef<HTMLInputElement>(null);
+
+  const load = useCallback(async (before?: number) => {
+    setLoading(true);
+    setFailed(false);
+    try {
+      const res = await api({ action: "students", before });
+      if (!res.ok) throw new Error(await errorOf(res));
+      const data = (await res.json()) as { students: BotStudent[]; more: boolean };
+      setStudents((list) => (before === undefined ? data.students : [...list, ...data.students]));
+      setMore(data.more);
+    } catch (e) {
+      console.error(e);
+      setFailed(true);
+    }
+    setLoading(false);
+  }, []);
+
+  useEffect(() => { load(); }, [load]);
+
+  const counts = useMemo(() => ({
+    all: students.length,
+    connected: students.filter((s) => s.connected).length,
+    "not-connected": students.filter((s) => !s.connected).length,
+    word: students.filter((s) => s.wordHour !== null).length,
+    blocked: students.filter((s) => s.blocked).length,
+  }), [students]);
+
+  const shown = useMemo(() => {
+    const q = search.trim().toLowerCase().replace(/^@/, "");
+    return students.filter((s) => {
+      if (filter === "connected" && !s.connected) return false;
+      if (filter === "not-connected" && s.connected) return false;
+      if (filter === "word" && s.wordHour === null) return false;
+      if (filter === "blocked" && !s.blocked) return false;
+      if (!q) return true;
+      return [s.name, s.username, s.email ?? "", s.telegramId].some((v) => v.toLowerCase().includes(q));
+    });
+  }, [students, search, filter]);
+
+  return (
+    <Panel
+      title="Students"
+      description={loading && !students.length ? "Loading…" : `${num(students.length)}${more ? "+" : ""} students use the bot, newest first.`}
+      className="mb-6"
+      bodyClassName="px-0 pb-0"
+    >
+      <div className="flex flex-col gap-3 px-5 pb-4 sm:flex-row sm:items-center sm:justify-between">
+        <div className="sm:w-72">
+          <SearchField value={search} onChange={setSearch} placeholder="Name, @username, email or ID" label="Search students" inputRef={searchRef} />
+        </div>
+        <FilterChips
+          label="Show"
+          value={filter}
+          onChange={setFilter}
+          options={[
+            { id: "all", label: "All", count: counts.all },
+            { id: "connected", label: "Connected", count: counts.connected },
+            { id: "not-connected", label: "Not connected", count: counts["not-connected"] },
+            { id: "word", label: "Daily word on", count: counts.word },
+            { id: "blocked", label: "Blocked the bot", count: counts.blocked },
+          ]}
+        />
+      </div>
+
+      {failed ? (
+        <LoadError what="the students" onRetry={() => load()} className="mx-5 mb-5" />
+      ) : loading && !students.length ? (
+        <RowSkeletons rows={4} />
+      ) : !shown.length ? (
+        <EmptyState icon={Users} title={students.length ? "No students match" : "No students yet"}>
+          {students.length ? "Try another search or filter." : "Students show here once they start the bot."}
+        </EmptyState>
+      ) : (
+        <div className="max-h-[560px] overflow-y-auto border-t border-[var(--border-color)]">
+          <Table className="[&_td]:px-3 [&_td]:py-3 [&_th]:px-3">
+            <TableHeader>
+              <TableRow className="hover:bg-transparent [&>th]:whitespace-nowrap">
+                <TableHead>Student</TableHead>
+                <TableHead>Site account</TableHead>
+                <TableHead>Essays</TableHead>
+                <TableHead>Free check</TableHead>
+                <TableHead>Daily word</TableHead>
+                <TableHead>Messages</TableHead>
+                <TableHead>Active</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {shown.map((s) => (
+                <TableRow key={s.telegramId} className="align-top">
+                  <TableCell className="min-w-[160px] align-top">
+                    <span className="block font-medium text-[var(--text-primary)]">{s.name || "No name"}</span>
+                    {s.username && (
+                      <a
+                        href={`https://t.me/${s.username}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="block text-xs text-[var(--ink-blue)] underline-offset-4 hover:underline"
+                      >
+                        @{s.username}
+                        <span className="sr-only"> (opens in Telegram)</span>
+                      </a>
+                    )}
+                    <Muted>ID {s.telegramId}</Muted>
+                    {s.blocked && <span className="mt-1 inline-block rounded-full bg-red-50 px-2 py-0.5 text-xs font-medium text-red-700 dark:bg-red-950/40 dark:text-red-300">Blocked the bot</span>}
+                    {s.writing && !s.blocked && <Muted>Writing an essay now</Muted>}
+                  </TableCell>
+                  <TableCell className="min-w-[200px] align-top">
+                    {s.connected ? (
+                      <>
+                        <span className="block text-[var(--text-primary)] [overflow-wrap:anywhere]">{s.email ?? "Account not set up yet"}</span>
+                        <Muted>{s.plan ? `${s.plan} plan` : "Free plan"}</Muted>
+                      </>
+                    ) : (
+                      <span className="text-[var(--text-secondary)]">Not connected</span>
+                    )}
+                  </TableCell>
+                  <TableCell className="min-w-[120px] align-top tabular-nums">
+                    <span className="block whitespace-nowrap text-[var(--text-primary)]">{num(s.checks)} checked</span>
+                    {s.invitesThisMonth > 0 && <Muted>Invited {s.invitesThisMonth} this month</Muted>}
+                    {s.invited && <Muted>Came by invite</Muted>}
+                  </TableCell>
+                  <TableCell className="min-w-[150px] align-top">
+                    {s.freeReady ? (
+                      <span className="block font-medium text-emerald-700 dark:text-emerald-400">Ready</span>
+                    ) : (
+                      <span className="block text-[var(--text-primary)]">Next {s.nextFreeAt ? shortDate(s.nextFreeAt) : "—"}</span>
+                    )}
+                    <Muted>{FREE_RULE[s.freeRule]}</Muted>
+                    {s.extraChecks > 0 && <Muted>+{s.extraChecks} extra from invites</Muted>}
+                  </TableCell>
+                  <TableCell className="align-top tabular-nums">
+                    {s.wordHour === null ? (
+                      <span className="text-[var(--text-secondary)]">Off</span>
+                    ) : (
+                      <span className="text-[var(--text-primary)]">{String(s.wordHour).padStart(2, "0")}:00</span>
+                    )}
+                  </TableCell>
+                  <TableCell className="min-w-[140px] align-top">
+                    <Muted>Free check back: {s.reminders ? "on" : "off"}</Muted>
+                    <Muted>Your posts: {s.announcements ? "on" : "off"}</Muted>
+                  </TableCell>
+                  <TableCell className="min-w-[120px] align-top">
+                    <span className="block whitespace-nowrap text-[var(--text-primary)]">{s.lastSeenAt ? timeAgo(new Date(s.lastSeenAt)) : "—"}</span>
+                    <Muted>Joined {s.joinedAt ? timeAgo(new Date(s.joinedAt)) : "—"}</Muted>
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </div>
+      )}
+      {more && !failed && (
+        <div className="border-t border-[var(--border-color)] px-5 py-3">
+          <Button
+            variant="outline"
+            size="sm"
+            loading={loading}
+            onClick={() => load(students.length ? students[students.length - 1].joinedAt : undefined)}
+          >
+            Show more students
+          </Button>
+        </div>
+      )}
+    </Panel>
+  );
+}
+
 export function TelegramBotSection() {
   const { confirm, dialog } = useConfirm();
   const [audience, setAudience] = useState<Audience | null>(null);
@@ -415,6 +633,8 @@ export function TelegramBotSection() {
           ]}
         />
       )}
+
+      <StudentsPanel />
 
       <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_380px]">
         <Panel title="New post" description="Write it, send a test to yourself, then send it to everyone.">

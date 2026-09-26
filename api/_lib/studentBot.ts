@@ -63,6 +63,10 @@ export interface BotUser {
   telegramId: string;
   chatId: number;
   firstName?: string;
+  /** Their Telegram @username, if they have one. */
+  username?: string;
+  /** When they last wrote to the bot or pressed a button. */
+  lastSeenAt?: number;
   createdAt: number;
   /** The newest update handled, so one Telegram delivers twice is handled once. */
   lastUpdateId: number;
@@ -212,7 +216,7 @@ const CANCEL: Button[][] = [[{ text: 'Cancel', data: 'cancel' }]];
 
 // ── Updates ──────────────────────────────────────────────────────────────────
 
-interface TgUser { id: number; is_bot?: boolean; first_name?: string }
+interface TgUser { id: number; is_bot?: boolean; first_name?: string; username?: string }
 interface TgMessage { chat: { id: number; type: string }; from?: TgUser; text?: string }
 interface TgCallback { id: string; from: TgUser; data?: string; message?: { chat: { id: number } } }
 export interface TgUpdate { update_id: number; message?: TgMessage; callback_query?: TgCallback }
@@ -225,7 +229,9 @@ async function claim(updateId: number, from: TgUser, chatId: number): Promise<{ 
   const ref = userRef(String(from.id));
   return db().runTransaction(async (tx) => {
     const snap = await tx.get(ref);
-    const base = { chatId, firstName: from.first_name ?? '', lastUpdateId: updateId };
+    // Written with every update anyway, so the name, @username and last
+    // visit shown in the admin panel cost nothing extra.
+    const base = { chatId, firstName: from.first_name ?? '', username: from.username ?? '', lastSeenAt: Date.now(), lastUpdateId: updateId };
     if (!snap.exists) {
       const user: BotUser = { telegramId: String(from.id), createdAt: Date.now(), step: 'idle', ...base };
       tx.set(ref, user);
@@ -988,6 +994,88 @@ export async function openLink(
 }
 
 // ── Admin ────────────────────────────────────────────────────────────────────
+
+/** One student in the admin panel's list (src/pages/writing/admin/TelegramBotSection.tsx). */
+export interface BotStudent {
+  telegramId: string;
+  name: string;
+  username: string;
+  joinedAt: number;
+  lastSeenAt: number | null;
+  /** The connected site account, when there is one. */
+  email: string | null;
+  /** Plan name for a paid plan on the connected account; null for free or not connected. */
+  plan: string | null;
+  connected: boolean;
+  checks: number;
+  /** Free check ready now, or when the next one is. */
+  freeReady: boolean;
+  nextFreeAt: number | null;
+  /** How the free check comes: every 2 weeks (Telegram only), weekly with the site, or weekly on top of a plan. */
+  freeRule: 'two-weeks' | 'weekly-site' | 'weekly-plan';
+  extraChecks: number;
+  invitesThisMonth: number;
+  invited: boolean;
+  wordHour: number | null;
+  reminders: boolean;
+  announcements: boolean;
+  blocked: boolean;
+  /** In the middle of sending a question or essay. */
+  writing: boolean;
+}
+
+/**
+ * The bot's students, newest first, for the admin panel: `limit` at a time,
+ * and the next page from `before` (the joinedAt of the last one shown). One
+ * read per student, and one per connected site account.
+ */
+export async function listBotStudents({ limit = 300, before }: { limit?: number; before?: number } = {}): Promise<{
+  students: BotStudent[];
+  more: boolean;
+}> {
+  const size = Math.max(1, Math.min(500, Math.floor(limit)));
+  let q = db().collection(BOT_USERS).orderBy('createdAt', 'desc');
+  if (typeof before === 'number') q = q.where('createdAt', '<', before);
+  const snap = await q.limit(size + 1).get();
+  const docs = snap.docs.slice(0, size);
+  const users = docs.map((d) => d.data() as BotUser);
+
+  const uids = [...new Set(users.map((u) => u.uid).filter((uid): uid is string => Boolean(uid)))];
+  const accounts = new Map<string, Record<string, unknown> | null>();
+  await Promise.all(uids.map(async (uid) => {
+    const account = await db().collection('users').doc(uid).get().catch(() => null);
+    accounts.set(uid, account?.exists ? (account.data() ?? {}) : null);
+  }));
+
+  const monthKey = currentMonthKey();
+  const students = users.map((u): BotStudent => {
+    const account = u.uid ? accounts.get(u.uid) ?? null : null;
+    const a = allowanceOf(u, account);
+    return {
+      telegramId: u.telegramId,
+      name: u.firstName ?? '',
+      username: u.username ?? '',
+      joinedAt: u.createdAt ?? 0,
+      lastSeenAt: typeof u.lastSeenAt === 'number' ? u.lastSeenAt : null,
+      email: account && typeof account.email === 'string' ? account.email : null,
+      plan: a.plan?.name ?? null,
+      connected: Boolean(u.uid),
+      checks: u.checks ?? 0,
+      freeReady: a.free > 0,
+      nextFreeAt: a.nextFreeAt,
+      freeRule: a.plan ? 'weekly-plan' : a.shared ? 'weekly-site' : 'two-weeks',
+      extraChecks: a.bonus,
+      invitesThisMonth: u.referralMonth?.monthKey === monthKey ? u.referralMonth.count : 0,
+      invited: Boolean(u.referredBy),
+      wordHour: typeof u.wordHour === 'number' ? u.wordHour : null,
+      reminders: !u.remindersOff,
+      announcements: !u.announcementsOff,
+      blocked: u.blocked === true,
+      writing: u.step === 'question' || u.step === 'essay',
+    };
+  });
+  return { students, more: snap.docs.length > size };
+}
 
 /** Telegram user IDs allowed /admin: TELEGRAM_ADMIN_IDS in Vercel, comma separated. */
 export function adminIds(): string[] {
