@@ -6,6 +6,7 @@ import { LIMITS, essayKeys, loadScoreLock, saveScoreLock, type EssayKeys, type S
 import type { BandScores } from './bandScore.js';
 import { tg, esc, botUsername, webhookSecret, TelegramError } from './telegramApi.js';
 import { DAILY_WORDS } from './dailyWords.js';
+import { WRITING_TIPS } from './writingTips.js';
 
 /**
  * The student Telegram bot: the site's front door inside Telegram.
@@ -93,6 +94,8 @@ export interface BotUser {
   wordHour?: number | null;
   wordIndex?: number;
   lastWordDay?: string;
+  /** How far through WRITING_TIPS this student is; wraps around once they have had them all. */
+  tipIndex?: number;
   checks?: number;
   /** The student's one unused "See full feedback" link, if any. */
   linkCode?: string;
@@ -201,6 +204,7 @@ const userRef = (telegramId: string) => db().collection(BOT_USERS).doc(telegramI
 const MENU: Button[][] = [
   [{ text: '✍️ Check my essay', data: 'check' }],
   [{ text: '🎁 Invite friends', data: 'invite' }, { text: '📚 Daily word', data: 'word' }],
+  [{ text: '💡 Writing tips', data: 'tips' }],
   [{ text: '👤 My account', data: 'account' }, { text: '🌐 Open WriteReady', url: SITE }],
   [{ text: '💬 Contact us', url: CONTACT_URL }],
 ];
@@ -267,6 +271,7 @@ async function onText(user: BotUser, text: string, isNew: boolean): Promise<void
   if (command === '/account') return account(user);
   if (command === '/invite') return invite(user);
   if (command === '/word') return wordSettings(user);
+  if (command === '/tips') return sendTip(user);
   if (command === '/cancel') return cancel(user);
   if (command === '/contact') return contact(user);
   // For anyone else /admin is just an unknown command.
@@ -285,6 +290,7 @@ async function onButton(user: BotUser, data: string, deps: BotDeps): Promise<voi
   if (data === 'go') return runCheck(user, deps);
   if (data === 'invite') return invite(user);
   if (data === 'word') return wordSettings(user);
+  if (data === 'tips') return sendTip(user);
   if (data === 'cancel') return cancel(user);
   if (data === 'menu') return send(user.chatId, 'What would you like to do?', MENU);
   if (data === 'account') return account(user);
@@ -324,7 +330,7 @@ async function help(user: BotUser): Promise<void> {
       '2. Send the Task 2 question, then your essay.\n' +
       '3. You get your estimated band and the mistakes to fix first. The button under it opens the full report on the site.\n\n' +
       '<b>Free checks</b>: 1 every 2 weeks. Connect your WriteReady account in /account to get 1 every week, shared with the site.\n\n' +
-      '/check: check an essay\n/account: your free checks and site account\n/invite: get free checks for inviting friends\n/word: your daily IELTS word\n/cancel: stop the current check\n/contact: write to the WriteReady team\n\n' +
+      '/check: check an essay\n/account: your free checks and site account\n/invite: get free checks for inviting friends\n/word: your daily IELTS word\n/tips: a tip for a higher writing band\n/cancel: stop the current check\n/contact: write to the WriteReady team\n\n' +
       'Questions about the bot, your account or paying for a plan? Write to @writeready_admin.',
     MENU,
   );
@@ -1036,6 +1042,7 @@ export const COMMANDS = [
   { command: 'account', description: 'Your free checks and site account' },
   { command: 'invite', description: 'Get free checks for inviting friends' },
   { command: 'word', description: 'Your daily IELTS word' },
+  { command: 'tips', description: 'A tip for a higher writing band' },
   { command: 'help', description: 'How the bot works' },
   { command: 'cancel', description: 'Stop the current check' },
   { command: 'contact', description: 'Write to the WriteReady team' },
@@ -1134,7 +1141,7 @@ async function wordSettings(user: BotUser): Promise<void> {
   if (typeof user.wordHour === 'number') rows.push([{ text: 'Turn off', data: 'hour:off' }]);
   await send(
     user.chatId,
-    '📚 <b>Daily word</b>\n\nPick the hour (Tashkent time) when you want a new IELTS word each day, with its Uzbek meaning and an example. It arrives within that hour.' +
+    '📚 <b>Daily word</b>\n\nPick the hour (Tashkent time) when you want a new IELTS word each day, with its meaning, how to use it in a sentence, and an example. It arrives within that hour.' +
       (typeof user.wordHour === 'number' ? `\n\nNow: every day at ${String(user.wordHour).padStart(2, '0')}:00.` : ''),
     rows,
   );
@@ -1159,9 +1166,25 @@ async function sendWord(user: BotUser, today: string): Promise<void> {
   const w = DAILY_WORDS[index];
   await send(
     user.chatId,
-    `📚 <b>Word of the day</b>\n\n<b>${esc(w.word)}</b>: ${esc(w.uzbek)}\n<i>${esc(w.example)}</i>`,
+    `📚 <b>Word of the day</b>\n\n<b>${esc(w.word)}</b> — ${esc(w.uzbek)}\n` +
+      `<b>Meaning:</b> ${esc(w.meaning)}\n` +
+      `<b>How to use it:</b> ${esc(w.usage)}\n` +
+      `<i>${esc(w.example)}</i>`,
   );
   await userRef(user.telegramId).set({ wordIndex: index + 1, lastWordDay: today }, { merge: true });
+}
+
+// ── Writing tips ─────────────────────────────────────────────────────────────
+
+/** Sends the student their next writing tip and moves them along the list. */
+async function sendTip(user: BotUser): Promise<void> {
+  const index = (user.tipIndex ?? 0) % WRITING_TIPS.length;
+  await send(
+    user.chatId,
+    `💡 <b>Writing tip</b>\n\n${esc(WRITING_TIPS[index])}`,
+    [[{ text: '➡️ Another tip', data: 'tips' }], [{ text: '⬅️ Menu', data: 'menu' }]],
+  );
+  await userRef(user.telegramId).set({ tipIndex: index + 1 }, { merge: true });
 }
 
 /**

@@ -707,7 +707,7 @@ sent = [];
 check('opening the address connects the bot', (await call(undefined, undefined, 'GET')) === 200 && webhookUrl === bot.WEBHOOK_URL);
 const setCall = sent.find((s) => s.method === 'setWebhook')?.body;
 check('with the secret and only the updates the bot uses', setCall?.secret_token === good && JSON.stringify(setCall?.allowed_updates) === '["message","callback_query"]');
-check('and the command menu', JSON.stringify(((sent.find((s) => s.method === 'setMyCommands')?.body.commands ?? []) as { command: string }[]).map((c) => c.command)) === '["check","account","invite","word","help","cancel","contact"]');
+check('and the command menu', JSON.stringify(((sent.find((s) => s.method === 'setMyCommands')?.body.commands ?? []) as { command: string }[]).map((c) => c.command)) === '["check","account","invite","word","tips","help","cancel","contact"]');
 const adminMenu = sent.find((s) => s.method === 'setMyCommands' && s.body.scope)?.body;
 check("with /admin only in the admin's own chat", JSON.stringify(adminMenu?.scope) === '{"type":"chat","chat_id":900}' && ((adminMenu?.commands ?? []) as { command: string }[]).some((c) => c.command === 'admin'));
 check('the webhook address is the site itself, not a redirect', bot.WEBHOOK_URL === 'https://www.writeready.uz/api/telegram');
