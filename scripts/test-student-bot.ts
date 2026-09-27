@@ -145,6 +145,8 @@ setTestTelegram(baseTelegram);
 const messages = (chatId?: number) =>
   sent.filter((s) => s.method === 'sendMessage' && (chatId === undefined || s.body.chat_id === chatId)).map((s) => s.body);
 const lastText = (chatId: number) => String(messages(chatId).at(-1)?.text ?? '');
+const videos = (chatId?: number) =>
+  sent.filter((s) => s.method === 'sendVideo' && (chatId === undefined || s.body.chat_id === chatId)).map((s) => s.body);
 const buttonsOf = (msg: Record<string, unknown> | undefined) =>
   ((msg?.reply_markup as { inline_keyboard?: { text: string; url?: string; callback_data?: string }[][] } | undefined)?.inline_keyboard ?? []).flat();
 
@@ -211,6 +213,7 @@ console.log('\nStarting');
 await say(101, '/start');
 check('a new student is recorded', botUser(101)?.step === 'idle' && botUser(101)?.chatId === 101);
 check('the welcome shows the menu', buttonsOf(messages(101).at(-1)).some((b) => b.callback_data === 'check'));
+check('the welcome sends the demo video first', String(videos(101).at(-1)?.video).endsWith('/WriteReady_telegram_bot_video_EN.mp4'));
 const before = messages(101).length;
 await bot.handleUpdate({ update_id: updateId, message: { chat: { id: 101, type: 'private' }, from: { id: 101 }, text: '/start' } }, deps);
 check('an update Telegram sends twice is handled once', messages(101).length === before);

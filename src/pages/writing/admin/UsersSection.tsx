@@ -5,9 +5,12 @@ import { adminDb as db } from "@/firebase/adminConfig";
 import { deleteUserAccount } from "@/firebase/firestore";
 import { useConfirm } from "@/hooks/useConfirm";
 import { formatDateTime } from "@/lib/duration";
+import { effectivePlan, monthlyLimitFor } from "@/lib/plans";
+import { hasFreeReportThisWeek } from "@/lib/weeklyFree";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/Button";
 import { Badge } from "@/components/ui/badge";
+import { Card } from "@/components/ui/Card";
 import { Input } from "@/components/ui/input";
 import { ListDetail, ListPane, RowList, ListRow, DetailView, DetailHeader, DetailSection, KeyValues } from "@/components/staff/ListDetail";
 import { EmptyState, Field, FilterChips, Initials, LoadError, Notice, RowSkeletons, SearchField } from "@/components/staff/parts";
@@ -39,6 +42,7 @@ export function UsersSection({
   const [busy, setBusy] = useState(false);
   const [notice, setNotice] = useState<{ tone: "success" | "error"; text: string } | null>(null);
   const [amount, setAmount] = useState("");
+  const [usageAdjust, setUsageAdjust] = useState("");
   const [planChoice, setPlanChoice] = useState<PlanId | null>(null);
   const [deleting, setDeleting] = useState(false);
 
@@ -46,6 +50,7 @@ export function UsersSection({
     setSelectedId(id);
     setNotice(null);
     setAmount("");
+    setUsageAdjust("");
     setPlanChoice(null);
   };
 
@@ -142,6 +147,33 @@ export function UsersSection({
     setBusy(false);
   };
 
+  // Paid plans only: this month's usage is tracked by calendar month, not by
+  // which plan was active when it was spent, so toggling a plan off and back
+  // on mid-month leaves the old count in place. This is the fix for that —
+  // kept out of free/bonus reports, which already have their own admin lever
+  // (the leaderboard's bonus grant).
+  const adjustUsage = async (user: UserRow, direction: "give" | "take") => {
+    const n = Number(usageAdjust);
+    if (!n || n <= 0) return;
+    setBusy(true);
+    setNotice(null);
+    try {
+      const monthKey = new Date().toISOString().slice(0, 7);
+      const limit = monthlyLimitFor(effectivePlan(user));
+      const used = user.usage?.monthKey === monthKey ? (user.usage?.count ?? 0) : 0;
+      const nextUsed = Math.max(0, Math.min(limit, used + (direction === "take" ? n : -n)));
+      const usage = { monthKey, count: nextUsed };
+      await updateDoc(doc(db, "users", user.id), { usage });
+      patchUser(user.id, { usage });
+      setUsageAdjust("");
+      setNotice({ tone: "success", text: `Now ${limit - nextUsed} of ${limit} analyses left this month.` });
+    } catch (e) {
+      console.error(e);
+      setNotice({ tone: "error", text: "Could not update this month's usage. Try again." });
+    }
+    setBusy(false);
+  };
+
   const deleteUser = async (user: UserRow) => {
     const ok = await confirm(
       `Delete ${user.email} permanently?\n\nTheir profile, AI feedback reports, Human Check requests and notifications are removed from the database. This cannot be undone.\n\nThis deletes their data only: they can still sign in with their old login, but they will have no data and no paid plan.`,
@@ -224,6 +256,19 @@ export function UsersSection({
   if (selected) {
     const current = planOf(selected);
     const expired = isExpiredPaid(selected);
+
+    // What this person's plan actually grants right now — the same rule
+    // api/pre-check.ts applies, so this matches what happens when they ask
+    // for a report, not just the plan label above (which can be an expired one).
+    const monthKey = new Date().toISOString().slice(0, 7);
+    const grantedPlan = effectivePlan(selected);
+    const monthlyLimit = monthlyLimitFor(grantedPlan);
+    const usedThisMonth = selected.usage?.monthKey === monthKey ? (selected.usage?.count ?? 0) : 0;
+    const remainingThisMonth = Math.max(0, monthlyLimit - usedThisMonth);
+    const usagePct = monthlyLimit > 0 ? Math.min(100, (usedThisMonth / monthlyLimit) * 100) : 0;
+    const bonus = selected.bonusAnalyses ?? 0;
+    const freeAvailable = hasFreeReportThisWeek(selected.freeUsage);
+    const grantedPlanLabel = PLANS.find((p) => p.id === grantedPlan)?.label ?? "Free";
     detail = (
       <DetailView>
         <DetailHeader
@@ -288,6 +333,73 @@ export function UsersSection({
               <Button variant="ghost" onClick={() => setPlanChoice(null)}>Cancel</Button>
             </div>
           )}
+        </DetailSection>
+
+        <DetailSection
+          title="AI feedback"
+          description={
+            monthlyLimit > 0
+              ? "Bonus reports are spent only after the plan's monthly quota runs out, so a bonus never eats into it."
+              : "Free plan: one AI feedback report a week. A bonus report is spent before that weekly one."
+          }
+        >
+          <Card className="px-5 py-4">
+            <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+              <span className="text-[0.9375rem] font-semibold text-[var(--text-primary)]">
+                {monthlyLimit > 0 ? `${grantedPlanLabel} · Monthly AI analyses` : "Free plan · Weekly AI analysis"}
+              </span>
+              <div className="flex items-center gap-2">
+                {bonus > 0 && <Badge variant="warning">🎁 +{bonus} bonus</Badge>}
+                {monthlyLimit > 0 ? (
+                  <span className={cn("font-mono text-[0.9375rem] font-medium", usagePct >= 85 ? "text-red-500" : "text-brand-blue-600 dark:text-brand-blue-400")}>
+                    {usedThisMonth}/{monthlyLimit}
+                  </span>
+                ) : (
+                  <Badge variant={freeAvailable ? "success" : "secondary"}>
+                    {freeAvailable ? "Available" : "Used · resets Monday"}
+                  </Badge>
+                )}
+              </div>
+            </div>
+            {monthlyLimit > 0 && (
+              <>
+                <div className="mb-2 h-1.5 overflow-hidden rounded-full bg-[var(--bg-subtle)]">
+                  <div
+                    className={cn("h-full rounded-full transition-[width] duration-300", usagePct >= 85 ? "bg-red-500" : "bg-brand-blue-600")}
+                    style={{ width: `${usagePct}%` }}
+                  />
+                </div>
+                <p className="text-xs text-[var(--text-secondary)]">
+                  {usedThisMonth} of {monthlyLimit} analyses used · {remainingThisMonth} remaining
+                </p>
+                <form
+                  className="mt-4 flex flex-wrap items-end gap-2 border-t border-[var(--border-color)] pt-4"
+                  onSubmit={(e) => e.preventDefault()}
+                >
+                  <Field label="Adjust this month's usage" htmlFor="usage-adjust-amount" className="w-full max-w-[200px]">
+                    <Input
+                      name="usage-adjust-amount"
+                      autoComplete="off"
+                      id="usage-adjust-amount"
+                      type="number"
+                      inputMode="numeric"
+                      min={1}
+                      placeholder="Number of analyses"
+                      value={usageAdjust}
+                      onChange={(e) => setUsageAdjust(e.target.value)}
+                      className="font-mono"
+                    />
+                  </Field>
+                  <Button type="button" variant="outline" disabled={busy || !usageAdjust || Number(usageAdjust) <= 0} onClick={() => adjustUsage(selected, "give")}>
+                    Give {usageAdjust || "…"} more
+                  </Button>
+                  <Button type="button" variant="outline" disabled={busy || !usageAdjust || Number(usageAdjust) <= 0} onClick={() => adjustUsage(selected, "take")}>
+                    Take away {usageAdjust || "…"}
+                  </Button>
+                </form>
+              </>
+            )}
+          </Card>
         </DetailSection>
 
         <DetailSection title="Account" description="Last active is the last time this person opened the site. For anyone who has not been back since we started recording it, it shows their last essay check instead.">

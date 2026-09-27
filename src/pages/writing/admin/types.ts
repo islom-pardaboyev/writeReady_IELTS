@@ -39,6 +39,12 @@ export interface UserRow {
   balanceUZS?: number;
   /** When they were last on the site, as an ISO string. Empty if never seen. */
   lastActiveAt?: string;
+  /** This month's AI feedback usage against the plan's quota — see api/pre-check.ts. */
+  usage?: { monthKey: string; count: number };
+  /** Admin-granted full reports, spent after the plan's monthly quota runs out. */
+  bonusAnalyses?: number;
+  /** The free plan's one-report-a-week allowance — see src/lib/weeklyFree.ts. */
+  freeUsage?: { weekKey: string; count: number };
 }
 
 export interface PendingReview {

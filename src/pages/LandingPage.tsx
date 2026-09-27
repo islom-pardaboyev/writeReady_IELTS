@@ -18,6 +18,25 @@ export function LandingPage() {
   // Admin -> Telegram bot: the bot is left off the page until the admin announces it.
   const botShown = useShowTelegramBot();
 
+  // Both always shown: unlike the bot mentions above, the video is a fine
+  // preview of the bot even before it is announced on the site itself.
+  const demoVideos = [
+    {
+      id: 'website',
+      title: 'A full walkthrough of WriteReady',
+      desc: 'Pick a mode, write against a prompt, and see the AI feedback report it gets marked with.',
+      src: '/WriteReady_website_video_EN.mp4',
+      poster: '/video-website-poster.jpg',
+    },
+    {
+      id: 'bot',
+      title: 'Check an essay in Telegram — no account needed',
+      desc: 'Send the bot your essay and get a band score back in seconds, right in the chat.',
+      src: '/WriteReady_telegram_bot_video_EN.mp4',
+      poster: '/video-telegram-bot-poster.jpg',
+    },
+  ];
+
   useLayoutEffect(() => {
     const prefersReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
     if (prefersReducedMotion) return;
@@ -51,6 +70,15 @@ export function LandingPage() {
       });
       gsap.from('.gs-step-card', {
         scrollTrigger: { trigger: '.gs-how', start: 'top 78%' },
+        y: 44, opacity: 0, duration: 0.65, stagger: 0.15, ease: 'power2.out',
+      });
+
+      gsap.from('.gs-videos-header', {
+        scrollTrigger: { trigger: '.gs-videos', start: 'top 82%' },
+        y: 30, opacity: 0, duration: 0.6, ease: 'power2.out',
+      });
+      gsap.from('.gs-video-card', {
+        scrollTrigger: { trigger: '.gs-videos', start: 'top 78%' },
         y: 44, opacity: 0, duration: 0.65, stagger: 0.15, ease: 'power2.out',
       });
 
@@ -229,6 +257,28 @@ export function LandingPage() {
               <div className="text-[2.25rem] font-black text-[var(--border-color)] leading-none mb-4 tracking-[-0.02em]">{s.n}</div>
               <h3 className="text-[1.0625rem] font-bold text-[var(--text-primary)] mb-2">{s.title}</h3>
               <p className="text-[0.9rem] text-[var(--text-secondary)] leading-[1.7]">{s.desc}</p>
+            </div>
+          ))}
+        </div>
+      </section>
+
+      {/* ── See it in action ── */}
+      <section className="gs-videos max-w-[1160px] mx-auto px-6 py-20">
+        <div className="gs-videos-header mb-12">
+          <p className="text-[0.8125rem] font-bold uppercase tracking-[0.08em] text-brand-600 dark:text-brand-400 mb-2">Watch it work</p>
+          <h2 className="text-[clamp(1.75rem,3vw,2.25rem)] font-black text-[var(--text-primary)] tracking-[-0.02em]">See WriteReady in action</h2>
+        </div>
+        <div className={demoVideos.length > 1 ? 'grid grid-cols-[repeat(auto-fit,minmax(360px,1fr))] gap-6' : 'max-w-[640px] mx-auto'}>
+          {demoVideos.map((v) => (
+            <div key={v.id} className="gs-video-card bg-[var(--bg-card)] border border-[var(--border-color)] rounded-2xl overflow-hidden shadow-[var(--shadow-sm)]">
+              <video controls preload="none" poster={v.poster} className="block aspect-video w-full bg-black">
+                <source src={v.src} type="video/mp4" />
+                Your browser does not support video playback. <a href={v.src}>Download the video</a> instead.
+              </video>
+              <div className="p-5">
+                <h3 className="text-[1.0625rem] font-bold text-[var(--text-primary)] mb-1">{v.title}</h3>
+                <p className="text-[0.875rem] text-[var(--text-secondary)] leading-[1.6]">{v.desc}</p>
+              </div>
             </div>
           ))}
         </div>

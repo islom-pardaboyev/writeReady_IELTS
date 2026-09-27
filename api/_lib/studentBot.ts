@@ -171,6 +171,11 @@ async function send(chatId: number, html: string, rows?: Button[][]): Promise<vo
   });
 }
 
+/** Telegram fetches the file itself from this URL — no upload from this server. */
+async function sendVideo(chatId: number, videoUrl: string): Promise<void> {
+  await tg('sendVideo', { chat_id: chatId, video: videoUrl });
+}
+
 const countWords = (text: string) => text.trim().split(/\s+/).filter(Boolean).length;
 
 /** Today in Tashkent (UTC+5, no daylight saving), as yyyy-mm-dd. */
@@ -318,6 +323,12 @@ async function welcome(user: BotUser, payload: string, isNew: boolean): Promise<
     await userRef(user.telegramId).set({ referredBy: inviter }, { merge: true });
     invited = true;
   }
+  // A short demo up front, so a student sees the bot at work before reading
+  // about it. Best-effort: a hiccup fetching the video must never cost the
+  // student the welcome message and menu that follow.
+  await sendVideo(user.chatId, `${SITE}/WriteReady_telegram_bot_video_EN.mp4`).catch((e) =>
+    console.error('bot: could not send the welcome video:', e),
+  );
   const name = user.firstName ? `, ${esc(user.firstName)}` : '';
   await send(
     user.chatId,

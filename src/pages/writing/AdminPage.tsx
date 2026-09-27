@@ -121,6 +121,9 @@ export default function Admin() {
               createdAt: data.createdAt?.toDate?.()?.toISOString() ?? "",
               balanceUZS: typeof data.balanceUZS === "number" ? data.balanceUZS : 0,
               lastActiveAt: latest(data.lastActiveAt?.toDate?.()?.toISOString(), lastReport[d.id]),
+              usage: data.usage ?? undefined,
+              bonusAnalyses: typeof data.bonusAnalyses === "number" ? data.bonusAnalyses : 0,
+              freeUsage: data.freeUsage ?? undefined,
             };
           }),
       );
