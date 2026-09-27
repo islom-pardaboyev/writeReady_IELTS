@@ -124,6 +124,7 @@ export default function Admin() {
               usage: data.usage ?? undefined,
               bonusAnalyses: typeof data.bonusAnalyses === "number" ? data.bonusAnalyses : 0,
               freeUsage: data.freeUsage ?? undefined,
+              founder: data.founder === true,
             };
           }),
       );

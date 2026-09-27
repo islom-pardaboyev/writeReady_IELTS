@@ -14,6 +14,8 @@ export interface UserProfile {
   centerName?: string;
   studentLogin?: string;
   balanceUZS?: number;
+  /** Admin-granted, for an early customer worth thanking on their account page. */
+  founder?: boolean;
 }
 
 export interface UsageRecord {

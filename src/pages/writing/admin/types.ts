@@ -45,6 +45,8 @@ export interface UserRow {
   bonusAnalyses?: number;
   /** The free plan's one-report-a-week allowance — see src/lib/weeklyFree.ts. */
   freeUsage?: { weekKey: string; count: number };
+  /** Shown as a "Founding student" badge on their own account page. */
+  founder?: boolean;
 }
 
 export interface PendingReview {

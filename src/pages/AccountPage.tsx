@@ -163,11 +163,18 @@ export function AccountPage() {
                 {user.email}
               </div>
             </div>
-            {isPro && (
-              <Badge variant={isForever ? 'warning' : 'info'} className="shrink-0 uppercase tracking-[0.05em]">
-                {isForever ? 'Lifetime' : 'Pro'}
-              </Badge>
-            )}
+            <div className="flex shrink-0 flex-col items-end gap-1.5">
+              {profile.founder && (
+                <Badge variant="warning" className="uppercase tracking-[0.05em]" title="One of our very first customers — thank you!">
+                  🎉 Founding student
+                </Badge>
+              )}
+              {isPro && (
+                <Badge variant={isForever ? 'warning' : 'info'} className="uppercase tracking-[0.05em]">
+                  {isForever ? 'Lifetime' : 'Pro'}
+                </Badge>
+              )}
+            </div>
           </Card>
 
           {/* Balance card */}

@@ -147,6 +147,21 @@ export function UsersSection({
     setBusy(false);
   };
 
+  const toggleFounder = async (user: UserRow) => {
+    const next = !user.founder;
+    setBusy(true);
+    setNotice(null);
+    try {
+      await updateDoc(doc(db, "users", user.id), { founder: next });
+      patchUser(user.id, { founder: next });
+      setNotice({ tone: "success", text: next ? "Marked as a founding student — the badge now shows on their account page." : "Founding-student badge removed." });
+    } catch (e) {
+      console.error(e);
+      setNotice({ tone: "error", text: "Could not update the founding-student badge. Try again." });
+    }
+    setBusy(false);
+  };
+
   // Paid plans only: this month's usage is tracked by calendar month, not by
   // which plan was active when it was spent, so toggling a plan off and back
   // on mid-month leaves the old count in place. This is the fix for that —
@@ -274,8 +289,18 @@ export function UsersSection({
         <DetailHeader
           leading={<Initials name={selected.email} size={44} />}
           title={selected.email || "No email"}
-          badges={<Badge variant={planBadge(selected)}>{planLabel(selected)}</Badge>}
+          badges={
+            <>
+              {selected.founder && <Badge variant="warning">🎉 Founding student</Badge>}
+              <Badge variant={planBadge(selected)}>{planLabel(selected)}</Badge>
+            </>
+          }
           meta={<span className={cn(expired && "text-red-600 dark:text-red-400")}>{planStatus(selected)}</span>}
+          actions={
+            <Button type="button" variant="outline" size="sm" disabled={busy} onClick={() => toggleFounder(selected)}>
+              {selected.founder ? "Remove founding badge" : "🎉 Mark as founding student"}
+            </Button>
+          }
         />
         {notice && <Notice tone={notice.tone} className="mt-5">{notice.text}</Notice>}
 
