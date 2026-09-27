@@ -1,4 +1,4 @@
-import { useSyncExternalStore } from "react";
+import { useEffect, useRef, useSyncExternalStore } from "react";
 import { Link, useNavigate } from "react-router";
 import { Download, Menu } from "lucide-react";
 import { useAuth } from "../../hooks/useAuth";
@@ -71,11 +71,19 @@ const dropdownLinkClass =
 export function Header() {
   const { user, profile, logOut } = useAuth();
   const navigate = useNavigate();
+  const marqueeRef = useRef<MarqueeElement>(null);
 
   // Re-render when the browser decides the app became installable, which it
   // does a moment after load rather than at mount.
   useSyncExternalStore(subscribe, getVersion, getVersion);
   const installable = canInstall();
+
+  // <marquee> has no CSS knob for prefers-reduced-motion; stop it in JS.
+  useEffect(() => {
+    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
+      marqueeRef.current?.stop();
+    }
+  }, []);
 
   // Admin accounts should not appear as regular users in the header
   const isAdminAccount = user?.email?.endsWith("@writeready.internal") ?? false;
@@ -90,10 +98,40 @@ export function Header() {
   };
 
   return (
-    <header className="sticky top-0 py-2 z-10 bg-[var(--bg-card)]/95 backdrop-blur-[8px] border-b border-[var(--border-color)]">
+    <header className="sticky top-0 z-10 bg-[var(--bg-card)]/95 backdrop-blur-[8px] border-b border-[var(--border-color)]">
+      <div className="bg-[var(--gold)] py-1.5 text-sm font-medium text-amber-950">
+        <marquee
+          ref={marqueeRef}
+          behavior="scroll"
+          direction="left"
+          scrollamount="7"
+          onMouseEnter={() => marqueeRef.current?.stop()}
+          onMouseLeave={() => marqueeRef.current?.start()}
+          onTouchStart={() => marqueeRef.current?.stop()}
+          onTouchEnd={() => marqueeRef.current?.start()}
+        >
+          <span aria-hidden="true">🚧</span> The site is currently in beta.
+          Please report any issues to{" "}
+          <a
+            href="https://t.me/writeready_admin"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="font-semibold underline hover:no-underline"
+          >
+            our Telegram Admin
+          </a>
+          .
+        </marquee>
+      </div>
       <div className="max-w-[1160px] mx-auto px-4 sm:px-6 h-[60px] flex items-center justify-between gap-2">
         <Link to="/" className="flex shrink-0 items-center gap-2 no-underline">
-          <img src={Logo} width={40} height={40} className="size-8 sm:size-[40px]" alt="" />
+          <img
+            src={Logo}
+            width={40}
+            height={40}
+            className="size-8 sm:size-[40px]"
+            alt=""
+          />
           <span className="font-bold text-base sm:text-lg text-[var(--text-primary)] whitespace-nowrap">
             WriteReady{" "}
             <span className="hidden text-[var(--ink-blue)] sm:inline">
@@ -236,7 +274,10 @@ export function Header() {
             </DropdownMenu>
           ) : (
             <>
-              <Link to="/auth?mode=login" className={`hidden md:inline-block ${navLinkClass}`}>
+              <Link
+                to="/auth?mode=login"
+                className={`hidden md:inline-block ${navLinkClass}`}
+              >
                 Sign in
               </Link>
               <Link
