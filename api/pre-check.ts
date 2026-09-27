@@ -1,7 +1,7 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { getFirestore, FieldValue } from 'firebase-admin/firestore';
 import { createHmac } from 'crypto';
-import { initFirebase, getUid, currentMonthKey, currentWeekKey, resolvePaidStatus, PLAN_LIMITS } from './_lib/shared.js';
+import { initFirebase, getUid, currentMonthKey, currentWeekKey, resolvePaidStatus } from './_lib/shared.js';
 import { LIMITS, essayKeys, loadSavedReport, type SavedReport } from './_lib/savedReports.js';
 
 // Free-plan users (no subscription) get 1 AI feedback report per calendar
@@ -22,7 +22,7 @@ const FREE_WEEKLY_LIMIT = 1;
  */
 export type CreditSource = 'paid' | 'bonus' | 'free';
 
-type CreditErrorCode = 'USER_NOT_FOUND' | 'NOT_PRO' | 'LIMIT_REACHED' | 'FREE_LIMIT_REACHED' | 'FULL_ONLY';
+type CreditErrorCode = 'USER_NOT_FOUND' | 'LIMIT_REACHED' | 'FREE_LIMIT_REACHED' | 'FULL_ONLY';
 class CreditError extends Error {
   constructor(public code: CreditErrorCode) { super(code); }
 }
@@ -63,7 +63,7 @@ async function consumeCredit(uid: string, monthKey: string, { fullOnly = false }
     // the stored `plan` field; lifetime plans never expire), matching what
     // src/hooks/useUsage.ts shows the user. A centre student holds the plan
     // their centre bought and the centre's contract end date.
-    const { plan, isPaidPlan } = resolvePaidStatus(data);
+    const { isPaidPlan, monthlyLimit } = resolvePaidStatus(data);
 
     if (!isPaidPlan) {
       // Admin-granted bonus reports are consumed first (separate from the
@@ -87,11 +87,9 @@ async function consumeCredit(uid: string, monthKey: string, { fullOnly = false }
       return;
     }
 
-    // A learning-center student's profile carries the plan their center
-    // bought, so one lookup covers students and individual customers alike.
-    const monthlyLimit = PLAN_LIMITS[plan];
-    if (!monthlyLimit) throw new CreditError('NOT_PRO');
-
+    // monthlyLimit covers every paid plan: a learning-center student's profile
+    // carries the plan their center bought, and a Customizable plan carries its
+    // own number, so one value serves students and individual customers alike.
     const usage = data.usage ?? {};
     const used = usage.monthKey === monthKey ? (usage.count ?? 0) : 0;
     if (used < monthlyLimit) {
@@ -181,7 +179,6 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     // right now: give them what they have rather than an error.
     if (saved) return res.status(200).json(savedResponse(saved));
     if (e instanceof CreditError) {
-      if (e.code === 'NOT_PRO') return res.status(403).json({ error: 'AI feedback requires a paid plan (Basic, Standard, Premium, or Lifetime).' });
       if (e.code === 'LIMIT_REACHED') return res.status(429).json({ error: 'Monthly analysis limit reached. Quota resets next month.' });
       if (e.code === 'FREE_LIMIT_REACHED') return res.status(429).json({ error: "You've used your free essay check for this week. Upgrade to Basic, Standard, or Premium for more reports, or come back next week." });
       if (e.code === 'USER_NOT_FOUND') return res.status(404).json({ error: 'User profile not found.' });

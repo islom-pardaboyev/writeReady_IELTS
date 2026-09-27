@@ -1,11 +1,11 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { doc, increment, updateDoc } from "firebase/firestore";
+import { deleteField, doc, increment, updateDoc } from "firebase/firestore";
 import { RefreshCw, Trash2, Users } from "lucide-react";
 import { adminDb as db } from "@/firebase/adminConfig";
 import { deleteUserAccount } from "@/firebase/firestore";
 import { useConfirm } from "@/hooks/useConfirm";
 import { formatDateTime } from "@/lib/duration";
-import { effectivePlan, monthlyLimitFor } from "@/lib/plans";
+import { CUSTOM_PLAN_PRICES, customAnalysesOf, customPriceFor, effectivePlan, monthlyLimitOf } from "@/lib/plans";
 import { hasFreeReportThisWeek } from "@/lib/weeklyFree";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/Button";
@@ -13,11 +13,46 @@ import { Badge } from "@/components/ui/badge";
 import { Card } from "@/components/ui/Card";
 import { Input } from "@/components/ui/input";
 import { ListDetail, ListPane, RowList, ListRow, DetailView, DetailHeader, DetailSection, KeyValues } from "@/components/staff/ListDetail";
-import { EmptyState, Field, FilterChips, Initials, LoadError, Notice, RowSkeletons, SearchField } from "@/components/staff/parts";
+import { EmptyState, Field, FilterChips, Initials, LoadError, Notice, RowSkeletons, SearchField, selectClass } from "@/components/staff/parts";
 import { PLANS, formatDate, isExpiredPaid, isPaying, joinedToday, lastActiveLabel, planBadge, planLabel, planOf, planStatus, uzs, type PlanId } from "./format";
 import type { SectionProps, SetState, UserRow } from "./types";
 
-type Filter = "all" | "today" | "paying" | "expired";
+type Filter = "all" | "today" | "paying" | "custom" | "expired";
+
+const DEFAULT_CUSTOM_ANALYSES = 10;
+
+/**
+ * One month after the later of today and the plan's current end date, in the
+ * YYYY-MM-DD form every plan's `expiresAt` uses. Renewing early adds a month
+ * to what is left instead of throwing the remaining days away.
+ */
+function monthAfter(currentEnd?: string): string {
+  const now = new Date();
+  const end = currentEnd ? new Date(currentEnd) : null;
+  const next = new Date(end && !Number.isNaN(end.getTime()) && end > now ? end : now);
+  next.setMonth(next.getMonth() + 1);
+  return next.toISOString().slice(0, 10);
+}
+
+function CustomCountSelect({ value, onChange, disabled }: { value: number; onChange: (n: number) => void; disabled?: boolean }) {
+  return (
+    <select
+      id="custom-analyses"
+      name="custom-analyses"
+      autoComplete="off"
+      className={cn(selectClass, "font-mono tabular-nums")}
+      value={value}
+      disabled={disabled}
+      onChange={(e) => onChange(Number(e.target.value))}
+    >
+      {CUSTOM_PLAN_PRICES.map(({ analyses, price }) => (
+        <option key={analyses} value={analyses}>
+          {analyses} reports · {uzs(price)}
+        </option>
+      ))}
+    </select>
+  );
+}
 
 export function UsersSection({
   users,
@@ -44,6 +79,7 @@ export function UsersSection({
   const [amount, setAmount] = useState("");
   const [usageAdjust, setUsageAdjust] = useState("");
   const [planChoice, setPlanChoice] = useState<PlanId | null>(null);
+  const [countChoice, setCountChoice] = useState(DEFAULT_CUSTOM_ANALYSES);
   const [deleting, setDeleting] = useState(false);
 
   const select = (id: string | null) => {
@@ -52,6 +88,8 @@ export function UsersSection({
     setAmount("");
     setUsageAdjust("");
     setPlanChoice(null);
+    const u = id ? users.find((x) => x.id === id) : null;
+    setCountChoice((u && customAnalysesOf(u)) ?? DEFAULT_CUSTOM_ANALYSES);
   };
 
   useEffect(() => {
@@ -70,13 +108,19 @@ export function UsersSection({
     all: users.length,
     today: users.filter(joinedToday).length,
     paying: users.filter(isPaying).length,
+    custom: users.filter((u) => planOf(u) === "custom").length,
     expired: users.filter(isExpiredPaid).length,
   }), [users]);
 
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
     return users
-      .filter((u) => (filter === "today" ? joinedToday(u) : filter === "paying" ? isPaying(u) : filter === "expired" ? isExpiredPaid(u) : true))
+      .filter((u) =>
+        filter === "today" ? joinedToday(u)
+        : filter === "paying" ? isPaying(u)
+        : filter === "custom" ? planOf(u) === "custom"
+        : filter === "expired" ? isExpiredPaid(u)
+        : true)
       .filter((u) => !q || u.email.toLowerCase().includes(q))
       // Most recently active first, so the people using the site right now
       // are at the top; join date breaks ties and orders those never seen.
@@ -88,31 +132,54 @@ export function UsersSection({
   const patchUser = (id: string, updates: Partial<UserRow>) =>
     setUsers((p) => p.map((u) => (u.id === id ? { ...u, ...updates } : u)));
 
-  const changePlan = async (user: UserRow, type: PlanId) => {
+  const save = async (work: () => Promise<string>, failText: string) => {
     setBusy(true);
     setNotice(null);
     try {
-      const oneMonthLater = new Date();
-      oneMonthLater.setMonth(oneMonthLater.getMonth() + 1);
-      const expiresAt = oneMonthLater.toISOString().slice(0, 10);
+      setNotice({ tone: "success", text: await work() });
+    } catch (e) {
+      console.error(e);
+      setNotice({ tone: "error", text: failText });
+    }
+    setBusy(false);
+  };
+
+  // `analyses` is the Customizable plan's number; other plans ignore it.
+  const changePlan = (user: UserRow, type: PlanId, analyses: number) =>
+    save(async () => {
+      const expiresAt = monthAfter();
       const updates =
         type === "forever" ? { plan: "forever", subscription: "forever", expiresAt: "" }
         : type === "free" ? { plan: "free", subscription: "", expiresAt: "" }
         : { plan: type, subscription: "", expiresAt };
-      await updateDoc(doc(db, "users", user.id), updates);
-      patchUser(user.id, updates);
+      // The Customizable number goes with that plan. It is only read while
+      // plan is "custom", but one left behind would come back to life if the
+      // plan were ever set to "custom" again without a new number.
+      const custom = type === "custom" ? analyses : undefined;
+      await updateDoc(doc(db, "users", user.id), { ...updates, customAnalyses: custom ?? deleteField() });
+      patchUser(user.id, { ...updates, customAnalyses: custom });
       setPlanChoice(null);
       const label = PLANS.find((p) => p.id === type)!.label;
-      setNotice({
-        tone: "success",
-        text: type === "free" ? "Plan removed. This user is on Free now." : type === "forever" ? "Lifetime access granted." : `${label} plan active until ${formatDate(expiresAt)}.`,
-      });
-    } catch (e) {
-      console.error(e);
-      setNotice({ tone: "error", text: "Could not change the plan. Try again." });
-    }
-    setBusy(false);
-  };
+      return type === "free" ? "Plan removed. This user is on Free now."
+        : type === "forever" ? "Lifetime access granted."
+        : type === "custom" ? `Customizable plan (${analyses} reports a month) active until ${formatDate(expiresAt)}.`
+        : `${label} plan active until ${formatDate(expiresAt)}.`;
+    }, "Could not change the plan. Try again.");
+
+  const renewPlan = (user: UserRow) =>
+    save(async () => {
+      const expiresAt = monthAfter(user.expiresAt);
+      await updateDoc(doc(db, "users", user.id), { expiresAt });
+      patchUser(user.id, { expiresAt });
+      return `Renewed until ${formatDate(expiresAt)}.`;
+    }, "Could not renew the plan. Try again.");
+
+  const changeCustomCount = (user: UserRow, analyses: number) =>
+    save(async () => {
+      await updateDoc(doc(db, "users", user.id), { customAnalyses: analyses });
+      patchUser(user.id, { customAnalyses: analyses });
+      return `Now ${analyses} reports a month. The end date stays ${formatDate(user.expiresAt) ?? "the same"}.`;
+    }, "Could not change the number of reports. Try again.");
 
   const addBalance = async (user: UserRow) => {
     const n = Number(amount);
@@ -174,7 +241,7 @@ export function UsersSection({
     setNotice(null);
     try {
       const monthKey = new Date().toISOString().slice(0, 7);
-      const limit = monthlyLimitFor(effectivePlan(user));
+      const limit = monthlyLimitOf(user);
       const used = user.usage?.monthKey === monthKey ? (user.usage?.count ?? 0) : 0;
       const nextUsed = Math.max(0, Math.min(limit, used + (direction === "take" ? n : -n)));
       const usage = { monthKey, count: nextUsed };
@@ -227,6 +294,7 @@ export function UsersSection({
               { id: "all", label: "All", count: counts.all },
               { id: "today", label: "Joined today", count: counts.today },
               { id: "paying", label: "Paying", count: counts.paying },
+              { id: "custom", label: "Customizable", count: counts.custom },
               { id: "expired", label: "Expired", count: counts.expired },
             ]}
           />
@@ -271,13 +339,18 @@ export function UsersSection({
   if (selected) {
     const current = planOf(selected);
     const expired = isExpiredPaid(selected);
+    const currentCustom = current === "custom" ? customAnalysesOf(selected) : null;
+    // Plans that run month to month. A center student's end date is their
+    // center's, so it is renewed by renewing the center.
+    const renewable = !selected.centerStudent && selected.plan !== "pro"
+      && (current === "basic" || current === "standard" || current === "premium" || current === "custom");
 
     // What this person's plan actually grants right now — the same rule
     // api/pre-check.ts applies, so this matches what happens when they ask
     // for a report, not just the plan label above (which can be an expired one).
     const monthKey = new Date().toISOString().slice(0, 7);
     const grantedPlan = effectivePlan(selected);
-    const monthlyLimit = monthlyLimitFor(grantedPlan);
+    const monthlyLimit = monthlyLimitOf(selected);
     const usedThisMonth = selected.usage?.monthKey === monthKey ? (selected.usage?.count ?? 0) : 0;
     const remainingThisMonth = Math.max(0, monthlyLimit - usedThisMonth);
     const usagePct = monthlyLimit > 0 ? Math.min(100, (usedThisMonth / monthlyLimit) * 100) : 0;
@@ -325,14 +398,15 @@ export function UsersSection({
             {PLANS.map((p) => {
               const isCurrent = p.id === current && selected.plan !== "pro";
               const isChosen = planChoice === p.id;
+              const id = p.id;
               return (
                 <button
-                  key={p.id}
+                  key={id}
                   type="button"
                   role="radio"
                   aria-checked={isChosen || (!planChoice && isCurrent)}
                   disabled={busy}
-                  onClick={() => setPlanChoice(isCurrent ? null : p.id)}
+                  onClick={() => setPlanChoice(isCurrent ? null : id)}
                   className={cn(
                     "rounded-lg border px-3.5 py-3 text-left transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ring)]",
                     isChosen
@@ -344,18 +418,71 @@ export function UsersSection({
                 >
                   <span className="block text-sm font-semibold text-[var(--text-primary)]">{p.label}</span>
                   <span className="mt-0.5 block text-xs text-[var(--text-secondary)]">
-                    {isCurrent ? "Current plan" : p.price ? `${p.price} a month` : p.id === "forever" ? "Never expires" : "No paid features"}
+                    {id === "custom"
+                      ? isCurrent && currentCustom ? `Current · ${currentCustom} a month` : "5 to 25 a month"
+                      : isCurrent ? "Current plan" : p.price ? `${p.price} a month` : id === "forever" ? "Never expires" : "No paid features"}
                   </span>
                 </button>
               );
             })}
           </div>
-          {planChoice && (
+
+          {planChoice === "custom" && (selected.centerStudent ? (
+            <Notice tone="warning" className="mt-4">
+              This is a learning-center student. Their plan comes from their center and is written over whenever the center is saved, so give extra reports through the center instead.
+            </Notice>
+          ) : (
+            <form
+              className="mt-4 flex flex-wrap items-end gap-2"
+              onSubmit={(e) => { e.preventDefault(); changePlan(selected, "custom", countChoice); }}
+            >
+              <Field label="Reports a month" htmlFor="custom-analyses" className="w-full max-w-[280px]">
+                <CustomCountSelect value={countChoice} onChange={setCountChoice} disabled={busy} />
+              </Field>
+              <Button type="submit" loading={busy}>Switch to Customizable</Button>
+              <Button type="button" variant="ghost" onClick={() => setPlanChoice(null)}>Cancel</Button>
+              <p className="w-full text-xs text-[var(--text-secondary)]">
+                Check the transfer was {uzs(customPriceFor(countChoice))}.
+                {usedThisMonth > 0 && ` The ${usedThisMonth} already used this month still count.`}
+              </p>
+            </form>
+          ))}
+
+          {planChoice && planChoice !== "custom" && (
             <div className="mt-4 flex flex-wrap items-center gap-2">
-              <Button onClick={() => changePlan(selected, planChoice)} loading={busy} variant={planChoice === "free" ? "dangerOutline" : "default"}>
+              <Button onClick={() => changePlan(selected, planChoice, countChoice)} loading={busy} variant={planChoice === "free" ? "dangerOutline" : "default"}>
                 {planChoice === "free" ? "Remove paid plan" : `Switch to ${PLANS.find((p) => p.id === planChoice)!.label}`}
               </Button>
               <Button variant="ghost" onClick={() => setPlanChoice(null)}>Cancel</Button>
+            </div>
+          )}
+
+          {!planChoice && current === "custom" && (
+            <form
+              className="mt-4 flex flex-wrap items-end gap-2"
+              onSubmit={(e) => { e.preventDefault(); changeCustomCount(selected, countChoice); }}
+            >
+              {currentCustom === null && (
+                <Notice tone="warning" className="w-full">
+                  This plan has no valid number of reports, so the site treats them as free. Pick a number and save it.
+                </Notice>
+              )}
+              <Field label="Reports a month" htmlFor="custom-analyses" className="w-full max-w-[280px]">
+                <CustomCountSelect value={countChoice} onChange={setCountChoice} disabled={busy} />
+              </Field>
+              <Button type="submit" variant="outline" disabled={busy || countChoice === currentCustom}>Save</Button>
+              <p className="w-full text-xs text-[var(--text-secondary)]">Takes effect now. The end date stays the same.</p>
+            </form>
+          )}
+
+          {!planChoice && renewable && (
+            <div className="mt-4 flex flex-wrap items-center gap-x-3 gap-y-2 border-t border-[var(--border-color)] pt-4">
+              <Button variant="outline" onClick={() => renewPlan(selected)} disabled={busy || (current === "custom" && currentCustom === null)}>
+                Renew until {formatDate(monthAfter(selected.expiresAt))}
+              </Button>
+              <p className="text-xs text-[var(--text-secondary)]">
+                {expired || !selected.expiresAt ? "The new month starts today." : "Adds one month to the current end date."}
+              </p>
             </div>
           )}
         </DetailSection>

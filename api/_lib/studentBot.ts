@@ -1,7 +1,7 @@
 import { randomBytes } from 'crypto';
 import { FieldValue, Timestamp, type Query } from 'firebase-admin/firestore';
 import { db } from './db.js';
-import { currentMonthKey, currentWeekKey, resolvePaidStatus, PLAN_LIMITS } from './shared.js';
+import { currentMonthKey, currentWeekKey, resolvePaidStatus } from './shared.js';
 import { LIMITS, essayKeys, loadScoreLock, saveScoreLock, type EssayKeys, type ScoreLock } from './savedReports.js';
 import type { BandScores } from './bandScore.js';
 import { tg, esc, botUsername, webhookSecret, TelegramError } from './telegramApi.js';
@@ -403,7 +403,7 @@ function nextBotFree(user: BotUser): number {
 /** When the site's weekly free report comes back: next Monday 00:00 UTC. */
 const nextSiteWeek = () => weekStartMs(currentWeekKey()) + 7 * DAY_MS;
 
-const PLAN_NAMES: Record<string, string> = { free: 'Free', basic: 'Basic', standard: 'Standard', premium: 'Premium', forever: 'Lifetime' };
+const PLAN_NAMES: Record<string, string> = { free: 'Free', basic: 'Basic', standard: 'Standard', premium: 'Premium', custom: 'Customizable', forever: 'Lifetime' };
 
 /** A paid plan on the connected account. The bot never spends its reports: they are for full reports on the site. */
 interface PaidPlan {
@@ -415,9 +415,8 @@ interface PaidPlan {
 
 function paidPlanOf(account: Record<string, unknown> | null | undefined): PaidPlan | null {
   if (!account) return null;
-  const { plan, isPaidPlan } = resolvePaidStatus(account);
-  const limit = PLAN_LIMITS[plan];
-  if (!isPaidPlan || !limit) return null;
+  const { plan, isPaidPlan, monthlyLimit: limit } = resolvePaidStatus(account);
+  if (!isPaidPlan) return null;
   if (plan === 'forever') return { name: PLAN_NAMES.forever, left: null, limit };
   const usage = (account.usage ?? {}) as { monthKey?: string; count?: number };
   const used = usage.monthKey === currentMonthKey() ? (usage.count ?? 0) : 0;

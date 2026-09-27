@@ -51,11 +51,21 @@ export function currentDayKey(): string {
   return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
 }
 
-const PAID_PLANS = ['basic', 'standard', 'premium', 'forever'];
-
 // Reports a month, by plan. Mirrors PLAN_INFO in src/lib/plans.ts, which this
-// build cannot import from.
+// build cannot import from. The Customizable plan is not here: its number is
+// stored on each student (see customAnalysesOf).
 export const PLAN_LIMITS: Record<string, number> = { forever: 9999, premium: 25, standard: 12, basic: 5 };
+
+// The Customizable plan's allowed range. Mirrors CUSTOM_MIN_ANALYSES and
+// CUSTOM_MAX_ANALYSES in src/lib/plans.ts.
+const CUSTOM_MIN_ANALYSES = 5;
+const CUSTOM_MAX_ANALYSES = 25;
+
+/** A Customizable plan's reports a month, or null when the stored number is missing or out of range. */
+export function customAnalysesOf(data: Record<string, unknown>): number | null {
+  const n = data.customAnalyses;
+  return typeof n === 'number' && Number.isInteger(n) && n >= CUSTOM_MIN_ANALYSES && n <= CUSTOM_MAX_ANALYSES ? n : null;
+}
 
 // Learning-center students were written as `plan: "pro"` before centers chose
 // a plan of their own, and "pro" always meant the premium allowance. Those
@@ -68,9 +78,12 @@ export interface PaidStatus {
   plan: string;
   isCenterStudent: boolean;
   /**
-   * `plan` is one of the metered tiers. This is the one that drives the monthly
-   * report quota, because only these have a number in planLimits.
+   * Full reports a month on this plan; 0 for free. The only number a route
+   * should use for the monthly quota: a Customizable plan's limit lives on the
+   * student, not in PLAN_LIMITS.
    */
+  monthlyLimit: number;
+  /** `plan` is a metered tier, i.e. monthlyLimit > 0. This drives the monthly report quota. */
   isPaidPlan: boolean;
   /**
    * Any paid signal at all, including a legacy `subscription` date. Use this to
@@ -110,15 +123,23 @@ export function resolvePaidStatus(data: Record<string, unknown>): PaidStatus {
     plan = 'free';
   }
 
+  // A Customizable plan whose number is missing or out of range falls back to
+  // free rather than to a paid plan with no reports: the student keeps the
+  // weekly free report and any bonus instead of being locked out.
+  const custom = plan === 'custom' ? customAnalysesOf(data) : null;
+  if (plan === 'custom' && custom === null) plan = 'free';
+  const monthlyLimit = plan === 'custom' ? custom! : PLAN_LIMITS[plan] ?? 0;
+
   const subscription = typeof data.subscription === 'string' ? data.subscription : '';
   const subscriptionActive =
     subscription === 'forever' ||
     (subscription !== '' && !Number.isNaN(new Date(subscription).getTime()) && new Date(subscription) > new Date());
 
-  const isPaidPlan = PAID_PLANS.includes(plan);
+  const isPaidPlan = monthlyLimit > 0;
   return {
     plan,
     isCenterStudent,
+    monthlyLimit,
     isPaidPlan,
     // Centre students are not a separate case any more: their profile carries
     // a real plan, so isPaidPlan already covers them while the contract runs.

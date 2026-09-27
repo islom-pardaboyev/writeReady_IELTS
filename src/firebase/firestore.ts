@@ -14,12 +14,18 @@ import {
   type Firestore,
 } from 'firebase/firestore';
 import { db } from './config';
-import { effectivePlan } from '../lib/plans';
+import { customAnalysesOf, effectivePlan } from '../lib/plans';
 import type { UserProfile } from '../types';
 
 function toDate(val: unknown): Date {
   if (val instanceof Timestamp) return val.toDate();
   if (val instanceof Date) return val;
+  // Plan end dates are stored as "YYYY-MM-DD" text. Falling through to "now"
+  // made every "Access until" line show today's date.
+  if (typeof val === 'string') {
+    const d = new Date(val);
+    if (!Number.isNaN(d.getTime())) return d;
+  }
   return new Date();
 }
 
@@ -46,6 +52,7 @@ export async function getUserProfile(uid: string): Promise<UserProfile | null> {
     subscriptionExpiresAt: expiresAt ? toDate(expiresAt) : null,
     createdAt: toDate(d.createdAt),
     bonusAnalyses: typeof d.bonusAnalyses === 'number' ? d.bonusAnalyses : 0,
+    customAnalyses: plan === 'custom' ? customAnalysesOf(d) ?? undefined : undefined,
     freeUsage: d.freeUsage && typeof d.freeUsage === 'object'
       ? { weekKey: d.freeUsage.weekKey, count: d.freeUsage.count }
       : undefined,

@@ -16,6 +16,7 @@ import { loadTask1Chart, useTask1Chart } from '../lib/task1Chart';
 import type { CategoryFeedback, EnhancedFeedbackCategories, EnhancedFeedbackResult, GrammarPoint, ReadabilityTip, SentenceAnalysis } from '../types';
 import { CRITERIA, bandLabel, extractJson, normalizeScores } from '@shared/bandScore';
 import { hasFreeReportThisWeek } from '../lib/weeklyFree';
+import { isPaidPlan } from '../lib/plans';
 import { downloadFeedbackPdf } from '../lib/feedbackPdf';
 import { useSingleRun } from '../hooks/useSingleRun';
 import { LogoLoader } from '@/components/ui/LogoLoader';
@@ -722,7 +723,7 @@ export function FeedbackPage() {
     if (!authLoading && user === null) navigate('/auth');
   }, [user, authLoading, navigate]);
 
-  const isPro = profile?.plan === 'basic' || profile?.plan === 'standard' || profile?.plan === 'premium' || profile?.plan === 'forever';
+  const isPro = isPaidPlan(profile?.plan);
   // Free-plan users get 1 AI feedback report per week (or an admin-granted
   // bonus report) — they can request feedback just like paid users as long
   // as they haven't used it yet. pre-check.ts is the source of truth for

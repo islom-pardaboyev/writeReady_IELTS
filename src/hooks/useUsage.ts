@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { doc, onSnapshot } from 'firebase/firestore';
 import { db } from '../firebase/config';
-import { effectivePlan, monthlyLimitFor } from '../lib/plans';
+import { monthlyLimitOf } from '../lib/plans';
 import type { UsageRecord } from '../types';
 
 export function useUsage(uid: string | null) {
@@ -25,7 +25,7 @@ export function useUsage(uid: string | null) {
       // The same plan rules the server applies in api/pre-check.ts, so the
       // number on screen matches the number the student actually gets. A
       // learning-center student carries their center's plan and end date.
-      const limit = monthlyLimitFor(effectivePlan(data));
+      const limit = monthlyLimitOf(data);
       setUsage({ uid, yearMonth, count, limit, updatedAt: new Date() });
     }, () => {
       setLoading(false);

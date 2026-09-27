@@ -502,6 +502,56 @@ html.dark[data-accent="graphite"] {
   }
 }
 
+/* Payment receipt (PricingPage): two sheets that read as one paper slip with
+   a tear-off line between them. The notches are cut with masks so the dimmed
+   page shows through; the parent's drop-shadow follows the cut shape, which a
+   box-shadow would not. */
+.receipt-top,
+.receipt-stub {
+  --notch: 11px;
+}
+
+.receipt-top {
+  -webkit-mask:
+    radial-gradient(circle var(--notch) at 0 100%, #0000 98%, #000) left / 51% 100% no-repeat,
+    radial-gradient(circle var(--notch) at 100% 100%, #0000 98%, #000) right / 51% 100% no-repeat;
+  mask:
+    radial-gradient(circle var(--notch) at 0 100%, #0000 98%, #000) left / 51% 100% no-repeat,
+    radial-gradient(circle var(--notch) at 100% 100%, #0000 98%, #000) right / 51% 100% no-repeat;
+}
+
+.receipt-stub {
+  -webkit-mask:
+    radial-gradient(circle var(--notch) at 0 0, #0000 98%, #000) left / 51% 100% no-repeat,
+    radial-gradient(circle var(--notch) at 100% 0, #0000 98%, #000) right / 51% 100% no-repeat;
+  mask:
+    radial-gradient(circle var(--notch) at 0 0, #0000 98%, #000) left / 51% 100% no-repeat,
+    radial-gradient(circle var(--notch) at 100% 0, #0000 98%, #000) right / 51% 100% no-repeat;
+}
+
+/* The slip feeds out from the top like a printed receipt. `backwards` drops
+   the clip-path once it ends, so the shadow is never clipped at rest. */
+@keyframes receipt-print {
+  from {
+    clip-path: inset(0 0 62% 0 round 18px);
+    transform: translateY(-6px);
+  }
+  to {
+    clip-path: inset(0 0 0 0 round 18px);
+    transform: none;
+  }
+}
+
+.receipt-print {
+  animation: receipt-print 460ms cubic-bezier(0.16, 1, 0.3, 1) backwards;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .receipt-print {
+    animation: none;
+  }
+}
+
 /* ── Mock Exam: exam look ──────────────────────────────────────────────────
    A switch in the writing settings (src/lib/writingSettings.ts). The Mock
    Exam screen sets [data-exam-look] on its root: every word turns to Arial and

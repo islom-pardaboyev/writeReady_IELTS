@@ -43,6 +43,10 @@ export interface UserRow {
   usage?: { monthKey: string; count: number };
   /** Admin-granted full reports, spent after the plan's monthly quota runs out. */
   bonusAnalyses?: number;
+  /** Reports a month on the Customizable plan; only read while `plan` is "custom". */
+  customAnalyses?: number;
+  /** A learning-center student: their plan is their center's, stamped on whenever the center is saved. */
+  centerStudent?: boolean;
   /** The free plan's one-report-a-week allowance — see src/lib/weeklyFree.ts. */
   freeUsage?: { weekKey: string; count: number };
   /** Shown as a "Founding student" badge on their own account page. */

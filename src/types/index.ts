@@ -1,4 +1,4 @@
-export type Plan = 'free' | 'basic' | 'standard' | 'premium' | 'forever';
+export type Plan = 'free' | 'basic' | 'standard' | 'premium' | 'custom' | 'forever';
 
 export interface UserProfile {
   uid: string;
@@ -8,6 +8,8 @@ export interface UserProfile {
   subscriptionExpiresAt: Date | null;
   createdAt: Date;
   bonusAnalyses?: number;
+  /** Reports a month on the Customizable plan; set only while `plan` is 'custom'. */
+  customAnalyses?: number;
   freeUsage?: { weekKey?: string; count?: number };
   notification?: string;
   centerId?: string;

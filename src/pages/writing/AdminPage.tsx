@@ -123,6 +123,8 @@ export default function Admin() {
               lastActiveAt: latest(data.lastActiveAt?.toDate?.()?.toISOString(), lastReport[d.id]),
               usage: data.usage ?? undefined,
               bonusAnalyses: typeof data.bonusAnalyses === "number" ? data.bonusAnalyses : 0,
+              customAnalyses: typeof data.customAnalyses === "number" ? data.customAnalyses : undefined,
+              centerStudent: typeof data.centerId === "string" && data.centerId.length > 0,
               freeUsage: data.freeUsage ?? undefined,
               founder: data.founder === true,
             };

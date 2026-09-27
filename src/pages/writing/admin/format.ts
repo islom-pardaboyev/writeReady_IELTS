@@ -1,3 +1,4 @@
+import { customAnalysesOf } from "@/lib/plans";
 import type { UserRow } from "./types";
 
 const DAY = 86_400_000;
@@ -47,26 +48,33 @@ export const uzs = (n: number) => `${n.toLocaleString("en-US")} UZS`;
 export const todayKey = () => new Date().toISOString().slice(0, 10);
 
 // ── Plans ────────────────────────────────────────────────────────────────────
-export type PlanId = "free" | "basic" | "standard" | "premium" | "forever";
+export type PlanId = "free" | "basic" | "standard" | "premium" | "custom" | "forever";
 
 export const PLANS: { id: PlanId; label: string; price?: string }[] = [
   { id: "free", label: "Free" },
   { id: "basic", label: "Basic", price: "19,000 UZS" },
   { id: "standard", label: "Standard", price: "29,000 UZS" },
   { id: "premium", label: "Premium", price: "49,000 UZS" },
+  { id: "custom", label: "Customizable" },
   { id: "forever", label: "Lifetime" },
 ];
 
+/** The plan as stored, before expiry. What the plan actually grants today is effectivePlan() in src/lib/plans.ts. */
 export function planOf(u: Pick<UserRow, "plan" | "subscription">): PlanId {
   if (u.subscription === "forever" || u.plan === "forever") return "forever";
-  if (u.plan === "premium" || u.plan === "standard" || u.plan === "basic") return u.plan;
+  if (u.plan === "premium" || u.plan === "standard" || u.plan === "basic" || u.plan === "custom") return u.plan;
   return "free";
 }
 
-export function planLabel(u: Pick<UserRow, "plan" | "subscription">): string {
+export function planLabel(u: Pick<UserRow, "plan" | "subscription" | "customAnalyses">): string {
   // Learning-center students carry the legacy "pro" plan.
   if (u.plan === "pro") return "Center";
-  return PLANS.find((p) => p.id === planOf(u))!.label;
+  const p = planOf(u);
+  if (p === "custom") {
+    const n = customAnalysesOf(u);
+    return n ? `Customizable · ${n}` : "Customizable";
+  }
+  return PLANS.find((x) => x.id === p)!.label;
 }
 
 // Plan tiers never use the state colors (emerald, amber, red).
@@ -75,7 +83,7 @@ export function planBadge(u: Pick<UserRow, "plan" | "subscription">): "purple" |
   const p = planOf(u);
   if (p === "forever") return "purple";
   if (p === "premium") return "purple";
-  if (p === "basic" || p === "standard") return "info";
+  if (p === "basic" || p === "standard" || p === "custom") return "info";
   return "secondary";
 }
 
@@ -85,7 +93,7 @@ export function isPaying(u: UserRow): boolean {
 
 export function isExpiredPaid(u: UserRow): boolean {
   const p = planOf(u);
-  return (p === "basic" || p === "standard" || p === "premium") && !!u.expiresAt && new Date(u.expiresAt) < new Date();
+  return (p === "basic" || p === "standard" || p === "premium" || p === "custom") && !!u.expiresAt && new Date(u.expiresAt) < new Date();
 }
 
 export function planStatus(u: UserRow): string {
@@ -93,7 +101,9 @@ export function planStatus(u: UserRow): string {
   if (u.plan === "pro") return "Learning center student";
   if (p === "forever") return "Lifetime access, never expires";
   if (p !== "free" && u.expiresAt) {
-    return isExpiredPaid(u) ? `${planLabel(u)} plan expired on ${formatDate(u.expiresAt)}` : `${planLabel(u)} plan until ${formatDate(u.expiresAt)}`;
+    const n = p === "custom" ? customAnalysesOf(u) : null;
+    const name = p === "custom" ? (n ? `Customizable (${n} a month)` : "Customizable") : planLabel(u);
+    return isExpiredPaid(u) ? `${name} plan expired on ${formatDate(u.expiresAt)}` : `${name} plan until ${formatDate(u.expiresAt)}`;
   }
   return "No active plan";
 }

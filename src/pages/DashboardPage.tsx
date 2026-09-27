@@ -15,6 +15,7 @@ import { ProgressSection } from '../components/ui/ProgressSection';
 import { TelegramBotCard } from '../components/ui/TelegramBotCard';
 import { doc, updateDoc } from 'firebase/firestore';
 import { hasFreeReportThisWeek } from '../lib/weeklyFree';
+import { PLAN_INFO, isPaidPlan as isPaidPlanFn } from '../lib/plans';
 import { db } from '../firebase/config';
 import { GraduationCap, Clock, Download } from 'lucide-react';
 import { reportBand } from '@shared/bandScore';
@@ -156,7 +157,7 @@ export function DashboardPage() {
     }
   };
 
-  const isPaidPlan = profile?.plan === 'basic' || profile?.plan === 'standard' || profile?.plan === 'premium' || profile?.plan === 'forever';
+  const isPaidPlan = isPaidPlanFn(profile?.plan);
   const isPro = isPaidPlan;
   const profileAny = profile as unknown as Record<string, unknown> | null;
   const centerName = profileAny?.centerName as string | undefined;
@@ -174,12 +175,7 @@ export function DashboardPage() {
   const usagePct = usageLimit > 0 ? Math.min(100, (usedCount / usageLimit) * 100) : 0;
   const remaining = usageLimit - usedCount;
 
-  function planDisplayName(plan: string): string {
-    const names: Record<string, string> = { free: 'Free', basic: 'Basic', standard: 'Standard', premium: 'Premium', forever: 'Lifetime' };
-    return names[plan] ?? 'Free';
-  }
-
-  const planName = planDisplayName(profile?.plan ?? 'free');
+  const planName = PLAN_INFO[profile?.plan ?? 'free'].label;
   const onFreePlan = !isPaidPlan && (!isStudent || centerPlanEnded);
 
   // Signed-out visitors belong on the landing page, not an empty dashboard.

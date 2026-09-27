@@ -15,6 +15,7 @@ import { ShortcutSettings } from '../components/shortcuts/ShortcutSettings';
 import { VerifiedCards } from '../components/ui/VerifiedCards';
 import { AppearanceSettings } from '../components/appearance/AppearanceSettings';
 import { WritingSettingsCard } from '../components/appearance/WritingSettingsCard';
+import { PLAN_INFO, isPaidPlan } from '../lib/plans';
 
 function friendlyAuthError(err: unknown, fallback: string): string {
   const msg = err instanceof Error ? err.message : fallback;
@@ -81,7 +82,7 @@ export function AccountPage() {
 
   if (!user || !profile) return null;
 
-  const isPro = profile.plan === 'basic' || profile.plan === 'standard' || profile.plan === 'premium' || profile.plan === 'forever';
+  const isPro = isPaidPlan(profile.plan);
   const isForever = profile.subscription === 'forever' || profile.plan === 'forever';
   const displayName = user.displayName || user.email?.split('@')[0] || 'User';
   const initials = displayName.slice(0, 2).toUpperCase();
@@ -198,11 +199,13 @@ export function AccountPage() {
                 <span>⚡</span> {isForever ? 'LIFETIME' : 'PRO'}
               </div>
               <div className="font-sans text-2xl font-extrabold mb-1">
-                {isForever ? 'Lifetime Access' : 'Pro Plan'}
+                {isForever ? 'Lifetime Access' : `${PLAN_INFO[profile.plan].label} plan`}
               </div>
               <div className="text-sm text-white/50 mb-7">
                 {isForever
                   ? 'Never expires, full access forever'
+                  : profile.subscriptionExpiresAt
+                    ? `Active until ${profile.subscriptionExpiresAt.toLocaleDateString(navigator.language, { month: 'long', day: 'numeric', year: 'numeric' })}`
                   : profile.subscription
                     ? `Active until ${new Date(profile.subscription).toLocaleDateString(navigator.language, { month: 'long', day: 'numeric', year: 'numeric' })}`
                     : 'Active subscription'}

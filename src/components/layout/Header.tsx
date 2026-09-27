@@ -43,6 +43,13 @@ export function SubscriptionBadge({
       </span>
     );
   }
+  if (plan === "custom") {
+    return (
+      <span className="inline-flex items-center gap-1 text-[0.65rem] font-bold uppercase tracking-wider bg-brand-50 text-brand-700 border border-brand-200 rounded-full px-2 py-0.5 dark:bg-brand-900/30 dark:text-brand-300 dark:border-brand-700">
+        <span aria-hidden="true">✓</span> CUSTOM
+      </span>
+    );
+  }
   if (plan === "basic") {
     return (
       <span className="inline-flex items-center gap-1 text-[0.65rem] font-bold uppercase tracking-wider bg-brand-50 text-brand-600 border border-brand-200 rounded-full px-2 py-0.5 dark:bg-brand-900/30 dark:text-brand-300 dark:border-brand-700">

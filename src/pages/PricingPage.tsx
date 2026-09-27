@@ -2,12 +2,12 @@ import { useRef, useLayoutEffect, useEffect, useState, useId } from "react";
 import gsap from "gsap";
 import { ScrollTrigger } from "gsap/ScrollTrigger";
 import { Link } from "react-router";
-import { X, CreditCard, Copy, Send, Check, Sparkles } from "lucide-react";
+import { X, Copy, Send, Check } from "lucide-react";
 import { Layout } from "../components/layout/Layout";
 import { Button } from "../components/ui/Button";
 import { Card } from "../components/ui/Card";
 import { useAuth } from "../hooks/useAuth";
-import { PLAN_INFO } from "../lib/plans";
+import { CUSTOM_PLAN_PRICES, PLAN_INFO, customPriceFor } from "../lib/plans";
 
 gsap.registerPlugin(ScrollTrigger);
 
@@ -35,6 +35,12 @@ const perAnalysisText = (id: PlanId) => {
 };
 const savingVsBasic = (id: PlanId) => Math.floor((1 - perAnalysis(id) / perAnalysis("basic")) * 100);
 
+const customPerAnalysisText = (price: number, analyses: number) => {
+  const exact = price / analyses;
+  const shown = (Math.round(exact / 10) * 10).toLocaleString("en-US");
+  return Number.isInteger(exact / 10) ? shown : `≈ ${shown}`;
+};
+
 interface SelectedPlan {
   id: PlanId;
   name: string;
@@ -45,7 +51,18 @@ interface SelectedPlan {
 
 type PaymentTarget =
   | { kind: "plan"; plan: SelectedPlan }
-  | { kind: "balance"; amount: number };
+  | { kind: "balance"; amount: number }
+  | { kind: "custom"; analyses: number; price: number };
+
+interface Receipt {
+  item: string;
+  detail: string;
+  amount: number;
+  billing: string;
+  done: string;
+}
+
+const uzsFigure = (n: number) => n.toLocaleString("en-US");
 
 const PLANS: SelectedPlan[] = [
   {
@@ -77,6 +94,7 @@ export function PricingPage() {
   const [paymentTarget, setPaymentTarget] = useState<PaymentTarget | null>(null);
   const [copied, setCopied] = useState(false);
   const [topUpAmount, setTopUpAmount] = useState("");
+  const [customAnalyses, setCustomAnalyses] = useState(10);
   const modalTitleId = useId();
   const modalRef = useRef<HTMLDivElement>(null);
   const lastFocusedRef = useRef<HTMLElement | null>(null);
@@ -130,6 +148,43 @@ export function PricingPage() {
     if (!amount || amount < MIN_TOPUP_UZS) return;
     setPaymentTarget({ kind: "balance", amount });
   };
+
+  const customPrice = customPriceFor(customAnalyses);
+  // A student already on the Customizable plan starts from their own number.
+  const ownCustom = currentPlan === "custom" ? profile?.customAnalyses : undefined;
+  useEffect(() => {
+    if (ownCustom) setCustomAnalyses(ownCustom);
+  }, [ownCustom]);
+
+  const openCustomPayment = () => {
+    setPaymentTarget({ kind: "custom", analyses: customAnalyses, price: customPrice });
+  };
+
+  const receipt: Receipt | null = !paymentTarget
+    ? null
+    : paymentTarget.kind === "balance"
+    ? {
+        item: "Balance top-up",
+        detail: "For Human Check and other pay-per-use features",
+        amount: paymentTarget.amount,
+        billing: "One-time payment",
+        done: "We top up your balance",
+      }
+    : paymentTarget.kind === "custom"
+    ? {
+        item: "Customizable plan",
+        detail: `${paymentTarget.analyses} AI analyses a month`,
+        amount: paymentTarget.price,
+        billing: "Monthly · cancel anytime",
+        done: "We activate your Customizable plan",
+      }
+    : {
+        item: `${paymentTarget.plan.name} plan`,
+        detail: `${PLAN_INFO[paymentTarget.plan.id].monthlyAnalyses} AI analyses a month`,
+        amount: PLAN_INFO[paymentTarget.plan.id].monthlyPriceUZS,
+        billing: "Monthly · cancel anytime",
+        done: `We activate your ${paymentTarget.plan.name} plan`,
+      };
 
   const topUpValue = Number(topUpAmount);
   const topUpTooLow = topUpAmount !== "" && topUpValue < MIN_TOPUP_UZS;
@@ -424,6 +479,83 @@ export function PricingPage() {
             Savings compare with Basic and assume you use all of the month&rsquo;s analyses.
           </p>
 
+          {/* Customizable plan */}
+          <div className="gs-plan-card max-w-[640px] mx-auto mt-10 bg-[var(--bg-card)] border-2 border-dashed border-[var(--border-color)] rounded-2xl p-7">
+            <div className="mb-1">
+              <div className="text-lg font-bold text-[var(--text-primary)]">
+                Customizable
+              </div>
+              <div className="text-sm text-[var(--text-secondary)]">
+                {ownCustom
+                  ? `You're on ${ownCustom} analyses a month. Pick another number to change it.`
+                  : "None of the three fit? Pick the exact number of analyses you need."}
+              </div>
+            </div>
+
+            <div className="mt-5 max-h-[280px] overflow-y-auto rounded-xl border border-[var(--border-color)]">
+              <table className="w-full text-sm border-collapse">
+                <thead className="sticky top-0 bg-[var(--bg-subtle)]">
+                  <tr>
+                    <th className="w-10"></th>
+                    <th className="text-left font-semibold text-[var(--text-secondary)] py-2.5 px-3">
+                      AI analyses / month
+                    </th>
+                    <th className={`${FONT_MONO} text-right font-semibold text-[var(--text-secondary)] py-2.5 px-3`}>
+                      Price / month
+                    </th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {CUSTOM_PLAN_PRICES.map(({ analyses, price }) => {
+                    const inputId = `custom-analyses-${analyses}`;
+                    const isSelected = analyses === customAnalyses;
+                    return (
+                      <tr
+                        key={analyses}
+                        className={isSelected ? "bg-brand-50 dark:bg-brand-900/20" : ""}
+                      >
+                        <td className="py-2 px-3">
+                          <input
+                            type="radio"
+                            id={inputId}
+                            name="custom-analyses"
+                            checked={isSelected}
+                            onChange={() => setCustomAnalyses(analyses)}
+                            className="accent-[var(--ink-blue)]"
+                          />
+                        </td>
+                        <td className="py-2 px-3">
+                          <label htmlFor={inputId} className="block cursor-pointer text-[var(--text-primary)]">
+                            {analyses}
+                          </label>
+                        </td>
+                        <td className={`${FONT_MONO} text-right py-2 px-3`}>
+                          <label htmlFor={inputId} className="block cursor-pointer text-[var(--text-primary)]">
+                            {price.toLocaleString()} UZS
+                          </label>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+
+            <div className="flex items-center justify-between gap-4 mt-5 flex-wrap">
+              <p className="text-xs text-[var(--text-secondary)]">
+                {customAnalyses} analyses · {customPerAnalysisText(customPrice, customAnalyses)} UZS per analysis
+              </p>
+              <Button
+                onClick={openCustomPayment}
+                variant="secondary"
+                className={`shrink-0 ${ownCustom === customAnalyses ? "opacity-60" : ""}`}
+                disabled={ownCustom === customAnalyses}
+              >
+                {ownCustom === customAnalyses ? "Current plan" : `Get Customizable (${customPrice.toLocaleString()} UZS) →`}
+              </Button>
+            </div>
+          </div>
+
           {/* Balance top-up */}
           {user && (
             <div className="gs-plan-card max-w-[560px] mx-auto mt-10 bg-[var(--bg-card)] border border-[var(--border-color)] rounded-2xl p-7">
@@ -468,149 +600,161 @@ export function PricingPage() {
         </div>
       </div>
 
-      {/* Payment modal */}
-      {paymentTarget && (
+      {/* Payment receipt */}
+      {paymentTarget && receipt && (
         <div
           onClick={() => setPaymentTarget(null)}
-          className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center p-6 z-[1000]"
+          className="fixed inset-0 z-[1000] overflow-y-auto bg-black/60 backdrop-blur-sm"
+          style={{ overscrollBehavior: "contain" }}
         >
-          <div
-            onClick={(e) => e.stopPropagation()}
-            role="dialog"
-            aria-modal="true"
-            aria-labelledby={modalTitleId}
-            ref={modalRef}
-            tabIndex={-1}
-            className="bg-[var(--bg-card)] rounded-3xl max-w-[480px] w-full max-h-[90vh] overflow-y-auto shadow-[var(--shadow-lg)] p-8 outline-none"
-            style={{ overscrollBehavior: "contain" }}
-          >
-            <div className="flex justify-between items-start mb-6">
-              <div>
-                <h2
-                  id={modalTitleId}
-                  className={`text-2xl font-extrabold text-[var(--text-primary)] mb-1`}
-                >
-                  Complete payment
-                </h2>
-                <p className="text-[0.95rem] text-[var(--text-secondary)]">
-                  {paymentTarget.kind === "balance"
-                    ? `Balance Top-up · ${paymentTarget.amount.toLocaleString()} UZS`
-                    : `${paymentTarget.plan.name} · ${paymentTarget.plan.price} ${paymentTarget.plan.period}`}
-                </p>
-              </div>
-              <button
-                onClick={() => setPaymentTarget(null)}
-                className="bg-transparent border-0 cursor-pointer text-[var(--text-secondary)] p-1 hover:text-[var(--text-primary)] transition-colors"
-                aria-label="Close"
-              >
-                <X size={20} />
-              </button>
-            </div>
-
-            <div className="border-t border-[var(--border-color)] -mx-8 mb-6" />
-
-            {/* Plan / amount summary */}
-            <div className="bg-[var(--bg-subtle)] rounded-2xl p-5 mb-7 border border-[var(--border-color)]">
-              <div className="flex items-center justify-between gap-4">
-                <div className="flex items-center gap-3">
-                  <span className="w-10 h-10 rounded-xl bg-brand-50 text-[var(--ink-blue)] flex items-center justify-center shrink-0 dark:bg-brand-900/30 dark:text-brand-400">
-                    <Sparkles size={18} />
-                  </span>
-                  <div>
-                    <div className="text-xs text-[var(--text-secondary)] mb-0.5">
-                      {paymentTarget.kind === "balance" ? "Top-up" : "Plan"}
-                    </div>
-                    <div className="text-base font-bold text-[var(--text-primary)]">
-                      {paymentTarget.kind === "balance" ? "Account Balance" : paymentTarget.plan.name}
-                    </div>
-                  </div>
-                </div>
-                <div className="text-right">
-                  <div className="text-xs text-[var(--text-secondary)] mb-0.5">
-                    Amount
-                  </div>
-                  <div
-                    className={`${FONT_MONO} text-base font-bold text-[var(--text-primary)]`}
-                  >
-                    {paymentTarget.kind === "balance" ? paymentTarget.amount.toLocaleString() : paymentTarget.plan.price} UZS
-                  </div>
-                </div>
-              </div>
-
-              <div className="border-t border-[var(--border-color)] my-4" />
-
-              <div className="flex items-center gap-2 text-sm text-[var(--text-secondary)]">
-                <Check size={13} strokeWidth={3} />
-                {paymentTarget.kind === "balance" ? "One-time balance top-up" : paymentTarget.plan.billingNote}
-              </div>
-            </div>
-
-            {/* Step 1 */}
-            <div className="flex items-center gap-3 mb-4">
-              <span className="w-7 h-7 rounded-full bg-[var(--ink-blue-solid)] text-white flex items-center justify-center font-bold text-sm shrink-0">
-                1
-              </span>
-              <h3 className="text-[1.05rem] font-bold text-[var(--text-primary)]">
-                Transfer to this card
-              </h3>
-            </div>
-
-            <div className="bg-[var(--bg-subtle)] rounded-2xl px-6 py-5 mb-7">
-              <div className="flex items-center gap-2 text-[var(--text-secondary)] text-sm mb-3">
-                <CreditCard size={16} />
-                Card number
-              </div>
-              <div className="flex items-center justify-between gap-4 mb-4">
-                <span
-                  className={`${FONT_MONO} text-[1.375rem] font-semibold text-[var(--text-primary)] tracking-[0.02em]`}
-                >
-                  {CARD_NUMBER}
-                </span>
-                <button
-                  onClick={handleCopyCard}
-                  className="flex items-center gap-1.5 border border-[var(--border-color)] rounded-[20px] px-4 py-2 bg-[var(--bg-card)] text-sm font-semibold text-[var(--text-primary)] cursor-pointer whitespace-nowrap hover:bg-[var(--bg-subtle)] transition-colors"
-                >
-                  <Copy size={15} />
-                  {copied ? "Copied!" : "Copy"}
-                </button>
-              </div>
-              <div className="text-sm text-[var(--text-secondary)]">
-                Cardholder:{" "}
-                <strong className="text-[var(--text-primary)]">
-                  {CARDHOLDER}
-                </strong>
-              </div>
-            </div>
-
-            <div className="flex items-center gap-3 mb-4">
-              <span className="w-7 h-7 rounded-full bg-[var(--ink-blue-solid)] text-white flex items-center justify-center font-bold text-sm shrink-0">
-                2
-              </span>
-              <h3 className="text-[1.05rem] font-bold text-[var(--text-primary)]">
-                Send payment receipt
-              </h3>
-            </div>
-
-            <p className="text-[0.9375rem] text-[var(--text-secondary)] leading-[1.6] mb-5">
-              Send a screenshot of the transfer to{" "}
-              <strong className="text-[var(--text-primary)]">
-                @{TELEGRAM_USERNAME}
-              </strong>{" "}
-              on Telegram.{" "}
-              {paymentTarget.kind === "balance"
-                ? "Your balance will be topped up within 24 hours."
-                : `Your ${paymentTarget.plan.name} subscription will be activated within 24 hours.`}
-            </p>
-
-            <a
-              href={`https://t.me/${TELEGRAM_USERNAME}`}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="flex items-center justify-center gap-2 bg-[var(--ink-blue-solid)] text-white rounded-[14px] p-3.5 font-bold text-base no-underline mb-5 hover:opacity-90 transition-colors"
+          <div className="flex min-h-full items-center justify-center px-4 py-8 sm:px-6">
+            <div
+              onClick={(e) => e.stopPropagation()}
+              role="dialog"
+              aria-modal="true"
+              aria-labelledby={modalTitleId}
+              ref={modalRef}
+              tabIndex={-1}
+              className="w-full max-w-[440px] outline-none drop-shadow-[0_8px_32px_rgba(15,23,42,0.14)] dark:drop-shadow-[0_8px_32px_rgba(0,0,0,0.5)]"
             >
-              <Send size={18} />
-              Open Telegram
-            </a>
+              <div className="receipt-print">
+                <section className="receipt-top rounded-t-[18px] bg-[var(--bg-card)] px-6 pt-4 pb-7 sm:px-8">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <img src="/logo.png" alt="" className="size-6 rounded-md" />
+                      <span className="text-sm font-bold text-[var(--text-primary)]">WriteReady IELTS</span>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setPaymentTarget(null)}
+                      className="-mr-2.5 flex size-10 items-center justify-center rounded-[10px] text-[var(--text-secondary)] transition-colors hover:bg-[var(--bg-subtle)] hover:text-[var(--text-primary)] dark:hover:bg-[var(--bg-base)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ring)]"
+                      aria-label="Close"
+                    >
+                      <X size={18} aria-hidden="true" />
+                    </button>
+                  </div>
+
+                  <h2
+                    id={modalTitleId}
+                    className="mt-4 text-lg font-semibold tracking-[-0.01em] text-[var(--text-primary)]"
+                  >
+                    Order summary
+                  </h2>
+                  <p className="mt-0.5 text-xs text-[var(--text-secondary)]">
+                    <time dateTime={new Date().toISOString().slice(0, 10)}>
+                      {new Date().toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" })}
+                    </time>
+                    {" · "}Paid by card transfer
+                  </p>
+
+                  <div className="mt-6 flex items-start justify-between gap-4">
+                    <div className="min-w-0">
+                      <p className="text-base font-medium text-[var(--text-primary)]">{receipt.item}</p>
+                      <p className="mt-0.5 text-xs text-[var(--text-secondary)]">{receipt.detail}</p>
+                    </div>
+                    <p className={`${FONT_MONO} shrink-0 text-base tabular-nums text-[var(--text-primary)]`}>
+                      {uzsFigure(receipt.amount)}
+                    </p>
+                  </div>
+
+                  <dl className="mt-5 grid grid-cols-[auto_minmax(0,1fr)] gap-x-6 gap-y-2 border-t border-dashed border-[var(--border-strong)] pt-4 text-sm">
+                    <dt className="text-[var(--text-secondary)]">Billing</dt>
+                    <dd className="text-right text-[var(--text-primary)]">{receipt.billing}</dd>
+                    <dt className="text-[var(--text-secondary)]">Account</dt>
+                    <dd className="truncate text-right text-[var(--text-primary)]">
+                      {user?.email ?? (
+                        <Link
+                          to="/auth?mode=signup"
+                          className="font-medium text-[var(--ink-blue)] underline-offset-4 hover:underline"
+                        >
+                          Sign up first
+                        </Link>
+                      )}
+                    </dd>
+                  </dl>
+
+                  <div className="mt-4 flex items-baseline justify-between gap-4 border-t border-dashed border-[var(--border-strong)] pt-4">
+                    <span className="text-sm font-semibold text-[var(--text-primary)]">Total due</span>
+                    <span className={`${FONT_MONO} text-[1.875rem] font-semibold leading-none tabular-nums text-[var(--text-primary)]`}>
+                      {uzsFigure(receipt.amount)}
+                      <span className="ml-1.5 text-sm font-medium text-[var(--text-secondary)]">UZS</span>
+                    </span>
+                  </div>
+                </section>
+
+                <section
+                  aria-label="How to pay"
+                  className="receipt-stub relative rounded-b-[18px] bg-[var(--bg-card)] px-6 pt-7 pb-6 sm:px-8"
+                >
+                  <div aria-hidden="true" className="absolute inset-x-5 top-0 border-t-2 border-dashed border-[var(--border-color)]" />
+
+                  <h3 className="text-base font-semibold text-[var(--text-primary)]">How to pay</h3>
+
+                  <ol className="mt-4 space-y-5">
+                    <li className="flex gap-3">
+                      <span
+                        aria-hidden="true"
+                        className={`${FONT_MONO} flex size-6 shrink-0 items-center justify-center rounded-full border border-[var(--border-strong)] text-xs text-[var(--text-secondary)]`}
+                      >
+                        1
+                      </span>
+                      <div className="min-w-0 flex-1">
+                        <p className="text-sm leading-6 text-[var(--text-primary)]">
+                          Transfer{" "}
+                          <span className={`${FONT_MONO} font-medium tabular-nums`}>{uzsFigure(receipt.amount)} UZS</span>{" "}
+                          to this card
+                        </p>
+                        <div className="mt-2.5 rounded-[10px] bg-[var(--bg-subtle)] px-4 py-3 dark:bg-[var(--bg-base)]">
+                          <p className={`${FONT_MONO} whitespace-nowrap text-lg font-medium tabular-nums tracking-[0.02em] text-[var(--text-primary)]`}>
+                            {CARD_NUMBER}
+                          </p>
+                          <div className="mt-2 flex items-center justify-between gap-3">
+                            <p className="text-xs text-[var(--text-secondary)]">
+                              Cardholder: <span className="font-medium text-[var(--text-primary)]">{CARDHOLDER}</span>
+                            </p>
+                            <button
+                              type="button"
+                              onClick={handleCopyCard}
+                              className="flex h-8 shrink-0 items-center gap-1.5 rounded-md border border-[var(--border-color)] bg-[var(--bg-card)] px-3 text-xs font-semibold text-[var(--text-primary)] transition-colors hover:bg-[var(--bg-subtle)] dark:hover:bg-[var(--border-color)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ring)]"
+                            >
+                              {copied ? <Check size={14} aria-hidden="true" /> : <Copy size={14} aria-hidden="true" />}
+                              {copied ? "Copied" : "Copy number"}
+                            </button>
+                          </div>
+                          <span className="sr-only" aria-live="polite">{copied ? "Card number copied" : ""}</span>
+                        </div>
+                      </div>
+                    </li>
+                    <li className="flex gap-3">
+                      <span
+                        aria-hidden="true"
+                        className={`${FONT_MONO} flex size-6 shrink-0 items-center justify-center rounded-full border border-[var(--border-strong)] text-xs text-[var(--text-secondary)]`}
+                      >
+                        2
+                      </span>
+                      <p className="min-w-0 flex-1 text-sm leading-6 text-[var(--text-secondary)]">
+                        Send the transfer receipt to{" "}
+                        <span className="font-semibold text-[var(--text-primary)]">@{TELEGRAM_USERNAME}</span>{" "}
+                        on Telegram, with the email you signed up with.
+                      </p>
+                    </li>
+                  </ol>
+
+                  <a
+                    href={`https://t.me/${TELEGRAM_USERNAME}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="mt-6 flex h-11 items-center justify-center gap-2 rounded-[10px] bg-[var(--ink-blue-solid)] text-sm font-semibold text-white no-underline transition-opacity hover:opacity-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ring)] focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--bg-card)]"
+                  >
+                    <Send size={16} aria-hidden="true" />
+                    Open Telegram
+                  </a>
+                  <p className="mt-3 text-center text-xs text-[var(--text-secondary)]">
+                    {receipt.done} within 24 hours of your message.
+                  </p>
+                </section>
+              </div>
+            </div>
           </div>
         </div>
       )}
