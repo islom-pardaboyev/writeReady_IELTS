@@ -29,8 +29,12 @@ export interface TestEssay {
   id: string;
   taskType: 'Task 1' | 'Task 2';
   expected: Expected;
-  /** The official descriptor phrases that decide each band. */
+  /** The official descriptor phrases that decide each band, or, for a
+   *  human-marked essay, the errors the marker still accepted at that band. */
   because: string;
+  /** Who set the expected bands, when a real person marked the essay. Left
+   *  out where the bands were set from the descriptors alone. */
+  markedBy?: string;
   question: string;
   essay: string;
 }
@@ -114,5 +118,52 @@ The effects on individuals are well documented and largely negative. Chronic ove
 At the social level, the consequences are mixed. Longer hours may raise output in the short term, but they impose costs that societies eventually absorb through health systems and lost caring capacity. Countries that have experimented with shorter weeks, notably Iceland, found that output held steady while wellbeing improved markedly — evidence that long hours reflect cultural habit rather than economic necessity.
 
 In short, the trend stems from technological intrusion and job insecurity rather than personal choice, and while it may appear to benefit employers, it steadily erodes the health and social fabric on which any productive economy ultimately depends.`,
+  },
+
+  /* ── Human-marked essays ─────────────────────────────────────────────────
+   * The bands below come from a person, not from the descriptors. They matter
+   * most here because they show how many errors a real marker lets through at
+   * Band 7 and 8. Do not also paste these into the prompt as examples: a test
+   * essay the model has already seen marked proves nothing.                 */
+  {
+    id: 'school-purpose',
+    taskType: 'Task 2',
+    // mean 7.5
+    expected: { ta: 8, cc: 7, lr: 8, gra: 7 },
+    markedBy: 'a teacher with IELTS Band 9.0 (bands supplied 2026-09-27)',
+    because:
+      'GRA 7 was given with slips in about half the sentences: "student’ personal development", "be a self-employed", "teach them doing exercises", "children’ artistic talents", no comma before a sentence-level "which". ' +
+      'LR 8 was given despite loose choices such as "professions such as accountants" and "common job positions". ' +
+      'TR 8 was given to an "I completely disagree" position whose conclusion also grants school a role for work ("vital for both personal and professional lives").',
+    question:
+      'Some people think the main purpose of school is to turn children into good citizens and workers, rather than to benefit them as individuals. To what extent do you agree or disagree?',
+    essay: `It is often argued that the main objective of schools is preparing students for the professional workplace and for being responsible citizens. I completely disagree with this view as the school curriculum consists of subjects that benefit student’ personal development.
+
+Some believe that a school is an educational setting that prepares future employees. In other words, many subjects in the syllabus are relevant to different professions such as accountants, teachers, doctors and other common job positions. Therefore, it is believed that school graduates primarily learn only professional skills that are necessary for employment. Furthermore, there are some core subjects such as law and culture which teach schoolchildren how to become a better citizen by explaining civic values of a country.
+
+However, I believe the main aim of schools is to prepare students for life whether they work in a company or be a self-employed. Students at school can learn a wide range of skills that can be beneficial in all walks of life which means it is not limited to just gaining professional knowledge for work or society. While art lessons, for instance, nurture children’ artistic talents and creativity, physical education classes teach them doing exercises in the right way and lead a healthy lifestyle. Hence, school education is not only necessary for work purposes but it is also essential for personal development.
+
+In conclusion, school is considered a place to prepare workers and good citizens, but it has a crucial role in students’ personal development and way of life. I think school education is vital for both personal and professional lives of graduates.`,
+  },
+  {
+    id: 'cultural-objects',
+    taskType: 'Task 2',
+    // mean 7.75, which IELTS rounds up to 8.0
+    expected: { ta: 8, cc: 8, lr: 8, gra: 7 },
+    markedBy: 'a teacher with IELTS Band 9.0 (bands supplied 2026-09-27)',
+    because:
+      'GRA 7 was given with errors in 6 of 12 sentences: only small slips in three ("some of cultural objects", "have all facilities", "the British museum and Louvre") and real errors in three (a "which" clause that is hard to follow, "where these cultural objects were taken", a comma splice with "even if British Museum return"). ' +
+      'CC 8 was given despite two loosely used linkers: "However" with no contrast before it, and "In other words" opening a new point. ' +
+      'LR 8 was given despite "reconcile their relationships" and "at risk of ruin". ' +
+      'TR 8 was given to a partly-agree position with one sweeping claim ("only foreign artefacts").',
+    question:
+      'Important cultural objects should be returned to their countries of origin. To what extent do you agree or disagree?',
+    essay: `It is often argued that countries should return cultural artifacts to their home countries. While I agree that these historical objects should be repatriated, I believe international museums may play a key role in preserving them.
+
+Historical objects are considered national identity as they represent traditions, beliefs and history. However, some of cultural objects were stolen illegally from their home countries, during colonisation. For instance, the British Museum is claimed to include only foreign artefacts from countries such as India and Nigeria which were taken from other countries in the wartime. By returning them countries can reconcile their relationships with other countries where these cultural objects were taken. If all of these artifacts were displayed in their local museums, it would boost national pride and tourism.
+
+However, global museums have all facilities to preserve these artefacts. In other words, some countries may lack funding or necessary equipment to keep these artifacts intact, thereby putting these historical objects at risk of ruin. Take Nigeria as an example, even if British Museum return their historical artifacts, the government of Nigeria may not be able to preserve these objects as the British Museum does. Moreover, some museums such as the British museum and Louvre are visited by millions of tourists annually which means they can improve cross-cultural understanding and serve as global museums.
+
+To conclude, although it is morally right to return historical objects to their home countries, not all of them should be returned because of practical and educational reasons.`,
   },
 ];

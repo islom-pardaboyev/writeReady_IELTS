@@ -219,7 +219,9 @@ async function main() {
     const want = e.expected;
     const wantOverall = expectedOverall(want);
     console.log(`\n${e.id.toUpperCase()}`);
-    console.log(`  Official descriptors put this at ${wantOverall.toFixed(1)} overall:`);
+    console.log(e.markedBy
+      ? `  Marked ${wantOverall.toFixed(1)} overall by ${e.markedBy}:`
+      : `  Official descriptors put this at ${wantOverall.toFixed(1)} overall:`);
     for (const part of e.because.split('. ').filter(Boolean)) {
       console.log(`    ${part.trim().replace(/\.$/, '')}.`);
     }

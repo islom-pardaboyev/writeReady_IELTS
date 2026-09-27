@@ -656,6 +656,10 @@ function readReport(raw: string): { topic: string; scores: BandScores; issues: s
 function bandDescriptors(taskType: string): string {
   const isTask1 = taskType === 'Task 1';
   const minWords = isTask1 ? 150 : 250;
+  // Fewer words than this is short enough to count. Between it and the
+  // minimum is counting noise: word counts differ by a few words depending on
+  // how numbers and hyphenated words are counted.
+  const nearlyWords = isTask1 ? 145 : 240;
 
   const taskCriterion = isTask1
     ? `TASK ACHIEVEMENT (Task 1 — describing data/process/map/letter):
@@ -675,7 +679,7 @@ function bandDescriptors(taskType: string): string {
 
   return `${taskCriterion}
 
-LENGTH (official rules, not a soft guideline): minimum ${minWords} words for ${taskType}. Count only the student's own words: words copied from the question do not count. Responses of 20 words or fewer are automatically Band 1 on ALL four criteria. Significantly underlength responses can be capped around Band 3 on Lexical Resource / Grammatical Range & Accuracy since the resource/structures used can't be judged. A response only slightly under the minimum (up to about 10% short) is a minor issue: mention it in the Task Achievement/Response rationale, where it may cost at most half a band, and never let it lower the other three criteria. A response more than about 10% short is a genuine weakness in Task Achievement/Response, because main ideas or key features will usually be underdeveloped, rather than a reason for an arbitrary numeric cap.
+LENGTH (official rules, not a soft guideline): minimum ${minWords} words for ${taskType}. Count only the student's own words: words copied from the question do not count. Responses of 20 words or fewer are automatically Band 1 on ALL four criteria. Significantly underlength responses can be capped around Band 3 on Lexical Resource / Grammatical Range & Accuracy since the resource/structures used can't be judged. A response only a few words short (${nearlyWords} to ${minWords - 1} words) does not move any band and is not a weakness: word counts differ by a few words depending on how numbers and hyphenated words are counted. A response shorter than that but no more than about 10% under the minimum is a minor issue: mention it in the Task Achievement/Response rationale, where it may cost at most half a band, and never let it lower the other three criteria. A response more than about 10% short is a genuine weakness in Task Achievement/Response, because main ideas or key features will usually be underdeveloped, rather than a reason for an arbitrary numeric cap.
 
 COHERENCE & COHESION (both tasks):
 - Band 9: Message followed effortlessly; cohesion rarely draws attention; lapses minimal; paragraphing skilfully managed.
@@ -726,7 +730,7 @@ BANDS 0–3 (all four criteria; only for responses that barely attempt the task)
  * so does whatCounts(), the list of things that must not move a band.        */
 
 function examinerPreamble(): string {
-  return `You are a certified, experienced IELTS examiner. Score this essay accurately using the official IELTS band descriptors and the scoring method below — not your own idea of "good writing." Be fair and calibrated: award high bands (8.0–9.0) to genuinely strong essays and low bands to weak ones. Under-scoring a strong essay is just as wrong as over-scoring a weak one. Return ONLY valid JSON — no markdown, no backticks, no extra text. Write it compactly, with no indentation and no line breaks between fields: the layout shown below is only there to make the fields easy to read. Line breaks inside a text value, such as between the paragraphs of the sample answer, stay as \\n.`;
+  return `You are a certified, experienced IELTS examiner. Score this essay accurately using the official IELTS band descriptors and the scoring method below — not your own idea of "good writing." Be fair and calibrated: award high bands (8.0–9.0) to genuinely strong essays and low bands to weak ones. Under-scoring a strong essay is just as wrong as over-scoring a weak one. Return ONLY valid JSON — no markdown, no backticks, no extra text. Write it compactly, with no indentation and no line breaks between fields: the layout shown below is only there to make the fields easy to read. Line breaks inside a text value, such as between the paragraphs of the sample answer, stay as \\n. When a text value quotes the essay, put the quoted words in single quotes ('like this'), and escape any double quote inside a value as \\", so the JSON stays valid.`;
 }
 
 /**
@@ -801,7 +805,7 @@ function scoringMethod(): string {
   return `=== SCORING METHOD (the official IELTS rule) ===
 The official descriptors say: "A script must fully fit the positive features of the descriptor at a particular level", and a weakness they name at a band limits the rating to that band. Apply this to EACH of the 4 criteria on its own, in three steps:
 1. Base band: the highest band whose positive features this essay fully shows. Fully fitting a band never means flawless. Each descriptor sets its own tolerance for error, and the essay only has to stay within it: Band 9 allows rare slips, Band 8 occasional errors, Band 7 a few errors that persist, Band 6 errors that rarely impede communication.
-2. Limiting weaknesses: a serious weakness a descriptor names at a band holds the criterion at that band, however strong the rest is. For example: no clear overview in Task 1, a position the reader has to search for, no paragraphing, errors that impede meaning. Slips of the kind and number the band above allows are not limiting weaknesses. Band 7 itself allows a few grammar errors, occasional inappropriate word choices or collocations, and some inaccuracy or over/under-use of cohesive devices, so a handful of such slips does not hold a criterion at Band 6. Judge errors by how many sentences they affect and whether they reduce clarity: a few scattered slips fit Band 7; errors in many sentences, or complex sentences that are usually faulty, fit Band 6.
+2. Limiting weaknesses: a serious weakness a descriptor names at a band holds the criterion at that band, however strong the rest is. For example: no clear overview in Task 1, a position the reader has to search for, no paragraphing, errors that impede meaning. Slips of the kind and number the band above allows are not limiting weaknesses. Band 7 itself allows a few grammar errors, occasional inappropriate word choices or collocations, and some inaccuracy or over/under-use of cohesive devices, so a handful of such slips does not hold a criterion at Band 6. Band 8 allows slips too: "occasional inaccuracies in word choice and collocation" in Lexical Resource, and "occasional lapses in coherence and cohesion". So two or three phrases that are clear but not quite natural, in an essay whose vocabulary is otherwise wide and precise, do not hold Lexical Resource at Band 7; and one or two linkers used loosely (a "However" with nothing to contrast, an "In other words" that does not restate), in an essay that is otherwise logically sequenced and easy to follow, do not hold Coherence and Cohesion at Band 7. Band 8 still needs its positive features: without a wide vocabulary used with skill, or ideas the reader follows with ease, the criterion stays at Band 7 however few its errors. Judge grammar errors by their kind as well as by how many sentences they affect (see the Grammatical Range and Accuracy count in STRICT RULES): small slips scattered across the essay fit Band 7 when complex structures are mostly controlled; real errors in many sentences, or complex sentences that are usually faulty, fit Band 6.
 3. Half band: award the base band plus 0.5 when the essay fully fits the base band AND clearly shows some of the next band's positive features, with no weakness holding it at the base band. Choose between the whole and the half band on the evidence, rounding up or down as the evidence points rather than by habit.
 
 Apply the band descriptors exactly as written, in both directions. Do not withhold a band over errors its own descriptor allows, and do not award a band whose positive features are missing, however hard the student has clearly worked.
@@ -840,6 +844,31 @@ Do not mark down what the descriptors do not:
 - Local examples (Uzbek cities, schools, customs, names) are as valid as any others.`;
 }
 
+/**
+ * What to check in THIS kind of task before scoring it, each tied to the band
+ * the official descriptors give it. These are the places a model marker most
+ * often misjudges Task Achievement/Response: a part of a two-part question left
+ * out, a position that shifts, a Task 1 with no overview, a letter missing a
+ * bullet point. Shared by both reports, like every other scoring rule.
+ * Wording checked against scripts/ielts-official-band-descriptors.md.
+ */
+function taskChecks(taskType: string): string {
+  if (taskType === 'Task 1') {
+    return `=== CHECKS BEFORE YOU SCORE (Task 1) ===
+Academic (a chart, graph, table, map, process or diagram):
+- Overview: look for a clear summary of the main trends, differences or stages. A clear overview, with the data grouped and the main trends or differences identified, is part of Band 7 and above. An overview that is attempted but vague, partly wrong or buried fits Band 6 ("a relevant overview is attempted"). No overview at all, with the answer going through details without the bigger picture, fits Band 5 ("tends to focus on details without referring to the bigger picture").
+- Key features and data: the main features must be selected and supported with figures. Going through every figure in order, with no grouping or comparison, is "mainly mechanical" recounting (Band 5). Key features described with no figures at all is "no data to support the description" (Band 5).
+- Nothing beyond the visual: reasons, opinions or predictions the visual does not show are irrelevant content, however well written. In details they are a Band 6 weakness; when they replace key features, Band 5.
+General Training (a letter):
+- Bullet points: each of the three must be covered and extended. One left out fits Band 4 ("not all bullet points are presented"); one presented but not adequately covered fits Band 5.
+- Purpose and tone: the purpose must be clear, and the tone must suit the reader (formal to an official or a company, informal to a friend) and stay the same throughout. Minor inconsistencies in tone fit Band 6; tone that is variable and sometimes inappropriate, Band 5; inappropriate tone, Band 4.`;
+  }
+  return `=== CHECKS BEFORE YOU SCORE (Task 2) ===
+- The parts of the question: before judging Task Response, work out every part the question asks for, for example a position on a statement ("To what extent do you agree or disagree?"), both views and the writer's own opinion ("Discuss both views and give your opinion"), causes and an evaluation ("Why is this happening? Is it positive or negative?"), or advantages, disadvantages and which outweigh. Then check each part is answered. These are "the main parts of the prompt": all parts answered and developed is needed for Band 7 and above; a part answered much more thinly than the others fits Band 6 ("some may be more fully covered than others"); a part not answered at all means the main parts are "incompletely addressed" (Band 5).
+- Position: when the question asks for one, it should be clear early and hold to the end. A position that shifts or contradicts itself, or only appears in the conclusion, is not the "clear" position Band 7 needs: it fits Band 6 or 5 depending on how clear the development is. One the reader has to read carefully to find fits Band 4. A partly-agree position ("While I agree that X, I believe Y") is a clear position when the essay keeps to it to the end. A conclusion that grants the other side a point while keeping the writer's view ("X plays a part, but Y matters more") is not a shift either. A shift means the essay argues against the view it stated, or ends on a different view: "I completely disagree" in the introduction and "I agree" in the conclusion.
+- Relevance of support: examples and reasons must support THIS question. Support that fits a related but different topic (travel when the question is about living somewhere, children when it is about adults) is a "lack of focus" (Band 7) when it happens once or twice, and "less relevant or inadequate" support (Band 6) when a main idea rests on it.`;
+}
+
 /** The reasoning and the four bands. `bandRationale` is never shown to the
  *  student: it is there to make the model commit to a descriptor before it
  *  commits to a number, which is what keeps the two reports in line. */
@@ -848,7 +877,7 @@ function scoresSchema(taskType: string, gapCoaching: boolean): string {
   "topic": "<2-5 word topic label e.g. 'Technology and Society'>",
   "wordCount": <the word count given with the essay below>,
   "bandRationale": {
-    "taskAchievement": "<2-3 sentences citing the essay: the base band it fully fits, any weakness holding it there, and whether it earns the half band above${gapCoaching ? "; then what is missing to reach the next band up" : ''}>",
+    "taskAchievement": "<2-3 sentences quoting the essay's own words (a few words each) as evidence: the base band it fully fits, any weakness holding it there, and whether it earns the half band above${gapCoaching ? "; then what is missing to reach the next band up" : ''}>",
     "coherenceCohesion": "<same>",
     "lexicalResource": "<same>",
     "grammaticalRangeAccuracy": "<same>"
@@ -858,17 +887,20 @@ function scoresSchema(taskType: string, gapCoaching: boolean): string {
     "coherenceCohesion": <band 0-9 in 0.5 steps>,
     "lexicalResource": <band 0-9 in 0.5 steps>,
     "grammaticalRangeAccuracy": <band 0-9 in 0.5 steps>,
-    "overall": <(TA+CC+LR+GRA)/4, IELTS rounding: .25 rounds up to .5, .75 rounds up to next whole band, never round down on .25/.75>
+    "overall": <a plain number such as 6.5, never a formula or words: the mean of the four bands, with .25 rounding up to .5 and .75 rounding up to the next whole band>
   },`;
 }
 
 /** The scoring half of STRICT RULES. */
 function scoringRules(): string {
   return `- Score each of the 4 criteria INDEPENDENTLY. It is uncommon for all four to land on the exact same band — most essays are stronger in some areas than others. Do NOT default to giving every criterion 7.0; give matching scores only when each criterion genuinely fits that band on its own.
+- Judge each criterion only on its own evidence, as if you had not scored the other three. A persuasive argument does not lift Grammatical Range, polished grammar does not lift Task Response, and many grammar slips do not lower Coherence or Task Response.
+- Every bandRationale quotes the essay: a rationale that could describe any essay is not evidence. Write the evidence first, then the band it supports.
 - scores.* must be internally consistent with bandRationale.* — the score must be the band you described
-- Count each mistake under the one criterion it belongs to, never under two. Grammar and punctuation mistakes (articles, verb forms, subject-verb agreement, faulty parallel structures, possessive apostrophes, sentence boundaries) are judged under Grammatical Range and Accuracy only and must not lower Lexical Resource. Lexical Resource is judged on the range, precision and naturalness of vocabulary, collocation, spelling and word formation.
-- Each error counts once, under the criterion it belongs to. Grammar, verb forms, articles, plurals and punctuation (apostrophes included) belong to Grammatical Range and Accuracy. Word choice, collocation, spelling and word formation belong to Lexical Resource. A wrong or missing possessive apostrophe (student' for student's or students', children' for children's) is a punctuation error: count it under Grammatical Range and Accuracy only, never as spelling or word formation. Never use the same error as evidence against both.
-- Before you give Grammatical Range and Accuracy, count the essay's sentences and how many contain at least one grammar or punctuation error, and state that count in bandRationale.grammaticalRangeAccuracy (for example "4 of 15 sentences have an error"). Call errors frequent, or say they occur in many sentences, only when that count shows it.
+- Count each mistake once, under the one criterion it belongs to, never as evidence against two. Grammar and punctuation (articles, verb forms, plurals, subject-verb agreement, faulty parallel structures, sentence boundaries, apostrophes) belong to Grammatical Range and Accuracy only and must not lower Lexical Resource. Word choice, collocation, spelling and word formation belong to Lexical Resource, which is judged on the range, precision and naturalness of vocabulary. A wrong or missing possessive apostrophe (student' for student's or students', children' for children's) is a punctuation error, never spelling or word formation.
+- Before you give Grammatical Range and Accuracy, sort its errors into two kinds. Small slips: a missing, extra or wrong article; a missing or extra comma; an apostrophe; a capital letter. Real errors: a wrong verb form, tense or verb pattern; subject-verb or singular/plural agreement; word order; a run-on sentence or comma splice; a missing or wrong word that breaks the structure; any clause the reader has to read twice to understand. A small slip that changes or hides the meaning counts as a real error. Count the essay's sentences, the sentences with at least one real error, and the sentences with only small slips, and state all three in bandRationale.grammaticalRangeAccuracy (for example "15 sentences: 3 with a real error, 4 more with only small slips"). Judge Band 7's "error-free sentences are frequent" mainly on the real errors: small slips in many sentences still fit Band 7 when real errors are few and complex structures are mostly controlled. Band 8 needs both counts low: "the majority of sentences are error-free" and "punctuation is well managed". Call errors frequent, or say they occur in many sentences, only when the count of real errors shows it.
+- Before you give Lexical Resource, count the word choice, collocation, spelling and word-formation errors, and quote one or two less common items the essay uses precisely (or say it has none). State both in bandRationale.lexicalResource (for example "3 word-choice errors; used precisely: '<item from the essay>', '<item from the essay>'"). Rare words used wrongly count as errors, not range. The count alone does not set the band: weigh it against how much precise, less common vocabulary the essay uses, as step 2 of the scoring method explains for Band 8.
+- Check the boundary on every criterion before you settle it: before giving a band, confirm the essay fully shows that band's positive features, not most of them; and before giving the band below, confirm it does not already fully fit the higher one.
 - Award the band the evidence supports, in either direction: give Band 8.0–9.0 when the essay fully fits those descriptors, and give Band 4.0–6.0 when it does not. Occasional slips do not block a high band; persistent errors and undeveloped ideas do.
 - Do NOT compress scores toward the middle. Never inflate a score to encourage the student, and never deflate one to appear rigorous. This student is preparing for a real exam, and a wrong score hurts them in either direction: too high tells them they are ready when they are not, too low makes a ready student delay and pay for an exam they could already pass. The same applies to the written feedback: name the real weaknesses plainly, and give real credit for what the essay does well.
 - Bands below 4.0 are only for the cases in BANDS 0–3: a response that barely attempts the task, is off-topic, is 20 words or fewer, or is not in English. A real attempt at the task, however basic its English, is Band 4.0 or above.
@@ -896,6 +928,8 @@ ${bandDescriptors(taskType)}
 ${scoringMethod()}
 
 ${whatCounts()}
+
+${taskChecks(taskType)}
 
 Return ONLY this JSON structure, and nothing beyond it:
 {
@@ -955,6 +989,8 @@ ${bandDescriptors(taskType)}
 ${scoringMethod()}
 
 ${whatCounts()}
+
+${taskChecks(taskType)}
 
 Return this EXACT JSON structure:
 {
