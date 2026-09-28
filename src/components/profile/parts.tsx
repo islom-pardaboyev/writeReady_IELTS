@@ -54,8 +54,10 @@ export function ProfileAvatar({ user, name, size = 'lg' }: { user: User; name: s
 export function Meter({ value, label, className }: { value: number; label: string; className: string }) {
   const [shown, setShown] = useState(0);
   useEffect(() => {
-    const id = requestAnimationFrame(() => setShown(value));
-    return () => cancelAnimationFrame(id);
+    // A timer rather than an animation frame: frames never fire in a
+    // background tab, and the bar must not stay empty there.
+    const id = window.setTimeout(() => setShown(value), 30);
+    return () => window.clearTimeout(id);
   }, [value]);
   const clamped = (n: number) => Math.max(0, Math.min(1, n));
   return (

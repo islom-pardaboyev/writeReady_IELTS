@@ -2,8 +2,8 @@ import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { useParams, Link, useNavigate } from 'react-router';
 import {
   ArrowLeft, Download, ChevronLeft, ChevronRight, Loader2, Lock, AlertTriangle,
-  LayoutGrid, Target, ListChecks, FileText, PenLine, BookOpen, SpellCheck2, SearchCheck, Brain,
-  TrendingUp, Repeat2, CheckCircle2, XCircle, ChevronDown, ChevronUp, Sparkles, Link2, Award, Info,
+  Target, ListChecks, FileText, PenLine, BookOpen, SpellCheck2, SearchCheck, Brain,
+  Repeat2, Check, RotateCcw, CheckCircle2, XCircle, ChevronDown, ChevronUp, Sparkles, Link2, Award, Info,
 } from 'lucide-react';
 import { useAuth } from '../hooks/useAuth';
 import { AppShell } from '../components/layout/AppShell';
@@ -22,20 +22,22 @@ import { useSingleRun } from '../hooks/useSingleRun';
 import { LogoLoader } from '@/components/ui/LogoLoader';
 import { FeedbackRating } from '@/components/ui/FeedbackRating';
 import { ScoreCardDialog } from '@/components/ui/ScoreCardDialog';
+import { FixChecklist, ResultSheet } from '@/components/report/ResultSheet';
 
 type TaskKey = 'task1' | 'task2';
-type Tab = 'overview' | 'priority' | 'detailed' | 'essay' | 'sample' | 'vocabulary' | 'grammar' | 'spelling' | 'quiz';
+// The bands and the three fixes sit above the tabs, on the result sheet, so
+// the tabs hold the detail. "readability" is the old Priority tab's second half.
+type Tab = 'essay' | 'detailed' | 'readability' | 'sample' | 'vocabulary' | 'grammar' | 'spelling' | 'quiz';
 
-const TABS: { id: Tab; label: string; icon: typeof LayoutGrid }[] = [
-  { id: 'overview', label: 'Overview', icon: LayoutGrid },
-  { id: 'priority', label: 'Priority', icon: Target },
-  { id: 'detailed', label: 'Detailed', icon: ListChecks },
-  { id: 'essay', label: 'Essay', icon: FileText },
-  { id: 'sample', label: 'Sample', icon: PenLine },
-  { id: 'vocabulary', label: 'Vocab', icon: BookOpen },
-  { id: 'grammar', label: 'Grammar', icon: SpellCheck2 },
-  { id: 'spelling', label: 'Spelling', icon: SearchCheck },
-  { id: 'quiz', label: 'Practice', icon: Brain },
+const TABS: { id: Tab; label: string }[] = [
+  { id: 'essay', label: 'Your essay' },
+  { id: 'detailed', label: 'By criterion' },
+  { id: 'readability', label: 'Readability' },
+  { id: 'sample', label: 'Sample answer' },
+  { id: 'vocabulary', label: 'Vocabulary' },
+  { id: 'grammar', label: 'Grammar' },
+  { id: 'spelling', label: 'Spelling' },
+  { id: 'quiz', label: 'Practice' },
 ];
 
 // A single consistent color identity per scoring category, reused across the
@@ -149,8 +151,8 @@ function PracticeResult({ result, accentClass }: {
       )}
       {improved && (
         <div className={`bg-white/80 dark:bg-black/20 rounded-lg px-3 py-2.5 border ${result.correct ? 'border-green-200 dark:border-green-800' : 'border-red-200 dark:border-red-800'}`}>
-          <p className={`flex items-center gap-1.5 text-[0.65rem] font-bold uppercase tracking-widest mb-1 ${accentClass ?? 'text-[var(--ink-blue)]'}`}>
-            <Sparkles className="w-3 h-3" /> Improved version
+          <p className={`flex items-center gap-1.5 text-xs font-semibold mb-1 ${accentClass ?? 'text-[var(--ink-blue)]'}`}>
+            <Sparkles className="w-3 h-3" aria-hidden /> Better version
           </p>
           <p className={`text-sm leading-relaxed m-0 italic ${accentClass?.replace('text-', 'text-') ?? 'text-[var(--ink-blue)]'}`}>
             {improved}
@@ -185,7 +187,7 @@ function FreeTaskGate({
           <Sparkles className="w-5 h-5 text-[var(--ink-blue)]" />
         </span>
         <h2 className="text-xl font-bold text-[var(--text-primary)]">Which essay should we mark?</h2>
-        <p className="mt-2 max-w-prose text-[0.9375rem] leading-relaxed text-[var(--text-secondary)]">
+        <p className="mt-2 max-w-prose text-base leading-relaxed text-[var(--text-secondary)]">
           You wrote two essays, and the free plan includes <strong className="text-[var(--text-primary)]">one AI
           report a week</strong>. Pick the essay you want marked. The other one stays saved and unmarked, and your
           next free report arrives on Monday.
@@ -214,7 +216,7 @@ function FreeTaskGate({
         <Lock className="w-5 h-5 text-[var(--ink-blue)]" />
       </span>
       <h2 className="text-xl font-bold text-[var(--text-primary)]">This essay is not marked</h2>
-      <p className="mt-2 max-w-prose text-[0.9375rem] leading-relaxed text-[var(--text-secondary)]">
+      <p className="mt-2 max-w-prose text-base leading-relaxed text-[var(--text-secondary)]">
         The free plan includes one AI report a week
         {markedTask ? <>, and this week&rsquo;s went to <strong className="text-[var(--text-primary)]">{label(markedTask)}</strong></> : null}
         . Your essay is saved, so you can mark it once your next free report arrives on Monday.
@@ -246,16 +248,16 @@ function FreeReportNotice({ onGetFull }: { onGetFull?: () => void }) {
         </span>
         Your free report is the band score
       </p>
-      <p className="mt-3 text-[0.9375rem] leading-relaxed text-[var(--text-secondary)]">
-        The four criteria above are marked against the official IELTS band descriptors, the same way a
-        paid report is marked. The greyed-out tabs are what a paid plan adds:
+      <p className="mt-3 text-base leading-relaxed text-[var(--text-secondary)]">
+        The four bands above are marked against the official IELTS band descriptors, the same way a
+        paid report is marked. The greyed-out sections below are what a paid plan adds:
       </p>
-      <ul className="mt-3 grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-1.5 text-[0.9375rem] text-[var(--text-secondary)] list-none p-0">
+      <ul className="mt-3 grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-1.5 text-base text-[var(--text-secondary)] list-none p-0">
         {['Every sentence reviewed and rewritten', 'Priority fixes and band gap analysis',
           'Up to 15 words with Uzbek meanings', 'Up to 10 grammar points from your own mistakes',
           'A band 8 to 9 sample answer', 'Spelling check and practice exercises'].map((item) => (
           <li key={item} className="flex items-start gap-2">
-            <span aria-hidden="true" className="text-[var(--ink-blue)] mt-0.5">+</span>
+            <Check className="mt-1 w-3.5 h-3.5 shrink-0 text-[var(--ink-blue)]" aria-hidden />
             {item}
           </li>
         ))}
@@ -464,15 +466,15 @@ function GrammarCard({ g, onShowInEssay }: { g: GrammarPoint; onShowInEssay?: ()
           {isAdd ? <Sparkles className="w-4 h-4" aria-hidden /> : <SpellCheck2 className="w-4 h-4" aria-hidden />}
         </div>
         <div className="flex-1 min-w-0">
-          <p className="font-bold text-[var(--text-primary)] mb-1.5 text-[0.9375rem]">{g.point}</p>
+          <p className="font-bold text-[var(--text-primary)] mb-1.5 text-base">{g.point}</p>
           {g.explanation && <p className="text-sm text-[var(--text-secondary)] leading-relaxed mb-2.5">{g.explanation}</p>}
           {yours ? (
             <>
-              <blockquote className="m-0 rounded-lg bg-[var(--bg-subtle)] px-3.5 py-2.5 text-[0.9375rem] leading-relaxed text-[var(--text-secondary)]">
+              <blockquote className="m-0 rounded-lg bg-[var(--bg-subtle)] px-3.5 py-2.5 text-base leading-relaxed text-[var(--text-secondary)]">
                 <span className="block text-xs font-semibold text-[var(--text-secondary)] mb-1">{labels.yours}</span>
                 &ldquo;{yours}&rdquo;
               </blockquote>
-              <div className="mt-2 rounded-lg bg-emerald-50 px-3.5 py-2.5 text-[0.9375rem] leading-relaxed text-emerald-900 dark:bg-emerald-900/25 dark:text-emerald-200">
+              <div className="mt-2 rounded-lg bg-emerald-50 px-3.5 py-2.5 text-base leading-relaxed text-emerald-900 dark:bg-emerald-900/25 dark:text-emerald-200">
                 <span className="block text-xs font-semibold text-emerald-700 dark:text-emerald-400 mb-1">{labels.fixed}</span>
                 {g.example}
               </div>
@@ -488,7 +490,7 @@ function GrammarCard({ g, onShowInEssay }: { g: GrammarPoint; onShowInEssay?: ()
             </>
           ) : g.example ? (
             <div className="bg-[var(--gold)]/10 border border-[var(--gold)]/30 rounded-lg px-3.5 py-2.5">
-              <p className="text-[0.8125rem] text-amber-900 dark:text-amber-300 italic m-0">
+              <p className="text-sm text-amber-900 dark:text-amber-300 italic m-0">
                 Example: "{g.example}"
               </p>
             </div>
@@ -504,38 +506,21 @@ function withStoredMeta(result: EnhancedFeedbackResult, stored: EnhancedFeedback
   return { ...result, reportId: stored.reportId, basis: stored.basis };
 }
 
-// Three clearly distinct tiers — gold never doubles as both "great" and "needs work".
-function scoreColor(score: number) {
-  return score >= 7 ? 'text-amber-500' : score >= 6 ? 'text-[var(--ink-blue)]' : 'text-rose-500';
-}
 
-function scoreBarColor(score: number) {
-  return score >= 7 ? 'bg-amber-400' : score >= 6 ? 'bg-[var(--ink-blue)]' : 'bg-rose-500';
-}
 
-function scoreStroke(score: number) {
-  return score >= 7 ? '#f59e0b' : score >= 6 ? 'var(--ink-blue)' : '#f43f5e';
-}
 
-function ScoreBadge({ score }: { score: number }) {
-  return (
-    <span className={`font-mono font-bold text-4xl leading-none ${scoreColor(score)}`}>
-      {score.toFixed(1)}
-    </span>
-  );
-}
 
 // Ordered stages shown while the report streams in. The report JSON arrives in
 // this exact order, so we detect which section has appeared to show REAL
 // progress (not a fake timer).
 const ANALYSIS_STAGES = [
-  { key: 'read', label: 'Reading your essay', icon: '📖' },
-  { key: 'overview', label: 'Assessing band scores', icon: '🎯' },
-  { key: 'improve', label: 'Finding what to work on', icon: '🔍' },
-  { key: 'sample', label: 'Writing a model sample essay', icon: '✍️' },
-  { key: 'vocab', label: 'Building your vocabulary list', icon: '📚' },
-  { key: 'grammar', label: 'Preparing grammar points', icon: '🧠' },
-  { key: 'exercises', label: 'Preparing interactive exercises', icon: '🎮' },
+  { key: 'read', label: 'Reading your essay', icon: FileText },
+  { key: 'overview', label: 'Marking the four criteria', icon: Target },
+  { key: 'improve', label: 'Finding what to work on', icon: SearchCheck },
+  { key: 'sample', label: 'Writing a sample answer', icon: PenLine },
+  { key: 'vocab', label: 'Choosing better words', icon: BookOpen },
+  { key: 'grammar', label: 'Preparing grammar points', icon: SpellCheck2 },
+  { key: 'exercises', label: 'Preparing practice exercises', icon: Brain },
 ] as const;
 const LAST_STAGE = ANALYSIS_STAGES.length - 1;
 
@@ -564,7 +549,7 @@ export function FeedbackPage() {
   const [analysisStage, setAnalysisStage] = useState<Record<string, number>>({});
   const [feedbacks, setFeedbacks] = useState<Record<string, EnhancedFeedbackResult>>({});
   const [feedbackErrors, setFeedbackErrors] = useState<Record<string, string>>({});
-  const [activeTab, setActiveTab] = useState<Tab>('overview');
+  const [activeTab, setActiveTab] = useState<Tab>('essay');
 
   const loading = loadings[selectedTask] ?? false;
   const storedFeedback = feedbacks[selectedTask] ?? null;
@@ -576,11 +561,11 @@ export function FeedbackPage() {
   );
   const feedbackError = feedbackErrors[selectedTask] ?? null;
 
-  // The tab a free report is allowed to show. Every panel renders off this
-  // rather than activeTab, so a free report stays on Overview even if
-  // activeTab was left on another tab by a paid report in the same session.
-  // Nothing else can mount, so nothing else can start a request.
-  const shownTab: Tab = feedback?.limited ? 'overview' : activeTab;
+  // The tab a report is allowed to show. Every panel renders off this rather
+  // than activeTab: a free report shows no panel at all (its bands are on the
+  // result sheet), even if activeTab was left on a tab by a paid report in the
+  // same session. Nothing else can mount, so nothing else can start a request.
+  const shownTab: Tab | null = feedback?.limited ? null : activeTab;
 
   const [flipped, setFlipped] = useState<Record<number, boolean>>({});
   // Each category accordion opens/closes independently — opening one must never close another.
@@ -708,7 +693,7 @@ export function FeedbackPage() {
       setWordCountWarning(
         `Your essay is ${count} words, below the IELTS minimum of ${min} words for ${
           selectedTask === 'task1' ? 'Task 1' : 'Task 2'
-        }. Short essays are penalised for Task Achievement.`
+        }. A short essay loses marks for ${selectedTask === 'task1' ? 'Task Achievement' : 'Task Response'}.`
       );
     } else {
       setWordCountWarning(null);
@@ -1149,6 +1134,38 @@ export function FeedbackPage() {
 
   // ── Main render ────────────────────────────────────────────────────────────
 
+  const taskName = selectedTask === 'task1' ? 'Task 1' : 'Task 2';
+  // Counted the same way as the writing screens and the word warning, so the
+  // page never shows two different numbers for one essay.
+  const essayWords = essayForTask.trim().split(/\s+/).filter(Boolean).length;
+  const questionBlock = (
+    <>
+      <p className="m-0 text-xs font-medium text-[var(--text-secondary)]">{taskName} question</p>
+      {selectedTask === 'task1' && task1Chart && (
+        (() => {
+          const src = task1Chart;
+          const pdf = src.startsWith('data:application/pdf') || /\.pdf(\?|$)/i.test(src);
+          return pdf ? (
+            <object data={src} type="application/pdf" className="mt-3 w-full h-[400px] rounded-lg border border-[var(--border-color)]">
+              <iframe src={src} className="w-full h-[400px] border-0 rounded-lg" title="Task 1 chart" />
+            </object>
+          ) : (
+            <img
+              src={src}
+              alt="Task 1 chart"
+              width={1200}
+              height={800}
+              className="mt-3 w-full max-h-72 object-contain rounded-lg border border-[var(--border-color)] bg-white"
+            />
+          );
+        })()
+      )}
+      <p className="m-0 mt-1.5 max-w-[75ch] text-base font-medium leading-relaxed text-[var(--text-primary)]">
+        {selectedTask === 'task1' ? reportData.task1?.report : reportData.task2?.report}
+      </p>
+    </>
+  );
+
   return (
     <AppShell minimal>
       <style>{`
@@ -1157,7 +1174,7 @@ export function FeedbackPage() {
            instead of spilling text out of a fixed height. */
         .fp-flip-inner { display: grid; width: 100%; height: 100%; transition: transform 0.55s cubic-bezier(.4,0,.2,1); transform-style: preserve-3d; }
         .fp-flip-inner.is-flipped { transform: rotateY(180deg); }
-        .fp-flip-face { grid-area: 1 / 1; min-height: 185px; backface-visibility: hidden; -webkit-backface-visibility: hidden; border-radius: 12px; display: flex; flex-direction: column; justify-content: center; align-items: center; padding: 1.25rem; box-sizing: border-box; text-align: center; }
+        .fp-flip-face { grid-area: 1 / 1; min-height: 185px; backface-visibility: hidden; -webkit-backface-visibility: hidden; border-radius: 14px; display: flex; flex-direction: column; justify-content: center; align-items: center; padding: 1.25rem; box-sizing: border-box; text-align: center; }
         .fp-flip-back { transform: rotateY(180deg); }
         @keyframes fpFadeIn { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
         @keyframes fpFlash { 0%, 100% { outline-color: transparent; } 25%, 60% { outline-color: var(--ink-blue); } }
@@ -1172,101 +1189,84 @@ export function FeedbackPage() {
       <div className="bg-[var(--bg-base)] min-h-[calc(100vh-56px)] pb-16">
         {/* ── Page header ── */}
         <div className="border-b border-[var(--border-color)] bg-[var(--bg-card)]">
-          <div className="container mx-auto max-w-5xl px-4 sm:px-6 py-5">
-            <div className="flex items-center justify-between flex-wrap gap-3">
-              <div>
-                <Link
-                  to="/dashboard"
-                  className="inline-flex items-center gap-1.5 text-sm text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition-colors group no-underline"
-                >
-                  <ArrowLeft className="w-3.5 h-3.5 transition-transform group-hover:-translate-x-0.5" />
-                  Dashboard
-                </Link>
-                <h1 className="text-2xl sm:text-3xl font-extrabold text-[var(--text-primary)] mt-1 tracking-tight">
-                  AI Feedback Report
-                </h1>
+          <div className="mx-auto max-w-5xl px-4 py-5 sm:px-6">
+            <Link
+              to="/dashboard"
+              className="group inline-flex items-center gap-1.5 text-sm text-[var(--text-secondary)] no-underline transition-colors hover:text-[var(--text-primary)]"
+            >
+              <ArrowLeft className="w-3.5 h-3.5 transition-transform group-hover:-translate-x-0.5 motion-reduce:transition-none" aria-hidden />
+              Dashboard
+            </Link>
+            <div className="mt-2 flex flex-wrap items-end justify-between gap-4">
+              <div className="min-w-0">
+                <h1 className="text-2xl font-extrabold tracking-[-0.025em] text-[var(--text-primary)] sm:text-3xl">Your feedback report</h1>
+                <p className="mt-1 text-sm text-[var(--text-secondary)]">
+                  {taskName} · <span className="font-mono tabular-nums">{essayWords}</span> words · marked by AI
+                </p>
               </div>
-              {feedback && (
-                <div className="flex items-center gap-2">
-                  <Button onClick={() => setScoreCardOpen(true)} size="sm">
-                    <Award className="w-3.5 h-3.5" /> {hasBothTasks ? 'Score report' : 'Score card'}
-                  </Button>
-                  <Button onClick={exportPDF} loading={exporting} variant="secondary" size="sm">
-                    {!exporting && <Download className="w-3.5 h-3.5" />} {exporting ? 'Saving PDF…' : 'Full feedback PDF'}
-                  </Button>
-                </div>
-              )}
+              <div className="flex flex-wrap items-center gap-2">
+                {/* Task switch, when one mock produced both essays */}
+                {hasBothTasks && (
+                  <div role="group" aria-label="Task" className="inline-flex rounded-[10px] border border-[var(--border-color)] bg-[var(--bg-card)] p-1">
+                    {(['task1', 'task2'] as const).map((t) => {
+                      const hasFb = !!feedbacks[t];
+                      const isLoading = loadings[t];
+                      const on = selectedTask === t;
+                      return (
+                        <button
+                          key={t}
+                          type="button"
+                          aria-pressed={on}
+                          onClick={() => { setSelectedTask(t); setActiveTab('essay'); resetTaskView(); }}
+                          className={`flex h-8 cursor-pointer items-center gap-1.5 rounded-md border-0 px-3 text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[var(--ring)] ${
+                            on
+                              ? 'bg-[var(--accent)] text-[var(--accent-foreground)]'
+                              : 'bg-transparent text-[var(--text-secondary)] hover:bg-[var(--bg-subtle)] hover:text-[var(--text-primary)]'
+                          }`}
+                        >
+                          {t === 'task1' ? 'Task 1' : 'Task 2'}
+                          {isLoading ? (
+                            <Loader2 className="w-3 h-3 animate-spin opacity-70" aria-label="marking" />
+                          ) : hasFb ? (
+                            <CheckCircle2 className="w-3 h-3 opacity-80" aria-label="marked" />
+                          ) : mustChooseTask ? (
+                            <Lock className="w-3 h-3 opacity-60" aria-label="not marked" />
+                          ) : null}
+                        </button>
+                      );
+                    })}
+                  </div>
+                )}
+                {feedback && (
+                  <>
+                    <Button onClick={() => setScoreCardOpen(true)} size="sm">
+                      <Award aria-hidden /> {hasBothTasks ? 'Score report' : 'Score card'}
+                    </Button>
+                    <Button onClick={exportPDF} loading={exporting} variant="outline" size="sm">
+                      {!exporting && <Download aria-hidden />} {exporting ? 'Saving PDF…' : 'Full feedback PDF'}
+                    </Button>
+                  </>
+                )}
+              </div>
             </div>
-
-            {/* ── Task selector ── */}
-            {hasBothTasks && (
-              <div className="flex gap-2 mt-5">
-                {(['task1', 'task2'] as const).map((t) => {
-                  const hasFb = !!feedbacks[t];
-                  const isLoading = loadings[t];
-                  return (
-                    <button
-                      key={t}
-                      onClick={() => { setSelectedTask(t); setActiveTab('overview'); resetTaskView(); }}
-                      className={`px-5 py-1.5 rounded-full border-2 font-semibold text-sm transition-colors cursor-pointer flex items-center gap-2 ${
-                        selectedTask === t
-                          ? 'border-[var(--ink-blue)] bg-[var(--ink-blue-solid)] text-white'
-                          : 'border-[var(--border-color)] bg-[var(--bg-card)] text-[var(--text-secondary)] hover:border-[var(--ink-blue)]'
-                      }`}
-                    >
-                      {t === 'task1' ? 'Task 1' : 'Task 2'}
-                      {isLoading ? (
-                        <Loader2 className="w-3 h-3 animate-spin opacity-70" />
-                      ) : hasFb ? (
-                        <CheckCircle2 className="w-3 h-3 opacity-80" />
-                      ) : mustChooseTask ? (
-                        <Lock className="w-3 h-3 opacity-60" aria-label="not marked" />
-                      ) : null}
-                    </button>
-                  );
-                })}
-              </div>
-            )}
           </div>
         </div>
 
-        <div className="container mx-auto max-w-5xl px-4 sm:px-6 pt-6">
+        <div className="mx-auto max-w-5xl px-4 pt-6 sm:px-6">
 
           {/* ── Word count warning ── */}
           {wordCountWarning && (
-            <div className="flex items-start gap-2.5 bg-orange-50 border border-orange-200 dark:bg-orange-900/20 dark:border-orange-800 rounded-2xl px-4 py-3 mb-5 text-sm text-orange-800 dark:text-orange-300">
-              <AlertTriangle className="w-4 h-4 shrink-0 mt-0.5" /> {wordCountWarning}
-            </div>
+            <p role="status" className="mb-5 flex items-start gap-2.5 rounded-[10px] border border-amber-200 bg-amber-50 px-3.5 py-2.5 text-sm text-amber-800 dark:border-amber-900/60 dark:bg-amber-950/40 dark:text-amber-300">
+              <AlertTriangle className="w-4 h-4 shrink-0 mt-0.5" aria-hidden /> {wordCountWarning}
+            </p>
           )}
 
-          {/* ── Question card ── */}
-          <div className="bg-[var(--bg-card)] rounded-2xl px-6 py-5 border border-[var(--border-color)] border-l-4 border-l-[var(--ink-blue)] mb-6 shadow-sm">
-            <p className="text-xs font-bold tracking-widest uppercase text-[var(--text-secondary)] mb-2">
-              {selectedTask === 'task1' ? 'Task 1' : 'Task 2'} Question
-            </p>
-            {selectedTask === 'task1' && task1Chart && (
-              (() => {
-                const src = task1Chart;
-                const pdf = src.startsWith('data:application/pdf') || /\.pdf(\?|$)/i.test(src);
-                return pdf ? (
-                  <object data={src} type="application/pdf" className="w-full h-[400px] rounded-lg border border-[var(--border)] mb-3">
-                    <iframe src={src} className="w-full h-[400px] border-0 rounded-lg mb-3" title="Task 1 chart" />
-                  </object>
-                ) : (
-                  <img
-                    src={src}
-                    alt="Task 1 chart"
-                    width={1200}
-                    height={800}
-                    className="w-full max-h-72 object-contain rounded-lg border border-[var(--border)] mb-3"
-                  />
-                );
-              })()
-            )}
-            <p className="leading-relaxed text-[var(--text-primary)] text-[0.9375rem] m-0">
-              {selectedTask === 'task1' ? reportData.task1?.report : reportData.task2?.report}
-            </p>
-          </div>
+          {/* ── The question, on its own until the report arrives (then it tops the result sheet) ── */}
+          {!feedback && (
+            <div className="mb-6 rounded-[18px] border border-[var(--border-color)] bg-[var(--bg-card)] px-5 py-5 shadow-[var(--shadow-sm)] sm:px-6">
+              {questionBlock}
+            </div>
+          )}
 
           {!savedChecked && !feedback && !loading && (
             <div className="flex items-center justify-center gap-3 py-16 text-[var(--text-secondary)]">
@@ -1282,7 +1282,7 @@ export function FeedbackPage() {
               markedTask={markedTask}
               onChoose={(t) => {
                 setSelectedTask(t);
-                setActiveTab('overview');
+                setActiveTab('essay');
                 resetTaskView();
                 loadFeedback(t);
               }}
@@ -1322,7 +1322,7 @@ export function FeedbackPage() {
                         className={`flex items-center gap-3 transition-opacity duration-300 ${active ? 'opacity-100' : done ? 'opacity-80' : 'opacity-40'}`}
                       >
                         <span
-                          className={`flex items-center justify-center w-7 h-7 rounded-full text-[0.8rem] shrink-0 transition-colors ${
+                          className={`flex items-center justify-center w-7 h-7 rounded-full text-sm shrink-0 transition-colors ${
                             done
                               ? 'bg-green-100 text-green-600'
                               : active
@@ -1335,7 +1335,7 @@ export function FeedbackPage() {
                           ) : active ? (
                             <Loader2 className="w-3.5 h-3.5 text-[var(--ink-blue)] animate-spin" />
                           ) : (
-                            <span aria-hidden className="text-[0.7rem]">{s.icon}</span>
+                            <s.icon aria-hidden className="w-3.5 h-3.5 text-[var(--text-secondary)]" />
                           )}
                         </span>
                         <span className={`text-sm ${active ? 'font-semibold text-[var(--text-primary)]' : 'text-[var(--text-secondary)]'}`}>
@@ -1389,83 +1389,27 @@ export function FeedbackPage() {
           {/* ── Main feedback UI ── */}
           {feedback && (
             <div>
-              {/* Score hero */}
-              <div className="relative overflow-hidden rounded-2xl mb-5 bg-[var(--bg-card)] border border-[var(--border-color)] shadow-sm">
-                <div className="absolute inset-0 bg-linear-to-br from-[var(--ink-blue)]/[0.07] via-transparent to-[var(--gold)]/[0.06] pointer-events-none" />
-                <div
-                  className="absolute -top-24 -right-24 w-64 h-64 rounded-full blur-3xl opacity-[0.15] pointer-events-none"
-                  style={{ background: scoreStroke(feedback.scores.overall) }}
-                />
-                <div className="relative p-6 sm:p-8 flex items-center gap-8 lg:gap-10 flex-wrap">
-                  {/* Overall score ring */}
-                  <div className="flex flex-col items-center min-w-[130px]">
-                    <p className="inline-flex items-center gap-1.5 text-[0.65rem] font-bold tracking-widest uppercase text-[var(--text-secondary)] mb-4">
-                      <Sparkles className="w-3 h-3 text-[var(--gold)]" /> Estimated band
-                    </p>
-                    <div className="relative flex items-center justify-center">
-                      <svg className="w-28 h-28 -rotate-90 drop-shadow-[0_2px_10px_rgba(0,0,0,0.08)]" viewBox="0 0 96 96">
-                        <circle cx="48" cy="48" r="40" fill="none" stroke="var(--border-color)" strokeWidth="8" />
-                        <circle
-                          cx="48" cy="48" r="40" fill="none"
-                          stroke={scoreStroke(feedback.scores.overall)}
-                          strokeWidth="8"
-                          strokeLinecap="round"
-                          strokeDasharray={`${2 * Math.PI * 40}`}
-                          strokeDashoffset={`${2 * Math.PI * 40 * (1 - Math.min(1, Math.max(0, (feedback.scores.overall - 4) / 5)))}`}
-                          className="transition-[stroke-dashoffset,stroke] duration-700"
-                        />
-                      </svg>
-                      <div className="absolute flex flex-col items-center">
-                        <span className={`font-mono text-3xl font-bold leading-none ${scoreColor(feedback.scores.overall)}`}>
-                          {feedback.scores.overall.toFixed(1)}
-                        </span>
-                        <span className="text-[0.6rem] text-[var(--text-secondary)] mt-1">/ 9.0 · ±0.5</span>
-                      </div>
-                    </div>
-                    <span className="mt-3 px-2.5 py-1 rounded-full bg-[var(--bg-subtle)] text-[0.7rem] font-bold text-[var(--text-primary)]">
-                      {bandLabel(feedback.scores.overall)}
-                    </span>
-                    <p className="text-[0.7rem] text-[var(--text-secondary)] mt-2">{feedback.wordCount} words</p>
-                  </div>
-
-                  <div className="hidden sm:block w-px self-stretch bg-[var(--border-color)]" />
-
-                  {/* Category bars */}
-                  <div className="flex-1 min-w-[240px]">
-                    <p className="text-[var(--text-secondary)] text-[0.65rem] font-bold tracking-widest uppercase mb-4">
-                      Category Scores
-                    </p>
-                    <div className="flex flex-col gap-3.5">
-                      {CATEGORY_META.map((cat) => {
-                        const score = feedback.scores[cat.key as keyof typeof feedback.scores];
-                        const cc = CATEGORY_COLOR_CLASSES[cat.color];
-                        const Icon = cat.icon;
-                        return (
-                          <div key={cat.key} className="flex items-center gap-3">
-                            <span className={`inline-flex items-center justify-center w-6 h-6 rounded-md shrink-0 ${cc.iconBg}`}>
-                              <Icon className={`w-3.5 h-3.5 ${cc.icon}`} />
-                            </span>
-                            <span className="text-[0.8rem] text-[var(--text-secondary)] w-[8.5rem] sm:w-40 shrink-0 truncate">{cat.shortLabel}</span>
-                            <div className="flex-1 h-2 bg-[var(--bg-subtle)] rounded-full overflow-hidden">
-                              <div
-                                className={`h-full rounded-full transition-[width,background-color] duration-700 ${scoreBarColor(score)}`}
-                                style={{ width: `${Math.max(4, ((score - 4) / 5) * 100)}%` }}
-                              />
-                            </div>
-                            <span className="text-[0.8125rem] font-bold text-[var(--text-primary)] font-mono min-w-[30px] text-right">
-                              {score.toFixed(1)}
-                            </span>
-                          </div>
-                        );
-                      })}
-                    </div>
-                  </div>
-                </div>
-              </div>
+              {/* ── The result sheet: question, the four bands and why, the overall band ── */}
+              <ResultSheet
+                question={questionBlock}
+                overall={feedback.scores.overall}
+                descriptor={bandLabel(feedback.scores.overall)}
+                words={essayWords}
+                bandGap={feedback.limited ? undefined : feedback.bandGapAnalysis || undefined}
+                criteria={CATEGORY_META.map((cat) => {
+                  const detail = (feedback.feedback as unknown as Record<string, CategoryFeedback> | undefined)?.[cat.key];
+                  return {
+                    key: cat.key,
+                    name: cat.key === 'taskAchievement' ? (selectedTask === 'task1' ? 'Task Achievement' : 'Task Response') : CAT_LABELS[cat.key],
+                    band: feedback.scores[cat.key as keyof typeof feedback.scores] as number,
+                    reason: feedback.limited ? undefined : detail?.issues?.[0] ?? detail?.strengths?.[0],
+                  };
+                })}
+              />
 
               {/* Why the bands are what they are, when that is not obvious */}
               {(feedback.basis === 'locked' || feedback.basis === 'anchored') && (
-                <p role="status" className="flex items-start gap-2.5 rounded-xl border border-[var(--border-color)] bg-[var(--bg-subtle)] px-4 py-3 mb-5 text-sm text-[var(--text-secondary)]">
+                <p role="status" className="mt-4 flex items-start gap-2.5 rounded-[10px] border border-[var(--border-color)] bg-[var(--bg-card)] px-3.5 py-2.5 text-sm text-[var(--text-secondary)]">
                   <Info className="w-4 h-4 mt-0.5 shrink-0 text-[var(--ink-blue)]" aria-hidden />
                   {feedback.basis === 'locked'
                     ? 'This exact essay was marked before, so it keeps the same bands. The same essay always gets the same score.'
@@ -1473,19 +1417,32 @@ export function FeedbackPage() {
                 </p>
               )}
 
+              {/* The three fixes as a checklist, or on a free report, what a paid one adds */}
+              {feedback.limited ? (
+                <div className="mt-6">
+                  <FreeReportNotice
+                    onGetFull={isPro || (profile?.bonusAnalyses ?? 0) > 0
+                      ? () => loadFeedback(selectedTask, { fresh: true })
+                      : undefined}
+                  />
+                </div>
+              ) : (
+                <FixChecklist fixes={feedback.priorityFixes ?? []} storageKey={`writeready.fixes.${id ?? 'report'}.${selectedTask}`} />
+              )}
+
               {/* Recurring issues */}
               {!feedback.limited && recurringIssues.length > 0 && (
-                <div className="flex items-start gap-3 bg-amber-50 border border-amber-200 dark:bg-amber-900/20 dark:border-amber-800 rounded-2xl px-5 py-4 mb-5">
-                  <Repeat2 className="w-4 h-4 text-amber-700 dark:text-amber-400 mt-0.5 shrink-0" />
+                <div role="status" className="mt-4 flex items-start gap-3 rounded-[10px] border border-amber-200 bg-amber-50 px-3.5 py-3 dark:border-amber-900/60 dark:bg-amber-950/40">
+                  <Repeat2 className="w-4 h-4 text-amber-700 dark:text-amber-400 mt-0.5 shrink-0" aria-hidden />
                   <div>
-                    <p className="font-bold text-amber-800 dark:text-amber-300 text-sm mb-2">
-                      Recurring patterns in your recent essays
+                    <p className="m-0 text-sm font-semibold text-amber-800 dark:text-amber-300">
+                      These keep coming up in your recent essays
                     </p>
-                    <div className="flex flex-wrap gap-1.5">
+                    <div className="mt-2 flex flex-wrap gap-1.5">
                       {recurringIssues.map((issue) => (
                         <span
                           key={issue}
-                          className="bg-amber-100 border border-amber-300 dark:bg-amber-900/30 dark:border-amber-700 rounded-full px-3 py-0.5 text-[0.8125rem] text-amber-900 dark:text-amber-200"
+                          className="rounded-full bg-amber-100 px-2.5 py-0.5 text-xs font-semibold text-amber-800 dark:bg-amber-900/40 dark:text-amber-200"
                         >
                           {issue}
                         </span>
@@ -1495,21 +1452,27 @@ export function FeedbackPage() {
                 </div>
               )}
 
-              {/* Tab bar */}
-              <div className="sticky top-14 z-10 -mx-4 sm:-mx-6 mb-6 bg-[var(--bg-base)]/95 backdrop-blur-md border-b border-[var(--border-color)]">
-                <div role="tablist" aria-label="Feedback report sections" className="mock-question-scroll flex overflow-x-auto px-4 sm:px-6">
-                  {TABS.map((tab) => {
-                    const Icon = tab.icon;
+              {/* Tab bar: the detail behind the sheet */}
+              <div className="sticky top-14 z-10 -mx-4 mt-8 mb-6 border-b border-[var(--border-color)] bg-[var(--bg-base)]/95 backdrop-blur-md sm:-mx-6">
+                <div role="tablist" aria-label="Report sections" className="mock-question-scroll flex gap-1 overflow-x-auto px-4 sm:px-6">
+                  {TABS.filter((tab) => tab.id !== 'readability' || (feedback.readability?.tips?.length ?? 0) > 0).map((tab) => {
                     const active = shownTab === tab.id;
-                    // A free report buys the score. The rest stay on screen so the
+                    // A free report buys the score. The tabs stay on screen so the
                     // student can see what a paid plan adds, but they are real
                     // disabled buttons: not clickable, not reachable by keyboard,
                     // and they never mount a panel that would fetch anything.
-                    const locked = !!feedback.limited && tab.id !== 'overview';
+                    const locked = !!feedback.limited;
+                    const count =
+                      tab.id === 'essay' ? (feedback.sentenceAnalysis ?? []).filter((s) => s.type !== 'ok').length
+                      : tab.id === 'readability' ? feedback.readability?.tips?.length ?? 0
+                      : tab.id === 'vocabulary' ? feedback.vocabulary?.length ?? 0
+                      : tab.id === 'grammar' ? feedback.grammar?.length ?? 0
+                      : 0;
                     return (
                       <button
                         key={tab.id}
                         id={`fp-tab-${tab.id}`}
+                        type="button"
                         role="tab"
                         aria-selected={active}
                         aria-controls={`fp-panel-${tab.id}`}
@@ -1517,148 +1480,63 @@ export function FeedbackPage() {
                         tabIndex={locked ? -1 : undefined}
                         title={locked ? 'Included in a paid plan' : undefined}
                         onClick={locked ? undefined : () => setActiveTab(tab.id)}
-                        className={`flex items-center gap-1.5 mt-1.5 px-3.5 py-2.5 rounded-lg text-[0.8125rem] font-semibold whitespace-nowrap border-none bg-transparent relative transition-colors duration-150 shrink-0 ${
+                        className={`relative flex shrink-0 items-center gap-1.5 whitespace-nowrap border-0 bg-transparent px-3 pb-3 pt-3.5 text-sm font-semibold transition-colors duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[var(--ring)] ${
                           locked
-                            ? 'text-[var(--text-secondary)] opacity-40 cursor-not-allowed'
+                            ? 'cursor-not-allowed text-[var(--text-secondary)] opacity-45'
                             : active
-                              ? 'text-[var(--ink-blue)] cursor-pointer'
-                              : 'text-[var(--text-secondary)] cursor-pointer hover:text-[var(--text-primary)] hover:bg-[var(--bg-subtle)]'
+                              ? 'cursor-pointer text-[var(--text-primary)]'
+                              : 'cursor-pointer text-[var(--text-secondary)] hover:text-[var(--text-primary)]'
                         }`}
                       >
-                        <Icon className="w-4 h-4" />
                         {tab.label}
-                        {locked && <Lock className="w-3 h-3 shrink-0" aria-label="paid plan only" />}
-                        {active && (
-                          <span className="absolute bottom-[-6px] left-2 right-2 h-0.5 bg-[var(--ink-blue)] rounded-t-full" />
+                        {!locked && count > 0 && (
+                          <span className={`rounded-full px-1.5 font-mono text-xs font-medium tabular-nums ${active ? 'bg-[var(--accent)] text-[var(--accent-foreground)]' : 'bg-[var(--bg-subtle)] text-[var(--text-secondary)]'}`}>
+                            {count}
+                          </span>
                         )}
+                        {locked && <Lock className="w-3 h-3 shrink-0" aria-label="paid plan only" />}
+                        {active && <span aria-hidden className="absolute inset-x-2 -bottom-px h-0.5 rounded-full bg-[var(--ink-blue)]" />}
                       </button>
                     );
                   })}
                 </div>
               </div>
 
-              {/* ── OVERVIEW ── */}
-              {shownTab === 'overview' && (
-                <div id="fp-panel-overview" role="tabpanel" aria-labelledby="fp-tab-overview" className="fp-tab-panel">
-                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-6">
-                    {CATEGORY_META.map((cat) => {
-                      const score = feedback.scores[cat.key as keyof typeof feedback.scores];
-                      const cc = CATEGORY_COLOR_CLASSES[cat.color];
-                      const Icon = cat.icon;
-                      return (
-                        <div
-                          key={cat.key}
-                          className="bg-[var(--bg-card)] rounded-2xl p-5 border border-[var(--border-color)] shadow-sm text-center transition-[transform,box-shadow] duration-200 hover:shadow-md hover:-translate-y-0.5"
-                        >
-                          <div className={`w-9 h-9 rounded-xl ${cc.iconBg} flex items-center justify-center mx-auto mb-3`}>
-                            <Icon className={`w-4 h-4 ${cc.icon}`} />
-                          </div>
-                          <p className="text-[0.65rem] font-bold text-[var(--text-secondary)] uppercase tracking-wider mb-3 leading-snug">
-                            {cat.shortLabel}
-                          </p>
-                          <ScoreBadge score={score} />
-                          <div className="h-1.5 bg-[var(--bg-subtle)] rounded-full mt-3">
-                            <div
-                              className={`h-full rounded-full transition-[width,background-color] duration-700 ${scoreBarColor(score)}`}
-                              style={{ width: `${Math.max(4, ((score - 4) / 5) * 100)}%` }}
-                            />
-                          </div>
+              {/* ── READABILITY ── */}
+              {shownTab === 'readability' && feedback.readability && (
+                <section id="fp-panel-readability" role="tabpanel" aria-labelledby="fp-tab-readability" className="fp-tab-panel">
+                  <p className="m-0 max-w-prose text-base leading-relaxed text-[var(--text-secondary)]">
+                    {feedback.readability.summary || 'Places where an examiner has to slow down, and how to make them easier to follow.'}
+                  </p>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setActiveTab('essay');
+                      // The link sits low on a long list: start the essay at its top.
+                      requestAnimationFrame(() => document.getElementById('fp-panel-essay')?.scrollIntoView({ block: 'start' }));
+                    }}
+                    className="mt-2 inline-flex items-center gap-1 text-sm font-semibold text-[var(--ink-blue)] hover:underline underline-offset-4 cursor-pointer bg-transparent border-0 p-0"
+                  >
+                    See them marked in your essay <ChevronRight className="w-4 h-4" aria-hidden />
+                  </button>
+                  <ol className="mt-4 flex flex-col gap-3 list-none p-0">
+                    {feedback.readability.tips.map((tip, i) => (
+                      <li key={i} className="rounded-[14px] border border-[var(--border-color)] bg-[var(--bg-card)] px-5 py-4 shadow-[var(--shadow-sm)]">
+                        <p className="m-0 font-semibold text-[var(--text-primary)]">{tip.problem}</p>
+                        {tip.original && (
+                          <blockquote className="mt-3 mb-0 rounded-lg bg-[var(--bg-base)] px-3.5 py-2.5 text-base leading-relaxed text-[var(--text-secondary)]">
+                            <span className="block text-xs font-semibold text-[var(--text-secondary)] mb-1">Your version</span>
+                            &ldquo;{tip.original}&rdquo;
+                          </blockquote>
+                        )}
+                        <div className="mt-2 rounded-lg bg-emerald-50 px-3.5 py-2.5 text-base leading-relaxed text-emerald-900 dark:bg-emerald-900/25 dark:text-emerald-200">
+                          <span className="block text-xs font-semibold text-emerald-700 dark:text-emerald-400 mb-1">Easier to read</span>
+                          {tip.clearer}
                         </div>
-                      );
-                    })}
-                  </div>
-
-                  {feedback.limited ? (
-                    <FreeReportNotice
-                      onGetFull={isPro || (profile?.bonusAnalyses ?? 0) > 0
-                        ? () => loadFeedback(selectedTask, { fresh: true })
-                        : undefined}
-                    />
-                  ) : (
-                    <div className="bg-[var(--bg-card)] rounded-2xl p-6 border border-[var(--border-color)] border-l-4 border-l-[var(--gold)] shadow-sm transition-shadow duration-200 hover:shadow-md">
-                      <p className="flex items-center gap-2 font-bold text-[var(--text-primary)] mb-3">
-                        <span className="inline-flex items-center justify-center w-7 h-7 rounded-lg bg-[var(--gold)]/15">
-                          <TrendingUp className="w-4 h-4 text-[var(--gold)]" />
-                        </span>
-                        Band Gap Analysis
-                      </p>
-                      <p className="leading-relaxed text-[var(--text-primary)] text-[0.9375rem] m-0">
-                        {feedback.bandGapAnalysis}
-                      </p>
-                    </div>
-                  )}
-                </div>
-              )}
-
-              {/* ── PRIORITY FIXES ── */}
-              {shownTab === 'priority' && (
-                <div id="fp-panel-priority" role="tabpanel" aria-labelledby="fp-tab-priority" className="fp-tab-panel flex flex-col gap-4">
-                  {(feedback.priorityFixes ?? []).map((fix, i) => {
-                    const accent = i === 0 ? '#b91c1c' : i === 1 ? '#D97706' : '#16A34A';
-                    const label = i === 0 ? 'High priority' : i === 1 ? 'Medium priority' : 'Also consider';
-                    const labelColor = i === 0 ? 'text-red-700 dark:text-red-400' : i === 1 ? 'text-amber-800 dark:text-amber-400' : 'text-green-700 dark:text-green-400';
-                    const bgGradient = i === 0 ? 'from-red-500/[0.06]' : i === 1 ? 'from-amber-500/[0.07]' : 'from-green-500/[0.06]';
-                    return (
-                      <div
-                        key={i}
-                        className={`bg-linear-to-r ${bgGradient} to-transparent bg-[var(--bg-card)] rounded-2xl px-6 py-5 border border-[var(--border-color)] flex gap-5 items-start shadow-sm transition-[transform,box-shadow] duration-200 hover:shadow-md hover:-translate-y-0.5`}
-                        style={{ borderLeft: `4px solid ${accent}` }}
-                      >
-                        <div
-                          className="w-9 h-9 rounded-xl flex items-center justify-center text-white font-mono font-bold text-base shrink-0"
-                          style={{ background: accent, boxShadow: `0 0 0 4px ${accent}1A` }}
-                        >
-                          {i + 1}
-                        </div>
-                        <div>
-                          <p className={`text-xs font-bold uppercase tracking-wider mb-1.5 ${labelColor}`}>
-                            {label}
-                          </p>
-                          <p className="text-[var(--text-primary)] leading-relaxed text-[0.9375rem] m-0">{fix}</p>
-                        </div>
-                      </div>
-                    );
-                  })}
-
-                  {feedback.readability && (
-                    <section aria-labelledby="fp-readability" className="mt-4">
-                      <h3 id="fp-readability" className="flex items-center gap-2 text-lg font-bold text-[var(--text-primary)]">
-                        <BookOpen className="w-[18px] h-[18px] text-[var(--ink-blue)]" aria-hidden /> Improve readability
-                      </h3>
-                      <p className="mt-1 max-w-prose text-[0.9375rem] leading-relaxed text-[var(--text-secondary)]">
-                        {feedback.readability.summary || 'Places where an examiner has to slow down, and how to make them easier to follow.'}
-                      </p>
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setActiveTab('essay');
-                          // The link sits low on a long list: start the essay at its top.
-                          requestAnimationFrame(() => document.getElementById('fp-panel-essay')?.scrollIntoView({ block: 'start' }));
-                        }}
-                        className="mt-2 inline-flex items-center gap-1 text-sm font-semibold text-[var(--ink-blue)] hover:underline underline-offset-4 cursor-pointer bg-transparent border-0 p-0"
-                      >
-                        See them marked in your essay <ChevronRight className="w-4 h-4" aria-hidden />
-                      </button>
-                      <ol className="mt-4 flex flex-col gap-3 list-none p-0">
-                        {feedback.readability.tips.map((tip, i) => (
-                          <li key={i} className="rounded-2xl border border-[var(--border-color)] bg-[var(--bg-card)] px-5 py-4 shadow-sm">
-                            <p className="m-0 font-semibold text-[var(--text-primary)]">{tip.problem}</p>
-                            {tip.original && (
-                              <blockquote className="mt-3 mb-0 rounded-lg bg-[var(--bg-subtle)] px-3.5 py-2.5 text-[0.9375rem] leading-relaxed text-[var(--text-secondary)]">
-                                <span className="block text-xs font-semibold text-[var(--text-secondary)] mb-1">Your version</span>
-                                &ldquo;{tip.original}&rdquo;
-                              </blockquote>
-                            )}
-                            <div className="mt-2 rounded-lg bg-emerald-50 px-3.5 py-2.5 text-[0.9375rem] leading-relaxed text-emerald-900 dark:bg-emerald-900/25 dark:text-emerald-200">
-                              <span className="block text-xs font-semibold text-emerald-700 dark:text-emerald-400 mb-1">Easier to read</span>
-                              {tip.clearer}
-                            </div>
-                          </li>
-                        ))}
-                      </ol>
-                    </section>
-                  )}
-                </div>
+                      </li>
+                    ))}
+                  </ol>
+                </section>
               )}
 
               {/* ── DETAILED FEEDBACK ── */}
@@ -1671,7 +1549,7 @@ export function FeedbackPage() {
                       const cc = CATEGORY_COLOR_CLASSES[catMeta?.color ?? 'indigo'];
                       const Icon = catMeta?.icon ?? ListChecks;
                       return (
-                        <div key={key} className="bg-[var(--bg-card)] rounded-2xl border border-[var(--border-color)] overflow-hidden shadow-sm transition-shadow duration-200 hover:shadow-md">
+                        <div key={key} className="bg-[var(--bg-card)] rounded-[14px] border border-[var(--border-color)] overflow-hidden shadow-[var(--shadow-sm)]">
                           <button
                             onClick={() => toggleCat(key)}
                             className="w-full px-5 py-4 bg-transparent border-none flex items-center gap-3 cursor-pointer hover:bg-[var(--bg-subtle)] transition-colors"
@@ -1680,10 +1558,10 @@ export function FeedbackPage() {
                             <span className={`inline-flex items-center justify-center w-8 h-8 rounded-lg shrink-0 ${cc.iconBg}`}>
                               <Icon className={`w-4 h-4 ${cc.icon}`} />
                             </span>
-                            <span className="font-bold text-[var(--text-primary)] text-[0.9375rem] flex-1 text-left">
-                              {CAT_LABELS[key] ?? key}
+                            <span className="font-bold text-[var(--text-primary)] text-base flex-1 text-left">
+                              {key === 'taskAchievement' && selectedTask === 'task2' ? 'Task Response' : CAT_LABELS[key] ?? key}
                             </span>
-                            <span className="hidden sm:flex items-center gap-1.5 text-[0.7rem] text-[var(--text-secondary)]">
+                            <span className="hidden sm:flex items-center gap-1.5 text-xs text-[var(--text-secondary)]">
                               {cat.strengths.length > 0 && (
                                 <span className="inline-flex items-center gap-1 text-green-700 dark:text-green-400">
                                   <CheckCircle2 className="w-3 h-3" /> {cat.strengths.length}
@@ -1706,8 +1584,8 @@ export function FeedbackPage() {
                               <div className="px-5 pb-5 border-t border-[var(--border-color)]">
                                 {cat.strengths.length > 0 && (
                                   <div className="mt-4 mb-3">
-                                    <p className="text-[0.65rem] font-bold uppercase tracking-wider text-green-700 dark:text-green-400 mb-2">
-                                      Strengths
+                                    <p className="text-xs font-semibold text-green-700 dark:text-green-400 mb-2">
+                                      What went well
                                     </p>
                                     {cat.strengths.map((s, i) => (
                                       <div key={i} className="flex gap-2.5 mb-1.5 items-start">
@@ -1719,8 +1597,8 @@ export function FeedbackPage() {
                                 )}
                                 {cat.issues.length > 0 && (
                                   <div>
-                                    <p className="text-[0.65rem] font-bold uppercase tracking-wider text-red-600 dark:text-red-400 mb-2">
-                                      Issues to Improve
+                                    <p className="text-xs font-semibold text-red-600 dark:text-red-400 mb-2">
+                                      What to improve
                                     </p>
                                     {cat.issues.map((s, i) => (
                                       <div key={i} className="flex gap-2.5 mb-1.5 items-start">
@@ -1744,7 +1622,7 @@ export function FeedbackPage() {
               {shownTab === 'vocabulary' && (feedback.limited ? <UpgradePrompt /> :(
                 <div id="fp-panel-vocabulary" role="tabpanel" aria-labelledby="fp-tab-vocabulary" className="fp-tab-panel">
                   <p className="text-sm text-[var(--text-muted)] mb-5">
-                    Tap a card to flip it and see the meaning and example sentence.
+                    Tap a card to see its Uzbek and English meaning, and the sentence from your essay it fits.
                   </p>
                   <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
                     {(feedback.vocabulary ?? []).map((v, i) => (
@@ -1758,26 +1636,26 @@ export function FeedbackPage() {
                       >
                         <div className={`fp-flip-inner h-full${flipped[i] ? ' is-flipped' : ''}`}>
                           <div
-                            className="fp-flip-face bg-linear-to-br from-purple-500 to-purple-700 text-white border border-purple-600 shadow-sm"
+                            className="fp-flip-face bg-[var(--bg-card)] text-[var(--text-primary)] border border-[var(--border-color)] shadow-[var(--shadow-sm)]"
                           >
-                            <p className="text-[0.65rem] font-bold tracking-widest uppercase text-white/40 mb-3">
-                              Word {i + 1} of {(feedback.vocabulary ?? []).length}
+                            <p className="mb-3 font-mono text-xs text-[var(--text-secondary)] tabular-nums">
+                              {i + 1} / {(feedback.vocabulary ?? []).length}
                             </p>
-                            <p className="text-xl font-bold text-white leading-snug">
+                            <p className="text-xl font-bold text-[var(--text-primary)] leading-snug">
                               {v.word}
                             </p>
-                            <p className="text-[0.7rem] text-white/35 mt-auto">tap to flip ↩</p>
+                            <p className="mt-auto inline-flex items-center gap-1 pt-3 text-xs text-[var(--text-secondary)]"><RotateCcw className="w-3 h-3" aria-hidden /> Tap to see the meaning</p>
                           </div>
                           <div
-                            className="fp-flip-face fp-flip-back bg-[var(--paper)] border border-[var(--border)] shadow-sm"
+                            className="fp-flip-face fp-flip-back bg-[var(--accent)] border border-[var(--border-color)] shadow-[var(--shadow-sm)]"
                           >
                             <div className="w-full">
-                              <span className="bg-[var(--gold)] text-white text-[0.65rem] font-bold px-2 py-0.5 rounded-full inline-block mb-2 uppercase tracking-wide">
+                              <span className="mb-1.5 inline-block text-xs font-semibold text-[var(--text-secondary)]">
                                 Uzbek
                               </span>
                               <p className="text-[0.9rem] font-bold text-[var(--text-primary)] mb-1">{v.uzbek}</p>
                               <p className="text-[0.75rem] text-[var(--text-muted)] mb-2 leading-snug">{v.english}</p>
-                              <p className="text-[0.75rem] text-purple-700 dark:text-purple-300 italic leading-snug">
+                              <p className="text-[0.75rem] text-[var(--accent-foreground)] italic leading-snug">
                                 "{v.exampleFromEssay}"
                               </p>
                             </div>
@@ -1813,7 +1691,7 @@ export function FeedbackPage() {
                               <Icon className={`w-[18px] h-[18px] ${tone}`} aria-hidden /> {title}
                               <span className="rounded-full bg-[var(--bg-subtle)] px-2 py-0.5 text-xs font-semibold text-[var(--text-muted)]">{items.length}</span>
                             </h3>
-                            {hint && <p className="mt-1 mb-0 max-w-prose text-[0.9375rem] leading-relaxed text-[var(--text-secondary)]">{hint}</p>}
+                            {hint && <p className="mt-1 mb-0 max-w-prose text-base leading-relaxed text-[var(--text-secondary)]">{hint}</p>}
                           </div>
                         )}
                         {items.map((g, i) => {
@@ -1857,7 +1735,7 @@ export function FeedbackPage() {
                         <BookOpen className="w-[18px] h-[18px] mt-0.5 shrink-0 text-[var(--ink-blue)]" aria-hidden />
                         <div>
                           <p className="m-0 font-semibold text-[var(--text-primary)]">Readability</p>
-                          <p className="mt-1 mb-0 text-[0.9375rem] leading-relaxed text-[var(--text-secondary)]">
+                          <p className="mt-1 mb-0 text-base leading-relaxed text-[var(--text-secondary)]">
                             {feedback.readability?.summary ? `${feedback.readability.summary} ` : ''}
                             {hardToRead.size === 1 ? 'One sentence is' : `${hardToRead.size} sentences are`} marked &ldquo;Hard to read&rdquo; below. Tap one to see an easier version.
                           </p>
@@ -1877,7 +1755,7 @@ export function FeedbackPage() {
                               key={i}
                               id={`fp-sentence-${i}`}
                               type="button"
-                              className={`w-full text-left block rounded-xl border px-5 py-3.5 cursor-pointer transition-[transform,box-shadow] duration-200 hover:shadow-md hover:-translate-y-0.5 ${style.bg} ${style.border}${flashSentence === i ? ' fp-flash' : ''}`}
+                              className={`w-full text-left block rounded-[10px] border px-5 py-3.5 cursor-pointer transition-shadow duration-200 hover:shadow-[var(--shadow-md)] ${style.bg} ${style.border}${flashSentence === i ? ' fp-flash' : ''}`}
                               onClick={() => toggleSentence(i)}
                               onAnimationEnd={() => setFlashSentence((f) => (f === i ? null : f))}
                               aria-expanded={isOpen}
@@ -1885,11 +1763,11 @@ export function FeedbackPage() {
                               <div className="flex items-start gap-3">
                                 <span className={`mt-1.5 w-2 h-2 rounded-full shrink-0 ${style.dot}`} />
                                 <div className="flex-1 min-w-0">
-                                  <p className="text-[0.9375rem] text-gray-800 dark:text-neutral-100 leading-relaxed m-0">
+                                  <p className="text-base text-gray-800 dark:text-neutral-100 leading-relaxed m-0">
                                     {s.sentence}
                                   </p>
                                   {readTips.length > 0 && (
-                                    <span className="mt-2 inline-flex items-center gap-1 rounded-full border border-[var(--ink-blue)]/30 bg-[var(--bg-card)] px-2 py-0.5 text-[0.7rem] font-semibold text-[var(--ink-blue)]">
+                                    <span className="mt-2 inline-flex items-center gap-1 rounded-full border border-[var(--ink-blue)]/30 bg-[var(--bg-card)] px-2 py-0.5 text-xs font-semibold text-[var(--ink-blue)]">
                                       <BookOpen className="w-3 h-3" aria-hidden /> Hard to read
                                     </span>
                                   )}
@@ -1897,15 +1775,15 @@ export function FeedbackPage() {
                                     <div className="overflow-hidden">
                                       <div className="mt-2.5 pt-2.5 border-t border-current/10 flex flex-col gap-2">
                                         <div>
-                                          <span className={`text-[0.65rem] font-bold uppercase tracking-widest mr-2 ${style.dot.replace('bg-', 'text-')}`}>
+                                          <span className={`text-xs font-semibold mr-2 ${style.dot.replace('bg-', 'text-')}`}>
                                             {style.label}
                                           </span>
                                           <span className="text-sm text-gray-700 dark:text-neutral-300">{s.feedback}</span>
                                         </div>
                                         {s.improved && s.type !== 'ok' && (
                                           <div className="bg-[var(--ink-blue)]/6 border border-[var(--ink-blue)]/20 rounded-lg px-3 py-2.5">
-                                            <p className="flex items-center gap-1.5 text-[0.65rem] font-bold uppercase tracking-widest text-[var(--ink-blue)] mb-1">
-                                              <Sparkles className="w-3 h-3" /> Improved version
+                                            <p className="flex items-center gap-1.5 text-xs font-semibold text-[var(--ink-blue)] mb-1">
+                                              <Sparkles className="w-3 h-3" aria-hidden /> Better version
                                             </p>
                                             <p className="text-sm text-[var(--ink-blue)] leading-relaxed m-0 italic">
                                               {s.improved}
@@ -1914,7 +1792,7 @@ export function FeedbackPage() {
                                         )}
                                         {readTips.map((tip, k) => (
                                           <div key={k} className="rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2.5 dark:border-emerald-800 dark:bg-emerald-900/25">
-                                            <p className="flex items-center gap-1.5 text-[0.65rem] font-bold uppercase tracking-widest text-emerald-700 dark:text-emerald-400 mb-1">
+                                            <p className="flex items-center gap-1.5 text-xs font-semibold text-emerald-700 dark:text-emerald-400 mb-1">
                                               <BookOpen className="w-3 h-3" aria-hidden /> Easier to read
                                             </p>
                                             <p className="text-sm text-gray-700 dark:text-neutral-300 leading-relaxed m-0">{tip.problem}</p>
@@ -1945,15 +1823,13 @@ export function FeedbackPage() {
 
               {/* ── SAMPLE RESPONSE ── */}
               {shownTab === 'sample' && (feedback.limited ? <UpgradePrompt /> : (
-                <div id="fp-panel-sample" role="tabpanel" aria-labelledby="fp-tab-sample" className="fp-tab-panel relative overflow-hidden bg-[var(--bg-card)] rounded-2xl border border-[var(--border-color)] border-l-4 border-l-[var(--gold)] px-6 py-6 shadow-sm transition-shadow duration-200 hover:shadow-md">
-                  <div className="absolute inset-0 bg-linear-to-br from-[var(--gold)]/[0.05] via-transparent to-transparent pointer-events-none" />
-                  <p className="relative flex items-center gap-2 text-xs font-bold tracking-widest uppercase text-[var(--gold)] mb-4">
-                    <span className="inline-flex items-center justify-center w-6 h-6 rounded-md bg-[var(--gold)]/15">
-                      <PenLine className="w-3.5 h-3.5" />
-                    </span>
-                    Band 7–8 Sample Response
-                  </p>
-                  <p className="relative text-[var(--text-primary)] leading-[1.9] text-[0.9375rem] whitespace-pre-wrap">
+                <div id="fp-panel-sample" role="tabpanel" aria-labelledby="fp-tab-sample" className="fp-tab-panel rounded-[18px] border border-[var(--border-color)] bg-[var(--bg-card)] px-6 py-6 shadow-[var(--shadow-sm)] sm:px-8 sm:py-7">
+                  <h2 className="m-0 flex items-center gap-2 text-lg font-bold text-[var(--text-primary)]">
+                    <PenLine className="w-[18px] h-[18px] text-[var(--gold)]" aria-hidden />
+                    A band 8 to 9 answer to the same question
+                  </h2>
+                  <p className="mt-1 mb-5 text-sm text-[var(--text-secondary)]">Read it next to your own essay: compare how each paragraph opens and how the ideas link.</p>
+                  <p className="m-0 max-w-[70ch] text-[var(--text-primary)] leading-[1.9] text-base whitespace-pre-wrap">
                     {feedback.sampleResponse ?? 'Sample response not available for this analysis.'}
                   </p>
                 </div>
@@ -1978,7 +1854,7 @@ export function FeedbackPage() {
                                   : 'bg-[var(--bg-card)] text-[var(--text-secondary)] border-[var(--border-color)]'
                               }`}
                             >
-                              {lang === 'en-GB' ? '🇬🇧 British' : '🇺🇸 American'}
+                              {lang === 'en-GB' ? 'British English' : 'American English'}
                             </button>
                           ))}
                         </div>
@@ -1987,7 +1863,7 @@ export function FeedbackPage() {
                           {ltLoading ? 'Checking…' : 'Check my essay'}
                         </Button>
                       </div>
-                      <div className="px-5 py-4 text-[0.9375rem] leading-relaxed text-[var(--text-secondary)] whitespace-pre-wrap min-h-[200px]">
+                      <div className="px-5 py-4 text-base leading-relaxed text-[var(--text-secondary)] whitespace-pre-wrap min-h-[200px]">
                         {essayText || <span className="italic">No essay text available.</span>}
                       </div>
                       {ltError && <p className="px-5 pb-3 text-sm text-red-600 dark:text-red-400">{ltError}</p>}
@@ -2007,7 +1883,7 @@ export function FeedbackPage() {
                         </button>
                       </div>
                       <div
-                        className="relative px-5 py-4 text-[0.9375rem] leading-relaxed text-[var(--text-primary)] whitespace-pre-wrap min-h-[200px] cursor-default"
+                        className="relative px-5 py-4 text-base leading-relaxed text-[var(--text-primary)] whitespace-pre-wrap min-h-[200px] cursor-default"
                         ref={ltOverlayRef}
                         onClick={() => setLtPopover(null)}
                       >
@@ -2048,7 +1924,7 @@ export function FeedbackPage() {
                             style={{ left: ltPopover.x, top: ltPopover.y }}
                             onClick={(e) => e.stopPropagation()}
                           >
-                            <p className="text-[0.8rem] text-neutral-300 mb-2.5 leading-snug">{ltPopover.match.message}</p>
+                            <p className="text-sm text-neutral-300 mb-2.5 leading-snug">{ltPopover.match.message}</p>
                             {ltPopover.match.replacements.length > 0 && (
                               <div className="flex flex-wrap gap-1.5">
                                 {ltPopover.match.replacements.slice(0, 5).map((r, i) => (
@@ -2060,7 +1936,7 @@ export function FeedbackPage() {
                                 ))}
                               </div>
                             )}
-                            <p className="text-[0.65rem] text-slate-500 mt-2 uppercase tracking-wider">
+                            <p className="text-xs text-neutral-400 mt-2">
                               {ltPopover.match.rule.category.name}
                             </p>
                           </div>
@@ -2071,7 +1947,7 @@ export function FeedbackPage() {
 
                   {ltChecked && ltMatches.length > 0 && (
                     <div className="mt-4 flex flex-col gap-2">
-                      <p className="text-xs font-bold uppercase tracking-widest text-[var(--text-muted)] mb-1">All Issues</p>
+                      <h2 className="m-0 mb-1 text-base font-bold text-[var(--text-primary)]">Every issue in the essay</h2>
                       {ltMatches.map((m, i) => (
                         <div key={i} className="bg-[var(--bg-card)] rounded-2xl px-4 py-3 border border-[var(--border-color)] flex items-center gap-3">
                           <span className="w-2 h-2 rounded-full shrink-0" style={{ background: ltColor(m.rule.issueType) }} />
@@ -2106,11 +1982,11 @@ export function FeedbackPage() {
                       // Keyed by task too: Task 1 and Task 2 each keep their own answers.
                       const key = `${selectedTask}_vocab_${i}`;
                       return (
-                        <div key={key} className="bg-[var(--bg-card)] rounded-2xl px-5 py-4 border border-[var(--border-color)] border-l-4 border-l-purple-500 shadow-sm transition-shadow duration-200 hover:shadow-md">
+                        <div key={key} className="bg-[var(--bg-card)] rounded-[14px] px-5 py-4 border border-[var(--border-color)] shadow-[var(--shadow-sm)]">
                           <div className="flex items-center gap-3 mb-3">
-                            <span className="bg-purple-500/10 text-purple-700 dark:text-purple-300 text-xs font-bold px-2 py-0.5 rounded-full uppercase tracking-wide">Vocab</span>
+                            <span className="bg-purple-500/10 text-purple-700 dark:text-purple-300 text-xs font-semibold px-2 py-0.5 rounded-full">New word</span>
                             <span className="font-bold text-purple-700 dark:text-purple-300 text-base">{v.word}</span>
-                            <span className="text-xs text-[var(--text-muted)]">— {v.uzbek}</span>
+                            <span className="text-xs text-[var(--text-muted)]">{v.uzbek}</span>
                           </div>
                           <textarea autoComplete="off"
                             className="w-full border border-[var(--border-color)] bg-[var(--bg-input)] rounded-lg px-3 py-2 text-sm text-[var(--text-primary)] resize-none outline-hidden focus:border-purple-500 focus-visible:ring-2 focus-visible:ring-purple-500/40 transition-colors"
@@ -2162,9 +2038,9 @@ export function FeedbackPage() {
                       // enough rows for a phone-width line of about 40 characters.
                       const rows = task === 'write' ? 2 : Math.min(10, Math.max(3, Math.ceil(Math.max(input.length, yours.length) / 40)));
                       return (
-                        <div key={key} className="bg-[var(--bg-card)] rounded-2xl px-5 py-4 border border-[var(--border-color)] border-l-4 border-l-amber-500 shadow-sm transition-shadow duration-200 hover:shadow-md">
+                        <div key={key} className="bg-[var(--bg-card)] rounded-[14px] px-5 py-4 border border-[var(--border-color)] shadow-[var(--shadow-sm)]">
                           <div className="flex items-center gap-3 mb-1">
-                            <span className="bg-[var(--gold)]/20 text-amber-800 dark:text-amber-200 text-xs font-bold px-2 py-0.5 rounded-full uppercase tracking-wide shrink-0">
+                            <span className="bg-[var(--gold)]/20 text-amber-800 dark:text-amber-200 text-xs font-semibold px-2 py-0.5 rounded-full shrink-0">
                               {task === 'fix' ? 'Fix it' : task === 'rewrite' ? 'Rewrite' : 'Grammar'}
                             </span>
                             <span className="font-bold text-[var(--text-primary)] text-sm">{g.point}</span>

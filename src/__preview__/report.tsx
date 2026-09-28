@@ -109,7 +109,15 @@ const report = {
 };
 
 const id = encodeReport({ task2: { report: question }, task1: null, userText1: '', userText2: essay });
-sessionStorage.setItem(`feedback_${id}_task2`, JSON.stringify(report));
+// Newer reports say which grammar points are the student's own mistakes and
+// which are structures to add, each with the sentence it came from; the
+// Grammar tab groups them under "Mistakes to fix" and "Structures to add".
+const GRAMMAR_SOURCE: ['mistake' | 'add', number][] = [['mistake', 10], ['mistake', 7], ['mistake', 6], ['mistake', 6], ['mistake', 9], ['add', 9]];
+const grammar = report.grammar.map((g, i) => ({ ...g, kind: GRAMMAR_SOURCE[i][0], yours: S[GRAMMAR_SOURCE[i][1]] }));
+
+// ?free shows the report a free student gets: the bands only.
+sessionStorage.setItem(`feedback_${id}_task2`, JSON.stringify({ ...report, grammar, limited: new URLSearchParams(location.search).has('free') }));
+localStorage.setItem('theme', new URLSearchParams(location.search).has('dark') ? 'dark' : 'light');
 
 const fakeUser = { uid: 'preview', email: 'preview@example.com', displayName: 'Preview', getIdToken: async () => 'preview' } as unknown as User;
 const noop = async () => {};
