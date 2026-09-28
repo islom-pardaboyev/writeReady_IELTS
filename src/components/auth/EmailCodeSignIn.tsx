@@ -8,7 +8,8 @@ import { Label } from '../ui/label';
 
 // Sign in with a 6-digit code sent to the student's email (api/_lib/emailCode.ts).
 // For a shared computer: no Google sign-in and no password needed. The same
-// form creates the account when the address has none yet.
+// form creates the account when the address has none yet, and it is also the
+// second step of password sign-up, so every new account has a proven address.
 
 const RESEND_WAIT_S = 60;
 
@@ -25,20 +26,29 @@ async function post(body: Record<string, string>): Promise<Record<string, unknow
 
 export function EmailCodeSignIn({
   initialEmail,
+  password,
   onSignedIn,
   onBack,
 }: {
   initialEmail: string;
+  /**
+   * Sign-up: the password the student chose. The code is sent straight away,
+   * and the account is created with this password once the code checks out.
+   */
+  password?: string;
   onSignedIn: () => void;
   onBack: () => void;
 }) {
-  const [step, setStep] = useState<'email' | 'code'>('email');
+  const signingUp = password !== undefined;
+  const [step, setStep] = useState<'email' | 'code'>(signingUp ? 'code' : 'email');
   const [email, setEmail] = useState(initialEmail);
   const [code, setCode] = useState('');
   const [busy, setBusy] = useState(false);
+  const [sent, setSent] = useState(false);
   const [error, setError] = useState('');
   const [wait, setWait] = useState(0);
   const codeRef = useRef<HTMLInputElement>(null);
+  const autoSent = useRef(false);
 
   // Counts down to when another code may be sent. A countdown on screen, not a fetch.
   useEffect(() => {
@@ -58,6 +68,7 @@ export function EmailCodeSignIn({
     try {
       await post({ action: 'send', email: email.trim() });
       setStep('code');
+      setSent(true);
       setCode('');
       setWait(RESEND_WAIT_S);
     } catch (err) {
@@ -67,11 +78,25 @@ export function EmailCodeSignIn({
     }
   };
 
+  // Sign-up arrives with the address and password already typed: send the code
+  // at once. Once only, even when React runs effects twice in development.
+  useEffect(() => {
+    if (!signingUp || autoSent.current) return;
+    autoSent.current = true;
+    void sendCode();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   const verify = async (value: string) => {
     setError('');
     setBusy(true);
     try {
-      const data = await post({ action: 'verify', email: email.trim(), code: value });
+      const data = await post({
+        action: 'verify',
+        email: email.trim(),
+        code: value,
+        ...(signingUp ? { password: password as string } : {}),
+      });
       await signInWithCustomToken(auth, String(data.customToken));
       onSignedIn();
     } catch (err) {
@@ -131,8 +156,20 @@ export function EmailCodeSignIn({
           className="flex flex-col gap-4"
         >
           <p className="text-sm text-[var(--text-secondary)]" aria-live="polite">
-            We sent a code to <strong className="font-semibold text-[var(--text-primary)] break-all">{email.trim()}</strong>. It works
-            for 10 minutes. Check your spam folder if it isn't there.
+            {!sent && busy ? (
+              <>Sending a code to <strong className="font-semibold text-[var(--text-primary)] break-all">{email.trim()}</strong>…</>
+            ) : sent ? (
+              <>
+                We sent a code to <strong className="font-semibold text-[var(--text-primary)] break-all">{email.trim()}</strong>.{' '}
+                {signingUp ? 'Type it to finish creating your account. ' : ''}It works for 10 minutes. Check your spam folder if it
+                isn't there.
+              </>
+            ) : (
+              <>
+                The code for <strong className="font-semibold text-[var(--text-primary)] break-all">{email.trim()}</strong> did not go
+                out. Try sending it again.
+              </>
+            )}
           </p>
           <div className="flex flex-col gap-1.5">
             <Label htmlFor="code-digits" className="font-semibold">6-digit code</Label>
@@ -151,13 +188,14 @@ export function EmailCodeSignIn({
               aria-describedby="code-help"
             />
           </div>
-          <Button type="submit" loading={busy} disabled={code.length !== 6} size="lg" className="w-full">
-            Sign in
+          <Button type="submit" loading={busy && sent} disabled={code.length !== 6 || busy} size="lg" className="w-full">
+            {signingUp ? 'Create account' : 'Sign in'}
           </Button>
           <div id="code-help" className="flex flex-wrap items-center justify-between gap-2 text-sm">
             <button
               type="button"
-              onClick={() => { setStep('email'); setError(''); }}
+              // Sign-up goes back to its own form, where the address and password were typed.
+              onClick={() => { if (signingUp) onBack(); else { setStep('email'); setError(''); } }}
               className="cursor-pointer border-0 bg-transparent p-0 font-medium text-[var(--text-secondary)] hover:text-[var(--text-primary)]"
             >
               Use a different email
@@ -183,7 +221,7 @@ export function EmailCodeSignIn({
         onClick={onBack}
         className="mt-5 inline-flex w-full cursor-pointer items-center justify-center gap-1.5 border-0 bg-transparent p-0 text-sm font-medium text-[var(--text-secondary)] hover:text-[var(--text-primary)]"
       >
-        <ArrowLeft className="size-4" aria-hidden /> Back to other ways to sign in
+        <ArrowLeft className="size-4" aria-hidden /> {signingUp ? 'Back' : 'Back to other ways to sign in'}
       </button>
     </div>
   );

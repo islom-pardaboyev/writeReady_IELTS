@@ -6,8 +6,9 @@ import { CodeError, sendCode, verifyCode, type Deps } from '../emailCode.js';
 
 /**
  * POST /api/email-code
- *   { action: 'send', email }          emails a 6-digit sign-in code
- *   { action: 'verify', email, code }  returns { customToken } for signInWithCustomToken
+ *   { action: 'send', email }                      emails a 6-digit code
+ *   { action: 'verify', email, code }              returns { customToken, created } for signInWithCustomToken
+ *   { action: 'verify', email, code, password }    the same, for sign-up: a new account gets this password
  *
  * The rules live in api/_lib/emailCode.ts. The codes and their limits are in
  * the email_codes and email_code_ips collections, which only this server
@@ -97,8 +98,8 @@ function firestoreDeps(): Deps {
           throw e;
         }
       },
-      async createUser(email) {
-        return (await auth.createUser({ email, emailVerified: true })).uid;
+      async createUser(email, password) {
+        return (await auth.createUser(password ? { email, password, emailVerified: true } : { email, emailVerified: true })).uid;
       },
       async markVerified(uid) {
         await auth.updateUser(uid, { emailVerified: true });
@@ -121,7 +122,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     return res.status(500).json({ error: 'The sign-in service could not start. Try again in a minute.' });
   }
 
-  const { action, email, code } = req.body ?? {};
+  const { action, email, code, password } = req.body ?? {};
   try {
     const deps = firestoreDeps();
     if (action === 'send') {
@@ -129,8 +130,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       return res.status(200).json({ sent: true });
     }
     if (action === 'verify') {
-      const customToken = await verifyCode(deps, email, code);
-      return res.status(200).json({ customToken });
+      // A password means sign-up: the account is made with it once the code checks out.
+      const { token, created } = await verifyCode(deps, email, code, password);
+      return res.status(200).json({ customToken: token, created });
     }
     return res.status(400).json({ error: 'Unknown action.' });
   } catch (e: unknown) {

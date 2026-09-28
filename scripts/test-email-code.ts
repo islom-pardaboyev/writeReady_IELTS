@@ -28,6 +28,7 @@ function world() {
   const inbox = new Map<string, string>();
   const users = new Map<string, { uid: string; disabled: boolean; emailVerified: boolean }>();
   const created: string[] = [];
+  const passwords = new Map<string, string>();
   const verified: string[] = [];
   let clock = 1_800_000_000_000;
   let failNextSend = false;
@@ -51,9 +52,10 @@ function world() {
     },
     auth: {
       getUserByEmail: async (email) => users.get(email) ?? null,
-      createUser: async (email) => {
+      createUser: async (email, password) => {
         const uid = `new_${users.size + 1}`;
         users.set(email, { uid, disabled: false, emailVerified: true });
+        if (password) passwords.set(email, password);
         created.push(email);
         return uid;
       },
@@ -70,6 +72,7 @@ function world() {
     inbox,
     users,
     created,
+    passwords,
     verified,
     advance: (ms: number) => { clock += ms; },
     failNextSend: () => { failNextSend = true; },
@@ -102,8 +105,9 @@ console.log('email-code sign-in');
   const stored = JSON.stringify([...w.tables.email_codes.values()]);
   check('never stores the code itself', !stored.includes(`"${code}"`) && !stored.includes('new.student@gmail.com'));
   check('keys documents by a hash, not the address', w.tables.email_codes.has(keyFor('new.student@gmail.com')));
-  const token = await verifyCode(w.deps, 'new.student@gmail.com', code);
-  check('the right code returns a token for a new account', token === 'token-for-new_1' && w.created[0] === 'new.student@gmail.com', token);
+  const { token, created } = await verifyCode(w.deps, 'new.student@gmail.com', code);
+  check('the right code returns a token for a new account', token === 'token-for-new_1' && created && w.created[0] === 'new.student@gmail.com', token);
+  check('a code-only account has no password', !w.passwords.has('new.student@gmail.com'));
   check('a used code cannot be used again', await rejects(() => verifyCode(w.deps, 'new.student@gmail.com', code), 400, 'Ask for a code'));
 }
 
@@ -113,8 +117,8 @@ console.log('email-code sign-in');
   w.users.set('google.user@gmail.com', { uid: 'google_uid', disabled: false, emailVerified: true });
   await sendCode(w.deps, 'google.user@gmail.com', '1.2.3.4');
   const code = w.inbox.get('google.user@gmail.com')!;
-  const token = await verifyCode(w.deps, 'google.user@gmail.com', `${code.slice(0, 3)} ${code.slice(3)}`);
-  check('an existing Google account signs in as itself', token === 'token-for-google_uid' && w.created.length === 0, token);
+  const { token, created } = await verifyCode(w.deps, 'google.user@gmail.com', `${code.slice(0, 3)} ${code.slice(3)}`);
+  check('an existing Google account signs in as itself', token === 'token-for-google_uid' && !created && w.created.length === 0, token);
   check('no second account is made', w.users.size === 1);
 }
 
@@ -191,7 +195,32 @@ console.log('email-code sign-in');
   const second = w.inbox.get('twice@example.com')!;
   if (first !== second) check('the older code stops working', await rejects(() => verifyCode(w.deps, 'twice@example.com', first), 400));
   else check('the older code stops working (same digits by chance, skipped)', true);
-  check('the newer code works', (await verifyCode(w.deps, 'twice@example.com', second)).startsWith('token-for-'));
+  check('the newer code works', (await verifyCode(w.deps, 'twice@example.com', second)).token.startsWith('token-for-'));
+}
+
+// Sign-up with a password: the account only exists once the code checks out.
+{
+  const w = world();
+  await sendCode(w.deps, 'signup@example.com', 'a');
+  check('sending the code creates no account', w.users.size === 0);
+  const code = w.inbox.get('signup@example.com')!;
+  check('a wrong code creates no account', (await rejects(() => verifyCode(w.deps, 'signup@example.com', wrong(code), 'secret12'), 400)) && w.users.size === 0);
+  const { token, created } = await verifyCode(w.deps, 'signup@example.com', code, 'secret12');
+  check('the right code creates the account with the chosen password', created && token === 'token-for-new_1' && w.passwords.get('signup@example.com') === 'secret12');
+  check('the new account is marked verified', w.users.get('signup@example.com')?.emailVerified === true);
+
+  const s = world();
+  await sendCode(s.deps, 'short@example.com', 'a');
+  const shortCode = s.inbox.get('short@example.com')!;
+  check('a password under 6 characters is refused', await rejects(() => verifyCode(s.deps, 'short@example.com', shortCode, '12345'), 400, 'at least 6'));
+  check('and it does not use up the code', (await verifyCode(s.deps, 'short@example.com', shortCode, '123456')).created);
+
+  const e = world();
+  e.users.set('taken@example.com', { uid: 'old_uid', disabled: false, emailVerified: true });
+  await sendCode(e.deps, 'taken@example.com', 'a');
+  const taken = await verifyCode(e.deps, 'taken@example.com', e.inbox.get('taken@example.com'), 'newpass1');
+  check('signing up with an address that has an account signs into it', !taken.created && taken.token === 'token-for-old_uid');
+  check('and leaves its password alone', !e.passwords.has('taken@example.com') && e.created.length === 0);
 }
 
 // Addresses that must never get a code.

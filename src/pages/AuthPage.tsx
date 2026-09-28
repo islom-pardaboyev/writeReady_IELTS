@@ -35,7 +35,9 @@ export function AuthPage() {
   const [loading, setLoading] = useState(false);
   // Sign in (or up) with a code emailed to the student, instead of a password or Google.
   const [useCode, setUseCode] = useState(false);
-  const { signIn, signUp, signInWithGoogle, user, loading: authLoading, refreshProfile } = useAuth();
+  // Password sign-up waits here while the student confirms their email with a code.
+  const [pendingSignup, setPendingSignup] = useState<{ email: string; password: string } | null>(null);
+  const { signIn, signInWithGoogle, user, loading: authLoading, refreshProfile } = useAuth();
   const navigate = useNavigate();
   const rootRef = useRef<HTMLDivElement>(null);
 
@@ -59,13 +61,15 @@ export function AuthPage() {
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
     setError('');
+    if (mode === 'signup') {
+      // The account is created only after the emailed code proves the address
+      // is theirs (api/_lib/emailCode.ts), not straight from this form.
+      setPendingSignup({ email: email.trim(), password });
+      return;
+    }
     setLoading(true);
     try {
-      if (mode === 'signup') {
-        await signUp(email, password);
-      } else {
-        await signIn(email, password);
-      }
+      await signIn(email, password);
       navigate(next);
     } catch (err: unknown) {
       setError(cleanAuthError(err, 'Authentication failed'));
@@ -137,7 +141,7 @@ export function AuthPage() {
                   key={m}
                   role="tab"
                   aria-selected={mode === m}
-                  onClick={() => { setMode(m); setError(''); setUseCode(false); }}
+                  onClick={() => { setMode(m); setError(''); setUseCode(false); setPendingSignup(null); }}
                   className={`flex-1 text-xs font-semibold py-1.5 rounded-[8px] transition-colors border-0 cursor-pointer ${
                     mode === m
                       ? 'bg-[var(--bg-card)] text-[var(--text-primary)] shadow-sm'
@@ -155,6 +159,8 @@ export function AuthPage() {
             <p className="text-center text-[var(--text-secondary)] text-sm mb-6">
               {mode === 'student'
                 ? 'Enter the login and password provided by your learning centre'
+                : pendingSignup
+                ? 'Confirm your email to finish'
                 : useCode
                 ? 'Sign in with a code sent to your email'
                 : mode === 'login'
@@ -162,7 +168,7 @@ export function AuthPage() {
                 : 'Start practicing for free'}
             </p>
 
-            {error && !useCode && (
+            {error && !useCode && !pendingSignup && (
               <div
                 role="alert"
                 aria-live="polite"
@@ -207,6 +213,13 @@ export function AuthPage() {
                   Get your login and password from your learning centre
                 </p>
               </form>
+            ) : pendingSignup ? (
+              <EmailCodeSignIn
+                initialEmail={pendingSignup.email}
+                password={pendingSignup.password}
+                onSignedIn={() => navigate(next)}
+                onBack={() => setPendingSignup(null)}
+              />
             ) : useCode ? (
               <EmailCodeSignIn
                 initialEmail={email}

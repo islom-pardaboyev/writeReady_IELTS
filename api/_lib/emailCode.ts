@@ -5,6 +5,9 @@ import { createHash, randomBytes, randomInt, timingSafeEqual } from 'crypto';
 // (or a new one), whether they first signed up with Google or a password.
 // Useful on a shared computer where they will not sign in to Google.
 //
+// Sign-up with a password goes through the same code: the account is created
+// only after the student proves the address is theirs.
+//
 // The logic here only talks to the small `Deps` below, so it can be checked
 // offline (scripts/test-email-code.ts); api/_lib/routes/emailCode.ts wires it
 // to Firestore, Firebase Auth and the email sender.
@@ -37,8 +40,8 @@ export interface Deps {
   send: (email: string, code: string) => Promise<void>;
   auth: {
     getUserByEmail(email: string): Promise<{ uid: string; disabled: boolean; emailVerified: boolean } | null>;
-    /** Creates an account for an address the student has just proved is theirs. */
-    createUser(email: string): Promise<string>;
+    /** Creates an account for an address the student has just proved is theirs, with a password when they chose one. */
+    createUser(email: string, password?: string): Promise<string>;
     markVerified(uid: string): Promise<void>;
     createCustomToken(uid: string): Promise<string>;
   };
@@ -126,11 +129,33 @@ export async function sendCode(deps: Deps, rawEmail: unknown, ip: string): Promi
   }
 }
 
-/** Checks the code and returns a Firebase custom token for the account with that email. */
-export async function verifyCode(deps: Deps, rawEmail: unknown, rawCode: unknown): Promise<string> {
+export const MIN_PASSWORD = 6;
+const MAX_PASSWORD = 128;
+
+/**
+ * Checks the code and returns a Firebase custom token for the account with
+ * that email. Sign-up passes the password the student chose: the account is
+ * only created once the code proves the address is theirs. `created` says
+ * whether a new account was made; an address that already had one is simply
+ * signed in, and its password is left as it was.
+ */
+export async function verifyCode(
+  deps: Deps,
+  rawEmail: unknown,
+  rawCode: unknown,
+  rawPassword?: unknown,
+): Promise<{ token: string; created: boolean }> {
   const email = normalizeEmail(rawEmail);
   const code = typeof rawCode === 'string' ? rawCode.replace(/\s/g, '') : '';
   if (!/^\d{6}$/.test(code)) throw new CodeError(400, 'Enter the 6-digit code from the email.');
+  // Checked before the code is used, so a password that is too short does not cost the code.
+  let password: string | undefined;
+  if (rawPassword !== undefined) {
+    password = typeof rawPassword === 'string' ? rawPassword : '';
+    if (password.length < MIN_PASSWORD || password.length > MAX_PASSWORD) {
+      throw new CodeError(400, `Choose a password of at least ${MIN_PASSWORD} characters.`);
+    }
+  }
   const now = deps.now();
 
   type Outcome = { kind: 'missing' | 'expired' | 'locked' | 'ok' } | { kind: 'wrong'; left: number };
@@ -169,7 +194,7 @@ export async function verifyCode(deps: Deps, rawEmail: unknown, rawCode: unknown
     // They just proved the address is theirs.
     if (!existing.emailVerified) await deps.auth.markVerified(uid);
   } else {
-    uid = await deps.auth.createUser(email);
+    uid = await deps.auth.createUser(email, password);
   }
-  return deps.auth.createCustomToken(uid);
+  return { token: await deps.auth.createCustomToken(uid), created: !existing };
 }
