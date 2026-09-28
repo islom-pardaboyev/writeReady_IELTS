@@ -23,10 +23,15 @@ service cloud.firestore {
     }
 
     // Staff sign in through /api/staff-login, which mints custom tokens for
-    // fixed internal emails. Students sign in with a password or Google, so
-    // they can never pass these checks, even with a look-alike email.
+    // fixed internal emails. Students sign in with a password, Google, or an
+    // emailed code. The code sign-in is a custom token too, but only ever for
+    // a real address: api/_lib/emailCode.ts refuses @writeready.internal ones.
+    // So staff means both: a custom token AND an internal email. A student can
+    // never pass that, and a code-signed-in student is still a student.
     function isStaff() {
-      return signedIn() && request.auth.token.firebase.sign_in_provider == 'custom';
+      return signedIn()
+        && request.auth.token.firebase.sign_in_provider == 'custom'
+        && request.auth.token.get('email', '').lower().matches('[^@]+@writeready[.]internal');
     }
 
     function staffEmail() {
