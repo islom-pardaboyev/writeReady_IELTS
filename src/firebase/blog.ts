@@ -57,7 +57,14 @@ export async function getBlogPosts(status?: string, dbInstance: Firestore = db):
 }
 
 export async function getBlogPost(slug: string): Promise<BlogPost | null> {
-  const q = query(collection(db, 'blogPosts'), where('slug', '==', slug), limit(1));
+  // The rules only let students read published posts, and Firestore refuses a
+  // query that could return anything else, so the status filter is required.
+  const q = query(
+    collection(db, 'blogPosts'),
+    where('slug', '==', slug),
+    where('status', '==', 'published'),
+    limit(1),
+  );
   const snap = await getDocs(q);
   if (snap.empty) return null;
   const d = snap.docs[0];

@@ -62,30 +62,37 @@ export function BlogPostPage() {
     let cancelled = false;
     setLoading(true);
 
-    getBlogPost(slug).then(async (p) => {
-      if (cancelled) return;
-      setPost(p);
-      setLoading(false);
-      if (p) {
-        document.title = p.seo.metaTitle || `${p.title} | WriteReady IELTS`;
-        let metaEl = document.querySelector('meta[name="description"]') as HTMLMetaElement | null;
-        if (!metaEl) {
-          metaEl = document.createElement('meta');
-          metaEl.name = 'description';
-          document.head.appendChild(metaEl);
-        }
-        metaEl.content = p.seo.metaDescription || p.excerpt;
-        setLikeCount(p.likeCount);
-        const all = await getBlogPosts('published');
+    getBlogPost(slug)
+      .catch((err) => {
+        // Offline, or the database refused: say so instead of loading forever.
+        console.error('Could not load the blog post', err);
+        return null;
+      })
+      .then(async (p) => {
         if (cancelled) return;
-        setRelated(all.filter((r) => r.category === p.category && r.id !== p.id).slice(0, 3));
-        if (user) {
-          const isLiked = await isPostLiked(p.id, user.uid);
+        setPost(p);
+        setLoading(false);
+        if (p) {
+          document.title = p.seo.metaTitle || `${p.title} | WriteReady IELTS`;
+          let metaEl = document.querySelector('meta[name="description"]') as HTMLMetaElement | null;
+          if (!metaEl) {
+            metaEl = document.createElement('meta');
+            metaEl.name = 'description';
+            document.head.appendChild(metaEl);
+          }
+          metaEl.content = p.seo.metaDescription || p.excerpt;
+          setLikeCount(p.likeCount);
+          const all = await getBlogPosts('published');
           if (cancelled) return;
-          setLiked(isLiked);
+          setRelated(all.filter((r) => r.category === p.category && r.id !== p.id).slice(0, 3));
+          if (user) {
+            const isLiked = await isPostLiked(p.id, user.uid);
+            if (cancelled) return;
+            setLiked(isLiked);
+          }
         }
-      }
-    });
+      })
+      .catch((err) => console.error('Could not load related posts or likes', err));
 
     return () => { cancelled = true; };
   }, [slug, user]);

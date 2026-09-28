@@ -1,4 +1,4 @@
-import { useLayoutEffect, useRef, useEffect, useState } from 'react';
+import { useLayoutEffect, useMemo, useRef, useEffect, useState } from 'react';
 import { useNavigate, Link, Navigate } from 'react-router';
 import gsap from 'gsap';
 import { ScrollTrigger } from 'gsap/ScrollTrigger';
@@ -8,10 +8,12 @@ import { AppShell } from '../components/layout/AppShell';
 import { Button } from '../components/ui/Button';
 import { Card } from '../components/ui/Card';
 import { Badge } from '../components/ui/badge';
-import { getRecentFeedbackReports, type FeedbackReport } from '../firebase/firestore';
+import { countFeedbackReports, getActivityDays, getProgressReports, type FeedbackReport } from '../firebase/firestore';
 import { getHumanReviewsForStudent } from '../firebase/teachers';
 import type { HumanReview } from '../types';
 import { ProgressSection } from '../components/ui/ProgressSection';
+import { ProfileHeader, StatsOverview } from '../components/dashboard/ProfileOverview';
+import { dashboardStats, hasProgress } from '../lib/dashboardStats';
 import { TelegramBotCard } from '../components/ui/TelegramBotCard';
 import { doc, updateDoc } from 'firebase/firestore';
 import { hasFreeReportThisWeek } from '../lib/weeklyFree';
@@ -84,8 +86,13 @@ export function DashboardPage() {
   const { usage } = useUsage(user?.uid ?? null);
   const navigate = useNavigate();
   const rootRef = useRef<HTMLDivElement>(null);
-  const [reports, setReports] = useState<FeedbackReport[]>([]);
+  // The newest 30 reports, oldest first. One download feeds the figures at the
+  // top, the progress charts and the recent analyses.
+  const [progress, setProgress] = useState<FeedbackReport[]>([]);
   const [reportsLoading, setReportsLoading] = useState(true);
+  const [reportCount, setReportCount] = useState<number | null>(null);
+  // Essays finished per day (saved PDFs), for the streak; null until loaded.
+  const [activity, setActivity] = useState<Record<string, number> | null>(null);
   const [notification, setNotification] = useState<string | null>(null);
   const [humanReviews, setHumanReviews] = useState<HumanReview[]>([]);
   const [humanReviewsLoading, setHumanReviewsLoading] = useState(true);
@@ -93,13 +100,16 @@ export function DashboardPage() {
   useLayoutEffect(() => {
     // Wait for profile to load before animating — otherwise elements are hidden forever
     if (!profile) return;
+    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
     const ctx = gsap.context(() => {
       gsap.set('.gs-db-welcome', { y: 28, opacity: 0 });
+      gsap.set('.gs-db-stat', { y: 20, opacity: 0 });
       gsap.set('.gs-db-quota', { y: 20, opacity: 0 });
       gsap.set('.gs-db-mode-card', { y: 32, opacity: 0 });
 
       const tl = gsap.timeline({ defaults: { ease: 'power3.out' } });
       tl.to('.gs-db-welcome', { y: 0, opacity: 1, duration: 0.6 })
+        .to('.gs-db-stat', { y: 0, opacity: 1, duration: 0.5, stagger: 0.06 }, '-=0.35')
         .to('.gs-db-quota', { y: 0, opacity: 1, duration: 0.5 }, '-=0.3')
         .to('.gs-db-mode-card', { y: 0, opacity: 1, duration: 0.5, stagger: 0.1 }, '-=0.25');
 
@@ -133,10 +143,14 @@ export function DashboardPage() {
     }
     if (!user?.uid) return;
     refreshProfile();
-    getRecentFeedbackReports(user.uid, 5)
-      .then(setReports)
+    getProgressReports(user.uid)
+      .then(setProgress)
       .catch((e) => console.error('Failed to load feedback reports:', e))
       .finally(() => setReportsLoading(false));
+    countFeedbackReports(user.uid)
+      .then(setReportCount)
+      .catch((e) => console.error('Could not count feedback reports:', e));
+    getActivityDays(user.uid).then(setActivity);
     getHumanReviewsForStudent(user.uid)
       .then(setHumanReviews)
       .catch((e) => console.error('Failed to load human reviews:', e))
@@ -178,6 +192,14 @@ export function DashboardPage() {
   const planName = PLAN_INFO[profile?.plan ?? 'free'].label;
   const onFreePlan = !isPaidPlan && (!isStudent || centerPlanEnded);
 
+  const statsLoading = reportsLoading || activity === null;
+  const stats = useMemo(
+    () => (statsLoading ? null : dashboardStats(progress, new Date(), activity ?? {})),
+    [progress, activity, statsLoading],
+  );
+  // Newest first, as the Recent Analyses cards list them.
+  const reports = useMemo(() => progress.slice(-5).reverse(), [progress]);
+
   // Signed-out visitors belong on the landing page, not an empty dashboard.
   // After every hook above, so the hook count never changes between renders.
   if (!loading && !user) return <Navigate to="/" replace />;
@@ -200,23 +222,18 @@ export function DashboardPage() {
             </div>
           )}
 
-          {/* Welcome header */}
-          <div className="gs-db-welcome mb-8">
-            <h1 className="font-sans font-bold text-4xl font-extrabold text-[var(--text-primary)] mb-1.5 text-balance">
-              Welcome back{user?.email ? `, ${user.email.split('@')[0]}` : ''}
-            </h1>
-            <p className="text-[var(--text-secondary)]">
-              {isPro && !isStudent
-                ? `${planName} · ${remaining} analyses left this month${bonusAnalyses > 0 ? ` · +${bonusAnalyses} bonus` : ''}`
-                : isStudent && !centerPlanEnded
-                ? `${planName} · ${remaining} analyses left this month`
-                : bonusAnalyses > 0
-                ? `+${bonusAnalyses} bonus full ${bonusAnalyses === 1 ? 'report' : 'reports'} available 🎁`
-                : freeReportAvailable
-                ? 'Free plan · 1 free AI analysis available this week 🎁'
-                : "Free plan · you've used this week's free analysis. Resets Monday, or upgrade for more."}
-            </p>
-          </div>
+          {/* Who you are, then where you stand */}
+          {user && profile ? (
+            <ProfileHeader user={user} profile={profile} />
+          ) : (
+            <div aria-hidden="true" className="mb-6 h-[236px] rounded-[18px] border border-[var(--border-color)] bg-[var(--bg-card)] animate-pulse motion-reduce:animate-none" />
+          )}
+          <StatsOverview
+            stats={stats}
+            loading={statsLoading}
+            totalReports={reportCount ?? progress.length}
+            showAnalytics={hasProgress(progress)}
+          />
 
           {/* Learning Center student info card */}
           {isStudent && (
@@ -335,7 +352,7 @@ export function DashboardPage() {
           <TelegramBotCard paidPlan={isPaidPlan} />
 
           {/* Progress Section */}
-          {user?.uid && <ProgressSection uid={user.uid} />}
+          {user?.uid && <ProgressSection reports={progress} loading={reportsLoading} />}
 
           {/* Recent Analyses */}
           {isPro && (

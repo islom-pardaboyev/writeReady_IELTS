@@ -38,6 +38,16 @@ export const PAID_PLANS: Plan[] = ['basic', 'standard', 'premium', 'custom', 'fo
 export const isPaidPlan = (plan: Plan | undefined): boolean => !!plan && plan !== 'free';
 
 /**
+ * The badge a plan wears. Plan tiers are labels, not state (DESIGN.md): Free
+ * is secondary, the middle plans info, Premium and Lifetime purple.
+ */
+export function planBadgeVariant(plan: Plan): 'secondary' | 'info' | 'purple' {
+  if (plan === 'premium' || plan === 'forever') return 'purple';
+  if (plan === 'free') return 'secondary';
+  return 'info';
+}
+
+/**
  * The Customizable plan: a student picks any number of reports a month in
  * this range. api/_lib/shared.ts keeps the same two numbers.
  */

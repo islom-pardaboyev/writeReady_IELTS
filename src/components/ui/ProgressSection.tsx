@@ -1,5 +1,6 @@
-import { useEffect, useState } from 'react';
-import { getProgressReports, type FeedbackReport } from '../../firebase/firestore';
+import { useMemo } from 'react';
+import type { FeedbackReport } from '../../firebase/firestore';
+import { PROGRESS_ID } from '../../lib/dashboardStats';
 import { Card } from './Card';
 import { reportBand } from '@shared/bandScore';
 
@@ -155,23 +156,17 @@ function CategoryBars({ reports }: CategoryBarsProps) {
   );
 }
 
-export function ProgressSection({ uid }: { uid: string }) {
-  const [reports, setReports] = useState<FeedbackReport[]>([]);
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    getProgressReports(uid)
-      // A report with no usable score has nothing to plot.
-      .then((all) => setReports(all.filter((r) => reportBand(r.scores) !== null)))
-      .catch((e) => console.error('Could not load progress:', e))
-      .finally(() => setLoading(false));
-  }, [uid]);
+// The dashboard loads the reports once (getProgressReports) and shares them
+// with its own figures, so this section no longer fetches a second copy.
+export function ProgressSection({ reports: all, loading }: { reports: FeedbackReport[]; loading: boolean }) {
+  // A report with no usable score has nothing to plot.
+  const reports = useMemo(() => all.filter((r) => reportBand(r.scores) !== null), [all]);
 
   if (loading) {
     return (
       <div className="mb-10">
         <h2 className="text-xl font-bold text-[var(--text-primary)] mb-4">Your Progress</h2>
-        <div className="h-48 rounded-2xl bg-[var(--bg-card)] border border-[var(--border-color)] animate-pulse" />
+        <div className="h-48 rounded-2xl bg-[var(--bg-card)] border border-[var(--border-color)] animate-pulse motion-reduce:animate-none" />
       </div>
     );
   }
@@ -179,7 +174,7 @@ export function ProgressSection({ uid }: { uid: string }) {
   if (reports.length < 2) return null;
 
   return (
-    <div className="mb-10">
+    <div id={PROGRESS_ID} className="mb-10 scroll-mt-24">
       <h2 className="text-xl font-bold text-[var(--text-primary)] mb-4">Your Progress</h2>
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
         <Card className="p-5">

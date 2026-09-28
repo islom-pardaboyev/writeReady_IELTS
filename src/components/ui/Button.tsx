@@ -59,8 +59,8 @@ function Button({
       disabled={disabled || loading}
       {...props}
     >
-      {loading ? <Spinner /> : null}
-      {children}
+      {/* Slot takes exactly one element, so asChild gets no spinner slot. */}
+      {asChild ? children : <>{loading ? <Spinner /> : null}{children}</>}
     </Comp>
   )
 }

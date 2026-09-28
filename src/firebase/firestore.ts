@@ -5,6 +5,7 @@ import {
   deleteDoc,
   collection,
   getDocs,
+  getCountFromServer,
   query,
   orderBy,
   limit,
@@ -162,6 +163,27 @@ export async function getProgressReports(uid: string, n = 30): Promise<FeedbackR
       createdAt: toDate(data.createdAt),
     };
   });
+}
+
+// Every report the student has ever had, for the dashboard's "Essays checked".
+// A count query costs one read however many reports there are.
+export async function countFeedbackReports(uid: string): Promise<number> {
+  const snap = await getCountFromServer(query(collection(db, 'feedback_reports'), where('uid', '==', uid)));
+  return snap.data().count;
+}
+
+// Essays finished per local day, for the dashboard streak (written by
+// src/lib/activity.ts). Empty when the student has none, or the read fails:
+// the streak then falls back to checked reports alone.
+export async function getActivityDays(uid: string): Promise<Record<string, number>> {
+  try {
+    const snap = await getDoc(doc(db, 'activity', uid));
+    const days = snap.exists() ? snap.data().days : null;
+    return days && typeof days === 'object' ? (days as Record<string, number>) : {};
+  } catch (err) {
+    console.error('Could not load writing activity:', err);
+    return {};
+  }
 }
 
 export type AnnouncementCategory = 'announcement' | 'update' | 'maintenance' | 'tip' | 'offer';

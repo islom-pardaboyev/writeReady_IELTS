@@ -1,362 +1,444 @@
-import { useRef, useLayoutEffect } from 'react';
-import gsap from 'gsap';
-import { ScrollTrigger } from 'gsap/ScrollTrigger';
 import { Link } from 'react-router';
-import { ArrowUpRight, Bot, Send } from 'lucide-react';
+import { ArrowRight, ArrowUpRight, Bot, Building2, Check, Coffee, GraduationCap, PenLine, Send, Timer, Zap } from 'lucide-react';
 import { TELEGRAM_BOT_URL, TELEGRAM_CHANNEL_URL } from '@/lib/links';
+import { TELEGRAM_CONTACT_URL } from '@/lib/legal';
 import { useShowTelegramBot } from '@/hooks/useFeatureFlag';
 import { Header } from '@/components/layout/Header';
 import { SkipLink } from '@/components/layout/SkipLink';
 import { FaqAccordion, FaqAnswerStyles } from '@/components/ui/FaqAccordion';
+import { ExamRoomDemo } from '@/components/landing/ExamRoomDemo';
 import { HOME_QUESTIONS } from '@/lib/faq';
 import { ChatBot } from '../components/ui/ChatBot';
 
-gsap.registerPlugin(ScrollTrigger);
+// Essays checked so far, shown in the proof section. Set by hand for now:
+// raise it as the real number grows.
+const ESSAYS_CHECKED = '15+';
+
+const HERO_POINTS = [
+  'Task 1 charts and Task 2 essays',
+  'New words come with their Uzbek meaning',
+  'Every report saved, and downloadable as a PDF',
+  'A teacher can check the same essay with Human Check',
+];
+
+// What a full report holds, in the order it is laid out (see the FAQ answer
+// "Why is this better than just asking ChatGPT?" for the same list).
+const REPORT_PARTS = [
+  {
+    title: 'Four bands and an overall score',
+    text: 'Task Response (Task Achievement for Task 1), Coherence and Cohesion, Lexical Resource, and Grammatical Range and Accuracy, each with the reason behind it.',
+  },
+  {
+    title: 'Every sentence, in order',
+    text: 'Each sentence is checked. Where one loses marks, you see why and a better way to write it.',
+  },
+  {
+    title: 'Up to 15 better words',
+    text: 'Picked from your own essay, each with its English and Uzbek meaning and your sentence as the example.',
+  },
+  {
+    title: 'Up to 10 grammar points',
+    text: 'Mistakes you made, plus structures that would lift your grammar score if you used them.',
+  },
+  {
+    title: 'A band 8 to 9 answer',
+    text: 'A model answer to the same question, so you can see what the higher band looks like.',
+  },
+  {
+    title: 'Three fixes to make first',
+    text: 'The changes most likely to move your band on the next essay.',
+  },
+];
+
+const MODES = [
+  {
+    title: 'Mock Exam',
+    spec: '60 min · Task 1 and 2',
+    text: 'Both tasks against one clock, on a screen laid out like the computer-based test.',
+    href: '/writing/mock',
+    Icon: Timer,
+  },
+  {
+    title: 'Practice',
+    spec: 'No timer · Task 1 and 2',
+    text: 'Both tasks at your own pace, with a new question whenever you want one.',
+    href: '/writing/practice',
+    Icon: PenLine,
+  },
+  {
+    title: 'Quick Write',
+    spec: 'No timer · one task',
+    text: 'A single Task 1 or Task 2 question for a short session. Easy to fit into every day.',
+    href: '/writing/quick',
+    Icon: Zap,
+  },
+  {
+    title: 'Relax',
+    spec: 'Your own question',
+    text: 'Paste any question you like, add a chart if you have one, and write.',
+    href: '/writing/relax',
+    Icon: Coffee,
+  },
+];
+
+const DEMO_VIDEOS = [
+  {
+    id: 'website',
+    title: 'The website, start to finish',
+    desc: 'Pick a mode, write against a question, and read the report your essay gets.',
+    src: '/WriteReady_website_video_EN.mp4',
+    poster: '/video-website-poster.jpg',
+  },
+  {
+    id: 'bot',
+    title: 'Checking an essay in Telegram',
+    desc: 'Send the bot your essay and it replies with a band score in the chat, without an account.',
+    src: '/WriteReady_telegram_bot_video_EN.mp4',
+    poster: '/video-telegram-bot-poster.jpg',
+  },
+];
+
+const H2 = 'text-[clamp(1.75rem,3.2vw,2.5rem)] font-extrabold leading-[1.1] tracking-[-0.025em] text-balance text-[var(--text-primary)]';
+const LEAD = 'mt-3 max-w-[56ch] text-lg leading-relaxed text-[var(--text-secondary)]';
+const external = { target: '_blank', rel: 'noopener noreferrer' } as const;
+
+// A report as it comes back, shortened: the bands, one sentence note and one
+// word. Sample content, labelled as such.
+function ReportSample() {
+  const bands: [string, number][] = [
+    ['Task Response', 6.5],
+    ['Coherence and Cohesion', 7],
+    ['Lexical Resource', 6.5],
+    ['Grammatical Range and Accuracy', 6],
+  ];
+  return (
+    <figure className="m-0">
+      <div className="overflow-hidden rounded-[18px] border border-[var(--border-color)] bg-[var(--bg-card)] shadow-[var(--shadow-md)]">
+        <div className="flex items-end justify-between gap-4 border-b border-[var(--border-color)] px-5 py-4">
+          <div>
+            <p className="text-xs text-[var(--text-secondary)]">Task 2 · Opinion essay</p>
+            <p className="mt-0.5 text-sm font-semibold text-[var(--text-primary)]">Estimated overall band</p>
+          </div>
+          <p className="font-mono text-4xl font-semibold leading-none tracking-[-0.03em] text-[var(--text-primary)] tabular-nums">6.5</p>
+        </div>
+        <dl className="grid gap-px bg-[var(--border-color)] sm:grid-cols-2">
+          {bands.map(([name, band]) => (
+            <div key={name} className="bg-[var(--bg-card)] px-5 py-3">
+              <dt className="text-xs text-[var(--text-secondary)]">{name}</dt>
+              <dd className="mt-1 flex items-center gap-3">
+                <span className="font-mono text-lg font-semibold text-[var(--text-primary)] tabular-nums">{band.toFixed(1)}</span>
+                <span aria-hidden="true" className="h-1 flex-1 overflow-hidden rounded-full bg-[var(--border-color)] dark:bg-[var(--border-strong)]">
+                  <span className="block h-full rounded-full bg-brand-600 dark:bg-brand-400" style={{ width: `${(band / 9) * 100}%` }} />
+                </span>
+              </dd>
+            </div>
+          ))}
+        </dl>
+        <div className="border-t border-[var(--border-color)] px-5 py-4">
+          <p className="text-xs font-semibold text-[var(--text-secondary)]">Sentence 2 · Grammar</p>
+          <p className="mt-1.5 text-sm leading-relaxed text-[var(--text-primary)]">
+            <span className="text-red-600 line-through decoration-1 dark:text-red-400">Technology have changed</span> the way we learn.
+          </p>
+          <p className="mt-1 text-sm leading-relaxed text-[var(--text-primary)]">
+            <span className="font-semibold text-emerald-700 dark:text-emerald-400">Technology has changed</span> the way we learn.
+          </p>
+          <p className="mt-1.5 text-xs text-[var(--text-secondary)]">"Technology" is one thing, so the verb is singular.</p>
+        </div>
+        <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1 border-t border-[var(--border-color)] px-5 py-4">
+          <p className="w-full text-xs font-semibold text-[var(--text-secondary)]">Better word</p>
+          <p className="text-sm text-[var(--text-secondary)]">dramatically</p>
+          <ArrowRight className="size-3.5 translate-y-0.5 text-[var(--text-secondary)]" aria-hidden="true" />
+          <span className="sr-only">becomes</span>
+          <p className="text-sm font-semibold text-[var(--text-primary)]">profoundly</p>
+          <p className="text-sm text-[var(--text-secondary)]">Uzbek: tubdan</p>
+        </div>
+      </div>
+      <figcaption className="mt-3 text-center text-xs text-[var(--text-secondary)]">Part of a sample report</figcaption>
+    </figure>
+  );
+}
 
 export function LandingPage() {
-  const rootRef = useRef<HTMLDivElement>(null);
-  // Admin -> Telegram bot: the bot is left off the page until the admin announces it.
+  // Admin → Telegram bot: the bot is left off the page until the admin announces it.
   const botShown = useShowTelegramBot();
 
-  // Both always shown: unlike the bot mentions above, the video is a fine
-  // preview of the bot even before it is announced on the site itself.
-  const demoVideos = [
-    {
-      id: 'website',
-      title: 'A full walkthrough of WriteReady',
-      desc: 'Pick a mode, write against a prompt, and see the AI feedback report it gets marked with.',
-      src: '/WriteReady_website_video_EN.mp4',
-      poster: '/video-website-poster.jpg',
-    },
-    {
-      id: 'bot',
-      title: 'Check an essay in Telegram — no account needed',
-      desc: 'Send the bot your essay and get a band score back in seconds, right in the chat.',
-      src: '/WriteReady_telegram_bot_video_EN.mp4',
-      poster: '/video-telegram-bot-poster.jpg',
-    },
-  ];
-
-  useLayoutEffect(() => {
-    const prefersReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-    if (prefersReducedMotion) return;
-
-    const ctx = gsap.context(() => {
-      gsap.set('.gs-hero-badge', { y: -16, opacity: 0 });
-      gsap.set('.gs-hero-title', { y: 40, opacity: 0 });
-      gsap.set('.gs-hero-sub', { y: 28, opacity: 0 });
-      gsap.set('.gs-hero-ctas', { y: 24, opacity: 0 });
-      gsap.set('.gs-hero-bullet', { y: 14, opacity: 0 });
-      gsap.set('.gs-hero-right', { x: 50, opacity: 0 });
-      gsap.set('.gs-floating-card', { scale: 0.82, opacity: 0 });
-
-      const tl = gsap.timeline({ defaults: { ease: 'power3.out' } });
-      tl.to('.gs-hero-badge', { y: 0, opacity: 1, duration: 0.5 })
-        .to('.gs-hero-title', { y: 0, opacity: 1, duration: 0.72 }, '-=0.3')
-        .to('.gs-hero-right', { x: 0, opacity: 1, duration: 0.75, ease: 'power2.out' }, '-=0.55')
-        .to('.gs-hero-sub', { y: 0, opacity: 1, duration: 0.6 }, '-=0.45')
-        .to('.gs-hero-ctas', { y: 0, opacity: 1, duration: 0.5 }, '-=0.35')
-        .to('.gs-hero-bullet', { y: 0, opacity: 1, duration: 0.45, stagger: 0.09 }, '-=0.3')
-        .to('.gs-floating-card', { scale: 1, opacity: 1, duration: 0.65, ease: 'back.out(1.6)' }, '-=0.35');
-
-      gsap.from('.gs-stat-item', {
-        scrollTrigger: { trigger: '.gs-stats', start: 'top 86%' },
-        y: 32, opacity: 0, duration: 0.6, stagger: 0.1, ease: 'power2.out',
-      });
-
-      gsap.from('.gs-how-header', {
-        scrollTrigger: { trigger: '.gs-how', start: 'top 82%' },
-        y: 30, opacity: 0, duration: 0.6, ease: 'power2.out',
-      });
-      gsap.from('.gs-step-card', {
-        scrollTrigger: { trigger: '.gs-how', start: 'top 78%' },
-        y: 44, opacity: 0, duration: 0.65, stagger: 0.15, ease: 'power2.out',
-      });
-
-      gsap.from('.gs-videos-header', {
-        scrollTrigger: { trigger: '.gs-videos', start: 'top 82%' },
-        y: 30, opacity: 0, duration: 0.6, ease: 'power2.out',
-      });
-      gsap.from('.gs-video-card', {
-        scrollTrigger: { trigger: '.gs-videos', start: 'top 78%' },
-        y: 44, opacity: 0, duration: 0.65, stagger: 0.15, ease: 'power2.out',
-      });
-
-      gsap.from('.gs-modes-header', {
-        scrollTrigger: { trigger: '.gs-modes', start: 'top 82%' },
-        y: 30, opacity: 0, duration: 0.6, ease: 'power2.out',
-      });
-      gsap.from('.gs-mode-card', {
-        scrollTrigger: { trigger: '.gs-modes', start: 'top 78%' },
-        y: 44, opacity: 0, duration: 0.65, stagger: 0.15, ease: 'power2.out',
-      });
-
-      gsap.from('.gs-faq-header', {
-        scrollTrigger: { trigger: '.gs-faq', start: 'top 82%' },
-        y: 30, opacity: 0, duration: 0.6, ease: 'power2.out',
-      });
-      gsap.from('.gs-faq-list', {
-        scrollTrigger: { trigger: '.gs-faq', start: 'top 78%' },
-        y: 40, opacity: 0, duration: 0.65, ease: 'power2.out',
-      });
-
-      gsap.from('.gs-cta-content', {
-        scrollTrigger: { trigger: '.gs-cta', start: 'top 82%' },
-        y: 50, opacity: 0, duration: 0.72, ease: 'power3.out',
-      });
-    }, rootRef);
-
-    return () => ctx.revert();
-  }, []);
-
   return (
-    <div ref={rootRef} className="font-sans bg-[var(--bg-base)] text-[var(--text-primary)]">
-
+    <div className="bg-[var(--bg-base)] font-sans text-[var(--text-primary)]">
       <SkipLink />
-
-      {/* ── Nav ── */}
       <Header />
 
       <main id="main-content" tabIndex={-1} className="outline-none">
-      {/* ── Hero ── */}
-      <section className="max-w-[1160px] mx-auto px-6 pt-20 pb-16 grid grid-cols-2 gap-16 items-center max-[768px]:grid-cols-1">
-        {/* Left */}
-        <div>
-          <div className="gs-hero-badge inline-flex items-center gap-2 bg-brand-50 border border-brand-200 text-brand-700 text-[0.75rem] font-bold tracking-[0.06em] uppercase px-[0.875rem] py-[0.35rem] rounded-[20px] mb-7 dark:bg-brand-900/30 dark:border-brand-700 dark:text-brand-300">
-            <span className="w-[6px] h-[6px] rounded-full bg-green-500 inline-block" />
-            AI-Powered · Uzbek & English
-          </div>
-
-          <h1 className="gs-hero-title text-[clamp(2.25rem,4.5vw,3.25rem)] font-black leading-[1.1] text-[var(--text-primary)] mb-5 tracking-[-0.02em]">
-            IELTS Writing{' '}
-            <span className="text-brand-600 dark:text-brand-400">Feedback.</span>
-            <br />
-            Delivered instantly
-            <br />
-            through AI.
-          </h1>
-
-          <p className="gs-hero-sub text-[1.0625rem] text-[var(--text-secondary)] leading-[1.75] mb-8 max-w-[440px]">
-            Write against IELTS-style exam prompts and get the essay marked: notes on every sentence, stronger vocabulary with Uzbek meanings, and an estimated band score.
-          </p>
-
-          <div className={`gs-hero-ctas flex gap-[0.875rem] items-center flex-wrap ${botShown ? 'mb-4' : 'mb-8'}`}>
-            <Link to="/auth?mode=signup" className="inline-flex items-center gap-2 bg-[var(--ink-blue-solid)] text-white font-bold text-[0.9375rem] px-7 py-3 rounded-[50px] no-underline hover:opacity-90 transition-opacity">
-              Check My Essay →
-            </Link>
-            <Link to="/writing/mock" className="inline-flex items-center gap-[0.375rem] text-[var(--text-secondary)] font-semibold text-[0.9375rem] no-underline hover:text-[var(--text-primary)] transition-colors">
-              Try a Test →
-            </Link>
-          </div>
-          {/* For a visitor not ready to sign up: the bot checks an essay with no account. */}
-          {botShown && <p className="gs-hero-ctas mb-8 text-sm text-[var(--text-secondary)]">
-            No account yet?{' '}
-            <a
-              href={TELEGRAM_BOT_URL}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="inline-flex items-center gap-0.5 rounded font-semibold text-[var(--ink-blue)] underline-offset-4 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ring)]"
+        {/* ── Hero: the exam screen, and an answer being marked ── */}
+        <section aria-labelledby="hero-title" className="relative overflow-hidden">
+          {/* Ruled lines of an answer sheet, fading out under the headline */}
+          <div
+            aria-hidden="true"
+            className="pointer-events-none absolute inset-x-0 top-0 h-[560px] bg-[repeating-linear-gradient(to_bottom,transparent_0,transparent_35px,var(--border-color)_35px,var(--border-color)_36px)] [mask-image:linear-gradient(to_bottom,black_30%,transparent)]"
+          />
+          <div className="relative mx-auto max-w-[1160px] px-4 pb-16 pt-10 sm:px-6 sm:pt-14 lg:pb-20">
+            <h1
+              id="hero-title"
+              className="text-[clamp(2.25rem,4.4vw,3.6rem)] font-extrabold leading-[1.04] tracking-[-0.035em] text-balance text-[var(--text-primary)]"
             >
-              Try a free check in our Telegram bot
-              <ArrowUpRight size={14} aria-hidden="true" />
-              <span className="sr-only">(opens in a new tab)</span>
-            </a>
-          </p>}
-
-          <ul className="grid grid-cols-2 gap-x-6 gap-y-2 list-none m-0 p-0">
-            {['One free analysis a week', 'No credit card required', 'Exam-style prompts', 'Sentence-level feedback'].map((t) => (
-              <li key={t} className="gs-hero-bullet flex items-center gap-2 text-sm text-[var(--text-secondary)]">
-                <span className="text-green-500 font-bold text-base" aria-hidden="true">✓</span> {t}
-              </li>
-            ))}
-          </ul>
-        </div>
-
-        {/* Right — feedback UI mockup */}
-        <div className="gs-hero-right relative max-[768px]:hidden">
-          <div className="bg-[var(--bg-subtle)] border border-[var(--border-color)] rounded-2xl p-6 shadow-[0_20px_60px_rgba(0,0,0,0.08)] dark:shadow-[0_20px_60px_rgba(0,0,0,0.4)]">
-            <div className="flex items-center gap-2 mb-4 pb-[0.875rem] border-b border-[var(--border-color)]">
-              <div className="w-[10px] h-[10px] rounded-full bg-red-400" />
-              <div className="w-[10px] h-[10px] rounded-full bg-amber-400" />
-              <div className="w-[10px] h-[10px] rounded-full bg-emerald-400" />
-              <span className="ml-auto text-[0.75rem] text-[var(--text-secondary)] font-mono">AI Feedback Report</span>
-            </div>
-            <div className="flex items-center justify-between mb-4">
-              <span className="text-[0.8125rem] font-semibold text-[var(--text-secondary)]">Task 2 — Opinion Essay</span>
-              <div className="bg-[var(--ink-blue-solid)] text-white text-[0.8125rem] font-bold px-[0.875rem] py-1 rounded-[20px]">
-                Band 7.0
+              Write your IELTS essay. Find out which sentences{' '}
+              <span className="text-brand-600 dark:text-brand-400">cost you marks.</span>
+            </h1>
+            <div className="mt-6 grid items-end gap-8 lg:grid-cols-[minmax(0,7fr)_minmax(0,4fr)] lg:gap-14">
+              <div>
+                <p className="max-w-[58ch] text-lg leading-relaxed text-[var(--text-secondary)]">
+                  Answer exam-style Task 1 and Task 2 questions, then get your writing marked against the four IELTS criteria. You
+                  see an estimated band, notes on each sentence, and stronger words with their Uzbek meanings.
+                </p>
+                <div className="mt-6 flex flex-wrap items-center gap-3">
+                  <Link
+                    to="/auth?mode=signup"
+                    className="inline-flex h-12 items-center gap-2 rounded-full bg-[var(--ink-blue-solid)] px-7 text-base font-semibold text-white no-underline transition-opacity hover:opacity-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ring)] focus-visible:ring-offset-2"
+                  >
+                    Check my essay
+                    <ArrowRight className="size-4" aria-hidden="true" />
+                  </Link>
+                  <Link
+                    to="/writing/mock"
+                    className="inline-flex h-12 items-center rounded-full border border-[var(--border-color)] bg-[var(--bg-card)] px-6 text-base font-semibold text-[var(--text-primary)] no-underline transition-colors hover:bg-[var(--bg-subtle)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ring)] focus-visible:ring-offset-2"
+                  >
+                    Try a mock exam
+                  </Link>
+                </div>
+                <p className="mt-4 text-sm text-[var(--text-secondary)]">
+                  Free every week: one report with your four band scores. Paid plans add the full report.
+                </p>
+                {botShown && (
+                  <p className="mt-1.5 text-sm text-[var(--text-secondary)]">
+                    No account yet?{' '}
+                    <a
+                      href={TELEGRAM_BOT_URL}
+                      {...external}
+                      className="inline-flex items-center gap-0.5 rounded font-semibold text-[var(--ink-blue)] underline-offset-4 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ring)]"
+                    >
+                      Get a free band score from our Telegram bot
+                      <ArrowUpRight className="size-3.5" aria-hidden="true" />
+                      <span className="sr-only">(opens in a new tab)</span>
+                    </a>
+                  </p>
+                )}
               </div>
+
+              {/* Left off phones, where it would push the exam screen further down; the report section says the same. */}
+              <ul className="m-0 hidden list-none flex-col gap-2.5 p-0 sm:flex lg:pb-1">
+                {HERO_POINTS.map((t) => (
+                  <li key={t} className="flex items-start gap-2.5 text-base text-[var(--text-primary)]">
+                    <span className="mt-0.5 grid size-5 shrink-0 place-items-center rounded-full bg-brand-100 text-brand-700 dark:bg-brand-900 dark:text-brand-200">
+                      <Check className="size-3" strokeWidth={3} aria-hidden="true" />
+                    </span>
+                    {t}
+                  </li>
+                ))}
+              </ul>
             </div>
-            <div className="font-serif text-[0.9rem] leading-[2] text-[var(--text-primary)] mb-4 bg-[var(--bg-card)] rounded-lg p-4 border border-[var(--border-color)]">
-              <p>
-                Technology{' '}
-                <span className="underline decoration-red-500 decoration-wavy underline-offset-[3px]">have</span>{' '}
-                changed our lives{' '}
-                <span className="bg-yellow-100/50 dark:bg-yellow-900/30 rounded-[3px] px-[3px] font-medium">dramatically</span>{' '}
-                in recent years.
+
+            <div className="mt-10">
+              <ExamRoomDemo />
+            </div>
+          </div>
+        </section>
+
+        {/* ── Proof: essays checked so far ── */}
+        <section aria-labelledby="proof-title" className="border-y border-[var(--border-color)] bg-[var(--bg-card)]">
+          <div className="mx-auto grid max-w-[1160px] items-center gap-10 px-4 py-14 sm:px-6 lg:grid-cols-[minmax(0,5fr)_minmax(0,7fr)] lg:gap-16 lg:py-16">
+            <div>
+              <h2 id="proof-title" className="m-0">
+                <span className="block font-mono text-[clamp(4rem,9vw,6.5rem)] font-semibold leading-none tracking-[-0.05em] text-[var(--text-primary)]">
+                  {ESSAYS_CHECKED}
+                </span>
+                <span className="mt-3 block text-xl font-bold tracking-[-0.015em] text-[var(--text-primary)]">
+                  essays checked on WriteReady so far
+                </span>
+              </h2>
+              <p className="mt-2 max-w-[44ch] text-base leading-relaxed text-[var(--text-secondary)]">
+                Each one was marked against the same four criteria and saved to the writer's account, so the next report can be
+                compared with it.
               </p>
             </div>
-            <div className="border-l-[3px] border-red-500 pl-[0.875rem] mb-[0.875rem]">
-              <p className="text-[0.8rem] text-red-500 font-semibold mb-[0.125rem]">Grammar</p>
-              <p className="text-[0.8rem] text-[var(--text-secondary)]">"Technology" is singular → use "has changed"</p>
-            </div>
-            <div className="bg-yellow-50/70 border border-yellow-300/25 rounded-lg p-3 dark:bg-yellow-900/20 dark:border-yellow-700/30">
-              <div className="flex items-center gap-2 mb-[0.375rem]">
-                <span className="text-[0.8rem] font-bold text-amber-800 dark:text-amber-300">dramatically</span>
-                <span className="text-[0.75rem] text-[var(--text-secondary)]">→</span>
-                <span className="text-[0.8rem] font-semibold text-[var(--text-primary)]">profoundly</span>
-              </div>
-              <p className="text-[0.75rem] text-[var(--text-secondary)]">Uzbek: keskin darajada · C1 level</p>
-            </div>
-          </div>
-
-          {/* Floating band card */}
-          <div className="gs-floating-card absolute -bottom-5 -right-5 bg-[var(--bg-card)] rounded-xl px-5 py-4 shadow-[var(--shadow-md)] border border-[var(--border-color)] min-w-[160px]">
-            <p className="text-[0.7rem] text-[var(--text-secondary)] font-semibold uppercase tracking-[0.06em] mb-1">Criteria scores</p>
-            {[['Task Achievement', '7.0'], ['Coherence', '7.5'], ['Lexical Resource', '6.5'], ['Grammar', '7.0']].map(([k, v]) => (
-              <div key={k} className="flex justify-between gap-4 text-[0.8rem] text-[var(--text-secondary)] py-[0.125rem]">
-                <span>{k}</span>
-                <span className="font-bold text-brand-600 dark:text-brand-400">{v}</span>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* ── Stats ── */}
-      <section className="gs-stats bg-[var(--bg-card)] border-t border-b border-[var(--border-color)]">
-        <div className="max-w-[1160px] mx-auto px-6 py-10 grid grid-cols-[repeat(auto-fit,minmax(200px,1fr))] gap-4">
-          {[
-            { value: 'Band 7+', sub: 'Target score', note: 'IELTS Writing' },
-            { value: '4', sub: 'Scoring criteria', note: 'TA · CC · LR · GRA' },
-            { value: 'Instant', sub: 'AI feedback', note: 'Uzbek & English' },
-            { value: '4 modes', sub: 'Practice styles', note: 'Mock · Practice · Quick · Relax' },
-          ].map((s) => (
-            <div key={s.sub} className="gs-stat-item px-6 py-5">
-              <strong className="block text-[1.75rem] font-black text-[var(--text-primary)] tracking-[-0.02em] mb-[0.125rem]">{s.value}</strong>
-              <p className="text-[0.8125rem] font-bold text-[var(--text-secondary)] mb-[0.125rem] uppercase tracking-[0.04em] m-0">{s.sub}</p>
-              <p className="text-[0.75rem] text-[var(--text-secondary)] m-0">{s.note}</p>
-            </div>
-          ))}
-        </div>
-      </section>
-
-      {/* ── How it works ── */}
-      <section className="gs-how max-w-[1160px] mx-auto px-6 py-20">
-        <div className="gs-how-header mb-12">
-          <p className="text-[0.8125rem] font-bold uppercase tracking-[0.08em] text-brand-600 dark:text-brand-400 mb-2">Simple process</p>
-          <h2 className="text-[clamp(1.75rem,3vw,2.25rem)] font-black text-[var(--text-primary)] tracking-[-0.02em]">Three steps to a higher band</h2>
-        </div>
-        <div className="grid grid-cols-[repeat(auto-fit,minmax(260px,1fr))] gap-6">
-          {[
-            { n: '01', title: 'Choose your mode', desc: 'Mock exam for pressure, Practice for pace, Quick Write for daily warm-up, or Relax for free writing.' },
-            { n: '02', title: 'Write your essay', desc: 'IELTS-style Task 1 and Task 2 prompts, picked at random from our question bank.' },
-            { n: '03', title: 'Get AI feedback', desc: 'Sentence-level grammar notes, vocabulary upgrades with Uzbek meanings, and a band score estimate.' },
-          ].map((s) => (
-            <div key={s.n} className="gs-step-card bg-[var(--bg-card)] rounded-xl p-8 border border-[var(--border-color)]">
-              <div className="text-[2.25rem] font-black text-[var(--border-color)] leading-none mb-4 tracking-[-0.02em]">{s.n}</div>
-              <h3 className="text-[1.0625rem] font-bold text-[var(--text-primary)] mb-2">{s.title}</h3>
-              <p className="text-[0.9rem] text-[var(--text-secondary)] leading-[1.7]">{s.desc}</p>
-            </div>
-          ))}
-        </div>
-      </section>
-
-      {/* ── See it in action ── */}
-      <section className="gs-videos max-w-[1160px] mx-auto px-6 py-20">
-        <div className="gs-videos-header mb-12">
-          <p className="text-[0.8125rem] font-bold uppercase tracking-[0.08em] text-brand-600 dark:text-brand-400 mb-2">Watch it work</p>
-          <h2 className="text-[clamp(1.75rem,3vw,2.25rem)] font-black text-[var(--text-primary)] tracking-[-0.02em]">See WriteReady in action</h2>
-        </div>
-        <div className={demoVideos.length > 1 ? 'grid grid-cols-[repeat(auto-fit,minmax(360px,1fr))] gap-6' : 'max-w-[640px] mx-auto'}>
-          {demoVideos.map((v) => (
-            <div key={v.id} className="gs-video-card bg-[var(--bg-card)] border border-[var(--border-color)] rounded-2xl overflow-hidden shadow-[var(--shadow-sm)]">
-              <video controls preload="none" poster={v.poster} className="block aspect-video w-full bg-black">
-                <source src={v.src} type="video/mp4" />
-                Your browser does not support video playback. <a href={v.src}>Download the video</a> instead.
-              </video>
-              <div className="p-5">
-                <h3 className="text-[1.0625rem] font-bold text-[var(--text-primary)] mb-1">{v.title}</h3>
-                <p className="text-[0.875rem] text-[var(--text-secondary)] leading-[1.6]">{v.desc}</p>
-              </div>
-            </div>
-          ))}
-        </div>
-      </section>
-
-      {/* ── Modes ── */}
-      <section className="gs-modes bg-[var(--bg-card)] border-t border-[var(--border-color)]">
-        <div className="max-w-[1160px] mx-auto px-6 py-20">
-          <div className="gs-modes-header mb-12">
-            <p className="text-[0.8125rem] font-bold uppercase tracking-[0.08em] text-brand-600 dark:text-brand-400 mb-2">Practice modes</p>
-            <h2 className="text-[clamp(1.75rem,3vw,2.25rem)] font-black text-[var(--text-primary)] tracking-[-0.02em]">One goal, four ways to train</h2>
-          </div>
-          <div className="grid grid-cols-[repeat(auto-fit,minmax(260px,1fr))] gap-5">
-            {[
-              { emoji: '⏱', title: 'Mock Exam', tag: 'Exam simulation', desc: '60-minute timer, both Task 1 and Task 2. Laid out like the computer-based test.', dark: true, href: '/writing/mock' },
-              { emoji: '✏️', title: 'Practice Mode', tag: 'Targeted improvement', desc: 'No timer pressure. Work through tasks at your own pace with randomly selected prompts.', dark: false, href: '/writing/practice' },
-              { emoji: '⚡', title: 'Quick Write', tag: 'Speed training', desc: 'One random task, no timer, instant submission. Great for daily warm-up and building writing habits.', dark: false, tinted: false, href: '/writing/quick' },
-              { emoji: '☕', title: 'Relax Mode', tag: 'Free writing', desc: 'Use your own custom prompt. Enter any question you like, optionally upload a chart, and write freely.', dark: false, tinted: true, href: '/writing/relax' },
-            ].map((m) => (
-              <Link key={m.title} to={m.href} className="no-underline group focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500 focus-visible:ring-offset-2 rounded-xl block">
-                <div
-                  className={`gs-mode-card rounded-xl p-8 h-full block cursor-pointer transition-[transform,box-shadow] duration-150 border group-hover:-translate-y-0.5 group-hover:shadow-[0_8px_24px_rgba(0,0,0,0.1)] group-focus-visible:-translate-y-0.5 group-focus-visible:shadow-[0_8px_24px_rgba(0,0,0,0.1)] ${
-                    m.dark
-                      ? 'bg-brand-900 border-transparent'
-                      : m.tinted
-                      ? 'bg-brand-50 border-brand-100 dark:bg-brand-900/20 dark:border-brand-800'
-                      : 'bg-[var(--bg-base)] border-[var(--border-color)]'
-                  }`}
-                >
-                  <span className="block text-[1.75rem] mb-4" aria-hidden="true">{m.emoji}</span>
-                  <p className={`text-[0.7rem] font-bold uppercase tracking-[0.08em] mb-[0.375rem] m-0 ${m.dark ? 'text-white/70' : 'text-[var(--text-secondary)]'}`}>{m.tag}</p>
-                  <h3 className={`text-[1.125rem] font-extrabold mb-2 tracking-[-0.01em] ${m.dark ? 'text-white' : 'text-[var(--text-primary)]'}`}>{m.title}</h3>
-                  <p className={`text-[0.875rem] leading-[1.7] ${m.dark ? 'text-white/70' : 'text-[var(--text-secondary)]'}`}>{m.desc}</p>
+            <dl className="m-0 grid gap-px overflow-hidden rounded-[14px] border border-[var(--border-color)] bg-[var(--border-color)] sm:grid-cols-3">
+              {[
+                { value: '4', label: 'band scores for every essay', note: 'One for each IELTS criterion, plus the overall band.' },
+                { value: 'up to 15', label: 'better words per report', note: 'Taken from your essay, with Uzbek meanings.' },
+                { value: 'up to 10', label: 'grammar points per report', note: 'Mistakes to fix and structures to add.' },
+              ].map((s) => (
+                <div key={s.label} className="flex flex-col bg-[var(--bg-card)] px-5 py-5">
+                  {/* The label comes first for screen readers; the figure is drawn above it. */}
+                  <dt className="order-2 mt-1.5 text-sm font-semibold text-[var(--text-primary)]">{s.label}</dt>
+                  <dd className="order-1 m-0 font-mono text-3xl font-semibold tracking-[-0.03em] text-[var(--text-primary)] tabular-nums">{s.value}</dd>
+                  <dd className="order-3 m-0 mt-1 text-sm leading-relaxed text-[var(--text-secondary)]">{s.note}</dd>
                 </div>
-              </Link>
-            ))}
+              ))}
+            </dl>
           </div>
-        </div>
-      </section>
+        </section>
 
-      {/* ── Questions ── */}
-      <section className="gs-faq max-w-[760px] mx-auto px-6 py-20">
-        <div className="gs-faq-header mb-8">
-          <p className="text-[0.8125rem] font-bold uppercase tracking-[0.08em] text-brand-600 dark:text-brand-400 mb-2">
-            Before you start
-          </p>
-          <h2 className="text-[clamp(1.75rem,3vw,2.25rem)] font-black text-[var(--text-primary)] tracking-[-0.02em]">
-            Questions people ask first
-          </h2>
-        </div>
-        <div className="gs-faq-list">
+        {/* ── What the report holds ── */}
+        <section aria-labelledby="report-title" className="mx-auto max-w-[1160px] px-4 py-20 sm:px-6 lg:py-24">
+          <div className="grid items-start gap-12 lg:grid-cols-[minmax(0,6fr)_minmax(0,5fr)] lg:gap-16">
+            <div>
+              <h2 id="report-title" className={H2}>What comes back when you finish</h2>
+              <p className={LEAD}>A full report follows the same order every time, so you always know where to look.</p>
+              <dl className="m-0 mt-8 grid gap-x-8 gap-y-6 sm:grid-cols-2">
+                {REPORT_PARTS.map((p) => (
+                  <div key={p.title} className="border-t border-[var(--border-color)] pt-4">
+                    <dt className="text-base font-bold text-[var(--text-primary)]">{p.title}</dt>
+                    <dd className="m-0 mt-1.5 text-sm leading-relaxed text-[var(--text-secondary)]">{p.text}</dd>
+                  </div>
+                ))}
+              </dl>
+              <p className="mt-8 text-sm text-[var(--text-secondary)]">
+                The free weekly report gives you the four band scores. Everything else on this list comes with a paid plan.{' '}
+                <Link to="/pricing" className="font-semibold text-[var(--ink-blue)] no-underline hover:underline">
+                  See the plans
+                </Link>
+              </p>
+            </div>
+            <div className="lg:sticky lg:top-24">
+              <ReportSample />
+            </div>
+          </div>
+        </section>
+
+        {/* ── Modes ── */}
+        <section aria-labelledby="modes-title" className="border-t border-[var(--border-color)] bg-[var(--bg-card)]">
+          <div className="mx-auto max-w-[1160px] px-4 py-20 sm:px-6 lg:py-24">
+            <h2 id="modes-title" className={H2}>Four ways to practise</h2>
+            <p className={LEAD}>All four use the same marking. Pick the one that fits the time you have today.</p>
+            <ul className="m-0 mt-10 grid list-none gap-px overflow-hidden rounded-[18px] border border-[var(--border-color)] bg-[var(--border-color)] p-0 sm:grid-cols-2 lg:grid-cols-4">
+              {MODES.map(({ title, spec, text, href, Icon }) => (
+                <li key={title} className="bg-[var(--bg-card)]">
+                  <Link
+                    to={href}
+                    className="group flex h-full flex-col p-6 no-underline transition-colors duration-150 hover:bg-[var(--bg-base)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[var(--ring)]"
+                  >
+                    <Icon className="size-5 text-brand-600 dark:text-brand-400" aria-hidden="true" />
+                    <h3 className="mt-5 text-lg font-bold tracking-[-0.01em] text-[var(--text-primary)]">{title}</h3>
+                    <p className="mt-1 text-xs font-medium text-[var(--text-secondary)]">{spec}</p>
+                    <p className="mt-3 text-sm leading-relaxed text-[var(--text-secondary)]">{text}</p>
+                    <span className="mt-auto inline-flex items-center gap-1 pt-6 text-sm font-semibold text-[var(--ink-blue)]">
+                      Open {title}
+                      <ArrowRight className="size-4 transition-transform duration-150 group-hover:translate-x-0.5 motion-reduce:transition-none" aria-hidden="true" />
+                    </span>
+                  </Link>
+                </li>
+              ))}
+            </ul>
+          </div>
+        </section>
+
+        {/* ── Beyond the AI ── */}
+        <section aria-labelledby="more-title" className="mx-auto max-w-[1160px] px-4 py-20 sm:px-6 lg:py-24">
+          <div className="grid gap-10 lg:grid-cols-[minmax(0,4fr)_minmax(0,7fr)] lg:gap-16">
+            <div>
+              <h2 id="more-title" className={H2}>When you want more than the AI</h2>
+              <p className={LEAD}>Some students want a teacher to read their essay. Some centres want a whole class writing here.</p>
+            </div>
+            <dl className="m-0 flex flex-col">
+              <div className="grid grid-cols-[2.5rem_minmax(0,1fr)] gap-x-4 border-t border-[var(--border-color)] py-6">
+                <GraduationCap className="size-6 text-brand-600 dark:text-brand-400" aria-hidden="true" />
+                <div>
+                  <dt className="text-lg font-bold text-[var(--text-primary)]">Human Check</dt>
+                  <dd className="m-0 mt-1.5 max-w-[60ch] text-base leading-relaxed text-[var(--text-secondary)]">
+                    A teacher on WriteReady reads your essay and sends back a marked document. You choose the teacher and see the
+                    price before anything is taken from your balance.
+                  </dd>
+                </div>
+              </div>
+              {botShown && (
+                <div className="grid grid-cols-[2.5rem_minmax(0,1fr)] gap-x-4 border-t border-[var(--border-color)] py-6">
+                  <Bot className="size-6 text-brand-600 dark:text-brand-400" aria-hidden="true" />
+                  <div>
+                    <dt className="text-lg font-bold text-[var(--text-primary)]">The Telegram bot</dt>
+                    <dd className="m-0 mt-1.5 max-w-[60ch] text-base leading-relaxed text-[var(--text-secondary)]">
+                      Send an essay to the bot and get a band score back in the chat. You don't need an account for it.{' '}
+                      <a href={TELEGRAM_BOT_URL} {...external} className="font-semibold text-[var(--ink-blue)] no-underline hover:underline">
+                        Open the bot<span className="sr-only"> (opens in a new tab)</span>
+                      </a>
+                    </dd>
+                  </div>
+                </div>
+              )}
+              <div className="grid grid-cols-[2.5rem_minmax(0,1fr)] gap-x-4 border-y border-[var(--border-color)] py-6">
+                <Building2 className="size-6 text-brand-600 dark:text-brand-400" aria-hidden="true" />
+                <div>
+                  <dt className="text-lg font-bold text-[var(--text-primary)]">For learning centres</dt>
+                  <dd className="m-0 mt-1.5 max-w-[60ch] text-base leading-relaxed text-[var(--text-secondary)]">
+                    A centre can buy places for its students, choose their plan and see how much each one practises. Centre staff
+                    never see the essays themselves.{' '}
+                    <a href={TELEGRAM_CONTACT_URL} {...external} className="font-semibold text-[var(--ink-blue)] no-underline hover:underline">
+                      Ask us about places<span className="sr-only"> (opens in a new tab)</span>
+                    </a>
+                    {' · '}
+                    <Link to="/center-admin" className="font-semibold text-[var(--ink-blue)] no-underline hover:underline">
+                      Centre sign-in
+                    </Link>
+                  </dd>
+                </div>
+              </div>
+            </dl>
+          </div>
+        </section>
+
+        {/* ── Videos ── */}
+        <section aria-labelledby="videos-title" className="border-t border-[var(--border-color)] bg-[var(--bg-card)]">
+          <div className="mx-auto max-w-[1160px] px-4 py-20 sm:px-6 lg:py-24">
+            <h2 id="videos-title" className={H2}>See it working</h2>
+            <div className="mt-10 grid gap-6 md:grid-cols-2">
+              {DEMO_VIDEOS.map((v) => (
+                <div key={v.id} className="overflow-hidden rounded-[18px] border border-[var(--border-color)] bg-[var(--bg-base)]">
+                  <video controls preload="none" poster={v.poster} className="block aspect-video w-full bg-black">
+                    <source src={v.src} type="video/mp4" />
+                    Your browser can't play this video. <a href={v.src}>Download it</a> instead.
+                  </video>
+                  <div className="p-5">
+                    <h3 className="text-lg font-bold text-[var(--text-primary)]">{v.title}</h3>
+                    <p className="mt-1 text-sm leading-relaxed text-[var(--text-secondary)]">{v.desc}</p>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </section>
+
+        {/* ── Questions ── */}
+        <section aria-labelledby="faq-title" className="mx-auto max-w-[760px] px-4 py-20 sm:px-6 lg:py-24">
+          <h2 id="faq-title" className={`${H2} mb-8`}>Questions people ask first</h2>
           <FaqAccordion items={HOME_QUESTIONS} />
-          <p className="mt-5 text-center text-sm text-[var(--text-secondary)]">
-            <Link to="/faq" className="font-semibold text-[var(--ink-blue)] no-underline hover:underline">
-              All questions and answers →
+          <p className="mt-6 text-center text-sm">
+            <Link to="/faq" className="inline-flex items-center gap-1 font-semibold text-[var(--ink-blue)] no-underline hover:underline">
+              All questions and answers
+              <ArrowRight className="size-4" aria-hidden="true" />
             </Link>
           </p>
-        </div>
-      </section>
+        </section>
 
-      {/* ── CTA ── */}
-      <section className="gs-cta bg-slate-900 px-6 py-20 text-center dark:bg-black">
-        <div className="gs-cta-content max-w-[600px] mx-auto">
-          <h2 className="text-[clamp(1.75rem,4vw,2.5rem)] font-black text-white tracking-[-0.02em] mb-4">
-            Ready to reach your target band?
-          </h2>
-          <p className="text-white/55 text-base mb-8 leading-[1.7]">
-            Free to start. Upgrade for more AI feedback each month, in Uzbek and English.
-          </p>
-          <Link to="/auth?mode=signup" className="inline-flex items-center gap-2 bg-[var(--ink-blue-solid)] text-white font-bold text-base px-8 py-[0.875rem] rounded-[50px] no-underline hover:opacity-90 transition-opacity">
-            Create Free Account →
-          </Link>
-        </div>
-      </section>
+        {/* ── Close ── */}
+        <section aria-labelledby="cta-title" className="relative overflow-hidden bg-slate-900 px-4 py-20 text-center sm:px-6 lg:py-24 dark:bg-black">
+          <div
+            aria-hidden="true"
+            className="pointer-events-none absolute inset-0 bg-[repeating-linear-gradient(to_bottom,transparent_0,transparent_35px,rgb(255_255_255/0.05)_35px,rgb(255_255_255/0.05)_36px)]"
+          />
+          <div className="relative mx-auto max-w-[620px]">
+            <h2 id="cta-title" className="text-[clamp(1.875rem,4vw,2.75rem)] font-extrabold leading-[1.1] tracking-[-0.03em] text-balance text-white">
+              Write one essay today and see your band.
+            </h2>
+            <p className="mt-4 text-base leading-relaxed text-white/70">It's free to start. Paid plans give you more reports each month.</p>
+            <Link
+              to="/auth?mode=signup"
+              className="mt-8 inline-flex h-12 items-center gap-2 rounded-full bg-[var(--ink-blue-solid)] px-8 text-base font-semibold text-white no-underline transition-opacity hover:opacity-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2 focus-visible:ring-offset-slate-900"
+            >
+              Create a free account
+              <ArrowRight className="size-4" aria-hidden="true" />
+            </Link>
+          </div>
+        </section>
       </main>
 
-      {/* ── Footer ── */}
-      <footer className="bg-slate-900 border-t border-white/[0.06] px-6 py-6 text-center dark:bg-black">
+      <footer className="border-t border-white/[0.06] bg-slate-900 px-6 py-7 text-center dark:bg-black">
         <div className="mb-3 flex flex-wrap items-center justify-center gap-x-2 gap-y-1">
           {[
             { href: TELEGRAM_CHANNEL_URL, label: 'Follow us on Telegram', Icon: Send },
@@ -365,8 +447,7 @@ export function LandingPage() {
             <a
               key={href}
               href={href}
-              target="_blank"
-              rel="noopener noreferrer"
+              {...external}
               className="group inline-flex items-center gap-2 rounded-lg px-3 py-1.5 text-sm font-medium text-white/70 no-underline transition-colors hover:bg-white/[0.06] hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-400"
             >
               <Icon size={15} aria-hidden="true" />
@@ -376,19 +457,24 @@ export function LandingPage() {
             </a>
           ))}
         </div>
-        <nav aria-label="Legal" className="mb-3 flex flex-wrap items-center justify-center gap-x-4 gap-y-1 text-[0.8125rem]">
-          <Link to="/faq" className="rounded text-white/60 no-underline hover:text-white hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-400">
-            FAQ
-          </Link>
-          <Link to="/privacy" className="rounded text-white/60 no-underline hover:text-white hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-400">
-            Privacy Policy
-          </Link>
-          <Link to="/terms" className="rounded text-white/60 no-underline hover:text-white hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-400">
-            Terms of Service
-          </Link>
+        <nav aria-label="Legal" className="mb-3 flex flex-wrap items-center justify-center gap-x-4 gap-y-1 text-sm">
+          {[
+            ['/faq', 'FAQ'],
+            ['/privacy', 'Privacy Policy'],
+            ['/terms', 'Terms of Service'],
+          ].map(([to, label]) => (
+            <Link
+              key={to}
+              to={to}
+              className="rounded text-white/60 no-underline hover:text-white hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-400"
+            >
+              {label}
+            </Link>
+          ))}
         </nav>
-        <p className="text-[0.8125rem] text-white/60">
-          © {new Date().getFullYear()} WriteReady IELTS · AI-powered writing coach
+        <p className="text-sm text-white/60">
+          © {new Date().getFullYear()} WriteReady IELTS. Band scores are AI estimates. WriteReady is not connected to the British
+          Council, IDP or Cambridge.
         </p>
       </footer>
       <FaqAnswerStyles />

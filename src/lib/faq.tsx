@@ -199,18 +199,17 @@ export const GROUPS: Group[] = [
         q: "Is it as accurate as a real IELTS examiner?",
         home: true,
         plain:
-          "It is not an examiner, and we will not pretend otherwise. What it does do is mark with the official IELTS Writing band descriptors, follow the same best-fit method examiners are trained to use, and point to real evidence in your essay for every band it awards. That makes the score explainable: you can see which sentence cost you a mark. Treat it as a well-argued second opinion, not as your exam result.",
+          "No. It is an AI, and its band is an estimate. It marks with the official IELTS Writing band descriptors, uses the best-fit method examiners are trained to use, and points to evidence in your essay for every band it gives. So you can see which sentence cost you a mark. Your real exam result can still differ, so treat the band as a second opinion.",
         a: (
           <>
             <p>
-              It is not an examiner, and we will not pretend otherwise. What it does do is mark with the{" "}
-              <strong>official IELTS Writing band descriptors</strong>, follow the same best-fit method examiners are
-              trained to use, and point to real evidence in your essay for every band it awards.
+              No. It is an AI, and its band is an estimate. It marks with the{" "}
+              <strong>official IELTS Writing band descriptors</strong>, uses the best-fit method examiners are trained
+              to use, and points to evidence in your essay for every band it gives.
             </p>
             <p>
-              That is what makes the score useful: you can see which sentence cost you a mark, instead of being handed a
-              number. Treat it as a well-argued second opinion, not as your exam result. If you want a person to look at
-              it, use Human Check.
+              So you can see which sentence cost you a mark. Your real exam result can still differ, so treat the band as
+              a second opinion. If you want a person to read your essay, use Human Check.
             </p>
           </>
         ),

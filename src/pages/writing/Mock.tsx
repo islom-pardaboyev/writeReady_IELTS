@@ -9,7 +9,8 @@ import {
 import { auth, db } from "@/firebase/firebase";
 import { doc, getDoc } from "firebase/firestore";
 import { loadPrompts } from "@/lib/promptCache";
-import { downloadEssayPdf } from "@/lib/essayPdf";
+import { downloadEssayPdf, type EssayPdfTask } from "@/lib/essayPdf";
+import { recordFinishedEssays } from "@/lib/activity";
 import { useSingleRun } from "@/hooks/useSingleRun";
 import { BusyLabel } from "@/components/ui/BusyLabel";
 import { LogoLoader } from "@/components/ui/LogoLoader";
@@ -43,6 +44,7 @@ import { ModalCard, ModalTitle, ModalDescription } from "@/components/ui/ModalCa
 import { HumanCheckConfirmModal } from "@/components/ui/HumanCheckConfirmModal";
 import { hasAccess } from "@/lib/reportAccess";
 import { ModeBrand } from "@/components/writing/ModeBrand";
+import { PromptSource } from "@/components/writing/PromptSource";
 
 interface Task1 {
   id: string;
@@ -259,14 +261,12 @@ function Mock() {
 
   const handleDownloadPDF = () => {
     return runFinish(async () => {
-      await downloadEssayPdf({
-        mode: "Mock Exam",
-        fileName: "WriteReady_Mock.pdf",
-        tasks: [
-          { taskNum: 1, question: task1?.report, imageSrc: task1Chart, answer: userText1 },
-          { taskNum: 2, question: task2?.report, answer: userText2 },
-        ],
-      });
+      const tasks: EssayPdfTask[] = [
+        { taskNum: 1, question: task1?.report, imageSrc: task1Chart, answer: userText1 },
+        { taskNum: 2, question: task2?.report, answer: userText2 },
+      ];
+      await downloadEssayPdf({ mode: "Mock Exam", fileName: "WriteReady_Mock.pdf", tasks });
+      recordFinishedEssays(user?.uid, tasks);
       setShowFeedbackModal(true);
     });
   };
@@ -546,6 +546,7 @@ function Mock() {
                 No question available yet.
               </p>
             )}
+            {(activeTask === 1 ? task1 : task2) && <PromptSource />}
           </div>
         </div>
 

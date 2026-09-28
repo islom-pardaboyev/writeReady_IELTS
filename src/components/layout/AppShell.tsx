@@ -68,7 +68,11 @@ export function AppShell({ children, minimal = false }: AppShellProps) {
       <SkipLink />
       <div className="flex min-h-screen bg-[var(--bg-base)] text-[var(--text-primary)]">
         <AppSidebar />
-        <SidebarInset>
+        {/* The window scrolls these pages, not the inset, so the inset must not
+            be a scroll container: its overflow-y-auto made every sticky element
+            inside (this top bar, the My Account card) scroll away. Clip still
+            stops wide content from scrolling the page sideways. */}
+        <SidebarInset className="overflow-x-clip overflow-y-visible">
           <div className="md:hidden sticky top-0 z-20 flex items-center px-3 py-2 bg-[var(--bg-card)]/95 backdrop-blur-[8px] border-b border-[var(--border-color)]">
             <SidebarTrigger />
           </div>

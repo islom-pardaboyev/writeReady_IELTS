@@ -9,7 +9,8 @@ import {
 import { auth, db } from "@/firebase/firebase";
 import { doc, getDoc } from "firebase/firestore";
 import { loadPrompts } from "@/lib/promptCache";
-import { downloadEssayPdf } from "@/lib/essayPdf";
+import { downloadEssayPdf, type EssayPdfTask } from "@/lib/essayPdf";
+import { recordFinishedEssays } from "@/lib/activity";
 import { useSingleRun } from "@/hooks/useSingleRun";
 import { BusyLabel } from "@/components/ui/BusyLabel";
 import { LogoLoader } from "@/components/ui/LogoLoader";
@@ -24,6 +25,7 @@ import WritingTask2Preview from "@/components/writingTask2Preview/WritingTask2Pr
 import { encodeReport } from "@/lib/reportEncoding";
 import { CheckIcon, ChevronRightIcon, ClockIcon, ZapIcon, Bot, GraduationCap, FlaskConical } from "lucide-react";
 import { ModeBrand } from "@/components/writing/ModeBrand";
+import { PromptSource } from "@/components/writing/PromptSource";
 import { useStopwatch } from "@/hooks/useStopwatch";
 import { useHumanCheck } from "@/hooks/useHumanCheck";
 import { useFeatureFlag } from "@/hooks/useFeatureFlag";
@@ -178,18 +180,16 @@ function Quick() {
   const handleFinish = () => {
     if (selectedTaskType === null) return;
     return runFinish(async () => {
-      await downloadEssayPdf({
-        mode: "Quick Write",
-        fileName: `WriteReady_Quick_Task${selectedTaskType}.pdf`,
-        tasks: [
-          {
-            taskNum: selectedTaskType,
-            question: selectedTaskType === 1 ? task1?.report : task2?.report,
-            imageSrc: selectedTaskType === 1 ? task1Chart : null,
-            answer: userText,
-          },
-        ],
-      });
+      const tasks: EssayPdfTask[] = [
+        {
+          taskNum: selectedTaskType,
+          question: selectedTaskType === 1 ? task1?.report : task2?.report,
+          imageSrc: selectedTaskType === 1 ? task1Chart : null,
+          answer: userText,
+        },
+      ];
+      await downloadEssayPdf({ mode: "Quick Write", fileName: `WriteReady_Quick_Task${selectedTaskType}.pdf`, tasks });
+      recordFinishedEssays(user?.uid, tasks);
       setShowFeedbackModal(true);
     });
   };
@@ -432,6 +432,7 @@ function Quick() {
             ) : (
               <p className="text-sm text-slate-500 dark:text-neutral-400">No question available.</p>
             )}
+            {((selectedTaskType === 1 && task1) || (selectedTaskType === 2 && task2)) && <PromptSource />}
           </div>
         </div>
 

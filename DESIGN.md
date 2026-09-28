@@ -61,10 +61,10 @@ colors:
 typography:
   display:
     fontFamily: "Inter, sans-serif"
-    fontSize: "clamp(2.25rem, 4.5vw, 3.25rem)"
-    fontWeight: 900
-    lineHeight: 1.1
-    letterSpacing: "-0.02em"
+    fontSize: "clamp(2.25rem, 4.4vw, 3.6rem)"
+    fontWeight: 800
+    lineHeight: 1.04
+    letterSpacing: "-0.035em"
   headline:
     fontFamily: "Inter, sans-serif"
     fontSize: "1.5rem"
@@ -429,10 +429,10 @@ A student can swap the indigo ink for one of five other inks on My Account (Appe
 **Body Font:** Inter (with sans-serif)
 **Label/Mono Font:** IBM Plex Mono (with monospace), for figures only
 
-**Character:** One neutral grotesque carries every word and a mono carries every number, so counts, money, band scores and IDs line up in columns and read as data rather than prose. Both load from Google Fonts in `index.html` (Inter 300 to 700, Plex Mono 400 and 500). Because Plex Mono 600 is not loaded, every semibold figure is currently synthesized by the browser; add `600` to the Plex Mono weights in the font link to render it for real.
+**Character:** One neutral grotesque carries every word and a mono carries every number, so counts, money, band scores and IDs line up in columns and read as data rather than prose. Both load from Google Fonts in `index.html` (Inter 300 to 800, Plex Mono 400 to 600), so the extrabold display and the semibold figures render for real rather than synthesized.
 
 ### Hierarchy
-- **Display** (black, fluid 36 to 52px, 1.1): the landing-page hero only. Inter is loaded only up to 700, so it currently renders at 700.
+- **Display** (extrabold, fluid 36 to 58px, 1.04, -0.035em): the home page hero only. Section titles on the home page step down to extrabold 28 to 40px.
 - **Headline** (semibold, 24px, 32px line): staff page titles such as Overview and Settings. Student pages run heavier here: the dashboard welcome is 36px bold and section titles are 20px bold.
 - **Title** (semibold, 20px, 28px line): the selected record's name at the top of the detail pane, and the staff login card title. Dialog titles sit between at 18px semibold.
 - **Title Small** (semibold, 18px): the list pane title, with the record count beside it in 14px regular Slate Gray.
@@ -462,7 +462,7 @@ The spacing scale is Tailwind's 4px grid. Staff surfaces keep a steady rhythm: 2
 
 **Home and settings pages.** A page heading (title, description, actions right) over content capped at 1240px. The admin home stacks a stat strip over a 12-column grid split 7 and 5 at 1024px, with 24px gaps.
 
-**Student pages.** The landing page uses a 1160px container with 24px gutters and a two-column hero that collapses at 768px. The dashboard lays mode cards and report cards in auto-fit grids (minimum 200px tracks, 16px gaps).
+**Student pages.** The home page uses a 1160px container with 16px gutters on phones and 24px from 640px: a full-width headline, then a 7 and 4 split for the promise and its checklist, then the exam demo across the container. The dashboard opens with the profile header and a 5 and 7 split of figures, then lays mode cards and report cards in auto-fit grids (minimum 200px tracks, 16px gaps). My Account is a 340px account card (sticky from 1024px) beside the settings column.
 
 **Breakpoints.** 640px (padding steps up), 768px (sidebar becomes a drawer), 1024px (list and detail sit side by side).
 
@@ -561,6 +561,12 @@ A 44 by 24px pill: Ink Blue when on, Firm Hairline when off, a 20px white knob w
 
 ### Avatars
 Initials in an Ink Wash circle with Ink Wash Text, semibold at 36% of the diameter (32px in the sidebar, 36px by default); a photo replaces them when one exists.
+
+### Home page (student)
+The signed-out front door (`src/pages/LandingPage.tsx`, direction in `.impeccable/surfaces/src-pages-landingpage-tsx.md`). It opens inside the product: the display headline over faint answer-sheet ruling, then **the exam demo** (`src/components/landing/ExamRoomDemo.tsx`), WriteReady's own Mock Exam chrome (bar with a centred Plex Mono timer, Task pills, instruction strip, prompt and answer panes) where a labelled sample answer types itself in and is then marked: red wavy underlines for grammar, an amber highlight for a better word, and a report slip with four criterion bands and three notes. It plays once, offers Replay, and shows the marked state at once under reduced motion; it is the page's only motion. Below it: a proof strip (essays checked, a hand-set figure, beside a hairline grid of report caps), what the report holds (a definition grid beside a sticky sample report), the four modes as one hairline grid, the extras (Human Check, the bot when the admin shows it, learning centres) as ruled rows, the demo videos, the home FAQ, and a slate close with the same ruling. No kickers above headings; every sample is captioned as a sample.
+
+### Profile header and account card (student)
+Shared pieces in `src/components/profile/parts.tsx`. **InkBanner:** the student's accent ink as a diagonal gradient with 1px ruled lines every 28px, one margin rule and a soft light from the top right. **ProfileAvatar:** the photo (or Ink Wash initials) in an 18px-corner square with a 4px card-coloured ring, overlapping the banner. **Meter:** an 8px pill track in Hairline (Firm Hairline in dark) whose fill grows once on mount. The dashboard header puts the banner (112 to 144px) over the name, plan badge and meta line, with Edit profile as a white-on-ink pill on the banner and Settings as an outline button; My Account puts a 80px banner at the top of its account card, followed by plan and balance sections divided by hairlines.
 
 ### Maintenance page (student)
 What every visitor sees while maintenance mode is on (`src/pages/MaintenancePage.tsx`); the staff portals and an admin session skip it. It speaks with the landing page's voice on Paper.

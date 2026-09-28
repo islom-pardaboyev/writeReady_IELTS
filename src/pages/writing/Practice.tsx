@@ -10,7 +10,8 @@ import { useStopwatch } from "@/hooks/useStopwatch";
 import { auth, db } from "@/firebase/firebase";
 import { doc, getDoc } from "firebase/firestore";
 import { loadPrompts } from "@/lib/promptCache";
-import { downloadEssayPdf } from "@/lib/essayPdf";
+import { downloadEssayPdf, type EssayPdfTask } from "@/lib/essayPdf";
+import { recordFinishedEssays } from "@/lib/activity";
 import { useSingleRun } from "@/hooks/useSingleRun";
 import { BusyLabel } from "@/components/ui/BusyLabel";
 import { LogoLoader } from "@/components/ui/LogoLoader";
@@ -26,6 +27,7 @@ import WritingTask2Preview from "@/components/writingTask2Preview/WritingTask2Pr
 import { encodeReport } from "@/lib/reportEncoding";
 import { CheckIcon, ClockIcon, Bot, GraduationCap, FlaskConical } from "lucide-react";
 import { ModeBrand } from "@/components/writing/ModeBrand";
+import { PromptSource } from "@/components/writing/PromptSource";
 import { useHumanCheck } from "@/hooks/useHumanCheck";
 import { useFeatureFlag } from "@/hooks/useFeatureFlag";
 import { TeacherPickerModal } from "@/components/ui/TeacherPickerModal";
@@ -221,14 +223,12 @@ function Practice() {
 
   const handleDownloadPDF = () => {
     return runFinish(async () => {
-      await downloadEssayPdf({
-        mode: "Practice Mode",
-        fileName: "WriteReady_Practice.pdf",
-        tasks: [
-          { taskNum: 1, question: task1?.report, imageSrc: task1Chart, answer: userText1 },
-          { taskNum: 2, question: task2?.report, answer: userText2 },
-        ],
-      });
+      const tasks: EssayPdfTask[] = [
+        { taskNum: 1, question: task1?.report, imageSrc: task1Chart, answer: userText1 },
+        { taskNum: 2, question: task2?.report, answer: userText2 },
+      ];
+      await downloadEssayPdf({ mode: "Practice Mode", fileName: "WriteReady_Practice.pdf", tasks });
+      recordFinishedEssays(user?.uid, tasks);
       setShowFeedbackModal(true);
     });
   };
@@ -447,6 +447,7 @@ function Practice() {
                 No question available yet.
               </p>
             )}
+            {(activeTask === 1 ? task1 : task2) && <PromptSource />}
           </div>
         </div>
 

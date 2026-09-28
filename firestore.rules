@@ -308,6 +308,20 @@ service cloud.firestore {
         && get(/databases/$(database)/documents/humanReviews/$(request.resource.data.reviewId)).data.uid == uid;
     }
 
+    // ── Writing activity ──────────────────────────────────────────────────
+
+    // Essays a student finished per local day ({ days: { '2026-09-28': 2 } }),
+    // written by the writing pages when a long enough essay is saved as a PDF
+    // (src/lib/activity.ts). It only feeds the student's own dashboard streak,
+    // so the student may write it; the rules keep it to that one map.
+    match /activity/{uid} {
+      allow read: if isSelf(uid);
+      allow create, update: if isSelf(uid)
+        && request.resource.data.keys().hasOnly(['days', 'updatedAt'])
+        && request.resource.data.days is map
+        && request.resource.data.days.size() <= 4000;
+    }
+
     // ── Public content ────────────────────────────────────────────────────
 
     match /config/featureFlags {

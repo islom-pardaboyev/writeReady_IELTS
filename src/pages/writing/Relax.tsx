@@ -7,7 +7,8 @@ import {
   type CSSProperties,
 } from "react";
 import { useStopwatch } from "@/hooks/useStopwatch";
-import { downloadEssayPdf } from "@/lib/essayPdf";
+import { downloadEssayPdf, type EssayPdfTask } from "@/lib/essayPdf";
+import { recordFinishedEssays } from "@/lib/activity";
 import { useSingleRun } from "@/hooks/useSingleRun";
 import { BusyLabel } from "@/components/ui/BusyLabel";
 import { NavLink, useNavigate } from "react-router";
@@ -177,18 +178,16 @@ function Relax() {
   const handleDownloadPDF = () => {
     if (activeTask === null) return;
     return runFinish(async () => {
-      await downloadEssayPdf({
-        mode: "Relax Mode",
-        fileName: `WriteReady_Relax_Task${activeTask}.pdf`,
-        tasks: [
-          {
-            taskNum: activeTask,
-            question: activeTask === 1 ? prompt : task2Prompt,
-            imageSrc: activeTask === 1 ? imageUrl : null,
-            answer: userText,
-          },
-        ],
-      });
+      const tasks: EssayPdfTask[] = [
+        {
+          taskNum: activeTask,
+          question: activeTask === 1 ? prompt : task2Prompt,
+          imageSrc: activeTask === 1 ? imageUrl : null,
+          answer: userText,
+        },
+      ];
+      await downloadEssayPdf({ mode: "Relax Mode", fileName: `WriteReady_Relax_Task${activeTask}.pdf`, tasks });
+      recordFinishedEssays(user?.uid, tasks);
       setShowFeedbackModal(true);
     });
   };
