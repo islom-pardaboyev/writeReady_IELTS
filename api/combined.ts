@@ -5,8 +5,8 @@ import type { VercelRequest, VercelResponse } from '@vercel/node';
  * most 12 functions and the site already had 12 before the Telegram bot, so
  * these share one. vercel.json rewrites each address here with ?route=, so
  * the addresses themselves (/api/seen, /api/telegram, /api/bot-link,
- * /api/bot-daily, /api/bot-broadcast) stay the same for the browser, Telegram
- * and the cron jobs.
+ * /api/bot-daily, /api/bot-broadcast, /api/email-code) stay the same for the
+ * browser, Telegram and the cron jobs.
  *
  * Each route is loaded only when it is asked for, so a /api/seen stamp does
  * not start the AI client the bot needs. A new small endpoint can join here
@@ -20,6 +20,7 @@ const ROUTES: Record<string, () => Promise<{ default: Handler }>> = {
   'bot-link': () => import('./_lib/routes/botLink.js'),
   'bot-daily': () => import('./_lib/routes/botDaily.js'),
   'bot-broadcast': () => import('./_lib/routes/botBroadcast.js'),
+  'email-code': () => import('./_lib/routes/emailCode.js'),
 };
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {

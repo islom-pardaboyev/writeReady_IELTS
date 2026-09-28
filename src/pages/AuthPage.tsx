@@ -8,6 +8,8 @@ import { Input } from '../components/ui/input';
 import { PasswordInput } from '../components/ui/PasswordInput';
 import { Label } from '../components/ui/label';
 import { getAuth, signInWithEmailAndPassword } from 'firebase/auth';
+import { Mail } from 'lucide-react';
+import { EmailCodeSignIn } from '../components/auth/EmailCodeSignIn';
 
 type Mode = 'login' | 'signup' | 'student';
 
@@ -31,6 +33,8 @@ export function AuthPage() {
   const [studentPassword, setStudentPassword] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+  // Sign in (or up) with a code emailed to the student, instead of a password or Google.
+  const [useCode, setUseCode] = useState(false);
   const { signIn, signUp, signInWithGoogle, user, loading: authLoading, refreshProfile } = useAuth();
   const navigate = useNavigate();
   const rootRef = useRef<HTMLDivElement>(null);
@@ -133,7 +137,7 @@ export function AuthPage() {
                   key={m}
                   role="tab"
                   aria-selected={mode === m}
-                  onClick={() => { setMode(m); setError(''); }}
+                  onClick={() => { setMode(m); setError(''); setUseCode(false); }}
                   className={`flex-1 text-xs font-semibold py-1.5 rounded-[8px] transition-colors border-0 cursor-pointer ${
                     mode === m
                       ? 'bg-[var(--bg-card)] text-[var(--text-primary)] shadow-sm'
@@ -149,14 +153,16 @@ export function AuthPage() {
               {mode === 'login' ? 'Welcome back' : mode === 'signup' ? 'Create account' : 'Student Login'}
             </h2>
             <p className="text-center text-[var(--text-secondary)] text-sm mb-6">
-              {mode === 'login'
+              {mode === 'student'
+                ? 'Enter the login and password provided by your learning centre'
+                : useCode
+                ? 'Sign in with a code sent to your email'
+                : mode === 'login'
                 ? 'Sign in to continue your IELTS prep'
-                : mode === 'signup'
-                ? 'Start practicing for free'
-                : 'Enter the login and password provided by your learning centre'}
+                : 'Start practicing for free'}
             </p>
 
-            {error && (
+            {error && !useCode && (
               <div
                 role="alert"
                 aria-live="polite"
@@ -201,6 +207,12 @@ export function AuthPage() {
                   Get your login and password from your learning centre
                 </p>
               </form>
+            ) : useCode ? (
+              <EmailCodeSignIn
+                initialEmail={email}
+                onSignedIn={() => navigate(next)}
+                onBack={() => { setUseCode(false); setError(''); }}
+              />
             ) : (
               <>
                 <form onSubmit={handleSubmit} className="flex flex-col gap-4">
@@ -249,6 +261,17 @@ export function AuthPage() {
                 >
                   <GoogleIcon />
                   Continue with Google
+                </button>
+
+                {/* For a shared computer: no password, no Google sign-in. */}
+                <button
+                  type="button"
+                  onClick={() => { setUseCode(true); setError(''); }}
+                  disabled={loading}
+                  className="mt-3 w-full px-5 py-[0.625rem] border-[1.5px] border-[var(--border-color)] rounded-[10px] bg-[var(--bg-card)] text-sm font-medium text-[var(--text-primary)] flex items-center justify-center gap-2 cursor-pointer hover:bg-[var(--bg-subtle)] transition-colors"
+                >
+                  <Mail className="size-[18px] text-[var(--text-secondary)]" aria-hidden />
+                  Email me a sign-in code
                 </button>
               </>
             )}
