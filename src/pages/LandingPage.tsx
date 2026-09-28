@@ -1,5 +1,5 @@
 import { Link } from 'react-router';
-import { ArrowRight, ArrowUpRight, Bot, Building2, Check, Coffee, GraduationCap, PenLine, Send, Timer, Zap } from 'lucide-react';
+import { ArrowRight, ArrowUpRight, Bot, Building2, Coffee, GraduationCap, PenLine, Send, Timer, Zap } from 'lucide-react';
 import { TELEGRAM_BOT_URL, TELEGRAM_CHANNEL_URL } from '@/lib/links';
 import { TELEGRAM_CONTACT_URL } from '@/lib/legal';
 import { useShowTelegramBot } from '@/hooks/useFeatureFlag';
@@ -10,44 +10,15 @@ import { ExamRoomDemo } from '@/components/landing/ExamRoomDemo';
 import { HOME_QUESTIONS } from '@/lib/faq';
 import { ChatBot } from '../components/ui/ChatBot';
 
-// Essays checked so far, shown in the proof section. Set by hand for now:
-// raise it as the real number grows.
-const ESSAYS_CHECKED = '15+';
-
-const HERO_POINTS = [
-  'Task 1 charts and Task 2 essays',
-  'New words come with their Uzbek meaning',
-  'Every report saved, and downloadable as a PDF',
-  'A teacher can check the same essay with Human Check',
-];
-
 // What a full report holds, in the order it is laid out (see the FAQ answer
 // "Why is this better than just asking ChatGPT?" for the same list).
 const REPORT_PARTS = [
-  {
-    title: 'Four bands and an overall score',
-    text: 'Task Response (Task Achievement for Task 1), Coherence and Cohesion, Lexical Resource, and Grammatical Range and Accuracy, each with the reason behind it.',
-  },
-  {
-    title: 'Every sentence, in order',
-    text: 'Each sentence is checked. Where one loses marks, you see why and a better way to write it.',
-  },
-  {
-    title: 'Up to 15 better words',
-    text: 'Picked from your own essay, each with its English and Uzbek meaning and your sentence as the example.',
-  },
-  {
-    title: 'Up to 10 grammar points',
-    text: 'Mistakes you made, plus structures that would lift your grammar score if you used them.',
-  },
-  {
-    title: 'A band 8 to 9 answer',
-    text: 'A model answer to the same question, so you can see what the higher band looks like.',
-  },
-  {
-    title: 'Three fixes to make first',
-    text: 'The changes most likely to move your band on the next essay.',
-  },
+  { title: 'Four band scores', text: 'One for each IELTS criterion, with the reason.' },
+  { title: 'Notes on every sentence', text: 'Where you lost marks, and a better way to write it.' },
+  { title: 'Up to 15 better words', text: 'Taken from your essay, with Uzbek meanings.' },
+  { title: 'Up to 10 grammar points', text: 'Mistakes to fix and structures to add.' },
+  { title: 'A band 8 to 9 answer', text: 'The same question, written at a higher band.' },
+  { title: 'Three fixes to make first', text: 'The changes that will lift your band most.' },
 ];
 
 const MODES = [
@@ -183,96 +154,43 @@ export function LandingPage() {
               Write your IELTS essay. Find out which sentences{' '}
               <span className="text-brand-600 dark:text-brand-400">cost you marks.</span>
             </h1>
-            <div className="mt-6 grid items-end gap-8 lg:grid-cols-[minmax(0,7fr)_minmax(0,4fr)] lg:gap-14">
-              <div>
-                <p className="max-w-[58ch] text-lg leading-relaxed text-[var(--text-secondary)]">
-                  Answer exam-style Task 1 and Task 2 questions, then get your writing marked against the four IELTS criteria. You
-                  see an estimated band, notes on each sentence, and stronger words with their Uzbek meanings.
-                </p>
-                <div className="mt-6 flex flex-wrap items-center gap-3">
-                  <Link
-                    to="/auth?mode=signup"
-                    className="inline-flex h-12 items-center gap-2 rounded-full bg-[var(--ink-blue-solid)] px-7 text-base font-semibold text-white no-underline transition-opacity hover:opacity-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ring)] focus-visible:ring-offset-2"
-                  >
-                    Check my essay
-                    <ArrowRight className="size-4" aria-hidden="true" />
-                  </Link>
-                  <Link
-                    to="/writing/mock"
-                    className="inline-flex h-12 items-center rounded-full border border-[var(--border-color)] bg-[var(--bg-card)] px-6 text-base font-semibold text-[var(--text-primary)] no-underline transition-colors hover:bg-[var(--bg-subtle)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ring)] focus-visible:ring-offset-2"
-                  >
-                    Try a mock exam
-                  </Link>
-                </div>
-                <p className="mt-4 text-sm text-[var(--text-secondary)]">
-                  Free every week: one report with your four band scores. Paid plans add the full report.
-                </p>
-                {botShown && (
-                  <p className="mt-1.5 text-sm text-[var(--text-secondary)]">
-                    No account yet?{' '}
-                    <a
-                      href={TELEGRAM_BOT_URL}
-                      {...external}
-                      className="inline-flex items-center gap-0.5 rounded font-semibold text-[var(--ink-blue)] underline-offset-4 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ring)]"
-                    >
-                      Get a free band score from our Telegram bot
-                      <ArrowUpRight className="size-3.5" aria-hidden="true" />
-                      <span className="sr-only">(opens in a new tab)</span>
-                    </a>
-                  </p>
-                )}
-              </div>
-
-              {/* Left off phones, where it would push the exam screen further down; the report section says the same. */}
-              <ul className="m-0 hidden list-none flex-col gap-2.5 p-0 sm:flex lg:pb-1">
-                {HERO_POINTS.map((t) => (
-                  <li key={t} className="flex items-start gap-2.5 text-base text-[var(--text-primary)]">
-                    <span className="mt-0.5 grid size-5 shrink-0 place-items-center rounded-full bg-brand-100 text-brand-700 dark:bg-brand-900 dark:text-brand-200">
-                      <Check className="size-3" strokeWidth={3} aria-hidden="true" />
-                    </span>
-                    {t}
-                  </li>
-                ))}
-              </ul>
+            <p className="mt-6 max-w-[52ch] text-lg leading-relaxed text-[var(--text-secondary)]">
+              Get an estimated band for your Task 1 or Task 2 answer, with a note on every sentence and better words in Uzbek.
+            </p>
+            <div className="mt-7 flex flex-wrap items-center gap-3">
+              <Link
+                to="/auth?mode=signup"
+                className="inline-flex h-12 items-center gap-2 rounded-full bg-[var(--ink-blue-solid)] px-7 text-base font-semibold text-white no-underline transition-opacity hover:opacity-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ring)] focus-visible:ring-offset-2"
+              >
+                Check my essay
+                <ArrowRight className="size-4" aria-hidden="true" />
+              </Link>
+              <Link
+                to="/writing/mock"
+                className="inline-flex h-12 items-center rounded-full border border-[var(--border-color)] bg-[var(--bg-card)] px-6 text-base font-semibold text-[var(--text-primary)] no-underline transition-colors hover:bg-[var(--bg-subtle)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ring)] focus-visible:ring-offset-2"
+              >
+                Try a mock exam
+              </Link>
             </div>
+            <p className="mt-4 text-sm text-[var(--text-secondary)]">Free: one band report every week.</p>
+            {botShown && (
+              <p className="mt-1.5 text-sm text-[var(--text-secondary)]">
+                No account yet?{' '}
+                <a
+                  href={TELEGRAM_BOT_URL}
+                  {...external}
+                  className="inline-flex items-center gap-0.5 rounded font-semibold text-[var(--ink-blue)] underline-offset-4 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ring)]"
+                >
+                  Get a free band score from our Telegram bot
+                  <ArrowUpRight className="size-3.5" aria-hidden="true" />
+                  <span className="sr-only">(opens in a new tab)</span>
+                </a>
+              </p>
+            )}
 
             <div className="mt-10">
               <ExamRoomDemo />
             </div>
-          </div>
-        </section>
-
-        {/* ── Proof: essays checked so far ── */}
-        <section aria-labelledby="proof-title" className="border-y border-[var(--border-color)] bg-[var(--bg-card)]">
-          <div className="mx-auto grid max-w-[1160px] items-center gap-10 px-4 py-14 sm:px-6 lg:grid-cols-[minmax(0,5fr)_minmax(0,7fr)] lg:gap-16 lg:py-16">
-            <div>
-              <h2 id="proof-title" className="m-0">
-                <span className="block font-mono text-[clamp(4rem,9vw,6.5rem)] font-semibold leading-none tracking-[-0.05em] text-[var(--text-primary)]">
-                  {ESSAYS_CHECKED}
-                </span>
-                <span className="mt-3 block text-xl font-bold tracking-[-0.015em] text-[var(--text-primary)]">
-                  essays checked on WriteReady so far
-                </span>
-              </h2>
-              <p className="mt-2 max-w-[44ch] text-base leading-relaxed text-[var(--text-secondary)]">
-                Each one was marked against the same four criteria and saved to the writer's account, so the next report can be
-                compared with it.
-              </p>
-            </div>
-            <dl className="m-0 grid gap-px overflow-hidden rounded-[14px] border border-[var(--border-color)] bg-[var(--border-color)] sm:grid-cols-3">
-              {[
-                { value: '4', label: 'band scores for every essay', note: 'One for each IELTS criterion, plus the overall band.' },
-                { value: 'up to 15', label: 'better words per report', note: 'Taken from your essay, with Uzbek meanings.' },
-                { value: 'up to 10', label: 'grammar points per report', note: 'Mistakes to fix and structures to add.' },
-              ].map((s) => (
-                <div key={s.label} className="flex flex-col bg-[var(--bg-card)] px-5 py-5">
-                  {/* The label comes first for screen readers; the figure is drawn above it. */}
-                  <dt className="order-2 mt-1.5 text-sm font-semibold text-[var(--text-primary)]">{s.label}</dt>
-                  <dd className="order-1 m-0 font-mono text-3xl font-semibold tracking-[-0.03em] text-[var(--text-primary)] tabular-nums">{s.value}</dd>
-                  <dd className="order-3 m-0 mt-1 text-sm leading-relaxed text-[var(--text-secondary)]">{s.note}</dd>
-                </div>
-              ))}
-            </dl>
           </div>
         </section>
 
@@ -281,7 +199,6 @@ export function LandingPage() {
           <div className="grid items-start gap-12 lg:grid-cols-[minmax(0,6fr)_minmax(0,5fr)] lg:gap-16">
             <div>
               <h2 id="report-title" className={H2}>What comes back when you finish</h2>
-              <p className={LEAD}>A full report follows the same order every time, so you always know where to look.</p>
               <dl className="m-0 mt-8 grid gap-x-8 gap-y-6 sm:grid-cols-2">
                 {REPORT_PARTS.map((p) => (
                   <div key={p.title} className="border-t border-[var(--border-color)] pt-4">
@@ -291,7 +208,7 @@ export function LandingPage() {
                 ))}
               </dl>
               <p className="mt-8 text-sm text-[var(--text-secondary)]">
-                The free weekly report gives you the four band scores. Everything else on this list comes with a paid plan.{' '}
+                The free report shows the four bands. The rest comes with a paid plan.{' '}
                 <Link to="/pricing" className="font-semibold text-[var(--ink-blue)] no-underline hover:underline">
                   See the plans
                 </Link>
@@ -335,7 +252,6 @@ export function LandingPage() {
           <div className="grid gap-10 lg:grid-cols-[minmax(0,4fr)_minmax(0,7fr)] lg:gap-16">
             <div>
               <h2 id="more-title" className={H2}>When you want more than the AI</h2>
-              <p className={LEAD}>Some students want a teacher to read their essay. Some centres want a whole class writing here.</p>
             </div>
             <dl className="m-0 flex flex-col">
               <div className="grid grid-cols-[2.5rem_minmax(0,1fr)] gap-x-4 border-t border-[var(--border-color)] py-6">
@@ -343,8 +259,7 @@ export function LandingPage() {
                 <div>
                   <dt className="text-lg font-bold text-[var(--text-primary)]">Human Check</dt>
                   <dd className="m-0 mt-1.5 max-w-[60ch] text-base leading-relaxed text-[var(--text-secondary)]">
-                    A teacher on WriteReady reads your essay and sends back a marked document. You choose the teacher and see the
-                    price before anything is taken from your balance.
+                    A real teacher marks your essay. You see the price before you pay.
                   </dd>
                 </div>
               </div>
@@ -367,8 +282,7 @@ export function LandingPage() {
                 <div>
                   <dt className="text-lg font-bold text-[var(--text-primary)]">For learning centres</dt>
                   <dd className="m-0 mt-1.5 max-w-[60ch] text-base leading-relaxed text-[var(--text-secondary)]">
-                    A centre can buy places for its students, choose their plan and see how much each one practises. Centre staff
-                    never see the essays themselves.{' '}
+                    Buy places for your students and see how much each one practises.{' '}
                     <a href={TELEGRAM_CONTACT_URL} {...external} className="font-semibold text-[var(--ink-blue)] no-underline hover:underline">
                       Ask us about places<span className="sr-only"> (opens in a new tab)</span>
                     </a>

@@ -140,7 +140,7 @@ export function EmailCodeSignIn({
               autoComplete="email"
             />
             <p className="text-xs text-[var(--text-secondary)]">
-              We'll email you a 6-digit code. No password or Google sign-in needed.
+              We'll email you a 6-digit code. No password needed.
             </p>
           </div>
           <Button type="submit" loading={busy} size="lg" className="w-full">
@@ -160,9 +160,8 @@ export function EmailCodeSignIn({
               <>Sending a code to <strong className="font-semibold text-[var(--text-primary)] break-all">{email.trim()}</strong>…</>
             ) : sent ? (
               <>
-                We sent a code to <strong className="font-semibold text-[var(--text-primary)] break-all">{email.trim()}</strong>.{' '}
-                {signingUp ? 'Type it to finish creating your account. ' : ''}It works for 10 minutes. Check your spam folder if it
-                isn't there.
+                We sent a code to <strong className="font-semibold text-[var(--text-primary)] break-all">{email.trim()}</strong>. Not
+                there? Check spam.
               </>
             ) : (
               <>
@@ -221,7 +220,7 @@ export function EmailCodeSignIn({
         onClick={onBack}
         className="mt-5 inline-flex w-full cursor-pointer items-center justify-center gap-1.5 border-0 bg-transparent p-0 text-sm font-medium text-[var(--text-secondary)] hover:text-[var(--text-primary)]"
       >
-        <ArrowLeft className="size-4" aria-hidden /> {signingUp ? 'Back' : 'Back to other ways to sign in'}
+        <ArrowLeft className="size-4" aria-hidden /> Back
       </button>
     </div>
   );

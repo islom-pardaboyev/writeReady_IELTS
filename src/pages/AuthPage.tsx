@@ -1,6 +1,6 @@
-import { useState, useLayoutEffect, useRef, type FormEvent } from 'react';
+import { useState, type FormEvent } from 'react';
 import { useNavigate, useSearchParams, Link, Navigate } from 'react-router';
-import gsap from 'gsap';
+import Logo from '/logo.svg';
 import { useAuth } from '../hooks/useAuth';
 import { Button } from '../components/ui/Button';
 import { Card } from '../components/ui/Card';
@@ -8,7 +8,6 @@ import { Input } from '../components/ui/input';
 import { PasswordInput } from '../components/ui/PasswordInput';
 import { Label } from '../components/ui/label';
 import { getAuth, signInWithEmailAndPassword } from 'firebase/auth';
-import { Mail } from 'lucide-react';
 import { EmailCodeSignIn } from '../components/auth/EmailCodeSignIn';
 
 type Mode = 'login' | 'signup' | 'student';
@@ -19,7 +18,7 @@ function cleanAuthError(err: unknown, fallback: string): string {
 }
 
 export function AuthPage() {
-  const [params] = useSearchParams();
+  const [params, setParams] = useSearchParams();
   // Where to go once signed in: the page that sent the student here (the
   // Telegram bot's essay link, /tg/...), else the dashboard. Only a path on
   // this site, never another address.
@@ -39,21 +38,7 @@ export function AuthPage() {
   const [pendingSignup, setPendingSignup] = useState<{ email: string; password: string } | null>(null);
   const { signIn, signInWithGoogle, user, loading: authLoading, refreshProfile } = useAuth();
   const navigate = useNavigate();
-  const rootRef = useRef<HTMLDivElement>(null);
-
-  useLayoutEffect(() => {
-    if (authLoading || user) return;
-    const ctx = gsap.context(() => {
-      gsap.set('.gs-auth-logo', { y: -20, opacity: 0 });
-      gsap.set('.gs-auth-card', { y: 36, opacity: 0, scale: 0.97 });
-      const tl = gsap.timeline({ defaults: { ease: 'power3.out' } });
-      tl.to('.gs-auth-logo', { y: 0, opacity: 1, duration: 0.5 })
-        .to('.gs-auth-card', { y: 0, opacity: 1, scale: 1, duration: 0.6 }, '-=0.25');
-    }, rootRef);
-    return () => ctx.revert();
-  }, [authLoading, user]);
-
-  // While auth state is loading, show nothing (avoids GSAP flash then redirect)
+  // While auth state is loading, show nothing (avoids a flash of the form before the redirect)
   if (authLoading) return null;
   // Already logged in — redirect immediately without rendering the form
   if (user) return <Navigate to={next} replace />;
@@ -119,60 +104,57 @@ export function AuthPage() {
     }
   };
 
+  const switchTo = (m: Mode) => {
+    // Kept in the address too, so the tab title and a reload match the form.
+    setParams((prev) => {
+      const q = new URLSearchParams(prev);
+      q.set('mode', m);
+      return q;
+    }, { replace: true });
+    setMode(m);
+    setError('');
+    setUseCode(false);
+    setPendingSignup(null);
+  };
+
+  const title =
+    mode === 'student'
+      ? 'Learning centre sign-in'
+      : pendingSignup
+      ? 'Confirm your email'
+      : useCode
+      ? 'Sign in with a code'
+      : mode === 'login'
+      ? 'Welcome back'
+      : 'Create your free account';
+
   return (
-    <div
-      ref={rootRef}
-      className="min-h-screen bg-[var(--bg-base)] flex items-center justify-center px-4 py-8"
-    >
-      <div className="w-full max-w-[420px]">
+    <div className="flex min-h-screen items-center justify-center bg-[var(--bg-base)] px-4 py-10">
+      <div className="w-full max-w-[400px]">
         <Link
           to="/"
-          className="gs-auth-logo block text-center mb-8 font-sans font-bold text-2xl text-[var(--text-primary)] no-underline"
+          className="mx-auto mb-8 flex w-fit items-center gap-2 rounded-lg font-sans text-xl font-bold text-[var(--text-primary)] no-underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ring)] focus-visible:ring-offset-4"
         >
-          WriteReady&nbsp;<span className="text-[var(--ink-blue)]">IELTS</span>
+          <img src={Logo} width={36} height={36} className="size-9" alt="" />
+          <span>
+            WriteReady <span className="text-[var(--ink-blue)]">IELTS</span>
+          </span>
         </Link>
 
-        <div className="gs-auth-card">
-          <Card className="p-8">
-            {/* Mode tabs */}
-            <div role="tablist" aria-label="Sign-in method" className="flex rounded-[10px] bg-[var(--bg-subtle)] p-1 mb-6 gap-1">
-              {(['login', 'signup', 'student'] as Mode[]).map((m) => (
-                <button
-                  key={m}
-                  role="tab"
-                  aria-selected={mode === m}
-                  onClick={() => { setMode(m); setError(''); setUseCode(false); setPendingSignup(null); }}
-                  className={`flex-1 text-xs font-semibold py-1.5 rounded-[8px] transition-colors border-0 cursor-pointer ${
-                    mode === m
-                      ? 'bg-[var(--bg-card)] text-[var(--text-primary)] shadow-sm'
-                      : 'bg-transparent text-[var(--text-secondary)]'
-                  }`}
-                >
-                  {m === 'login' ? 'Sign In' : m === 'signup' ? 'Sign Up' : '🏫 Student'}
-                </button>
-              ))}
-            </div>
-
-            <h2 className="font-sans font-bold text-2xl mb-1 text-center text-[var(--text-primary)]">
-              {mode === 'login' ? 'Welcome back' : mode === 'signup' ? 'Create account' : 'Student Login'}
-            </h2>
-            <p className="text-center text-[var(--text-secondary)] text-sm mb-6">
-              {mode === 'student'
-                ? 'Enter the login and password provided by your learning centre'
-                : pendingSignup
-                ? 'Confirm your email to finish'
-                : useCode
-                ? 'Sign in with a code sent to your email'
-                : mode === 'login'
-                ? 'Sign in to continue your IELTS prep'
-                : 'Start practicing for free'}
+        <Card className="p-6 sm:p-8">
+          <h1 className="text-center font-sans text-2xl font-bold tracking-[-0.02em] text-balance text-[var(--text-primary)]">{title}</h1>
+          {mode === 'student' && (
+            <p className="mt-1.5 text-center text-sm text-[var(--text-secondary)]">
+              Use the login and password your centre gave you.
             </p>
+          )}
 
+          <div className="mt-6">
             {error && !useCode && !pendingSignup && (
               <div
                 role="alert"
                 aria-live="polite"
-                className="bg-red-50 border border-red-200 text-red-600 px-4 py-3 rounded-[10px] text-sm mb-4 dark:bg-red-900/20 dark:border-red-800 dark:text-red-400"
+                className="mb-4 rounded-[10px] border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-600 dark:border-red-800 dark:bg-red-900/20 dark:text-red-400"
               >
                 {error}
               </div>
@@ -206,12 +188,9 @@ export function AuthPage() {
                     placeholder="Password provided by your centre…"
                   />
                 </div>
-                <Button type="submit" loading={loading} size="lg" className="w-full mt-1 bg-emerald-600 hover:bg-emerald-700">
-                  Sign In
+                <Button type="submit" loading={loading} size="lg" className="mt-1 w-full">
+                  Sign in
                 </Button>
-                <p className="text-center text-xs text-[var(--text-secondary)]">
-                  Get your login and password from your learning centre
-                </p>
               </form>
             ) : pendingSignup ? (
               <EmailCodeSignIn
@@ -228,6 +207,17 @@ export function AuthPage() {
               />
             ) : (
               <>
+                <Button type="button" variant="outline" size="lg" onClick={handleGoogle} disabled={loading} className="w-full">
+                  <GoogleIcon />
+                  Continue with Google
+                </Button>
+
+                <div className="my-5 flex items-center gap-3" aria-hidden="true">
+                  <div className="h-px flex-1 bg-[var(--border-color)]" />
+                  <span className="text-xs text-[var(--text-secondary)]">or with email</span>
+                  <div className="h-px flex-1 bg-[var(--border-color)]" />
+                </div>
+
                 <form onSubmit={handleSubmit} className="flex flex-col gap-4">
                   <div className="flex flex-col gap-1.5">
                     <Label htmlFor="auth-email" className="font-semibold">Email</Label>
@@ -256,44 +246,59 @@ export function AuthPage() {
                       autoComplete={mode === 'signup' ? 'new-password' : 'current-password'}
                     />
                   </div>
-                  <Button type="submit" loading={loading} size="lg" className="w-full mt-1">
-                    {mode === 'login' ? 'Sign In' : 'Create Account'}
+                  <Button type="submit" loading={loading} size="lg" className="mt-1 w-full">
+                    {mode === 'login' ? 'Sign in' : 'Create account'}
                   </Button>
                 </form>
 
-                <div className="flex items-center gap-3 my-5">
-                  <div className="flex-1 h-px bg-[var(--border-color)]" />
-                  <span className="text-[0.75rem] text-[var(--text-secondary)]">or</span>
-                  <div className="flex-1 h-px bg-[var(--border-color)]" />
-                </div>
-
-                <button
-                  onClick={handleGoogle}
-                  disabled={loading}
-                  className="w-full px-5 py-[0.625rem] border-[1.5px] border-[var(--border-color)] rounded-[10px] bg-[var(--bg-card)] text-sm font-medium text-[var(--text-primary)] flex items-center justify-center gap-2 cursor-pointer hover:bg-[var(--bg-subtle)] transition-colors"
-                >
-                  <GoogleIcon />
-                  Continue with Google
-                </button>
-
                 {/* For a shared computer: no password, no Google sign-in. */}
-                <button
-                  type="button"
-                  onClick={() => { setUseCode(true); setError(''); }}
-                  disabled={loading}
-                  className="mt-3 w-full px-5 py-[0.625rem] border-[1.5px] border-[var(--border-color)] rounded-[10px] bg-[var(--bg-card)] text-sm font-medium text-[var(--text-primary)] flex items-center justify-center gap-2 cursor-pointer hover:bg-[var(--bg-subtle)] transition-colors"
-                >
-                  <Mail className="size-[18px] text-[var(--text-secondary)]" aria-hidden />
-                  Email me a sign-in code
-                </button>
+                <p className="mt-4 text-center text-sm">
+                  <button
+                    type="button"
+                    onClick={() => { setUseCode(true); setError(''); }}
+                    disabled={loading}
+                    className={LINK_BUTTON}
+                  >
+                    Email me a sign-in code instead
+                  </button>
+                </p>
               </>
             )}
-          </Card>
+          </div>
+        </Card>
+
+        <div className="mt-6 flex flex-col items-center gap-2 text-sm text-[var(--text-secondary)]">
+          {mode === 'login' ? (
+            <p>
+              New here?{' '}
+              <button type="button" onClick={() => switchTo('signup')} className={LINK_BUTTON}>
+                Create a free account
+              </button>
+            </p>
+          ) : (
+            <p>
+              {mode === 'signup' ? 'Already have an account?' : 'Not from a learning centre?'}{' '}
+              <button type="button" onClick={() => switchTo('login')} className={LINK_BUTTON}>
+                Sign in
+              </button>
+            </p>
+          )}
+          {mode !== 'student' && (
+            <p>
+              Got a login from your centre?{' '}
+              <button type="button" onClick={() => switchTo('student')} className={LINK_BUTTON}>
+                Sign in here
+              </button>
+            </p>
+          )}
         </div>
       </div>
     </div>
   );
 }
+
+const LINK_BUTTON =
+  'cursor-pointer rounded border-0 bg-transparent p-0 font-semibold text-[var(--ink-blue)] underline-offset-4 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ring)] focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-60';
 
 function GoogleIcon() {
   return (

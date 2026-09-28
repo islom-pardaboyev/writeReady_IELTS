@@ -8,7 +8,7 @@ const HOME_TITLE = document.title;
 type TitleFor = string | ((query: URLSearchParams) => string);
 
 const ROUTE_TITLES: [RegExp, TitleFor][] = [
-  [/^\/auth$/, (q) => (q.get('mode') === 'signup' ? 'Create your account' : q.get('mode') === 'student' ? 'Student sign in' : 'Sign in')],
+  [/^\/auth$/, (q) => (q.get('mode') === 'signup' ? 'Create your account' : q.get('mode') === 'student' ? 'Learning centre sign-in' : 'Sign in')],
   [/^\/dashboard$/, 'Dashboard'],
   [/^\/feedback\/[^/]+$/, 'Feedback report'],
   [/^\/tg\/[^/]+$/, 'Opening your essay'],

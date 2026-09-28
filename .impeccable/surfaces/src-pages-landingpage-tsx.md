@@ -9,7 +9,7 @@ Scope: the public home page "/" (signed-out visitors; signed-in students are red
 
 Audience: IELTS candidates in Uzbekistan, mostly on phones, aiming for band 6.5 to 7. Job: understand in seconds that WriteReady marks their Task 1 and Task 2 essays against the four IELTS criteria and shows where the marks went. Action: create a free account ("Check my essay"); secondary: try a mock exam, or the Telegram bot when the admin shows it.
 
-Proof and content: the product's own Mock Exam screen; a sample marked answer (labelled as a sample); the real report contents (four criterion bands, every sentence reviewed, up to 15 better words with Uzbek meanings, up to 10 grammar points, a band 8 to 9 answer, three fixes first); essays checked so far (a hand-set figure, 15+ for now); modes; Human Check; learning centres; the two demo videos; home FAQ. Constraints: explanations are in English and vocabulary carries Uzbek meanings, never claim more; the band is an estimate; free = one report a week with the four band scores.
+Proof and content: the product's own Mock Exam screen; a sample marked answer (labelled as a sample); the real report contents (four criterion bands, every sentence reviewed, up to 15 better words with Uzbek meanings, up to 10 grammar points, a band 8 to 9 answer, three fixes first); modes; Human Check; learning centres; the two demo videos; home FAQ. Constraints: explanations are in English and vocabulary carries Uzbek meanings, never claim more; the band is an estimate; free = one report a week with the four band scores.
 
 ## Direction contract
 
@@ -19,7 +19,7 @@ OWN-WORLD: Ink on Paper from DESIGN.md: paper ground, white sheets, 1px hairline
 
 STORY: The visitor recognises the screen they will sit, watches an answer get marked with a sentence note, a word upgrade with its Uzbek meaning and a band, learns what the full report holds, sees the modes and the extras (Human Check, bot, centres), and signs up.
 
-FIRST VIEWPORT: Nav on top. Headline and one-sentence promise on the left seven columns with "Check my essay" (solid ink) and "Try a mock exam" (quiet), a free-plan line under them; beside them a short proof list. Below, spanning the container, the exam frame about 420px tall: bar with timer, Task tabs, instruction strip, prompt left, answer typing right with a word counter; when typing ends the marks and a band slip appear inside the frame.
+FIRST VIEWPORT: Nav on top. Headline, one short promise line, "Check my essay" (solid ink) and "Try a mock exam" (quiet), and one free-plan line (with the bot link when shown). No checklist beside it: the report section says it once. Below, spanning the container, the exam frame about 420px tall: bar with timer, Task tabs, instruction strip, prompt left, answer typing right with a word counter; when typing ends the marks and a band slip appear inside the frame.
 
 FORM: Exam room, position 3 on the ordered structure list (Marked script, Report anatomy, Exam room, Before and after, Telegram thread, Proof first). Seed key 4870eec0. Signature interaction: type then mark, once, with Replay; reduced motion shows the marked state.
 
