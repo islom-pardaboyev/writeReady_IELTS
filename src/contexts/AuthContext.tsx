@@ -1,6 +1,5 @@
 import { useEffect, useState, type ReactNode } from 'react';
 import {
-  createUserWithEmailAndPassword,
   signInWithEmailAndPassword,
   signOut,
   onAuthStateChanged,
@@ -12,12 +11,26 @@ import {
   EmailAuthProvider,
   type User,
 } from 'firebase/auth';
+import { mustConfirmEmail } from '@shared/emailGate';
 import { auth } from '../firebase/config';
 import { createUserProfile, getUserProfile } from '../firebase/firestore';
 import { markSeen, watchSeen } from '../lib/seen';
 import type { UserProfile } from '../types';
 import { AuthContext } from './authContextDef';
 import { clearAllDrafts } from '../hooks/useDraft';
+
+/**
+ * A password account whose email nobody confirmed (made before sign-up asked
+ * for a code, or straight through Firebase) does not get in. The server
+ * refuses it too (api/_lib/shared.ts).
+ */
+async function mustConfirm(u: User): Promise<boolean> {
+  // Most accounts never need the token read below.
+  if (u.emailVerified || !u.providerData.some((p) => p.providerId === 'password')) return false;
+  // How they signed in this time. Offline with an expired token, assume the password.
+  const provider = await u.getIdTokenResult().then((t) => t.signInProvider, () => 'password');
+  return mustConfirmEmail(provider, u.email, u.emailVerified);
+}
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
@@ -35,6 +48,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     const unsub = onAuthStateChanged(auth, async (u) => {
+      if (u && (await mustConfirm(u))) {
+        // Signing out calls back here with no user, which ends the loading.
+        await signOut(auth);
+        return;
+      }
+      // Signed out, or in as someone else, while that was being checked.
+      if (u !== auth.currentUser) return;
       setUser(u);
       if (u) {
         // A profile that will not load is no reason to skip the stamp, or to
@@ -61,13 +81,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     };
   }, []);
 
-  const signUp = async (email: string, password: string) => {
-    const cred = await createUserWithEmailAndPassword(auth, email, password);
-    await createUserProfile(cred.user.uid, email);
-  };
-
+  // There is no sign-up here on purpose: a password account is only made once
+  // the emailed code proves the address (api/_lib/emailCode.ts).
   const signIn = async (email: string, password: string) => {
-    await signInWithEmailAndPassword(auth, email, password);
+    const cred = await signInWithEmailAndPassword(auth, email, password);
+    if (!(await mustConfirm(cred.user))) return 'signed-in' as const;
+    await signOut(auth);
+    return 'confirm-email' as const;
   };
 
   const signInWithGoogle = async () => {
@@ -100,7 +120,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   return (
-    <AuthContext.Provider value={{ user, profile, loading, signUp, signIn, signInWithGoogle, logOut, refreshProfile, updateDisplayName, changePassword }}>
+    <AuthContext.Provider value={{ user, profile, loading, signIn, signInWithGoogle, logOut, refreshProfile, updateDisplayName, changePassword }}>
       {children}
     </AuthContext.Provider>
   );

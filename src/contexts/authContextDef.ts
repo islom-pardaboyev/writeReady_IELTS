@@ -6,8 +6,12 @@ export interface AuthContextValue {
   user: User | null;
   profile: UserProfile | null;
   loading: boolean;
-  signUp: (email: string, password: string) => Promise<void>;
-  signIn: (email: string, password: string) => Promise<void>;
+  /**
+   * 'confirm-email': the password was right, but the account's email was
+   * never confirmed, so it was signed straight back out. The caller emails a
+   * code (src/components/auth/EmailCodeSignIn.tsx) before letting them in.
+   */
+  signIn: (email: string, password: string) => Promise<'signed-in' | 'confirm-email'>;
   signInWithGoogle: () => Promise<void>;
   logOut: () => Promise<void>;
   refreshProfile: () => Promise<void>;

@@ -360,7 +360,7 @@ export function AccountPage() {
                     </form>
                   ) : (
                     <p className="mt-1 text-sm text-[var(--text-secondary)]">
-                      You signed in with Google, so there's no password to change here.
+                      Your account has no password. You sign in with Google or an email code.
                     </p>
                   )}
                 </div>

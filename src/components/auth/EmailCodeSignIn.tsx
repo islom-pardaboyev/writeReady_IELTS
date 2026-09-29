@@ -27,6 +27,7 @@ async function post(body: Record<string, string>): Promise<Record<string, unknow
 export function EmailCodeSignIn({
   initialEmail,
   password,
+  submitLabel,
   onSignedIn,
   onBack,
 }: {
@@ -34,8 +35,10 @@ export function EmailCodeSignIn({
   /**
    * Sign-up: the password the student chose. The code is sent straight away,
    * and the account is created with this password once the code checks out.
+   * Also a password sign-in to an account whose email was never confirmed.
    */
   password?: string;
+  submitLabel?: string;
   onSignedIn: () => void;
   onBack: () => void;
 }) {
@@ -188,7 +191,7 @@ export function EmailCodeSignIn({
             />
           </div>
           <Button type="submit" loading={busy && sent} disabled={code.length !== 6 || busy} size="lg" className="w-full">
-            {signingUp ? 'Create account' : 'Sign in'}
+            {submitLabel ?? (signingUp ? 'Create account' : 'Sign in')}
           </Button>
           <div id="code-help" className="flex flex-wrap items-center justify-between gap-2 text-sm">
             <button

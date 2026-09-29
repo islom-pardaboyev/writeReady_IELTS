@@ -32,10 +32,11 @@ export function AuthPage() {
   const [studentPassword, setStudentPassword] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
-  // Sign in (or up) with a code emailed to the student, instead of a password or Google.
+  // Sign in with a code emailed to the student, instead of a password or Google.
   const [useCode, setUseCode] = useState(false);
-  // Password sign-up waits here while the student confirms their email with a code.
-  const [pendingSignup, setPendingSignup] = useState<{ email: string; password: string } | null>(null);
+  // Waits here while the student confirms their email with a code: a new
+  // password account, or an old one whose email was never confirmed.
+  const [pending, setPending] = useState<{ email: string; password: string; isNew: boolean } | null>(null);
   const { signIn, signInWithGoogle, user, loading: authLoading, refreshProfile } = useAuth();
   const navigate = useNavigate();
   // While auth state is loading, show nothing (avoids a flash of the form before the redirect)
@@ -49,12 +50,16 @@ export function AuthPage() {
     if (mode === 'signup') {
       // The account is created only after the emailed code proves the address
       // is theirs (api/_lib/emailCode.ts), not straight from this form.
-      setPendingSignup({ email: email.trim(), password });
+      setPending({ email: email.trim(), password, isNew: true });
       return;
     }
     setLoading(true);
     try {
-      await signIn(email, password);
+      if ((await signIn(email, password)) === 'confirm-email') {
+        // Right password, but nobody ever confirmed the email: no way in until they do.
+        setPending({ email: email.trim(), password, isNew: false });
+        return;
+      }
       navigate(next);
     } catch (err: unknown) {
       setError(cleanAuthError(err, 'Authentication failed'));
@@ -114,13 +119,13 @@ export function AuthPage() {
     setMode(m);
     setError('');
     setUseCode(false);
-    setPendingSignup(null);
+    setPending(null);
   };
 
   const title =
     mode === 'student'
       ? 'Learning centre sign-in'
-      : pendingSignup
+      : pending
       ? 'Confirm your email'
       : useCode
       ? 'Sign in with a code'
@@ -148,9 +153,14 @@ export function AuthPage() {
               Use the login and password your centre gave you.
             </p>
           )}
+          {pending && !pending.isNew && (
+            <p className="mt-1.5 text-center text-sm text-balance text-[var(--text-secondary)]">
+              Your email was never confirmed. This is needed once.
+            </p>
+          )}
 
           <div className="mt-6">
-            {error && !useCode && !pendingSignup && (
+            {error && !useCode && !pending && (
               <div
                 role="alert"
                 aria-live="polite"
@@ -192,12 +202,13 @@ export function AuthPage() {
                   Sign in
                 </Button>
               </form>
-            ) : pendingSignup ? (
+            ) : pending ? (
               <EmailCodeSignIn
-                initialEmail={pendingSignup.email}
-                password={pendingSignup.password}
+                initialEmail={pending.email}
+                password={pending.password}
+                submitLabel={pending.isNew ? 'Create account' : 'Confirm and sign in'}
                 onSignedIn={() => navigate(next)}
-                onBack={() => setPendingSignup(null)}
+                onBack={() => setPending(null)}
               />
             ) : useCode ? (
               <EmailCodeSignIn
@@ -251,17 +262,24 @@ export function AuthPage() {
                   </Button>
                 </form>
 
-                {/* For a shared computer: no password, no Google sign-in. */}
-                <p className="mt-4 text-center text-sm">
-                  <button
-                    type="button"
-                    onClick={() => { setUseCode(true); setError(''); }}
-                    disabled={loading}
-                    className={LINK_BUTTON}
-                  >
-                    Email me a sign-in code instead
-                  </button>
-                </p>
+                {mode === 'signup' ? (
+                  <p className="mt-4 text-center text-sm text-[var(--text-secondary)]">
+                    We'll email you a 6-digit code to confirm the address is yours.
+                  </p>
+                ) : (
+                  // There is no password reset, so this is the way back in for
+                  // a forgotten password. Also handy on a shared computer.
+                  <p className="mt-4 text-center text-sm">
+                    <button
+                      type="button"
+                      onClick={() => { setUseCode(true); setError(''); }}
+                      disabled={loading}
+                      className={LINK_BUTTON}
+                    >
+                      Forgot password? Email me a code
+                    </button>
+                  </p>
+                )}
               </>
             )}
           </div>

@@ -1,4 +1,5 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
+import { randomBytes } from 'crypto';
 import { getAuth } from 'firebase-admin/auth';
 import { initFirebase } from '../shared.js';
 import { db } from '../db.js';
@@ -8,7 +9,8 @@ import { CodeError, sendCode, verifyCode, type Deps } from '../emailCode.js';
  * POST /api/email-code
  *   { action: 'send', email }                      emails a 6-digit code
  *   { action: 'verify', email, code }              returns { customToken, created } for signInWithCustomToken
- *   { action: 'verify', email, code, password }    the same, for sign-up: a new account gets this password
+ *   { action: 'verify', email, code, password }    the same, for sign-up (a new account gets this password)
+ *                                                  and for confirming the email of an existing password account
  *
  * The rules live in api/_lib/emailCode.ts. The codes and their limits are in
  * the email_codes and email_code_ips collections, which only this server
@@ -73,9 +75,37 @@ function clientIp(req: VercelRequest): string {
   return String(req.headers['x-real-ip'] ?? req.headers['x-forwarded-for'] ?? '').split(',')[0].trim();
 }
 
+/** The Firebase Auth side of the rules. Exported for scripts/test-email-code-auth.ts, which runs it on the Auth emulator. */
+export function firebaseAuthDeps(): Deps['auth'] {
+  const auth = getAuth();
+  return {
+    async getUserByEmail(email) {
+      try {
+        const u = await auth.getUserByEmail(email);
+        return { uid: u.uid, disabled: u.disabled, emailVerified: u.emailVerified };
+      } catch (e) {
+        if ((e as { code?: string }).code === 'auth/user-not-found') return null;
+        throw e;
+      }
+    },
+    async createUser(email, password) {
+      return (await auth.createUser(password ? { email, password, emailVerified: true } : { email, emailVerified: true })).uid;
+    },
+    async claim(uid, password) {
+      // No password chosen: the old one becomes one nobody knows. Not unlinked,
+      // because unlinking the password also takes the email off the account.
+      const hasPassword = !password && (await auth.getUser(uid)).providerData.some((p) => p.providerId === 'password');
+      const next = password ?? (hasPassword ? randomBytes(24).toString('base64url') : undefined);
+      await auth.updateUser(uid, { emailVerified: true, ...(next ? { password: next } : {}) });
+      // Whoever set the old password may still be signed in somewhere.
+      await auth.revokeRefreshTokens(uid);
+    },
+    createCustomToken: (uid) => auth.createCustomToken(uid),
+  };
+}
+
 function firestoreDeps(): Deps {
   const store = db();
-  const auth = getAuth();
   return {
     now: () => Date.now(),
     send: sendWithResend,
@@ -88,24 +118,7 @@ function firestoreDeps(): Deps {
         else if (next) tx.set(ref, next);
         return result;
       }),
-    auth: {
-      async getUserByEmail(email) {
-        try {
-          const u = await auth.getUserByEmail(email);
-          return { uid: u.uid, disabled: u.disabled, emailVerified: u.emailVerified };
-        } catch (e) {
-          if ((e as { code?: string }).code === 'auth/user-not-found') return null;
-          throw e;
-        }
-      },
-      async createUser(email, password) {
-        return (await auth.createUser(password ? { email, password, emailVerified: true } : { email, emailVerified: true })).uid;
-      },
-      async markVerified(uid) {
-        await auth.updateUser(uid, { emailVerified: true });
-      },
-      createCustomToken: (uid) => auth.createCustomToken(uid),
-    },
+    auth: firebaseAuthDeps(),
   };
 }
 

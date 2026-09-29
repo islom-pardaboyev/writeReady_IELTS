@@ -42,7 +42,12 @@ export interface Deps {
     getUserByEmail(email: string): Promise<{ uid: string; disabled: boolean; emailVerified: boolean } | null>;
     /** Creates an account for an address the student has just proved is theirs, with a password when they chose one. */
     createUser(email: string, password?: string): Promise<string>;
-    markVerified(uid: string): Promise<void>;
+    /**
+     * Marks an unconfirmed account's email as proven. Its old password was
+     * never proven to be the owner's, so it becomes `password` when they chose
+     * one, or one nobody knows, and every other session on the account is ended.
+     */
+    claim(uid: string, password?: string): Promise<void>;
     createCustomToken(uid: string): Promise<string>;
   };
   now: () => number;
@@ -135,9 +140,10 @@ const MAX_PASSWORD = 128;
 /**
  * Checks the code and returns a Firebase custom token for the account with
  * that email. Sign-up passes the password the student chose: the account is
- * only created once the code proves the address is theirs. `created` says
- * whether a new account was made; an address that already had one is simply
- * signed in, and its password is left as it was.
+ * only created once the code proves the address is theirs. So does password
+ * sign-in to an account whose email was never confirmed. `created` says
+ * whether a new account was made; an address that already had a confirmed
+ * one is simply signed in, and its password is left as it was.
  */
 export async function verifyCode(
   deps: Deps,
@@ -191,8 +197,10 @@ export async function verifyCode(
   if (existing) {
     if (existing.disabled) throw new CodeError(403, 'This account is switched off. Message us on Telegram.');
     uid = existing.uid;
-    // They just proved the address is theirs.
-    if (!existing.emailVerified) await deps.auth.markVerified(uid);
+    // They just proved the address is theirs. Whoever set the password of an
+    // unconfirmed account may not have been them (anyone can make one through
+    // Firebase's public sign-up address), so that password does not survive.
+    if (!existing.emailVerified) await deps.auth.claim(uid, password);
   } else {
     uid = await deps.auth.createUser(email, password);
   }

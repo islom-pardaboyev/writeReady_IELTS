@@ -1,6 +1,7 @@
 import type { VercelRequest } from '@vercel/node';
 import { initializeApp, getApps, cert } from 'firebase-admin/app';
 import { getAuth } from 'firebase-admin/auth';
+import { mustConfirmEmail } from './emailGate.js';
 
 // Shared by the api/ routes. The api/ build cannot import from src/, so a few
 // rules here mirror src/lib (see src/lib/weeklyFree.ts and src/lib/plans.ts).
@@ -23,6 +24,11 @@ export async function getUid(req: VercelRequest): Promise<string> {
   const token = auth.startsWith('Bearer ') ? auth.slice(7) : null;
   if (!token) throw new Error('MISSING_TOKEN');
   const decoded = await getAuth().verifyIdToken(token);
+  // The site keeps these accounts out too; this stops anyone calling the API
+  // straight from an account whose email was never confirmed.
+  if (mustConfirmEmail(decoded.firebase.sign_in_provider, decoded.email, decoded.email_verified)) {
+    throw new Error('EMAIL_NOT_CONFIRMED');
+  }
   return decoded.uid;
 }
 

@@ -18,8 +18,16 @@ service cloud.firestore {
 
     // ── Who is asking ─────────────────────────────────────────────────────
 
+    // A password account counts only once its email is confirmed. Accounts made
+    // straight through Firebase's public sign-up address skip the emailed code,
+    // and must not get to comment, like or read the prompts. The site and the
+    // API use the same rule (api/_lib/emailGate.ts). Learning-centre students
+    // have made-up addresses and sign in with a password, so they are let through.
     function signedIn() {
-      return request.auth != null;
+      return request.auth != null
+        && (request.auth.token.firebase.sign_in_provider != 'password'
+          || request.auth.token.get('email_verified', false) == true
+          || request.auth.token.get('email', '').lower().matches('[^@]+@writeready[.]student'));
     }
 
     // Staff sign in through /api/staff-login, which mints custom tokens for

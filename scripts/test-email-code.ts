@@ -20,6 +20,7 @@ import {
   verifyCode,
   type Deps,
 } from '../api/_lib/emailCode.js';
+import { mustConfirmEmail } from '../api/_lib/emailGate.js';
 
 type Doc = Record<string, unknown>;
 
@@ -29,7 +30,7 @@ function world() {
   const users = new Map<string, { uid: string; disabled: boolean; emailVerified: boolean }>();
   const created: string[] = [];
   const passwords = new Map<string, string>();
-  const verified: string[] = [];
+  const claims: { uid: string; password?: string }[] = [];
   let clock = 1_800_000_000_000;
   let failNextSend = false;
 
@@ -59,8 +60,14 @@ function world() {
         created.push(email);
         return uid;
       },
-      markVerified: async (uid) => {
-        verified.push(uid);
+      claim: async (uid, password) => {
+        claims.push({ uid, password });
+        for (const [email, u] of users) {
+          if (u.uid !== uid) continue;
+          u.emailVerified = true;
+          if (password) passwords.set(email, password);
+          else passwords.delete(email);
+        }
       },
       createCustomToken: async (uid) => `token-for-${uid}`,
     },
@@ -73,7 +80,7 @@ function world() {
     users,
     created,
     passwords,
-    verified,
+    claims,
     advance: (ms: number) => { clock += ms; },
     failNextSend: () => { failNextSend = true; },
   };
@@ -122,14 +129,26 @@ console.log('email-code sign-in');
   check('no second account is made', w.users.size === 1);
 }
 
-// An unverified password account is marked verified; a switched-off one is refused.
+// An unconfirmed password account is claimed by whoever proves the address;
+// a switched-off one is refused.
 {
   const w = world();
   w.users.set('pw@example.com', { uid: 'pw_uid', disabled: false, emailVerified: false });
+  w.passwords.set('pw@example.com', 'someone-elses');
   w.users.set('off@example.com', { uid: 'off_uid', disabled: true, emailVerified: true });
   await sendCode(w.deps, 'pw@example.com', 'a');
   await verifyCode(w.deps, 'pw@example.com', w.inbox.get('pw@example.com'));
-  check('an unverified account becomes verified', w.verified.includes('pw_uid'));
+  check('an unconfirmed account becomes confirmed', w.users.get('pw@example.com')?.emailVerified === true);
+  check('and its unproven password is removed', !w.passwords.has('pw@example.com') && w.claims[0]?.uid === 'pw_uid');
+
+  const p = world();
+  p.users.set('legacy@example.com', { uid: 'legacy_uid', disabled: false, emailVerified: false });
+  p.passwords.set('legacy@example.com', 'someone-elses');
+  await sendCode(p.deps, 'legacy@example.com', 'a');
+  const res = await verifyCode(p.deps, 'legacy@example.com', p.inbox.get('legacy@example.com'), 'mine1234');
+  check('with a password, an unconfirmed account signs in as itself', !res.created && res.token === 'token-for-legacy_uid');
+  check('and gets the password of the one who proved the address', p.passwords.get('legacy@example.com') === 'mine1234' && p.users.get('legacy@example.com')?.emailVerified === true);
+
   await sendCode(w.deps, 'off@example.com', 'a');
   check('a switched-off account is refused', await rejects(() => verifyCode(w.deps, 'off@example.com', w.inbox.get('off@example.com')), 403));
 }
@@ -220,7 +239,7 @@ console.log('email-code sign-in');
   await sendCode(e.deps, 'taken@example.com', 'a');
   const taken = await verifyCode(e.deps, 'taken@example.com', e.inbox.get('taken@example.com'), 'newpass1');
   check('signing up with an address that has an account signs into it', !taken.created && taken.token === 'token-for-old_uid');
-  check('and leaves its password alone', !e.passwords.has('taken@example.com') && e.created.length === 0);
+  check('and leaves its password alone', !e.passwords.has('taken@example.com') && e.created.length === 0 && e.claims.length === 0);
 }
 
 // Addresses that must never get a code.
@@ -232,6 +251,15 @@ console.log('email-code sign-in');
   check('a malformed address is refused', await rejects(() => sendCode(w.deps, 'not-an-email', 'a'), 400, 'valid email'));
   check('nothing was emailed for any of them', w.inbox.size === 0);
 }
+
+// Who is kept out of the site until they confirm their email (api/_lib/emailGate.ts).
+console.log('\nemail gate');
+check('a password sign-in with an unconfirmed email is kept out', mustConfirmEmail('password', 'ali@gmail.com', false));
+check('a password sign-in with a confirmed email gets in', !mustConfirmEmail('password', 'ali@gmail.com', true));
+check('a Google sign-in gets in', !mustConfirmEmail('google.com', 'ali@gmail.com', false));
+check('a code sign-in gets in', !mustConfirmEmail('custom', 'ali@gmail.com', true));
+check('a learning-centre student gets in', !mustConfirmEmail('password', 'ali@writeready.student', false));
+check('staff get in', !mustConfirmEmail('password', 'Admin@WriteReady.internal', false));
 
 console.log(failures ? `\n${failures} check(s) failed` : '\nall checks passed');
 process.exit(failures ? 1 : 0);

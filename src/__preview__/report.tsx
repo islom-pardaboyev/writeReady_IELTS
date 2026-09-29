@@ -125,7 +125,7 @@ const auth = {
   user: fakeUser,
   profile: { uid: 'preview', email: 'preview@example.com', plan: 'premium' as const, subscriptionExpiresAt: null, createdAt: new Date() },
   loading: false,
-  signUp: noop, signIn: noop, signInWithGoogle: noop, logOut: noop, refreshProfile: noop, updateDisplayName: noop, changePassword: noop,
+  signIn: async () => 'signed-in' as const, signInWithGoogle: noop, logOut: noop, refreshProfile: noop, updateDisplayName: noop, changePassword: noop,
 };
 
 const tab = new URLSearchParams(location.search).get('tab');
