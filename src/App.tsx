@@ -10,7 +10,7 @@ import { GlobalShortcuts } from './components/shortcuts/GlobalShortcuts';
 import { AnnouncementCard } from './components/ui/AnnouncementCard';
 import { CookieNotice } from './components/ui/CookieNotice';
 import { InstallPrompt } from './components/ui/InstallPrompt';
-import { UpdatePrompt } from './components/ui/UpdatePrompt';
+import { AppUpdater } from './components/ui/AppUpdater';
 import { OfflineGate } from './components/layout/OfflineGate';
 import { HomeRoute } from './components/layout/HomeRoute';
 import { NotFoundPage } from './pages/NotFoundPage';
@@ -66,7 +66,7 @@ export default function App() {
           <AnnouncementCard />
           <CookieNotice />
           <InstallPrompt />
-          <UpdatePrompt />
+          <AppUpdater />
           <OfflineGate />
           {/* vercel.json lists these same paths, so unknown addresses can be
               served with a real 404 status. Add a route there too. */}

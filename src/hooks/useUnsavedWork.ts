@@ -6,6 +6,11 @@ const LEAVE_MESSAGE = 'You have unsaved essay text that hasn’t been submitted.
 // those pages (keyboard shortcuts) can ask before navigating away.
 let pagesWithUnsavedWork = 0;
 
+/** Whether any open page holds essay text that has not been submitted. */
+export function hasUnsavedWork(): boolean {
+  return pagesWithUnsavedWork > 0;
+}
+
 /** For navigation that doesn't go through a page's own links. */
 export function confirmLeaveUnsavedWork(): boolean {
   return pagesWithUnsavedWork === 0 || window.confirm(LEAVE_MESSAGE);
