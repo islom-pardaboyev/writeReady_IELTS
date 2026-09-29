@@ -608,6 +608,105 @@ html.dark [data-exam-look] .exam-answer {
   caret-color: #ffffff;
 }
 
+/* ── Article text (blog posts and the blog editor) ─────────────────────────
+   One set of rules for both, so the editor shows what readers will see. Every
+   colour is a theme token, so dark mode needs nothing of its own. */
+@layer components {
+  .article {
+    color: var(--text-primary);
+    font-size: 1.0625rem;
+    line-height: 1.75;
+    overflow-wrap: break-word;
+  }
+  .article > :first-child { margin-top: 0; }
+  .article > :last-child { margin-bottom: 0; }
+
+  .article p { margin: 0 0 1em; }
+  .article h1,
+  .article h2,
+  .article h3 {
+    color: var(--text-primary);
+    font-weight: 800;
+    letter-spacing: -0.02em;
+    line-height: 1.25;
+  }
+  .article h1 { font-size: 1.875rem; margin: 1.6em 0 0.55em; }
+  .article h2 { font-size: 1.5rem; margin: 1.5em 0 0.5em; }
+  .article h3 { font-size: 1.25rem; font-weight: 700; margin: 1.4em 0 0.45em; }
+
+  .article ul,
+  .article ol { margin: 0 0 1em; padding-left: 1.5em; }
+  .article ul { list-style: disc; }
+  .article ol { list-style: decimal; }
+  .article ul ul { list-style: circle; }
+  .article li { margin: 0.3em 0; padding-left: 0.2em; }
+  .article li > p { margin: 0; }
+  .article li > ul,
+  .article li > ol { margin: 0.3em 0 0; }
+  .article li::marker { color: var(--text-secondary); }
+
+  .article blockquote {
+    margin: 1.5em 0;
+    padding: 0.1em 0 0.1em 1.1em;
+    border-left: 3px solid var(--border-strong);
+    color: var(--text-secondary);
+    font-style: italic;
+  }
+  .article blockquote > p { margin: 0.5em 0; }
+
+  .article strong { font-weight: 700; }
+  .article a { color: var(--ink-blue); text-decoration: underline; text-underline-offset: 3px; }
+  .article code {
+    font-family: 'IBM Plex Mono', ui-monospace, monospace;
+    font-size: 0.875em;
+    padding: 0.15em 0.35em;
+    border-radius: 4px;
+    background: color-mix(in oklab, var(--text-primary) 8%, transparent);
+  }
+  .article pre {
+    margin: 1.5em 0;
+    padding: 0.9em 1.1em;
+    border-radius: 10px;
+    overflow-x: auto;
+    background: color-mix(in oklab, var(--text-primary) 6%, transparent);
+  }
+  .article pre code { padding: 0; background: none; font-size: 0.875em; }
+
+  .article hr {
+    margin: 2em 0;
+    border: 0;
+    border-top: 1px solid var(--border-strong);
+  }
+
+  .article table {
+    width: 100%;
+    margin: 1.5em 0;
+    border-collapse: collapse;
+    font-size: 0.9375em;
+    line-height: 1.5;
+  }
+  .article th,
+  .article td {
+    padding: 0.55em 0.8em;
+    border: 1px solid var(--border-strong);
+    text-align: left;
+    vertical-align: top;
+    color: var(--text-primary);
+  }
+  .article th {
+    font-weight: 700;
+    background: color-mix(in oklab, var(--text-primary) 6%, transparent);
+  }
+  .article th > p,
+  .article td > p { margin: 0; }
+  .article .tableWrapper { overflow-x: auto; margin: 1.5em 0; }
+  .article .tableWrapper table { margin: 0; }
+
+  /* Editor only: selected table cells and a selected line. */
+  .article .selectedCell { background: color-mix(in oklab, var(--ink-blue) 16%, transparent); }
+  .article hr.ProseMirror-selectednode { border-top-color: var(--ink-blue); }
+}
+
 @layer utilities {
   .mock-question-scroll {
     scrollbar-width: thin;

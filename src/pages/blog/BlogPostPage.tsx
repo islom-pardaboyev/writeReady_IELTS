@@ -131,7 +131,8 @@ export function BlogPostPage() {
   const isHtml = post.content.trimStart().startsWith('<');
   const renderContent = (html: string) => (
     <div
-      className="prose prose-slate max-w-none dark:prose-invert [&_table]:border-collapse [&_table]:w-full [&_td]:border [&_td]:border-slate-300 [&_td]:px-3 [&_td]:py-2 [&_th]:border [&_th]:border-slate-300 [&_th]:px-3 [&_th]:py-2 [&_th]:bg-slate-100 [&_th]:font-semibold"
+      // The same .article rules as the editor (src/index.css), in both themes.
+      className="article"
       dangerouslySetInnerHTML={{ __html: html }}
     />
   );
@@ -169,7 +170,7 @@ export function BlogPostPage() {
         )}
 
         {/* Content before CTA */}
-        {isHtml ? renderContent(beforeCTA) : <div className="prose max-w-none">{renderMarkdown(beforeCTA)}</div>}
+        {isHtml ? renderContent(beforeCTA) : <div className="article">{renderMarkdown(beforeCTA)}</div>}
 
         {/* CTA block */}
         <Card className="my-8 p-6 text-center bg-brand-50 dark:bg-brand-900/20 border-brand-200 dark:border-brand-800">
@@ -187,7 +188,7 @@ export function BlogPostPage() {
         </Card>
 
         {/* Content after CTA */}
-        {afterCTA && <div className="prose max-w-none">{renderMarkdown(afterCTA)}</div>}
+        {afterCTA && <div className="article">{renderMarkdown(afterCTA)}</div>}
 
         {/* Like button */}
         <div className="flex items-center gap-3 mt-10 pt-6 border-t border-[var(--border-color)]">
