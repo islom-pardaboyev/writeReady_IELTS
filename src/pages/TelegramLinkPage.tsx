@@ -4,6 +4,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { encodeReport } from '@/lib/reportEncoding';
 import { LogoLoader } from '@/components/ui/LogoLoader';
 import Logo from '/logo.svg';
+import { allowFeedbackStart } from '@/lib/feedbackIntent';
 
 type Opened = { kind: 'essay'; question: string; essay: string } | { kind: 'connect' } | { error: string };
 
@@ -69,6 +70,8 @@ export function TelegramLinkPage() {
       // The essay now travels in the report page's own address, so reloading
       // or coming back to that page never needs the link again.
       const id = encodeReport({ task1: null, task2: { report: opened.question }, userText1: '', userText2: opened.essay });
+      // The student's own essay from their own bot check: a start they asked for.
+      allowFeedbackStart(id);
       navigate(`/feedback/${id}`, { replace: true });
     })();
     return () => { cancelled = true; };

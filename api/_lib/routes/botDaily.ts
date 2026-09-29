@@ -2,6 +2,7 @@ import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { initFirebase } from '../shared.js';
 import { deleteExpiredLinks, sendDailyWords, sendReminders, syncBotProfile, WORD_HOURS } from '../studentBot.js';
 import { continueBroadcasts } from '../broadcast.js';
+import { cronAllowed } from '../cronAuth.js';
 
 /**
  * The Telegram bot's hourly job: the daily word, the "your free check is
@@ -13,9 +14,10 @@ import { continueBroadcasts } from '../broadcast.js';
  * Vercel names the job that fired in x-vercel-cron-schedule (UTC); Tashkent
  * is UTC+5 all year.
  *
- * Opened by hand, it serves the current Tashkent hour, whose students are
- * due their word now anyway, and only reminders already due, so it can never
- * send anything early.
+ * Only Vercel's scheduler may run it: the request has to carry CRON_SECRET
+ * (api/_lib/cronAuth.ts). Run by hand with that secret, it serves the current
+ * Tashkent hour, whose students are due their word now anyway, and only
+ * reminders already due, so it can never send anything early.
  */
 export function tashkentHour(schedule: string | undefined, now = new Date()): number {
   const utcHour = schedule ? Number(schedule.trim().split(/\s+/)[1]) : NaN;
@@ -24,6 +26,10 @@ export function tashkentHour(schedule: string | undefined, now = new Date()): nu
 }
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
+  if (!cronAllowed(req)) {
+    console.error('bot-daily: refused a request without the right CRON_SECRET');
+    return res.status(401).json({ error: 'Unauthorized' });
+  }
   const schedule = req.headers['x-vercel-cron-schedule'];
   const hour = tashkentHour(typeof schedule === 'string' ? schedule : undefined);
   if (!WORD_HOURS.includes(hour)) return res.status(200).json({ skipped: true, hour });

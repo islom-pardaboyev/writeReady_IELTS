@@ -13,6 +13,10 @@ import {
   serverTimestamp,
   Timestamp,
   setDoc,
+  writeBatch,
+  increment,
+  getCountFromServer,
+  type DocumentReference,
   type Firestore,
 } from 'firebase/firestore';
 import { db } from '../firebase/config';
@@ -120,19 +124,46 @@ export async function addComment(
   postId: string,
   comment: Omit<BlogComment, 'id' | 'createdAt' | 'likeCount'>,
 ): Promise<string> {
+  // The post's commentCount is not touched from here any more: firestore.rules
+  // does not let a student write it. The admin panel counts comments itself
+  // (countComments below).
   const ref = await addDoc(collection(db, 'blogPosts', postId, 'comments'), {
     ...comment,
     createdAt: serverTimestamp(),
     likeCount: 0,
   });
-  // increment commentCount
-  const postRef = doc(db, 'blogPosts', postId);
-  const postSnap = await getDoc(postRef);
-  if (postSnap.exists()) {
-    const count = ((postSnap.data() as Record<string, unknown>).commentCount as number) ?? 0;
-    await updateDoc(postRef, { commentCount: count + 1 });
-  }
   return ref.id;
+}
+
+/** How many comments a post has, counted by the database. For the admin panel. */
+export async function countComments(postId: string, dbInstance: Firestore = db): Promise<number> {
+  const snap = await getCountFromServer(collection(dbInstance, 'blogPosts', postId, 'comments'));
+  return snap.data().count;
+}
+
+/**
+ * Likes or unlikes, and moves the counter, in ONE batch. firestore.rules
+ * (likeStepOk) only lets a counter move by one together with the like document
+ * itself, so the two writes have to travel together. increment() adds to
+ * whatever the database holds, so two people liking at once both count.
+ * A count that has drifted to zero stays at zero when a like is taken back.
+ */
+async function toggleLike(likeRef: DocumentReference, counterRef: DocumentReference, userId: string): Promise<{ liked: boolean; count: number }> {
+  const [likeSnap, counterSnap] = await Promise.all([getDoc(likeRef), getDoc(counterRef)]);
+  const stored = Number((counterSnap.data() as Record<string, unknown> | undefined)?.likeCount ?? 0);
+  const current = Number.isFinite(stored) ? stored : 0;
+  const batch = writeBatch(db);
+  if (likeSnap.exists()) {
+    const next = Math.max(0, current - 1);
+    batch.delete(likeRef);
+    batch.update(counterRef, { likeCount: increment(next - current) });
+    await batch.commit();
+    return { liked: false, count: next };
+  }
+  batch.set(likeRef, { userId, createdAt: serverTimestamp() });
+  batch.update(counterRef, { likeCount: increment(1) });
+  await batch.commit();
+  return { liked: true, count: current + 1 };
 }
 
 export async function toggleCommentLike(
@@ -142,37 +173,13 @@ export async function toggleCommentLike(
 ): Promise<number> {
   const likeRef = doc(db, 'blogPosts', postId, 'comments', commentId, 'likes', userId);
   const commentRef = doc(db, 'blogPosts', postId, 'comments', commentId);
-  const likeSnap = await getDoc(likeRef);
-  const commentSnap = await getDoc(commentRef);
-  const current = ((commentSnap.data() as Record<string, unknown>)?.likeCount as number) ?? 0;
-  if (likeSnap.exists()) {
-    await deleteDoc(likeRef);
-    const newCount = Math.max(0, current - 1);
-    await updateDoc(commentRef, { likeCount: newCount });
-    return newCount;
-  } else {
-    await setDoc(likeRef, { userId, createdAt: serverTimestamp() });
-    const newCount = current + 1;
-    await updateDoc(commentRef, { likeCount: newCount });
-    return newCount;
-  }
+  return (await toggleLike(likeRef, commentRef, userId)).count;
 }
 
 export async function togglePostLike(postId: string, userId: string): Promise<boolean> {
   const likeRef = doc(db, 'blogPosts', postId, 'likes', userId);
   const postRef = doc(db, 'blogPosts', postId);
-  const likeSnap = await getDoc(likeRef);
-  const postSnap = await getDoc(postRef);
-  const current = ((postSnap.data() as Record<string, unknown>)?.likeCount as number) ?? 0;
-  if (likeSnap.exists()) {
-    await deleteDoc(likeRef);
-    await updateDoc(postRef, { likeCount: Math.max(0, current - 1) });
-    return false;
-  } else {
-    await setDoc(likeRef, { userId, createdAt: serverTimestamp() });
-    await updateDoc(postRef, { likeCount: current + 1 });
-    return true;
-  }
+  return (await toggleLike(likeRef, postRef, userId)).liked;
 }
 
 export async function isPostLiked(postId: string, userId: string): Promise<boolean> {
@@ -224,13 +231,16 @@ export async function createLikeNotification(
   preview: string,
 ): Promise<void> {
   if (commentAuthorId === fromUserId) return;
-  await addDoc(collection(db, 'notifications', commentAuthorId, 'items'), {
+  // The id is fixed by the like, so one like makes one notification. A second
+  // like on the same comment (like, unlike, like) is refused by firestore.rules,
+  // which is the point: nobody can flood an author. The text is capped there too.
+  await setDoc(doc(db, 'notifications', commentAuthorId, 'items', `like_${commentId}_${fromUserId}`), {
     type: 'like',
-    fromUserName,
+    fromUserName: fromUserName.slice(0, 80),
     postId,
-    postSlug,
+    postSlug: postSlug.slice(0, 120),
     commentId,
-    preview,
+    preview: preview.slice(0, 100),
     read: false,
     createdAt: serverTimestamp(),
   });

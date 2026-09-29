@@ -2,6 +2,7 @@ import { initializeApp } from 'firebase/app';
 import { getAuth } from 'firebase/auth';
 import { getFirestore } from 'firebase/firestore';
 import { getAnalytics, isSupported } from 'firebase/analytics';
+import { analyticsAllowed } from '../lib/consent';
 
 export const firebaseConfig = {
   apiKey: import.meta.env.VITE_FIREBASE_API_KEY || 'AIzaSyBX1nra0EqXDL7xkL6fD_AcMOc09pEKY1M',
@@ -17,6 +18,10 @@ export const app = initializeApp(firebaseConfig);
 export const auth = getAuth(app);
 export const db = getFirestore(app);
 
+// Analytics is non-essential storage: src/lib/consent.ts says it must wait for
+// analyticsAllowed(), and the cookie notice and privacy policy promise no
+// tracking. It used to start for every visitor, and Google then saw the full
+// address of every page, including a report's, which carries the whole essay.
 isSupported().then((supported) => {
-  if (supported) getAnalytics(app);
+  if (supported && analyticsAllowed()) getAnalytics(app);
 });

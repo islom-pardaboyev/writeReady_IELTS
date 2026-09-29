@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { addDoc, collection, getDocs } from "firebase/firestore";
 import { ExternalLink, Newspaper, Plus, Sparkles, Trash2 } from "lucide-react";
 import { adminDb as db } from "@/firebase/adminConfig";
-import { deleteBlogPost, getBlogPostById, getBlogPosts, saveBlogPost, updateBlogPost } from "@/firebase/blog";
+import { countComments, deleteBlogPost, getBlogPostById, getBlogPosts, saveBlogPost, updateBlogPost } from "@/firebase/blog";
 import type { BlogPost } from "@/types/blog";
 import { useConfirm } from "@/hooks/useConfirm";
 import { Button } from "@/components/ui/Button";
@@ -61,6 +61,9 @@ export function BlogSection({ intent, clearIntent }: SectionProps) {
   const [aiLoading, setAiLoading] = useState(false);
   const [notice, setNotice] = useState<{ tone: "success" | "error"; text: string } | null>(null);
   const [loadError, setLoadError] = useState(false);
+  // Students can no longer write the post's commentCount (firestore.rules), so
+  // the number shown here is counted from the comments themselves.
+  const [commentTotal, setCommentTotal] = useState<number | null>(null);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -87,6 +90,7 @@ export function BlogSection({ intent, clearIntent }: SectionProps) {
     setSelectedId(id);
     setNotice(null);
     setAiTopic("");
+    setCommentTotal(null);
     if (id === null) { setEditor(null); setOriginal(""); return; }
     if (id === "new") {
       const p = blankPost();
@@ -100,6 +104,7 @@ export function BlogSection({ intent, clearIntent }: SectionProps) {
       const full = await getBlogPostById(id, db);
       setEditor(full);
       setOriginal(JSON.stringify(full));
+      countComments(id, db).then(setCommentTotal).catch(() => {});
     } catch (e) {
       console.error(e);
       setNotice({ tone: "error", text: "Could not open this post. Try again." });
@@ -305,7 +310,7 @@ export function BlogSection({ intent, clearIntent }: SectionProps) {
           badges={<Badge variant={st.variant}>{st.label}</Badge>}
           meta={
             isNew ? "Draft posts stay hidden until you set the status to Published." :
-            `${editor.viewCount ?? 0} views, ${editor.likeCount ?? 0} likes, ${editor.commentCount ?? 0} comments`
+            `${editor.viewCount ?? 0} views, ${editor.likeCount ?? 0} likes, ${commentTotal ?? editor.commentCount ?? 0} comments`
           }
           actions={
             !isNew && (

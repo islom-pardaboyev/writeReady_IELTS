@@ -44,6 +44,7 @@ import { answerTextStyle, useWritingSettings } from "@/lib/writingSettings";
 import { isPdfSrc as isPdf } from "@/lib/loadImageForPdf";
 import { compressChartFile, LINK_CHART_MAX_BYTES } from "@/lib/task1Chart";
 import { hasAccess } from "@/lib/reportAccess";
+import { allowFeedbackStart } from "@/lib/feedbackIntent";
 
 function Relax() {
   const navigate = useNavigate();
@@ -225,6 +226,7 @@ function Relax() {
             });
       // The essay goes with the report from here, and is saved there.
       draft.clear();
+      allowFeedbackStart(encoded);
       navigate(`/feedback/${encoded}`);
     } catch (err) {
       console.error(err);

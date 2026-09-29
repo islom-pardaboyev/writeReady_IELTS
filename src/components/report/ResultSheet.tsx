@@ -1,5 +1,5 @@
 import { useEffect, useState, type ReactNode } from 'react';
-import { TrendingUp } from 'lucide-react';
+import { Info, TrendingUp } from 'lucide-react';
 import { Meter } from '../profile/parts';
 
 // The top of the feedback report, laid out like an examiner's result sheet:
@@ -80,7 +80,14 @@ export function ResultSheet({
             </span>
           </p>
           <p className="mt-3 text-sm font-semibold text-[var(--text-primary)]">{descriptor}</p>
-          <p className="mt-1 text-xs leading-relaxed text-[var(--text-secondary)]">An AI estimate. Your real band can be half a band higher or lower.</p>
+          {/* Said in plain words, in a box of its own, right under the number: a student who reads only the band must still see it. */}
+          <div role="note" className="mt-3 flex items-start gap-2 rounded-lg border border-[var(--border-color)] bg-[var(--bg-card)] px-3 py-2.5">
+            <Info className="mt-0.5 size-4 shrink-0 text-[var(--text-secondary)]" aria-hidden="true" />
+            <p className="m-0 text-xs leading-relaxed text-[var(--text-secondary)]">
+              <strong className="font-semibold text-[var(--text-primary)]">This score may not be 100% accurate.</strong>{' '}
+              It is an AI estimate, so your real band can be half a band higher or lower.
+            </p>
+          </div>
           <p className="mt-3 text-xs text-[var(--text-secondary)]">
             <span className="font-mono tabular-nums">{words}</span> words
           </p>

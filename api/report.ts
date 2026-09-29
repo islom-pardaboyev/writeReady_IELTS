@@ -118,7 +118,11 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       return res.status(429).json({ error: `You have sent ${DAILY_REPORT_LIMIT} reports today. Thank you — please try again tomorrow.` });
     }
   } catch (e) {
-    console.error('report: rate-limit check failed, letting it through:', e);
+    // Not let through: the counter is one document per account or address, so a
+    // burst of parallel requests makes it fail, and letting those pass would
+    // turn the burst into unlimited messages to the admin's Telegram.
+    console.error('report: rate-limit check failed:', e);
+    return res.status(503).json({ error: 'We could not take your report just now. Please try again in a minute.' });
   }
 
   // Who is this, in a form that is useful in a Telegram notification?

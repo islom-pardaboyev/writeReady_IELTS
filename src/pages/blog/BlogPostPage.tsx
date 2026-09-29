@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useParams, Link } from 'react-router';
 import { Layout } from '../../components/layout/Layout';
 import { getBlogPost, getBlogPosts, togglePostLike, isPostLiked } from '../../firebase/blog';
@@ -9,6 +9,7 @@ import { Button } from '../../components/ui/Button';
 import { Badge } from '../../components/ui/badge';
 import { Card, CardContent } from '../../components/ui/Card';
 import { LogoLoader } from '../../components/ui/LogoLoader';
+import { sanitizeHtml } from '../../lib/sanitizeHtml';
 
 function renderMarkdown(content: string) {
   const blocks = content.split(/\n\n+/);
@@ -52,6 +53,9 @@ export function BlogPostPage() {
   const [liked, setLiked] = useState(false);
   const [likeCount, setLikeCount] = useState(0);
   const [likeLoading, setLikeLoading] = useState(false);
+  // A post is stored as HTML. It is cleaned before it goes on the page, so a
+  // script or handler that got into a stored post never runs for a reader.
+  const safeContent = useMemo(() => (post ? sanitizeHtml(post.content) : ''), [post]);
 
   useEffect(() => {
     if (!slug) return;
@@ -129,17 +133,18 @@ export function BlogPostPage() {
 
   // Support both HTML (new posts) and legacy markdown
   const isHtml = post.content.trimStart().startsWith('<');
-  const renderContent = (html: string) => (
+  // Only ever given `safeContent`: the one place stored HTML is inserted as HTML.
+  const renderContent = (safeHtml: string) => (
     <div
       // The same .article rules as the editor (src/index.css), in both themes.
       className="article"
-      dangerouslySetInnerHTML={{ __html: html }}
+      dangerouslySetInnerHTML={{ __html: safeHtml }}
     />
   );
 
   const paragraphs = isHtml ? [] : post.content.split(/\n\n+/).filter((b) => b.trim());
   const ctaIndex = Math.floor((isHtml ? 1 : paragraphs.length) * 0.4);
-  const beforeCTA = isHtml ? post.content : paragraphs.slice(0, ctaIndex).join('\n\n');
+  const beforeCTA = isHtml ? safeContent : paragraphs.slice(0, ctaIndex).join('\n\n');
   const afterCTA = isHtml ? '' : paragraphs.slice(ctaIndex).join('\n\n');
 
   return (

@@ -1,6 +1,7 @@
 import { Link, useNavigate } from "react-router";
 import { signInWithCustomToken } from "firebase/auth";
 import { adminAuth } from "@/firebase/adminConfig";
+import { auth } from "@/firebase/config";
 import { StaffLogin } from "@/components/staff/StaffLogin";
 
 export function AdminLogin({ onLogin }: { onLogin: (user: string) => void }) {
@@ -8,9 +9,15 @@ export function AdminLogin({ onLogin }: { onLogin: (user: string) => void }) {
 
   const submit = async (login: string, password: string): Promise<string | null> => {
     try {
+      // The server wants the owner's own signed-in session with the password
+      // (api/staff-login.ts): this page only opens for that account anyway.
+      const ownerToken = await auth.currentUser?.getIdToken().catch(() => null);
       const res = await fetch("/api/staff-login", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          ...(ownerToken ? { Authorization: `Bearer ${ownerToken}` } : {}),
+        },
         body: JSON.stringify({ login, password }),
       });
       const data = await res.json().catch(() => ({}));

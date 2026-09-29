@@ -7,6 +7,7 @@ import { ensureWebhook, handleUpdate, MISTAKES_INSTRUCTION, type BotDeps, type M
 import { webhookSecret } from '../telegramApi.js';
 import { saveBotReport } from '../botSave.js';
 import { startMarking } from '../../feedback.js';
+import { cronAllowed } from '../cronAuth.js';
 
 /**
  * The student Telegram bot's webhook. Telegram posts every message and button
@@ -63,8 +64,11 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     return res.status(500).end();
   }
 
-  // Opening this address in a browser connects the bot to it (ensureWebhook).
+  // Connects the bot to this address (ensureWebhook). Needs the CRON_SECRET, so
+  // a stranger cannot make the server call Telegram over and over:
+  //   curl -H "Authorization: Bearer $CRON_SECRET" "https://www.writeready.uz/api/telegram?force=1"
   if (req.method === 'GET') {
+    if (!cronAllowed(req)) return res.status(401).json({ connected: false, error: 'Unauthorized' });
     try {
       const status = await ensureWebhook(token, { force: req.query?.force === '1' });
       return res.status(200).json({ connected: true, ...status });

@@ -3,7 +3,8 @@ import { getFirestore, FieldValue, Timestamp } from 'firebase-admin/firestore';
 import { getApps } from 'firebase-admin/app';
 import { createHmac, timingSafeEqual } from 'crypto';
 import Anthropic from '@anthropic-ai/sdk';
-import { initFirebase, currentMonthKey, currentWeekKey, getUid } from './_lib/shared.js';
+import { initFirebase, currentDayKey, currentMonthKey, currentWeekKey, getUid } from './_lib/shared.js';
+import { MAX_SENTENCES, countSentences, nextRefundUsage } from './_lib/essayGuard.js';
 import { CRITERIA, extractJson, normalizeScores, type BandScores, type Criterion } from './_lib/bandScore.js';
 import {
   LIMITS, SIGNATURE_VERSION, essayKeys, essaySignature, findSimilarReport, loadSavedReport, loadScoreLock,
@@ -101,7 +102,12 @@ async function spendToken(sig: string, uid: string): Promise<boolean> {
 
 // Reverse the credit that pre-check deducted, so a failed/truncated report
 // never costs the user a report from their monthly/weekly/bonus allowance.
-async function refundCredit(uid: string, source: CreditSource): Promise<void> {
+//
+// `aiRan` is true once the AI was asked to write: its text has already gone to
+// the browser, so a script could ask, be refunded and ask again for free. Those
+// refunds come out of a small daily budget (api/_lib/essayGuard.ts). A refund
+// for a problem found before the AI was asked costs nothing and is not counted.
+async function refundCredit(uid: string, source: CreditSource, { aiRan = false } = {}): Promise<void> {
   try {
     initFirebase();
     if (!getApps().length) return;
@@ -111,24 +117,34 @@ async function refundCredit(uid: string, source: CreditSource): Promise<void> {
       const snap = await tx.get(userRef);
       if (!snap.exists) return;
       const data = snap.data()!;
+      let budget: { dayKey: string; count: number } | undefined;
+      if (aiRan) {
+        const next = nextRefundUsage(data.aiRefunds, currentDayKey());
+        if (!next) {
+          console.warn(`feedback: ${uid} used up today's refunds for reports the AI had started; this one stays charged`);
+          return;
+        }
+        budget = next;
+      }
+      const counted = (fields: Record<string, unknown>) => ({ ...fields, ...(budget ? { aiRefunds: budget } : {}) });
       // The token says exactly which allowance was charged, so put it back there.
       if (source === 'bonus') {
         const bonus = typeof data.bonusAnalyses === 'number' ? data.bonusAnalyses : 0;
-        tx.set(userRef, { bonusAnalyses: bonus + 1 }, { merge: true });
+        tx.set(userRef, counted({ bonusAnalyses: bonus + 1 }), { merge: true });
         return;
       }
       if (source === 'free') {
         const weekKey = currentWeekKey();
         const freeUsage = data.freeUsage;
         if (freeUsage?.weekKey === weekKey && typeof freeUsage.count === 'number' && freeUsage.count > 0) {
-          tx.set(userRef, { freeUsage: { weekKey, count: freeUsage.count - 1 } }, { merge: true });
+          tx.set(userRef, counted({ freeUsage: { weekKey, count: freeUsage.count - 1 } }), { merge: true });
         }
         return;
       }
       const monthKey = currentMonthKey();
       const usage = data.usage ?? {};
       if (usage.monthKey === monthKey && typeof usage.count === 'number' && usage.count > 0) {
-        tx.set(userRef, { usage: { monthKey, count: usage.count - 1 } }, { merge: true });
+        tx.set(userRef, counted({ usage: { monthKey, count: usage.count - 1 } }), { merge: true });
       }
     });
   } catch { /* best-effort refund; never throw from here */ }
@@ -192,6 +208,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   const wordCount = essayText.trim().split(/\s+/).filter(Boolean).length;
   if (wordCount > LIMITS.essayWords || essayText.length > LIMITS.essayChars) {
     return reject(413, `Your essay is ${wordCount} words. The checker accepts up to ${LIMITS.essayWords} words (IELTS answers are usually 150–400). You were not charged.`);
+  }
+  const sentenceCount = countSentences(essayText);
+  if (sentenceCount > MAX_SENTENCES) {
+    return reject(413, `Your essay has ${sentenceCount} sentences. The checker accepts up to ${MAX_SENTENCES}. You were not charged.`);
   }
   if (questionText.length > LIMITS.questionChars) {
     return reject(413, 'The question is too long to mark. You were not charged.');
@@ -342,7 +362,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     try { stopReason = (await stream.finalMessage()).stop_reason; } catch { /* ignore */ }
     const report = stopReason === 'max_tokens' ? null : readReport(raw);
     if (!report) {
-      await refundCredit(uid, source);
+      // The AI wrote it and the browser has the text, so this refund is counted.
+      await refundCredit(uid, source, { aiRan: true });
       return;
     }
 
@@ -355,7 +376,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     // admin, but never expose the raw provider message — it can leak billing
     // details. The credit was deducted in pre-check, so refund it here.
     console.error('feedback error:', err);
-    await refundCredit(uid, source);
+    // Counted once the AI had written something: that text was already sent.
+    await refundCredit(uid, source, { aiRan: raw.length > 0 });
     if (!res.headersSent) {
       return res.status(503).json({ error: 'AI feedback is temporarily unavailable right now — you were not charged. Please try again shortly, or contact @writeready_admin on Telegram if it keeps happening.' });
     }

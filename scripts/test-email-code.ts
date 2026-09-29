@@ -258,8 +258,13 @@ check('a password sign-in with an unconfirmed email is kept out', mustConfirmEma
 check('a password sign-in with a confirmed email gets in', !mustConfirmEmail('password', 'ali@gmail.com', true));
 check('a Google sign-in gets in', !mustConfirmEmail('google.com', 'ali@gmail.com', false));
 check('a code sign-in gets in', !mustConfirmEmail('custom', 'ali@gmail.com', true));
-check('a learning-centre student gets in', !mustConfirmEmail('password', 'ali@writeready.student', false));
-check('staff get in', !mustConfirmEmail('password', 'Admin@WriteReady.internal', false));
+// No exception for made-up addresses: anyone can register `x@writeready.student`
+// through Firebase's public sign-up address. Centre students are made with the
+// email already confirmed (api/center-student.ts), so they pass like anyone else.
+check('a centre student with a confirmed email gets in', !mustConfirmEmail('password', 'ali@writeready.student', true));
+check('a self-registered student address is kept out', mustConfirmEmail('password', 'ali@writeready.student', false));
+check('a self-registered staff address is kept out', mustConfirmEmail('password', 'Admin@WriteReady.internal', false));
+check('staff, who sign in with a custom token, get in', !mustConfirmEmail('custom', 'admin@writeready.internal', false));
 
 console.log(failures ? `\n${failures} check(s) failed` : '\nall checks passed');
 process.exit(failures ? 1 : 0);

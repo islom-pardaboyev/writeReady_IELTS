@@ -152,6 +152,10 @@ export function PrivacyPolicyPage() {
             <td>Writes the AI feedback on the essay you submit, and answers your messages in the chat bubble.</td>
           </tr>
           <tr>
+            <td>A spelling-check service</td>
+            <td>Receives the text of your essay, and nothing else, only when you press the spelling button on the Spelling tab of your report.</td>
+          </tr>
+          <tr>
             <td>A website hosting provider</td>
             <td>Hosts the site and keeps short server logs, which include IP addresses.</td>
           </tr>

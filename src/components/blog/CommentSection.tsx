@@ -20,6 +20,15 @@ function relativeTime(d: Date | null): string {
   return new Intl.DateTimeFormat(undefined, { day: 'numeric', month: 'short' }).format(d);
 }
 
+/**
+ * Only a Google profile picture goes on a comment (firestore.rules refuses any
+ * other address), so a comment cannot point readers' browsers at a page of its
+ * author's choosing. Anything else is left out, and the initials show instead.
+ */
+function safeAvatar(url: string | null | undefined): string {
+  return url && url.length <= 300 && /^https:\/\/lh[0-9]+\.googleusercontent\.com\//.test(url) ? url : '';
+}
+
 function initials(name: string): string {
   return name.split(' ').map((n) => n[0]).join('').toUpperCase().slice(0, 2);
 }
@@ -48,8 +57,8 @@ export function CommentSection({ postId }: Props) {
     const optimistic: BlogComment = {
       id: `temp-${Date.now()}`,
       userId: user.uid,
-      displayName: user.displayName || user.email?.split('@')[0] || 'User',
-      photoURL: user.photoURL || '',
+      displayName: (user.displayName || user.email?.split('@')[0] || 'User').slice(0, 60),
+      photoURL: safeAvatar(user.photoURL),
       text: text.trim(),
       createdAt: new Date(),
       likeCount: 0,
@@ -73,8 +82,15 @@ export function CommentSection({ postId }: Props) {
   };
 
   const handleCommentLike = async (comment: BlogComment) => {
-    if (!user) return;
-    const newCount = await toggleCommentLike(postId, comment.id, user.uid);
+    // A comment that is still being posted has no record to like yet.
+    if (!user || comment.id.startsWith('temp-')) return;
+    let newCount: number;
+    try {
+      newCount = await toggleCommentLike(postId, comment.id, user.uid);
+    } catch (e) {
+      console.error(e);
+      return;
+    }
     setComments((prev) =>
       prev.map((c) => (c.id === comment.id ? { ...c, likeCount: newCount } : c)),
     );
@@ -86,7 +102,7 @@ export function CommentSection({ postId }: Props) {
       comment.id,
       comment.userId,
       user.uid,
-      user.displayName || user.email?.split('@')[0] || 'User',
+      (user.displayName || user.email?.split('@')[0] || 'User').slice(0, 60),
       comment.text.slice(0, 60),
     ).catch(() => {});
   };
@@ -137,7 +153,7 @@ export function CommentSection({ postId }: Props) {
             <div key={c.id} className="flex gap-3">
               <div className="shrink-0">
                 <Avatar className="w-9 h-9">
-                  {c.photoURL ? <AvatarImage src={c.photoURL} alt={c.displayName} /> : null}
+                  {safeAvatar(c.photoURL) ? <AvatarImage src={safeAvatar(c.photoURL)} alt={c.displayName} /> : null}
                   <AvatarFallback className="text-xs">{initials(c.displayName)}</AvatarFallback>
                 </Avatar>
               </div>

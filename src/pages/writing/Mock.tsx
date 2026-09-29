@@ -43,6 +43,7 @@ import { TeacherPickerModal } from "@/components/ui/TeacherPickerModal";
 import { ModalCard, ModalTitle, ModalDescription } from "@/components/ui/ModalCard";
 import { HumanCheckConfirmModal } from "@/components/ui/HumanCheckConfirmModal";
 import { hasAccess } from "@/lib/reportAccess";
+import { allowFeedbackStart } from "@/lib/feedbackIntent";
 import { ModeBrand } from "@/components/writing/ModeBrand";
 import { PromptSource } from "@/components/writing/PromptSource";
 
@@ -292,6 +293,7 @@ function Mock() {
       const encoded = encodeReport({ task1, task2, userText1, userText2 });
       // The essay goes with the report from here, and is saved there.
       draft.clear();
+      allowFeedbackStart(encoded);
       navigate(`/feedback/${encoded}`);
     } catch (err) {
       console.error("Failed to verify account/subscription status:", err);

@@ -1,15 +1,14 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { getFirestore, Timestamp } from 'firebase-admin/firestore';
-import { getAuth } from 'firebase-admin/auth';
-import { initFirebase } from './_lib/shared.js';
+import { initFirebase, readStaffToken, isAdminToken } from './_lib/shared.js';
 
 // Site-wide maintenance flag, stored on the same `config/featureFlags` doc
 // the client already reads for other flags. Reads go through this endpoint
 // (via the Admin SDK) rather than the Firestore client SDK, so an anonymous
 // visitor can check maintenance status without needing a Firestore rule that
 // opens that doc to public reads. Writes require a Firebase ID token for the
-// fixed admin account minted in api/staff-login.ts.
-const ADMIN_EMAIL = 'admin@writeready.internal';
+// fixed admin account minted in api/staff-login.ts (isAdminToken checks both
+// the email and that the token is a staff custom token).
 
 const UNITS = ['hours', 'days', 'months'] as const;
 type Unit = (typeof UNITS)[number];
@@ -100,17 +99,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   }
 
   if (req.method === 'POST') {
-    const authHeader = req.headers.authorization ?? '';
-    const token = authHeader.startsWith('Bearer ') ? authHeader.slice(7) : null;
-    if (!token) return res.status(401).json({ error: 'Missing token.' });
-
-    let email: string | undefined;
-    try {
-      email = (await getAuth().verifyIdToken(token)).email;
-    } catch {
-      return res.status(401).json({ error: 'Invalid or expired token.' });
-    }
-    if (email !== ADMIN_EMAIL) return res.status(403).json({ error: 'Admin only.' });
+    const staff = await readStaffToken(req);
+    if (!staff) return res.status(401).json({ error: 'Missing or expired token.' });
+    if (!isAdminToken(staff)) return res.status(403).json({ error: 'Admin only.' });
 
     const current = (await flagRef.get()).data() as StoredFlags | undefined;
     const plan = planMaintenanceUpdate(req.body, current, new Date());

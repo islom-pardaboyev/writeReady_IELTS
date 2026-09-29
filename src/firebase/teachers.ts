@@ -252,7 +252,10 @@ export async function createHumanReview(
     if (input.task1 !== undefined) payload.task1 = input.task1;
     if (input.task2 !== undefined) payload.task2 = input.task2;
 
-    tx.update(userRef, { balanceUZS: balance - priceUZS });
+    // lastReviewId ties this payment to this one review: firestore.rules only
+    // creates the review whose id the payment names, so one payment cannot be
+    // made to cover several reviews in one batch.
+    tx.update(userRef, { balanceUZS: balance - priceUZS, lastReviewId: reviewRef.id });
     tx.set(reviewRef, payload);
   });
 

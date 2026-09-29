@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { addDoc, collection, deleteDoc, doc, getDocs, query, serverTimestamp, setDoc, updateDoc, where, writeBatch } from "firebase/firestore";
 import { Building2, Eye, EyeOff, Pencil, Plus, RefreshCw, Trash2, UserPlus } from "lucide-react";
 import { adminDb as db } from "@/firebase/adminConfig";
-import { createStudentAuthAccount, deleteStudentAuthAccount } from "@/firebase/createStudentAccount";
+import { deleteStudentAuthAccount } from "@/firebase/createStudentAccount";
 import { useConfirm } from "@/hooks/useConfirm";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/Button";
@@ -13,7 +13,7 @@ import { ListDetail, ListPane, RowList, ListRow, DetailView, DetailHeader, Detai
 import { EmptyState, Field, FilterChips, Initials, LoadError, Notice, RowSkeletons, SearchField } from "@/components/staff/parts";
 import { daysUntil, formatDate, inDays, uzs } from "./format";
 import { PLAN_INFO } from "@/lib/plans";
-import { removeCenterStudent, updateCenterStudent } from "@/lib/centerStudent";
+import { createCenterStudentAccount, removeCenterStudent, updateCenterStudent } from "@/lib/centerStudent";
 import {
   CENTER_PLAN_IDS,
   DEFAULT_CENTER_PLAN,
@@ -331,17 +331,13 @@ export function CentersSection({ intent, clearIntent }: SectionProps) {
       const existing = await getDocs(query(collection(db, "learningCenters", c.id, "students"), where("login", "==", loginKey)));
       if (!existing.empty) { setStudentError("That login is already used in this center."); setAdding(false); return; }
 
-      // Create the student's Firebase Auth account so they can actually sign in.
+      // The server makes the student's sign-in account, with its email already
+      // confirmed (api/center-student.ts), so they can actually sign in.
       const fakeEmail = `${loginKey}@writeready.student`;
-      let uid: string;
-      try {
-        uid = await createStudentAuthAccount(fakeEmail, newPassword.trim());
-      } catch (err) {
-        const code = (err as { code?: string })?.code;
-        setStudentError(code === "auth/email-already-in-use" ? "That login is already taken. Choose another." : "Could not create the student account. Try again.");
-        setAdding(false);
-        return;
-      }
+      const made = await createCenterStudentAccount(c.id, loginKey, newPassword.trim());
+      if (!made.ok) { setStudentError(made.error); setAdding(false); return; }
+      if (!made.uid) { setStudentError("Could not create the student account. Try again."); setAdding(false); return; }
+      const uid = made.uid;
 
       try {
         await setDoc(doc(db, "users", uid), {

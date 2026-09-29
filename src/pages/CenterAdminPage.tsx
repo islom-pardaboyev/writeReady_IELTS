@@ -3,7 +3,7 @@ import { collection, doc, getDoc, getDocs, query, serverTimestamp, setDoc, where
 import { onAuthStateChanged, signInWithCustomToken, signOut as fbSignOut } from "firebase/auth";
 import { ChartColumn, LayoutDashboard, Plus, RefreshCw, Trash2, UserPlus, Users } from "lucide-react";
 import { adminDb as db, adminAuth } from "@/firebase/adminConfig";
-import { createStudentAuthAccount, deleteStudentAuthAccount } from "@/firebase/createStudentAccount";
+import { deleteStudentAuthAccount } from "@/firebase/createStudentAccount";
 import { useConfirm } from "@/hooks/useConfirm";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/Button";
@@ -17,7 +17,7 @@ import { EmptyState, Field, Initials, LoadError, Notice, PageHeading, Panel, Row
 import { daysUntil, formatDate, inDays, timeAgo } from "@/pages/writing/admin/format";
 import { PLAN_INFO } from "@/lib/plans";
 import { centerPlanOf, type CenterPlanId } from "@/lib/centerPricing";
-import { removeCenterStudent, updateCenterStudent } from "@/lib/centerStudent";
+import { createCenterStudentAccount, removeCenterStudent, updateCenterStudent } from "@/lib/centerStudent";
 import { reportBand } from "@shared/bandScore";
 
 interface CenterData {
@@ -284,17 +284,13 @@ export default function CenterAdminPage() {
       const existing = await getDocs(query(collection(db, "learningCenters", centerId, "students"), where("login", "==", loginKey)));
       if (!existing.empty) { setAddError("That login is already used by one of your students."); setAdding(false); return; }
 
-      // Create the student's Firebase Auth account so they can actually sign in.
+      // The server makes the student's sign-in account, with its email already
+      // confirmed (api/center-student.ts), so they can actually sign in.
       const fakeEmail = `${loginKey}@writeready.student`;
-      let uid: string;
-      try {
-        uid = await createStudentAuthAccount(fakeEmail, newPass.trim());
-      } catch (err) {
-        const code = (err as { code?: string })?.code;
-        setAddError(code === "auth/email-already-in-use" ? "That login is already taken. Choose another." : "Could not create the student account. Try again.");
-        setAdding(false);
-        return;
-      }
+      const made = await createCenterStudentAccount(centerId, loginKey, newPass.trim());
+      if (!made.ok) { setAddError(made.error); setAdding(false); return; }
+      if (!made.uid) { setAddError("Could not create the student account. Try again."); setAdding(false); return; }
+      const uid = made.uid;
 
       // The profile must repeat exactly what the center's own record says:
       // firestore.rules compares the two, and a plan WriteReady changed after

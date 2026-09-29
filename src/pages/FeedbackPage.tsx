@@ -9,6 +9,7 @@ import { useAuth } from '../hooks/useAuth';
 import { AppShell } from '../components/layout/AppShell';
 import { Button } from '../components/ui/Button';
 import { decodeReport } from '../lib/reportEncoding';
+import { mayStartFeedback } from '../lib/feedbackIntent';
 import type { ReportData } from '../lib/reportEncoding';
 import { getFeedbackReportHistory } from '../firebase/firestore';
 import { db } from '../firebase/config';
@@ -227,6 +228,46 @@ function FreeTaskGate({
         </Link>
         <Link to="/dashboard">
           <Button variant="secondary">Back to dashboard</Button>
+        </Link>
+      </div>
+    </div>
+  );
+}
+
+/**
+ * Shown when a report link was not made by this tab's own writing page (see
+ * src/lib/feedbackIntent.ts). The address carries the whole essay, so anyone can
+ * make a link with any essay in it, and opening it must not spend the student's
+ * report by itself. It shows what is in the link and waits for a button.
+ */
+function StartGate({
+  taskName, question, essay, words, onStart,
+}: {
+  taskName: string;
+  question: string;
+  essay: string;
+  words: number;
+  onStart: () => void;
+}) {
+  return (
+    <div className="rounded-2xl border border-[var(--border-color)] bg-[var(--bg-card)] p-6 sm:p-8 shadow-sm">
+      <span className="flex items-center justify-center w-11 h-11 rounded-2xl bg-[var(--ink-blue)]/10 mb-4">
+        <Sparkles className="w-5 h-5 text-[var(--ink-blue)]" />
+      </span>
+      <h2 className="text-xl font-bold text-[var(--text-primary)]">Get AI feedback on this essay?</h2>
+      <p className="mt-2 max-w-prose text-base leading-relaxed text-[var(--text-secondary)]">
+        You opened this report from a link, so nothing has been marked yet. Marking uses{' '}
+        <strong className="text-[var(--text-primary)]">one report</strong> from your plan. Check that the essay below is yours first.
+      </p>
+      <div className="mt-4 rounded-xl bg-[var(--bg-subtle)] p-4 text-sm">
+        <p className="m-0 font-semibold text-[var(--text-primary)]">{taskName} · {words} words</p>
+        {question && <p className="mt-2 mb-0 line-clamp-2 text-[var(--text-secondary)]">{question}</p>}
+        <p className="mt-2 mb-0 line-clamp-4 whitespace-pre-line break-words text-[var(--text-primary)]">{essay}</p>
+      </div>
+      <div className="mt-6 flex flex-wrap gap-3">
+        <Button onClick={onStart}>Get AI feedback</Button>
+        <Link to="/dashboard">
+          <Button variant="secondary">Not now</Button>
         </Link>
       </div>
     </div>
@@ -919,6 +960,10 @@ export function FeedbackPage() {
   // report reopen on another device, and lets a free student who has used
   // this week's report still see the one they got.
   const [savedChecked, setSavedChecked] = useState(false);
+  // A report link this tab's writing page did not just open starts only after
+  // the student presses the button (StartGate).
+  const [startConfirmed, setStartConfirmed] = useState(false);
+  const startOk = mayStartFeedback(id) || startConfirmed;
   useEffect(() => {
     if (!reportData || !user || savedChecked) return;
     let cancelled = false;
@@ -956,11 +1001,11 @@ export function FeedbackPage() {
 
   // Auto-load feedback when ready (per task)
   useEffect(() => {
-    if (reportData && user && savedChecked && canGetFeedback && !mustChooseTask && !feedback && !loading && !feedbackError) {
+    if (reportData && user && savedChecked && canGetFeedback && !mustChooseTask && startOk && !feedback && !loading && !feedbackError) {
       loadFeedback();
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [reportData, user, savedChecked, canGetFeedback, mustChooseTask, selectedTask]);
+  }, [reportData, user, savedChecked, canGetFeedback, mustChooseTask, startOk, selectedTask]);
 
   const runSpellCheck = async (text: string) => {
     if (!text.trim()) return;
@@ -1273,6 +1318,17 @@ export function FeedbackPage() {
               <LogoLoader size={40} />
               <span className="text-sm">Opening your report…</span>
             </div>
+          )}
+
+          {/* ── A link from outside this writing session: the student starts it ── */}
+          {savedChecked && canGetFeedback && !mustChooseTask && !startOk && !feedback && !loading && !feedbackError && (
+            <StartGate
+              taskName={taskName}
+              question={(selectedTask === 'task1' ? reportData?.task1?.report : reportData?.task2?.report) ?? ''}
+              essay={essayForTask}
+              words={essayWords}
+              onStart={() => setStartConfirmed(true)}
+            />
           )}
 
           {/* ── Free plan: one report a week, two essays in this exam ── */}

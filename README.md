@@ -63,10 +63,14 @@ Set in Vercel (Production and Preview) and in a local `.env` file, which is neve
 | `FIREBASE_PROJECT_ID`, `FIREBASE_CLIENT_EMAIL`, `FIREBASE_PRIVATE_KEY` | Firebase Admin SDK in `api/` |
 | `ANTHROPIC_API_KEY` | Essay reports, practice checks and the help chat |
 | `NONCE_SECRET` | Signs report tokens. Required: the API refuses to run without it |
-| `ADMIN_LOGIN`, `ADMIN_PASSWORD` | Admin panel sign-in |
+| `ADMIN_LOGIN`, `ADMIN_PASSWORD` | Admin panel sign-in. Use a long random password (20+ characters) |
+| `OWNER_EMAIL` | Optional. The site owner's own account, which must also be signed in on the main site to open the admin panel. Defaults to the owner's address in `api/staff-login.ts` |
+| `CRON_SECRET` | **Required in production (Production environment).** Any long random string. Vercel's scheduler sends it with every cron call, and `api/bot-daily` and the Telegram webhook setup refuse a call without it. Without it the hourly bot job stops |
 | `TELEGRAM_TOKEN`, `CHAT_ID`, `TELEGRAM_TEACHERS_CHAT_ID` | Bug reports and teacher notifications |
+| `TELEGRAM_STUDENT_BOT_TOKEN`, `TELEGRAM_ADMIN_IDS` | The student Telegram bot, and who may use its `/admin` command |
+| `RESEND_API_KEY`, `RESEND_FROM` | Sign-in code emails |
 
-Never put a secret in a `VITE_` variable: those are built into the public JavaScript.
+Never put a secret in a `VITE_` variable: those are built into the public JavaScript. The admin login and password used to be copied into `VITE_LOGIN` and `VITE_PASSWORD`, which nothing reads any more. Delete them, in Vercel and in `.env`.
 
 ## Scripts
 
@@ -79,7 +83,44 @@ npm run lint    # oxlint
 
 ## Security notes
 
-- Staff (admin, centers, teachers) sign in through `api/staff-login.ts`, which checks passwords on the server and slows down repeated wrong guesses.
+- Staff (admin, centers, teachers) sign in through `api/staff-login.ts`, which checks passwords on the server and slows down repeated wrong guesses. The admin also needs the site owner's own signed-in session on the main site, so a stolen or guessed password is not enough on its own.
+- Every admin-only endpoint checks the email **and** that the token is a staff token (`isAdminToken` in `api/_lib/shared.ts`). Anyone can make an account with a staff email through Firebase's public sign-up address, but that account signs in with a `password` provider and never counts as staff.
 - Teacher logins are kept in `teacherAuth`, a collection no browser can read.
-- Changing or removing a center's student goes through `api/center-student.ts`, which updates the real sign-in account.
-- Each report token works once, so one paid credit buys exactly one report.
+- Creating, changing or removing a center's student goes through `api/center-student.ts`. It makes the sign-in account with the email already confirmed, and before it changes any account it checks that the profile belongs to the caller's center.
+- **No address is trusted by its ending.** A password account must have a confirmed email to use the site or the API (`api/_lib/emailGate.ts`, and `signedIn()` in `firestore.rules`). There is no exception for `@writeready.student`: anyone can register such an address for themselves.
+- Each report token works once, so one paid credit buys exactly one report. A report is refused before it is charged if it has more than 100 sentences, and only 5 refunds a day are given for reports the AI had already started writing (`api/_lib/essayGuard.ts`).
+- The daily limits on the help chat and on bug reports refuse the request when they cannot be checked, instead of letting it through.
+- Opening a `/feedback/...` link does not start a report by itself, unless that tab's own writing page just opened it (`src/lib/feedbackIntent.ts`). The link carries the whole essay, so anyone can make one.
+- Blog posts are stored as HTML and cleaned before they are shown (`src/lib/sanitizeHtml.ts`).
+- Analytics is off. `src/lib/consent.ts` says it must wait for consent, and the cookie notice promises no tracking.
+- Security headers are set in `vercel.json`. The full Content-Security-Policy is sent as **Report-Only** so it cannot break the site: browse every page, signed in and out, with the console open, fix or allow what it reports, then rename `Content-Security-Policy-Report-Only` to `Content-Security-Policy`.
+
+### Before deploying this change
+
+Do these in order:
+
+1. Add `CRON_SECRET` in Vercel (Production). Any long random string.
+2. Set a new `ADMIN_PASSWORD` (20+ random characters) in Vercel. Delete `VITE_LOGIN`, `VITE_PASSWORD` and `VITE_IMGBB_API` from Vercel and `.env`.
+3. Only if any center students exist by then: confirm their emails, once. It only touches accounts with a center profile, and does nothing without `--apply`:
+
+   ```bash
+   npx tsx scripts/verify-center-students.ts
+   npx tsx scripts/verify-center-students.ts --apply
+   ```
+
+   Without this step, center students made before this change are signed out and cannot get back in. When it was checked on 2026-09-29 there were none (0 center profiles, 0 `@writeready.student` accounts), so it changed nothing. Students made from now on are confirmed when they are created.
+4. Deploy.
+5. Publish `firestore.rules` in the Firebase console (Firestore > Rules). A browser that still holds the old site for a while will fail on likes and Human Check until it reloads.
+6. Connect the bot again only if you change its token:
+   `curl -H "Authorization: Bearer $CRON_SECRET" "https://www.writeready.uz/api/telegram?force=1"`
+
+## Checks that run offline
+
+```bash
+npx tsx scripts/test-security-fixes.ts    # sentence cap, refund budget, staff tokens, cron secret, links
+npx tsx scripts/test-email-code.ts        # email codes and the email gate
+npx tsx scripts/test-student-bot.ts       # the Telegram bot
+npx tsx scripts/test-score-store.ts       # saved reports and score-card verification
+```
+
+`scripts/test-email-code-auth.ts` needs the Firebase Auth emulator. Firestore rules have no local test yet: the emulator needs Java.

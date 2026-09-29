@@ -10,6 +10,7 @@ import { ThemeProvider } from '../contexts/ThemeContext';
 import { AuthContext } from '../contexts/authContextDef';
 import { FeedbackPage } from '../pages/FeedbackPage';
 import { encodeReport } from '../lib/reportEncoding';
+import { allowFeedbackStart } from '../lib/feedbackIntent';
 
 const realFetch = window.fetch.bind(window);
 window.fetch = (input, init) => {
@@ -109,6 +110,11 @@ const report = {
 };
 
 const id = encodeReport({ task2: { report: question }, task1: null, userText1: '', userText2: essay });
+// ?gate previews a report link that did NOT come from this tab's writing page: nothing is
+// marked yet and the page asks for a click (StartGate). Otherwise the harness plays the
+// student's own writing page, so the report starts by itself.
+const gate = new URLSearchParams(location.search).has('gate');
+if (!gate) allowFeedbackStart(id);
 // Newer reports say which grammar points are the student's own mistakes and
 // which are structures to add, each with the sentence it came from; the
 // Grammar tab groups them under "Mistakes to fix" and "Structures to add".
@@ -116,7 +122,7 @@ const GRAMMAR_SOURCE: ['mistake' | 'add', number][] = [['mistake', 10], ['mistak
 const grammar = report.grammar.map((g, i) => ({ ...g, kind: GRAMMAR_SOURCE[i][0], yours: S[GRAMMAR_SOURCE[i][1]] }));
 
 // ?free shows the report a free student gets: the bands only.
-sessionStorage.setItem(`feedback_${id}_task2`, JSON.stringify({ ...report, grammar, limited: new URLSearchParams(location.search).has('free') }));
+if (!gate) sessionStorage.setItem(`feedback_${id}_task2`, JSON.stringify({ ...report, grammar, limited: new URLSearchParams(location.search).has('free') }));
 localStorage.setItem('theme', new URLSearchParams(location.search).has('dark') ? 'dark' : 'light');
 
 const fakeUser = { uid: 'preview', email: 'preview@example.com', displayName: 'Preview', getIdToken: async () => 'preview' } as unknown as User;

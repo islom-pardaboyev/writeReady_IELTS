@@ -157,11 +157,23 @@ console.log('confirming an email, on the Auth emulator');
   check('and the API lets it in', (await asApi(t.token)) === again.user.uid);
 }
 
-// A learning-centre student's made-up address is never asked to confirm.
+// A learning-centre student is made on the server with the email already
+// confirmed (api/center-student.ts), so a made-up address gets in like anyone
+// else. The same kind of address registered through Firebase's public sign-up
+// address is unconfirmed, and there is no exception for it: anyone can register
+// `anything@writeready.student` for themselves.
+{
+  await admin.createUser({ email: 'ali@writeready.student', password: 'student1', emailVerified: true });
+  const b = await browser();
+  const s = await signInWithEmailAndPassword(b, 'ali@writeready.student', 'student1');
+  check('a centre student made by the server gets through the API', (await asApi(await s.user.getIdToken())) === s.user.uid);
+}
 {
   const b = await browser();
-  const s = await createUserWithEmailAndPassword(b, 'ali@writeready.student', 'student1');
-  check('a centre student gets through the API', (await asApi(await s.user.getIdToken())) === s.user.uid);
+  const s = await createUserWithEmailAndPassword(b, 'mallory@writeready.student', 'student1');
+  const t = await s.user.getIdTokenResult();
+  check('the site keeps a self-registered student address out', mustConfirmEmail(t.signInProvider, s.user.email, s.user.emailVerified));
+  check('and the API refuses it', await refused(asApi(t.token)));
 }
 
 console.log(failures ? `\n${failures} check(s) failed` : '\nall checks passed');

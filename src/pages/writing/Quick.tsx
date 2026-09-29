@@ -40,6 +40,7 @@ import { answerTextStyle, useWritingSettings } from "@/lib/writingSettings";
 import { ShuffleBag } from "@/lib/shuffleBag";
 import { useTask1ChartState } from "@/lib/task1Chart";
 import { hasAccess } from "@/lib/reportAccess";
+import { allowFeedbackStart } from "@/lib/feedbackIntent";
 
 interface Task1 {
   id: string;
@@ -213,6 +214,7 @@ function Quick() {
       );
       // The essay goes with the report from here, and is saved there.
       draft.clear();
+      allowFeedbackStart(encoded);
       navigate(`/feedback/${encoded}`);
     } catch (err) {
       console.error(err);

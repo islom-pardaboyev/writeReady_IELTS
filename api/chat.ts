@@ -19,6 +19,10 @@ const MAX_TOKENS = 1500;
 // be traced to an account, gets far more than a real chat needs.
 const MAX_MESSAGES = 20; // only the most recent ones are sent
 const MAX_MESSAGE_CHARS = 4000;
+// The whole history is sent, and billed, again with every message. Twenty
+// messages of 4,000 characters would be 80,000 characters of input for one
+// question, so older messages are dropped once the history passes this.
+const MAX_HISTORY_CHARS = 12000;
 const VISITOR_DAILY_LIMIT = 10; // messages per day for a visitor who is not signed in, per IP address
 const STUDENT_DAILY_LIMIT = 150; // messages per day for a signed-in account
 
@@ -33,13 +37,19 @@ async function signedInUid(req: VercelRequest): Promise<string | null> {
   }
 }
 
+type DailyLimit = 'ok' | 'limit' | 'error';
+
 /**
  * One counter per day: per account for a signed-in student, and per visitor
- * otherwise, keyed by a hash of their IP so no raw address is stored. Returns
- * false once the day's allowance is used. If the count cannot be checked the
- * message goes through: a broken counter must not break the assistant.
+ * otherwise, keyed by a hash of their IP so no raw address is stored. 'limit'
+ * once the day's allowance is used.
+ *
+ * If the count cannot be checked the answer is 'error' and no message is sent.
+ * This used to let the message through, but the counter is one document per
+ * visitor, so a burst of parallel requests makes its transactions fail, and
+ * failing open turned that burst into free messages on the site's API key.
  */
-async function withinDailyLimit(req: VercelRequest, uid: string | null): Promise<boolean> {
+async function checkDailyLimit(req: VercelRequest, uid: string | null): Promise<DailyLimit> {
   try {
     initFirebase();
     const ip = String(req.headers['x-real-ip'] ?? req.headers['x-forwarded-for'] ?? '').split(',')[0].trim();
@@ -50,16 +60,16 @@ async function withinDailyLimit(req: VercelRequest, uid: string | null): Promise
     const db = getFirestore();
     const ref = db.collection('chat_limits').doc(key);
     const dayKey = currentDayKey();
-    return await db.runTransaction(async (tx) => {
+    return await db.runTransaction(async (tx): Promise<DailyLimit> => {
       const d = (await tx.get(ref)).data() as { dayKey?: string; count?: number } | undefined;
       const used = d?.dayKey === dayKey ? (d.count ?? 0) : 0;
-      if (used >= limit) return false;
+      if (used >= limit) return 'limit';
       tx.set(ref, { dayKey, count: used + 1 });
-      return true;
+      return 'ok';
     });
   } catch (e) {
-    console.error('chat: could not check the daily limit, letting it through:', e);
-    return true;
+    console.error('chat: could not check the daily limit, so no message was sent:', e);
+    return 'error';
   }
 }
 
@@ -149,7 +159,7 @@ If a student asks this, explain: ChatGPT marks against whatever you paste in and
 - Essays must be written in English, because that is what the exam marks. Explanations and vocabulary come with Uzbek meanings.
 
 ## Privacy
-Essays go to an AI provider to produce the feedback and nothing else, and under the terms with that provider they are not used to train its models. A student can ask for their account to be deleted on Telegram.
+Essays go to an AI provider to produce the feedback, and under the terms with that provider they are not used to train its models. The one other place an essay can go is the Spelling tab: when a student presses the spelling button, the essay text is sent to a spelling-check service (LanguageTool). A student can ask for their account to be deleted on Telegram.
 
 ## Support, problems, wrong data
 If a student reports a bug, a band score that looks clearly wrong, a payment or billing problem, missing feedback, a plan that was not switched on, a balance that did not arrive, or anything you cannot answer from the information above, tell them to write to **@writeready_admin on Telegram** (https://t.me/writeready_admin). Do not guess the cause of a technical or payment problem, and never promise a refund, a plan change or a date. Just point them to @writeready_admin. There is also a feedback button inside the site for reporting a problem.
@@ -186,6 +196,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (!valid) {
     return res.status(400).json({ error: `Each message can be up to ${MAX_MESSAGE_CHARS} characters.` });
   }
+  // Keep the newest messages that fit; the latest question always stays.
+  let historyChars = recent.reduce((n: number, m: { content: string }) => n + m.content.length, 0);
+  while (recent.length > 1 && historyChars > MAX_HISTORY_CHARS) historyChars -= (recent.shift() as { content: string }).content.length;
+  while (recent.length > 1 && (recent[0] as { role?: unknown })?.role === 'assistant') recent.shift();
 
   const apiKey = process.env.ANTHROPIC_API_KEY;
   if (!apiKey) {
@@ -194,7 +208,11 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   }
 
   const uid = await signedInUid(req);
-  if (!(await withinDailyLimit(req, uid))) {
+  const daily = await checkDailyLimit(req, uid);
+  if (daily === 'error') {
+    return res.status(503).json({ error: 'The assistant is busy right now. Please try again in a minute.' });
+  }
+  if (daily === 'limit') {
     return res.status(429).json({
       error: uid
         ? "You've sent a lot of messages today. Please come back tomorrow, or write to @writeready_admin on Telegram."

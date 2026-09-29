@@ -1,6 +1,5 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
-import { getAuth } from 'firebase-admin/auth';
-import { initFirebase } from '../shared.js';
+import { initFirebase, readStaffToken, isAdminToken } from '../shared.js';
 import {
   BroadcastError, audience, readPhoto, readPost, recentBroadcasts, runBroadcast, sendTest, startBroadcast,
 } from '../broadcast.js';
@@ -10,7 +9,9 @@ import { listBotStudents } from '../studentBot.js';
  * The admin panel's Telegram bot section (src/pages/writing/admin/TelegramBotSection.tsx):
  * posts to every bot student (api/_lib/broadcast.ts). Admin only: the request
  * carries a Firebase ID token for the admin account minted in
- * api/staff-login.ts, checked the same way as api/maintenance.ts.
+ * api/staff-login.ts, checked the same way as api/maintenance.ts (the email
+ * and the staff token type, so an account made through Firebase's public
+ * sign-up address with the admin's email would not pass).
  *
  * POST { action }:
  *   overview  who a post would reach, and the recent posts
@@ -19,19 +20,13 @@ import { listBotStudents } from '../studentBot.js';
  *   continue  carry on a post that paused, streaming progress
  *   students  the bot's students, newest first ({ before } for the next page)
  */
-const ADMIN_EMAIL = 'admin@writeready.internal';
 /** How long one request sends before pausing; the function may run 300 s (vercel.json). */
 const RUN_MS = 240_000;
 
+/** null: no valid token. false: a valid token that is not the admin's. */
 async function isAdmin(req: VercelRequest): Promise<boolean | null> {
-  const header = req.headers.authorization ?? '';
-  const token = header.startsWith('Bearer ') ? header.slice(7) : '';
-  if (!token) return null;
-  try {
-    return (await getAuth().verifyIdToken(token)).email === ADMIN_EMAIL;
-  } catch {
-    return null;
-  }
+  const staff = await readStaffToken(req);
+  return staff === null ? null : isAdminToken(staff);
 }
 
 /**

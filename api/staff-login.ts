@@ -14,8 +14,17 @@ import { initFirebase } from './_lib/shared.js';
 // Teacher logins live in `teacherAuth`, which no browser can read. The public
 // `teachers` profiles are readable by every student, and logins used to be
 // stored there.
+//
+// The admin needs two things: the password, and the site owner's own signed-in
+// session on the main site (a verified Google or email-code login for
+// OWNER_EMAIL, sent as `Authorization: Bearer <ID token>`). A password that is
+// guessed, or that leaked, is not enough on its own. The /admin page only shows
+// its form to that session already; this makes the server ask for it too.
 
 const ADMIN_FB_EMAIL = 'admin@writeready.internal';
+// The site owner's own account on the main site. Same address as OWNER_EMAIL
+// in src/firebase/adminConfig.ts; OWNER_EMAIL in Vercel overrides it.
+const OWNER_EMAIL = (process.env.OWNER_EMAIL || 'ipardaboyev574@gmail.com').trim().toLowerCase();
 const CENTER_FB_PREFIX = 'center_';
 const TEACHER_FB_PREFIX = 'teacher_';
 
@@ -39,6 +48,19 @@ async function mintCustomTokenForEmail(email: string): Promise<string> {
     uid = (await auth.createUser({ email, password: randomBytes(32).toString('hex') })).uid;
   }
   return auth.createCustomToken(uid);
+}
+
+/** Whether the request carries the site owner's verified sign-in on the main site. */
+async function ownerSignedIn(req: VercelRequest): Promise<boolean> {
+  const header = req.headers.authorization ?? '';
+  const token = header.startsWith('Bearer ') ? header.slice(7) : '';
+  if (!token) return false;
+  try {
+    const d = await getAuth().verifyIdToken(token);
+    return d.email_verified === true && (d.email ?? '').toLowerCase() === OWNER_EMAIL;
+  } catch {
+    return false;
+  }
 }
 
 /** Compares two secrets in constant time, so response timing leaks nothing. */
@@ -120,9 +142,17 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (!role || role === 'admin') {
     const adminLogin = process.env.ADMIN_LOGIN;
     const adminPassword = process.env.ADMIN_PASSWORD;
-    if (adminLogin && adminPassword && trimmedLogin === adminLogin && sameSecret(adminPassword, password)) {
+    // The owner check comes first and always runs, so a right password with
+    // no owner session answers in the same time as a wrong password.
+    const owner = await ownerSignedIn(req);
+    const passwordOk = !!adminLogin && !!adminPassword && trimmedLogin === adminLogin && sameSecret(adminPassword, password);
+    if (passwordOk && owner) {
       const customToken = await mintCustomTokenForEmail(ADMIN_FB_EMAIL);
       return res.status(200).json({ role: 'admin', customToken });
+    }
+    if (passwordOk) {
+      console.warn('staff-login: the admin password was right but the owner session was missing');
+      return fail(401, 'Invalid admin credentials.');
     }
     if (role === 'admin') return fail(401, 'Invalid admin credentials.');
   }

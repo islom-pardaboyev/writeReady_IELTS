@@ -21,13 +21,14 @@ service cloud.firestore {
     // A password account counts only once its email is confirmed. Accounts made
     // straight through Firebase's public sign-up address skip the emailed code,
     // and must not get to comment, like or read the prompts. The site and the
-    // API use the same rule (api/_lib/emailGate.ts). Learning-centre students
-    // have made-up addresses and sign in with a password, so they are let through.
+    // API use the same rule (api/_lib/emailGate.ts). There is no exception for
+    // made-up addresses: anyone can register `anything@writeready.student` for
+    // themselves. Learning-centre students are made by api/center-student.ts,
+    // which marks their email confirmed, so they pass like everyone else.
     function signedIn() {
       return request.auth != null
         && (request.auth.token.firebase.sign_in_provider != 'password'
-          || request.auth.token.get('email_verified', false) == true
-          || request.auth.token.get('email', '').lower().matches('[^@]+@writeready[.]student'));
+          || request.auth.token.get('email_verified', false) == true);
     }
 
     // Staff sign in through /api/staff-login, which mints custom tokens for
@@ -103,14 +104,22 @@ service cloud.firestore {
       return request.resource.data.diff(resource.data).affectedKeys();
     }
 
-    // Like and comment counters may only move by one. They may NOT be reset:
-    // the client only ever writes current+1 or max(0, current-1), and an
-    // allowed reset let any student zero any post's counts from the console.
-    function counterStepOk(field) {
-      let before = resource.data.get(field, 0);
-      let after = request.resource.data.get(field, 0);
+    // A like counter moves by one, and only together with the like itself.
+    // `likePath` is the signed-in student's like document. In the same batch
+    // that creates it (exists() is before the batch, existsAfter() after) the
+    // count goes up by one; in the batch that deletes it, down by one. On its
+    // own a counter cannot move, and an allowed reset once let any student zero
+    // any post's counts from the console. The client writes exactly this
+    // (togglePostLike / toggleCommentLike, one batch each, with increment()).
+    // A count that has already drifted down to zero may stay at zero while the
+    // like is deleted, rather than go negative.
+    function likeStepOk(likePath) {
+      let before = resource.data.get('likeCount', 0);
+      let after = request.resource.data.get('likeCount', 0);
       return after is number
-        && (after == before || after == before + 1 || after == before - 1);
+        && ((after == before + 1 && !exists(likePath) && existsAfter(likePath))
+          || (after == before - 1 && after >= 0 && exists(likePath) && !existsAfter(likePath))
+          || (after == before && before <= 0 && exists(likePath) && !existsAfter(likePath)));
     }
 
     function flags() {
@@ -159,15 +168,18 @@ service cloud.firestore {
             || request.resource.data.subscriptionExpiresAt == centreEndsAt(request.resource.data.centerId)));
 
       // Students can clear their welcome message, and pay for a Human Check.
-      // The balance can only go down; the review itself is checked under
-      // humanReviews. Renaming or removing a center's student goes through
-      // api/center-student.ts, which also changes the sign-in account.
+      // The balance can only go down, and only together with the id of the
+      // review it pays for (lastReviewId): humanReviews checks that id, so one
+      // payment cannot be made to cover several reviews. The review itself is
+      // checked under humanReviews. Renaming or removing a center's student goes
+      // through api/center-student.ts, which also changes the sign-in account.
       allow update: if isSelf(uid)
         && (changed().hasOnly(['notification'])
-          || (changed().hasOnly(['balanceUZS'])
+          || (changed().hasOnly(['balanceUZS', 'lastReviewId'])
             && request.resource.data.balanceUZS is number
             && request.resource.data.balanceUZS >= 0
-            && request.resource.data.balanceUZS < resource.data.get('balanceUZS', 0)));
+            && request.resource.data.balanceUZS < resource.data.get('balanceUZS', 0)
+            && request.resource.data.lastReviewId is string));
     }
 
     // ── Writing ───────────────────────────────────────────────────────────
@@ -269,7 +281,11 @@ service cloud.firestore {
         || isTeacherFor(resource.data.get('teacherId', ''));
 
       // Created in the same transaction that takes the price off the
-      // student's balance, at the price and fee the admin set.
+      // student's balance, at the price and fee the admin set. get() is the
+      // balance before the transaction and getAfter() the balance after it, so
+      // a batch holding one payment and several reviews would pass the balance
+      // check below for every one of them. The payment therefore also names its
+      // review (lastReviewId), and only that one review can be created.
       allow create: if isStudent()
         && request.resource.data.uid == request.auth.uid
         && request.resource.data.keys().hasOnly(['uid', 'studentName', 'studentEmail', 'teacherId', 'teacherName', 'mode', 'status', 'priceUZS', 'platformFeeUZS', 'requestedAt', 'task1', 'task2'])
@@ -278,7 +294,8 @@ service cloud.firestore {
         && request.resource.data.platformFeeUZS == humanCheckFee()
         && get(/databases/$(database)/documents/teachers/$(request.resource.data.teacherId)).data.get('active', true) != false
         && getAfter(/databases/$(database)/documents/users/$(request.auth.uid)).data.balanceUZS
-          == get(/databases/$(database)/documents/users/$(request.auth.uid)).data.get('balanceUZS', 0) - request.resource.data.priceUZS;
+          == get(/databases/$(database)/documents/users/$(request.auth.uid)).data.get('balanceUZS', 0) - request.resource.data.priceUZS
+        && getAfter(/databases/$(database)/documents/users/$(request.auth.uid)).data.get('lastReviewId', '') == reviewId;
 
       // The assigned teacher uploads the checked essay.
       allow update: if isTeacherFor(resource.data.teacherId)
@@ -302,12 +319,18 @@ service cloud.firestore {
       allow read: if isSelf(uid);
       allow update: if isSelf(uid) && changed().hasOnly(['read']);
 
-      // A student who just liked a comment tells its author.
+      // A student who just liked a comment tells its author. The id is fixed
+      // by the like (like_<commentId>_<liker>), so one like makes one
+      // notification however often it is asked for, and the text is short.
       allow create: if isStudent()
         && uid != request.auth.uid
+        && itemId == 'like_' + request.resource.data.commentId + '_' + request.auth.uid
         && request.resource.data.type == 'like'
         && request.resource.data.read == false
         && request.resource.data.keys().hasOnly(['type', 'fromUserName', 'postId', 'postSlug', 'commentId', 'preview', 'read', 'createdAt'])
+        && request.resource.data.fromUserName is string && request.resource.data.fromUserName.size() <= 80
+        && request.resource.data.preview is string && request.resource.data.preview.size() <= 100
+        && request.resource.data.postSlug is string && request.resource.data.postSlug.size() <= 120
         && exists(/databases/$(database)/documents/blogPosts/$(request.resource.data.postId)/comments/$(request.resource.data.commentId)/likes/$(request.auth.uid))
         && get(/databases/$(database)/documents/blogPosts/$(request.resource.data.postId)/comments/$(request.resource.data.commentId)).data.userId == uid;
 
@@ -351,33 +374,60 @@ service cloud.firestore {
     match /blogPosts/{postId} {
       allow read: if resource.data.get('status', '') == 'published';
 
+      // The like count moves by one, and only together with the student's own
+      // like document in the same batch (togglePostLike in src/firebase/blog.ts):
+      // +1 when that like is created, -1 when it is deleted. So it cannot be
+      // pushed up or down on its own, and never past what the likes say.
+      // commentCount is no longer written from the browser: the admin panel
+      // counts the comments itself.
       allow update: if isStudent()
-        && changed().hasOnly(['likeCount', 'commentCount'])
-        && counterStepOk('likeCount')
-        && counterStepOk('commentCount');
+        && changed().hasOnly(['likeCount'])
+        && likeStepOk(/databases/$(database)/documents/blogPosts/$(postId)/likes/$(request.auth.uid));
 
       match /likes/{userId} {
         allow read: if true;
-        allow create, delete: if isSelf(userId);
+        allow create: if isSelf(userId)
+          && exists(/databases/$(database)/documents/blogPosts/$(postId))
+          && request.resource.data.keys().hasOnly(['userId', 'createdAt'])
+          && request.resource.data.userId == userId;
+        allow delete: if isSelf(userId);
       }
 
       match /comments/{commentId} {
         allow read: if true;
 
+        // A comment belongs to a real post, its name and picture are short, and
+        // the picture can only be a Google profile picture (or none), so a
+        // comment cannot carry a web address that reports who reads it.
         allow create: if isStudent()
+          && exists(/databases/$(database)/documents/blogPosts/$(postId))
           && request.resource.data.userId == request.auth.uid
           && request.resource.data.likeCount == 0
           && request.resource.data.keys().hasOnly(['userId', 'displayName', 'photoURL', 'text', 'likeCount', 'createdAt'])
+          && request.resource.data.displayName is string
+          && request.resource.data.displayName.size() > 0
+          && request.resource.data.displayName.size() <= 60
+          && request.resource.data.photoURL is string
+          && (request.resource.data.photoURL == ''
+            || (request.resource.data.photoURL.size() <= 300
+              && request.resource.data.photoURL.matches('https://lh[0-9]+[.]googleusercontent[.]com/.*')))
           && request.resource.data.text is string
           && request.resource.data.text.size() > 0
           && request.resource.data.text.size() <= 2000;
 
-        allow update: if isStudent() && changed().hasOnly(['likeCount']) && counterStepOk('likeCount');
+        // Same rule as the post's likes: +1 with the student's like, -1 without.
+        allow update: if isStudent()
+          && changed().hasOnly(['likeCount'])
+          && likeStepOk(/databases/$(database)/documents/blogPosts/$(postId)/comments/$(commentId)/likes/$(request.auth.uid));
         allow delete: if isStudent() && resource.data.userId == request.auth.uid;
 
         match /likes/{userId} {
           allow read: if true;
-          allow create, delete: if isSelf(userId);
+          allow create: if isSelf(userId)
+            && exists(/databases/$(database)/documents/blogPosts/$(postId)/comments/$(commentId))
+            && request.resource.data.keys().hasOnly(['userId', 'createdAt'])
+            && request.resource.data.userId == userId;
+          allow delete: if isSelf(userId);
         }
       }
     }

@@ -1246,11 +1246,12 @@ export async function syncBotProfile(): Promise<boolean> {
 
 /**
  * Points Telegram at the webhook, with its secret, and sets the command menu.
- * Run by opening the webhook address in a browser (api/_lib/routes/telegram.ts),
- * so the token never has to leave Vercel. Anyone may run it: it can only ever
- * set these same values. When the address is already set it only reports;
- * ?force=1 sets everything again, so the secret always matches the token this
- * server holds (after the token changes, for one).
+ * Run with a GET to the webhook address that carries the CRON_SECRET
+ * (api/_lib/routes/telegram.ts), so the token never has to leave Vercel. It can
+ * only ever set these same values, and only the owner of the secret may ask.
+ * When the address is already set it only reports; ?force=1 sets everything
+ * again, so the secret always matches the token this server holds (after the
+ * token changes, for one).
  */
 export async function ensureWebhook(token: string, { force = false } = {}): Promise<{
   changed: boolean; pending: number; lastError: string | null;

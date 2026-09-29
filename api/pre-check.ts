@@ -3,6 +3,7 @@ import { getFirestore, FieldValue } from 'firebase-admin/firestore';
 import { createHmac } from 'crypto';
 import { initFirebase, getUid, currentMonthKey, currentWeekKey, resolvePaidStatus } from './_lib/shared.js';
 import { LIMITS, essayKeys, loadSavedReport, type SavedReport } from './_lib/savedReports.js';
+import { MAX_SENTENCES, countSentences } from './_lib/essayGuard.js';
 
 // Free-plan users (no subscription) get 1 AI feedback report per calendar
 // week instead of a single lifetime bonus report.
@@ -159,6 +160,14 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     typeof questionText === 'string' && questionText.trim() !== '' && questionText.length <= LIMITS.questionChars &&
     (taskType === 'Task 1' || taskType === 'Task 2');
   if (lookupOnly === true && !hasEssay) return res.status(400).json({ error: 'The essay to look up is missing.' });
+  // Refused before anything is charged: a report goes through every sentence,
+  // so an essay of hundreds of tiny ones can only be cut off (api/_lib/essayGuard.ts).
+  if (hasEssay) {
+    const sentences = countSentences(essayText);
+    if (sentences > MAX_SENTENCES) {
+      return res.status(413).json({ error: `Your essay has ${sentences} sentences. The checker accepts up to ${MAX_SENTENCES}. You were not charged.` });
+    }
+  }
 
   let saved: SavedReport | null = null;
   if (hasEssay) {

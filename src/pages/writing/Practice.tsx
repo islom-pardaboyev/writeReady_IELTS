@@ -40,6 +40,7 @@ import { useScoreTest } from "@/lib/scoreTest";
 import { answerTextStyle, useWritingSettings } from "@/lib/writingSettings";
 import { ShuffleBag } from "@/lib/shuffleBag";
 import { useTask1ChartState } from "@/lib/task1Chart";
+import { allowFeedbackStart } from "@/lib/feedbackIntent";
 
 interface Task1 {
   id: string;
@@ -251,9 +252,9 @@ function Practice() {
       }
       // The essay goes with the report from here, and is saved there.
       draft.clear();
-      navigate(
-        `/feedback/${encodeReport({ task1, task2, userText1, userText2 })}`,
-      );
+      const encoded = encodeReport({ task1, task2, userText1, userText2 });
+      allowFeedbackStart(encoded);
+      navigate(`/feedback/${encoded}`);
     } catch (err) {
       console.error(err);
       navigate("/auth");

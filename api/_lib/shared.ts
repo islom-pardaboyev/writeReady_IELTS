@@ -32,6 +32,46 @@ export async function getUid(req: VercelRequest): Promise<string> {
   return decoded.uid;
 }
 
+/** The fixed internal email of the admin account. api/staff-login.ts mints its sign-in token. */
+export const ADMIN_EMAIL = 'admin@writeready.internal';
+
+export interface StaffToken {
+  uid: string;
+  /** Lower-cased, '' when the token has none. */
+  email: string;
+  /** The token's sign_in_provider: 'custom' for staff, 'password' or 'google.com' for students. */
+  provider: string;
+}
+
+/** The signed-in person behind an `Authorization: Bearer <ID token>` header, or null for a missing, bad or expired token. */
+export async function readStaffToken(req: VercelRequest): Promise<StaffToken | null> {
+  const header = req.headers.authorization ?? '';
+  const token = header.startsWith('Bearer ') ? header.slice(7) : '';
+  if (!token) return null;
+  try {
+    const d = await getAuth().verifyIdToken(token);
+    return { uid: d.uid, email: (d.email ?? '').toLowerCase(), provider: d.firebase?.sign_in_provider ?? '' };
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Staff sign in with a custom token from api/staff-login.ts, so their token's
+ * provider is 'custom'. Anyone can make an account with a staff email through
+ * Firebase's public sign-up address, but that account signs in with a
+ * 'password' provider and must never count as staff. firestore.rules checks
+ * the same two things (isStaff).
+ */
+export function isAdminToken(t: StaffToken | null): boolean {
+  return t !== null && t.provider === 'custom' && t.email === ADMIN_EMAIL;
+}
+
+/** The staff token of the learning centre with this id. */
+export function isCenterToken(t: StaffToken | null, centerId: string): boolean {
+  return t !== null && t.provider === 'custom' && t.email === `center_${centerId}@writeready.internal`.toLowerCase();
+}
+
 export function currentMonthKey(): string {
   const now = new Date();
   return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
