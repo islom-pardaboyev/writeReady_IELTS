@@ -11,7 +11,7 @@ import { Badge } from '../components/ui/badge';
 import { Input } from '../components/ui/input';
 import { Label } from '../components/ui/label';
 import { PasswordInput } from '../components/ui/PasswordInput';
-import { PasswordChecklist } from '../components/auth/PasswordChecklist';
+import { PasswordRequirements } from '../components/auth/PasswordRequirements';
 import { unmetPasswordRules } from '../lib/passwordRules';
 import { ShortcutSettings } from '../components/shortcuts/ShortcutSettings';
 import { VerifiedCards } from '../components/ui/VerifiedCards';
@@ -153,7 +153,7 @@ export function AccountPage() {
     setPasswordSuccess(false);
     if (unmetPasswordRules(newPassword).length > 0) {
       setShowUnmetRules(true);
-      setPasswordError('The new password does not meet every rule yet. See the list above.');
+      document.getElementById('newPassword')?.focus();
       return;
     }
     if (newPassword !== confirmPassword) {
@@ -336,13 +336,10 @@ export function AccountPage() {
                             value={newPassword}
                             onChange={(e) => {
                               setNewPassword(e.target.value);
-                              if (showUnmetRules && unmetPasswordRules(e.target.value).length === 0) {
-                                setShowUnmetRules(false);
-                                setPasswordError(null);
-                              }
+                              if (showUnmetRules && unmetPasswordRules(e.target.value).length === 0) setShowUnmetRules(false);
                             }}
                             autoComplete="new-password"
-                            aria-describedby={newPassword || showUnmetRules ? 'new-password-rules' : undefined}
+                            aria-describedby="new-password-rules"
                           />
                         </div>
                         <div>
@@ -357,10 +354,7 @@ export function AccountPage() {
                           />
                         </div>
                       </div>
-                      {/* The rules appear once a new password is being typed. */}
-                      {(newPassword || showUnmetRules) && (
-                        <PasswordChecklist id="new-password-rules" password={newPassword} showUnmet={showUnmetRules} className="mt-3" />
-                      )}
+                      <PasswordRequirements id="new-password-rules" password={newPassword} showUnmet={showUnmetRules} className="mt-3" />
                       <div aria-live="polite">
                         {passwordError && <p className="mt-3 text-sm text-red-600 dark:text-red-400">{passwordError}</p>}
                         {passwordSuccess && <p className="mt-3 text-sm text-emerald-600 dark:text-emerald-400">Password updated.</p>}

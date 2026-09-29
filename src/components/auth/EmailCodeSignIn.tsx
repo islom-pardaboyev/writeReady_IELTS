@@ -5,6 +5,7 @@ import { auth } from '../../firebase/config';
 import { Button } from '../ui/Button';
 import { Input } from '../ui/input';
 import { Label } from '../ui/label';
+import { AuthNotice } from './AuthNotice';
 
 // Sign in with a 6-digit code sent to the student's email (api/_lib/emailCode.ts).
 // For a shared computer: no Google sign-in and no password needed. The same
@@ -117,19 +118,12 @@ export function EmailCodeSignIn({
 
   return (
     <div>
-      {error && (
-        <div
-          role="alert"
-          className="mb-4 rounded-[10px] border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-600 dark:border-red-800 dark:bg-red-900/20 dark:text-red-400"
-        >
-          {error}
-        </div>
-      )}
+      {error && <AuthNotice className="mb-6">{error}</AuthNotice>}
 
       {step === 'email' ? (
-        <form onSubmit={sendCode} className="flex flex-col gap-4">
-          <div className="flex flex-col gap-1.5">
-            <Label htmlFor="code-email" className="font-semibold">Email</Label>
+        <form onSubmit={sendCode} className="flex flex-col gap-5">
+          <div className="flex flex-col gap-2">
+            <Label htmlFor="code-email" className={LABEL}>Email</Label>
             <Input
               id="code-email"
               name="email"
@@ -139,14 +133,12 @@ export function EmailCodeSignIn({
               onChange={(e) => setEmail(e.target.value)}
               required
               autoFocus
-              placeholder="you@example.com…"
+              placeholder="you@example.com"
               autoComplete="email"
+              className={FIELD}
             />
-            <p className="text-xs text-[var(--text-secondary)]">
-              We'll email you a 6-digit code. No password needed.
-            </p>
           </div>
-          <Button type="submit" loading={busy} size="lg" className="w-full">
+          <Button type="submit" loading={busy} className={BIG_BUTTON}>
             {!busy && <Mail aria-hidden />} Send me a code
           </Button>
         </form>
@@ -156,9 +148,9 @@ export function EmailCodeSignIn({
             e.preventDefault();
             if (code.length === 6) void verify(code);
           }}
-          className="flex flex-col gap-4"
+          className="flex flex-col gap-5"
         >
-          <p className="text-sm text-[var(--text-secondary)]" aria-live="polite">
+          <p className="text-sm leading-relaxed text-[var(--text-secondary)]" aria-live="polite">
             {!sent && busy ? (
               <>Sending a code to <strong className="font-semibold text-[var(--text-primary)] break-all">{email.trim()}</strong>…</>
             ) : sent ? (
@@ -173,8 +165,8 @@ export function EmailCodeSignIn({
               </>
             )}
           </p>
-          <div className="flex flex-col gap-1.5">
-            <Label htmlFor="code-digits" className="font-semibold">6-digit code</Label>
+          <div className="flex flex-col gap-2">
+            <Label htmlFor="code-digits" className={LABEL}>6-digit code</Label>
             <Input
               ref={codeRef}
               id="code-digits"
@@ -186,11 +178,11 @@ export function EmailCodeSignIn({
               value={code}
               onChange={(e) => onCodeChange(e.target.value)}
               placeholder="000000"
-              className="h-12 text-center font-mono text-2xl tracking-[0.4em]"
+              className="h-14 text-center font-mono text-2xl tracking-[0.4em] focus-visible:ring-[var(--ring)]"
               aria-describedby="code-help"
             />
           </div>
-          <Button type="submit" loading={busy && sent} disabled={code.length !== 6 || busy} size="lg" className="w-full">
+          <Button type="submit" loading={busy && sent} disabled={code.length !== 6 || busy} className={BIG_BUTTON}>
             {submitLabel ?? (signingUp ? 'Create account' : 'Sign in')}
           </Button>
           <div id="code-help" className="flex flex-wrap items-center justify-between gap-2 text-sm">
@@ -221,10 +213,15 @@ export function EmailCodeSignIn({
       <button
         type="button"
         onClick={onBack}
-        className="mt-5 inline-flex w-full cursor-pointer items-center justify-center gap-1.5 border-0 bg-transparent p-0 text-sm font-medium text-[var(--text-secondary)] hover:text-[var(--text-primary)]"
+        className="mt-6 inline-flex w-full cursor-pointer items-center justify-center gap-1.5 rounded-md border-0 bg-transparent p-0 text-sm font-medium text-[var(--text-secondary)] hover:text-[var(--text-primary)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ring)] focus-visible:ring-offset-2"
       >
         <ArrowLeft className="size-4" aria-hidden /> Back
       </button>
     </div>
   );
 }
+
+// The same sizes as the forms on the sign-in page (src/pages/AuthPage.tsx).
+const FIELD = 'h-12 px-4 text-base focus-visible:ring-[var(--ring)]';
+const LABEL = 'text-sm font-semibold text-[var(--text-primary)]';
+const BIG_BUTTON = 'h-12 w-full text-[0.9375rem]';

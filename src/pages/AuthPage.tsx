@@ -1,16 +1,19 @@
 import { useState, type FormEvent } from 'react';
 import { useNavigate, useSearchParams, Link, Navigate } from 'react-router';
+import { ArrowLeft } from 'lucide-react';
 import Logo from '/logo.svg';
 import { useAuth } from '../hooks/useAuth';
 import { Button } from '../components/ui/Button';
-import { Card } from '../components/ui/Card';
 import { Input } from '../components/ui/input';
 import { PasswordInput } from '../components/ui/PasswordInput';
 import { Label } from '../components/ui/label';
+import { SegmentedControl } from '../components/appearance/SegmentedControl';
 import { getAuth, signInWithCustomToken, signInWithEmailAndPassword } from 'firebase/auth';
 import { isTesterEmail } from '@shared/testerAccount';
+import { AuthAside } from '../components/auth/AuthAside';
+import { AuthNotice } from '../components/auth/AuthNotice';
 import { EmailCodeSignIn } from '../components/auth/EmailCodeSignIn';
-import { PasswordChecklist } from '../components/auth/PasswordChecklist';
+import { PasswordRequirements } from '../components/auth/PasswordRequirements';
 import { unmetPasswordRules } from '../lib/passwordRules';
 
 type Mode = 'login' | 'signup' | 'student';
@@ -84,8 +87,9 @@ export function AuthPage() {
     }
     if (mode === 'signup') {
       if (unmetPasswordRules(password).length > 0) {
+        // Said under the field (PasswordRequirements), not in the notice above the form.
         setShowUnmetRules(true);
-        setError('Your password does not meet every rule yet. See the list under it.');
+        document.getElementById('auth-password')?.focus();
         return;
       }
       // The account is created only after the emailed code proves the address
@@ -178,199 +182,243 @@ export function AuthPage() {
       ? 'Welcome back'
       : 'Create your free account';
 
+  const subtitle =
+    mode === 'student'
+      ? 'Use the login and password your centre gave you.'
+      : pending
+      ? pending.isNew
+        ? 'One last step: enter the code we emailed you.'
+        : 'Your email was never confirmed. This is needed once.'
+      : useCode
+      ? 'We will email you a 6-digit code. No password needed.'
+      : mode === 'login'
+      ? 'Sign in to pick up where you left off.'
+      : 'Get one free band report every week.';
+
+  // The Sign in / Create account switch, on the two main forms only.
+  const showSwitch = mode !== 'student' && !pending && !useCode;
+
   return (
-    <div className="flex min-h-screen items-center justify-center bg-[var(--bg-base)] px-4 py-10">
-      <div className="w-full max-w-[400px]">
-        <Link
-          to="/"
-          className="mx-auto mb-8 flex w-fit items-center gap-2 rounded-lg font-sans text-xl font-bold text-[var(--text-primary)] no-underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ring)] focus-visible:ring-offset-4"
-        >
-          <img src={Logo} width={36} height={36} className="size-9" alt="" />
-          <span>
-            WriteReady <span className="text-[var(--ink-blue)]">IELTS</span>
-          </span>
-        </Link>
+    <div className="grid min-h-screen bg-[var(--bg-card)] font-sans lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
+      <AuthAside />
 
-        <Card className="p-6 sm:p-8">
-          <h1 className="text-center font-sans text-2xl font-bold tracking-[-0.02em] text-balance text-[var(--text-primary)]">{title}</h1>
-          {mode === 'student' && (
-            <p className="mt-1.5 text-center text-sm text-[var(--text-secondary)]">
-              Use the login and password your centre gave you.
-            </p>
-          )}
-          {pending && !pending.isNew && (
-            <p className="mt-1.5 text-center text-sm text-balance text-[var(--text-secondary)]">
-              Your email was never confirmed. This is needed once.
-            </p>
-          )}
+      <main id="main-content" tabIndex={-1} className="flex min-w-0 flex-col outline-none">
+        <div className="flex h-16 items-center px-4 sm:px-8">
+          {/* The margin carries the logo from 1024px; below that it is here. */}
+          <Link
+            to="/"
+            className="flex items-center gap-2 rounded-lg font-bold text-[var(--text-primary)] no-underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ring)] focus-visible:ring-offset-2 lg:hidden"
+          >
+            <img src={Logo} width={32} height={32} className="size-8" alt="" />
+            <span>
+              WriteReady <span className="text-[var(--ink-blue)]">IELTS</span>
+            </span>
+          </Link>
+          <Link
+            to="/"
+            className="hidden items-center gap-1.5 rounded-md text-sm font-medium text-[var(--text-secondary)] no-underline transition-colors hover:text-[var(--text-primary)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ring)] focus-visible:ring-offset-2 lg:inline-flex"
+          >
+            <ArrowLeft className="size-4" aria-hidden="true" />
+            Back to home
+          </Link>
+        </div>
 
-          <div className="mt-6">
-            {error && !useCode && !pending && (
-              <div
-                role="alert"
-                aria-live="polite"
-                className="mb-4 rounded-[10px] border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-600 dark:border-red-800 dark:bg-red-900/20 dark:text-red-400"
-              >
-                {error}
-              </div>
-            )}
-
-            {mode === 'student' ? (
-              <form onSubmit={handleStudentLogin} className="flex flex-col gap-4">
-                <div className="flex flex-col gap-1.5">
-                  <Label htmlFor="s-login" className="font-semibold">Login</Label>
-                  <Input
-                    id="s-login"
-                    name="username"
-                    type="text"
-                    spellCheck={false}
-                    value={studentLogin}
-                    onChange={(e) => setStudentLogin(e.target.value)}
-                    required
-                    placeholder="Login provided by your centre…"
-                    autoComplete="username"
-                  />
-                </div>
-                <div className="flex flex-col gap-1.5">
-                  <Label htmlFor="s-pass" className="font-semibold">Password</Label>
-                  <PasswordInput
-                    id="s-pass"
-                    name="password"
-                    autoComplete="current-password"
-                    value={studentPassword}
-                    onChange={(e) => setStudentPassword(e.target.value)}
-                    required
-                    placeholder="Password provided by your centre…"
-                  />
-                </div>
-                <Button type="submit" loading={loading} size="lg" className="mt-1 w-full">
-                  Sign in
-                </Button>
-              </form>
-            ) : pending ? (
-              <EmailCodeSignIn
-                initialEmail={pending.email}
-                password={pending.password}
-                submitLabel={pending.isNew ? 'Create account' : 'Confirm and sign in'}
-                onSignedIn={() => navigate(next)}
-                onBack={() => setPending(null)}
-              />
-            ) : useCode ? (
-              <EmailCodeSignIn
-                initialEmail={email}
-                onSignedIn={() => navigate(next)}
-                onBack={() => { setUseCode(false); setError(''); }}
-              />
-            ) : (
+        {/* Anchored near the top, not centred: switching between Sign in and
+            Create account changes the form's height, and a centred form would
+            jump. */}
+        <div className="flex flex-1 justify-center px-4 pb-12 pt-6 sm:px-8 sm:pt-10 lg:pt-[9vh]">
+          <div className="w-full max-w-[420px]">
+            {showSwitch && (
               <>
-                <Button type="button" variant="outline" size="lg" onClick={handleGoogle} disabled={loading} className="w-full">
-                  <GoogleIcon />
-                  Continue with Google
-                </Button>
-
-                <div className="my-5 flex items-center gap-3" aria-hidden="true">
-                  <div className="h-px flex-1 bg-[var(--border-color)]" />
-                  <span className="text-xs text-[var(--text-secondary)]">or with email</span>
-                  <div className="h-px flex-1 bg-[var(--border-color)]" />
-                </div>
-
-                <form onSubmit={handleSubmit} className="flex flex-col gap-4">
-                  <div className="flex flex-col gap-1.5">
-                    <Label htmlFor="auth-email" className="font-semibold">Email</Label>
-                    <Input
-                      id="auth-email"
-                      name="email"
-                      type="email"
-                      spellCheck={false}
-                      value={email}
-                      onChange={(e) => setEmail(e.target.value)}
-                      required
-                      placeholder="you@example.com…"
-                      autoComplete="email"
-                    />
-                  </div>
-                  <div className="flex flex-col gap-1.5">
-                    <Label htmlFor="auth-password" className="font-semibold">Password</Label>
-                    <PasswordInput
-                      id="auth-password"
-                      name="password"
-                      value={password}
-                      onChange={(e) => {
-                        setPassword(e.target.value);
-                        // Every rule met now: the "does not meet every rule" message is done with.
-                        if (showUnmetRules && unmetPasswordRules(e.target.value).length === 0) {
-                          setShowUnmetRules(false);
-                          setError('');
-                        }
-                      }}
-                      required
-                      placeholder={mode === 'signup' ? 'Choose a password…' : '••••••••'}
-                      // Sign-up checks the rules below itself; the browser's own
-                      // "too short" bubble would get in first with a different message.
-                      minLength={mode === 'signup' ? undefined : 6}
-                      aria-describedby={showRules ? 'password-rules' : undefined}
-                      aria-invalid={showRules && showUnmetRules && unmetPasswordRules(password).length > 0 ? true : undefined}
-                      autoComplete={mode === 'signup' ? 'new-password' : 'current-password'}
-                    />
-                    {showRules && <PasswordChecklist id="password-rules" password={password} showUnmet={showUnmetRules} className="mt-1.5" />}
-                  </div>
-                  <Button type="submit" loading={loading} size="lg" className="mt-1 w-full">
-                    {mode === 'login' ? 'Sign in' : 'Create account'}
-                  </Button>
-                </form>
-
-                {mode === 'signup' ? (
-                  <p className="mt-4 text-center text-sm text-[var(--text-secondary)]">
-                    We'll email you a 6-digit code to confirm the address is yours.
-                  </p>
-                ) : (
-                  // There is no password reset, so this is the way back in for
-                  // a forgotten password. Also handy on a shared computer.
-                  <p className="mt-4 text-center text-sm">
-                    <button
-                      type="button"
-                      onClick={() => { setUseCode(true); setError(''); }}
-                      disabled={loading}
-                      className={LINK_BUTTON}
-                    >
-                      Forgot password? Email me a code
-                    </button>
-                  </p>
-                )}
+                <span id="auth-switch-label" className="sr-only">Sign in or create an account</span>
+                <SegmentedControl<'login' | 'signup'>
+                  value={mode === 'signup' ? 'signup' : 'login'}
+                  onChange={switchTo}
+                  labelledBy="auth-switch-label"
+                  options={[
+                    { value: 'login', label: 'Sign in' },
+                    { value: 'signup', label: 'Create account' },
+                  ]}
+                  className="mb-8 [&>button]:h-10"
+                />
               </>
             )}
-          </div>
-        </Card>
 
-        <div className="mt-6 flex flex-col items-center gap-2 text-sm text-[var(--text-secondary)]">
-          {mode === 'login' ? (
-            <p>
-              New here?{' '}
-              <button type="button" onClick={() => switchTo('signup')} className={LINK_BUTTON}>
-                Create a free account
-              </button>
-            </p>
-          ) : (
-            <p>
-              {mode === 'signup' ? 'Already have an account?' : 'Not from a learning centre?'}{' '}
-              <button type="button" onClick={() => switchTo('login')} className={LINK_BUTTON}>
-                Sign in
-              </button>
-            </p>
-          )}
-          {mode !== 'student' && (
-            <p>
-              Got a login from your centre?{' '}
-              <button type="button" onClick={() => switchTo('student')} className={LINK_BUTTON}>
-                Sign in here
-              </button>
-            </p>
-          )}
+            <h1 className="text-[1.875rem] font-bold leading-tight tracking-[-0.025em] text-balance text-[var(--text-primary)]">{title}</h1>
+            <p className="mt-2 text-base leading-relaxed text-[var(--text-secondary)]">{subtitle}</p>
+
+            <div className="mt-8">
+              {error && !useCode && !pending && <AuthNotice className="mb-6">{error}</AuthNotice>}
+
+              {mode === 'student' ? (
+                <form onSubmit={handleStudentLogin} className="flex flex-col gap-5">
+                  <div className="flex flex-col gap-2">
+                    <Label htmlFor="s-login" className={LABEL}>Login</Label>
+                    <Input
+                      id="s-login"
+                      name="username"
+                      type="text"
+                      spellCheck={false}
+                      value={studentLogin}
+                      onChange={(e) => setStudentLogin(e.target.value)}
+                      required
+                      placeholder="Login from your centre"
+                      autoComplete="username"
+                      className={FIELD}
+                    />
+                  </div>
+                  <div className="flex flex-col gap-2">
+                    <Label htmlFor="s-pass" className={LABEL}>Password</Label>
+                    <PasswordInput
+                      id="s-pass"
+                      name="password"
+                      autoComplete="current-password"
+                      value={studentPassword}
+                      onChange={(e) => setStudentPassword(e.target.value)}
+                      required
+                      placeholder="Password from your centre"
+                      className={FIELD}
+                    />
+                  </div>
+                  <Button type="submit" loading={loading} className={`mt-1 ${BIG_BUTTON}`}>
+                    Sign in
+                  </Button>
+                </form>
+              ) : pending ? (
+                <EmailCodeSignIn
+                  initialEmail={pending.email}
+                  password={pending.password}
+                  submitLabel={pending.isNew ? 'Create account' : 'Confirm and sign in'}
+                  onSignedIn={() => navigate(next)}
+                  onBack={() => setPending(null)}
+                />
+              ) : useCode ? (
+                <EmailCodeSignIn
+                  initialEmail={email}
+                  onSignedIn={() => navigate(next)}
+                  onBack={() => { setUseCode(false); setError(''); }}
+                />
+              ) : (
+                <>
+                  <Button type="button" variant="outline" onClick={handleGoogle} disabled={loading} className={BIG_BUTTON}>
+                    <GoogleIcon />
+                    Continue with Google
+                  </Button>
+
+                  <div className="my-6 flex items-center gap-3" aria-hidden="true">
+                    <div className="h-px flex-1 bg-[var(--border-color)]" />
+                    <span className="text-xs font-medium text-[var(--text-secondary)]">or with email</span>
+                    <div className="h-px flex-1 bg-[var(--border-color)]" />
+                  </div>
+
+                  <form onSubmit={handleSubmit} className="flex flex-col gap-5">
+                    <div className="flex flex-col gap-2">
+                      <Label htmlFor="auth-email" className={LABEL}>Email</Label>
+                      <Input
+                        id="auth-email"
+                        name="email"
+                        type="email"
+                        spellCheck={false}
+                        value={email}
+                        onChange={(e) => setEmail(e.target.value)}
+                        required
+                        placeholder="you@example.com"
+                        autoComplete="email"
+                        className={FIELD}
+                      />
+                    </div>
+                    <div className="flex flex-col gap-2">
+                      <div className="flex items-baseline justify-between gap-3">
+                        <Label htmlFor="auth-password" className={LABEL}>Password</Label>
+                        {mode === 'login' && (
+                          // There is no password reset, so this is the way back in for
+                          // a forgotten password. Also handy on a shared computer.
+                          <button
+                            type="button"
+                            onClick={() => { setUseCode(true); setError(''); }}
+                            disabled={loading}
+                            className={`text-sm ${LINK_BUTTON}`}
+                          >
+                            Forgot password?
+                          </button>
+                        )}
+                      </div>
+                      <PasswordInput
+                        id="auth-password"
+                        name="password"
+                        value={password}
+                        onChange={(e) => {
+                          setPassword(e.target.value);
+                          // Every rule met now: the red marks are done with.
+                          if (showUnmetRules && unmetPasswordRules(e.target.value).length === 0) setShowUnmetRules(false);
+                        }}
+                        required
+                        placeholder={mode === 'signup' ? 'Choose a password' : 'Your password'}
+                        // Sign-up checks the rules below itself; the browser's own
+                        // "too short" bubble would get in first with a different message.
+                        minLength={mode === 'signup' ? undefined : 6}
+                        aria-describedby={showRules ? 'password-rules' : undefined}
+                        aria-invalid={showRules && showUnmetRules && unmetPasswordRules(password).length > 0 ? true : undefined}
+                        autoComplete={mode === 'signup' ? 'new-password' : 'current-password'}
+                        className={FIELD}
+                      />
+                      {showRules && <PasswordRequirements id="password-rules" password={password} showUnmet={showUnmetRules} className="mt-1" />}
+                    </div>
+                    <Button type="submit" loading={loading} className={`mt-1 ${BIG_BUTTON}`}>
+                      {mode === 'login' ? 'Sign in' : 'Create account'}
+                    </Button>
+                  </form>
+
+                  {mode === 'signup' && (
+                    <p className="mt-5 text-center text-sm leading-relaxed text-[var(--text-secondary)]">
+                      We will email you a 6-digit code to confirm the address is yours.
+                    </p>
+                  )}
+                </>
+              )}
+            </div>
+
+            <div className="mt-10 border-t border-[var(--border-color)] pt-6 text-center text-sm text-[var(--text-secondary)]">
+              {mode === 'student' ? (
+                <p>
+                  Not from a learning centre?{' '}
+                  <button type="button" onClick={() => switchTo('login')} className={LINK_BUTTON}>
+                    Sign in here
+                  </button>
+                </p>
+              ) : (
+                <p>
+                  Got a login from your learning centre?{' '}
+                  <button type="button" onClick={() => switchTo('student')} className={LINK_BUTTON}>
+                    Sign in here
+                  </button>
+                </p>
+              )}
+              {mode === 'signup' && showSwitch && (
+                <p className="mt-3 text-xs leading-relaxed">
+                  By creating an account you agree to our{' '}
+                  <Link to="/terms" className="font-medium text-[var(--text-primary)] underline underline-offset-2 hover:text-[var(--ink-blue)]">
+                    Terms of Service
+                  </Link>{' '}
+                  and{' '}
+                  <Link to="/privacy" className="font-medium text-[var(--text-primary)] underline underline-offset-2 hover:text-[var(--ink-blue)]">
+                    Privacy Policy
+                  </Link>
+                  .
+                </p>
+              )}
+            </div>
+          </div>
         </div>
-      </div>
+      </main>
     </div>
   );
 }
+
+/** Fields on the sign-in page run 48px tall with 16px text: bigger to hit, and a phone does not zoom into them. */
+const FIELD = 'h-12 px-4 text-base focus-visible:ring-[var(--ring)]';
+const LABEL = 'text-sm font-semibold text-[var(--text-primary)]';
+const BIG_BUTTON = 'h-12 w-full text-[0.9375rem]';
 
 const LINK_BUTTON =
   'cursor-pointer rounded border-0 bg-transparent p-0 font-semibold text-[var(--ink-blue)] underline-offset-4 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ring)] focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-60';
