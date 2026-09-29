@@ -7,14 +7,35 @@ import { Card } from '../components/ui/Card';
 import { Input } from '../components/ui/input';
 import { PasswordInput } from '../components/ui/PasswordInput';
 import { Label } from '../components/ui/label';
-import { getAuth, signInWithEmailAndPassword } from 'firebase/auth';
+import { getAuth, signInWithCustomToken, signInWithEmailAndPassword } from 'firebase/auth';
+import { isTesterEmail } from '@shared/testerAccount';
 import { EmailCodeSignIn } from '../components/auth/EmailCodeSignIn';
+import { PasswordChecklist } from '../components/auth/PasswordChecklist';
+import { unmetPasswordRules } from '../lib/passwordRules';
 
 type Mode = 'login' | 'signup' | 'student';
 
 function cleanAuthError(err: unknown, fallback: string): string {
   const msg = err instanceof Error ? err.message : fallback;
   return msg.replace('Firebase: ', '').replace(/\(auth\/.*\)\.?/, '').trim();
+}
+
+/**
+ * Temporary: the shared test account (api/_lib/testerAccount.ts) gets straight
+ * in, with no emailed code. The server checks the password and makes the
+ * account the first time.
+ */
+async function signInAsTester(email: string, password: string) {
+  const res = await fetch('/api/email-code', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ action: 'tester', email: email.trim(), password }),
+  });
+  const data = (await res.json().catch(() => ({}))) as { customToken?: unknown; error?: unknown };
+  if (!res.ok || typeof data.customToken !== 'string') {
+    throw new Error(typeof data.error === 'string' ? data.error : 'Sign-in failed. Try again in a minute.');
+  }
+  await signInWithCustomToken(getAuth(), data.customToken);
 }
 
 export function AuthPage() {
@@ -32,6 +53,8 @@ export function AuthPage() {
   const [studentPassword, setStudentPassword] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+  // Sign-up was tried with a password that misses some rules: those turn red.
+  const [showUnmetRules, setShowUnmetRules] = useState(false);
   // Sign in with a code emailed to the student, instead of a password or Google.
   const [useCode, setUseCode] = useState(false);
   // Waits here while the student confirms their email with a code: a new
@@ -47,7 +70,24 @@ export function AuthPage() {
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
     setError('');
+    if (isTesterEmail(email)) {
+      setLoading(true);
+      try {
+        await signInAsTester(email, password);
+        navigate(next);
+      } catch (err: unknown) {
+        setError(cleanAuthError(err, 'Sign-in failed'));
+      } finally {
+        setLoading(false);
+      }
+      return;
+    }
     if (mode === 'signup') {
+      if (unmetPasswordRules(password).length > 0) {
+        setShowUnmetRules(true);
+        setError('Your password does not meet every rule yet. See the list under it.');
+        return;
+      }
       // The account is created only after the emailed code proves the address
       // is theirs (api/_lib/emailCode.ts), not straight from this form.
       setPending({ email: email.trim(), password, isNew: true });
@@ -118,9 +158,14 @@ export function AuthPage() {
     }, { replace: true });
     setMode(m);
     setError('');
+    setShowUnmetRules(false);
     setUseCode(false);
     setPending(null);
   };
+
+  // The rules a new password needs, under the field while signing up. Not for
+  // the test account, whose fixed password is checked on the server.
+  const showRules = mode === 'signup' && !isTesterEmail(email);
 
   const title =
     mode === 'student'
@@ -250,12 +295,24 @@ export function AuthPage() {
                       id="auth-password"
                       name="password"
                       value={password}
-                      onChange={(e) => setPassword(e.target.value)}
+                      onChange={(e) => {
+                        setPassword(e.target.value);
+                        // Every rule met now: the "does not meet every rule" message is done with.
+                        if (showUnmetRules && unmetPasswordRules(e.target.value).length === 0) {
+                          setShowUnmetRules(false);
+                          setError('');
+                        }
+                      }}
                       required
-                      placeholder={mode === 'signup' ? 'At least 6 characters…' : '••••••••'}
-                      minLength={6}
+                      placeholder={mode === 'signup' ? 'Choose a password…' : '••••••••'}
+                      // Sign-up checks the rules below itself; the browser's own
+                      // "too short" bubble would get in first with a different message.
+                      minLength={mode === 'signup' ? undefined : 6}
+                      aria-describedby={showRules ? 'password-rules' : undefined}
+                      aria-invalid={showRules && showUnmetRules && unmetPasswordRules(password).length > 0 ? true : undefined}
                       autoComplete={mode === 'signup' ? 'new-password' : 'current-password'}
                     />
+                    {showRules && <PasswordChecklist id="password-rules" password={password} showUnmet={showUnmetRules} className="mt-1.5" />}
                   </div>
                   <Button type="submit" loading={loading} size="lg" className="mt-1 w-full">
                     {mode === 'login' ? 'Sign in' : 'Create account'}

@@ -11,6 +11,8 @@ import { Badge } from '../components/ui/badge';
 import { Input } from '../components/ui/input';
 import { Label } from '../components/ui/label';
 import { PasswordInput } from '../components/ui/PasswordInput';
+import { PasswordChecklist } from '../components/auth/PasswordChecklist';
+import { unmetPasswordRules } from '../lib/passwordRules';
 import { ShortcutSettings } from '../components/shortcuts/ShortcutSettings';
 import { VerifiedCards } from '../components/ui/VerifiedCards';
 import { AppearanceSettings } from '../components/appearance/AppearanceSettings';
@@ -61,6 +63,7 @@ export function AccountPage() {
   const [savingPassword, setSavingPassword] = useState(false);
   const [passwordError, setPasswordError] = useState<string | null>(null);
   const [passwordSuccess, setPasswordSuccess] = useState(false);
+  const [showUnmetRules, setShowUnmetRules] = useState(false);
 
   useEffect(() => {
     // Wait for Firebase Auth to finish rehydrating before deciding the visitor
@@ -148,8 +151,9 @@ export function AccountPage() {
     e.preventDefault();
     setPasswordError(null);
     setPasswordSuccess(false);
-    if (newPassword.length < 6) {
-      setPasswordError('New password must be at least 6 characters.');
+    if (unmetPasswordRules(newPassword).length > 0) {
+      setShowUnmetRules(true);
+      setPasswordError('The new password does not meet every rule yet. See the list above.');
       return;
     }
     if (newPassword !== confirmPassword) {
@@ -163,6 +167,7 @@ export function AccountPage() {
       setCurrentPassword('');
       setNewPassword('');
       setConfirmPassword('');
+      setShowUnmetRules(false);
     } catch (err) {
       setPasswordError(friendlyAuthError(err, 'Could not update your password.'));
     } finally {
@@ -329,8 +334,15 @@ export function AccountPage() {
                             name="newPassword"
                             className="mt-1.5"
                             value={newPassword}
-                            onChange={(e) => setNewPassword(e.target.value)}
+                            onChange={(e) => {
+                              setNewPassword(e.target.value);
+                              if (showUnmetRules && unmetPasswordRules(e.target.value).length === 0) {
+                                setShowUnmetRules(false);
+                                setPasswordError(null);
+                              }
+                            }}
                             autoComplete="new-password"
+                            aria-describedby={newPassword || showUnmetRules ? 'new-password-rules' : undefined}
                           />
                         </div>
                         <div>
@@ -345,6 +357,10 @@ export function AccountPage() {
                           />
                         </div>
                       </div>
+                      {/* The rules appear once a new password is being typed. */}
+                      {(newPassword || showUnmetRules) && (
+                        <PasswordChecklist id="new-password-rules" password={newPassword} showUnmet={showUnmetRules} className="mt-3" />
+                      )}
                       <div aria-live="polite">
                         {passwordError && <p className="mt-3 text-sm text-red-600 dark:text-red-400">{passwordError}</p>}
                         {passwordSuccess && <p className="mt-3 text-sm text-emerald-600 dark:text-emerald-400">Password updated.</p>}
