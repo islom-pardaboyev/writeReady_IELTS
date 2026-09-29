@@ -14,9 +14,12 @@ import {
   Trophy,
   Users,
 } from "lucide-react";
-import { adminDb as db, adminAuth, ADMIN_EMAIL } from "@/firebase/adminConfig";
+import { adminDb as db, adminAuth, ADMIN_EMAIL, OWNER_EMAIL } from "@/firebase/adminConfig";
+import { useAuth } from "@/hooks/useAuth";
+import { LogoLoader } from "@/components/ui/LogoLoader";
 import { StaffShell, type StaffNavGroup } from "@/components/staff/StaffShell";
 import { AdminLogin } from "./admin/AdminLogin";
+import { AccessDenied } from "./admin/AccessDenied";
 import { AdminHome } from "./admin/AdminHome";
 import { PromptsSection, type Prompt } from "./admin/PromptsSection";
 import { UsersSection } from "./admin/UsersSection";
@@ -41,7 +44,26 @@ const RECENT_REPORTS = 300;
 const latest = (...times: (string | undefined)[]) =>
   times.filter(Boolean).sort().at(-1) ?? "";
 
+/**
+ * Checks the Google account signed in on the main site before anything else.
+ * Only the owner's account sees the admin sign-in form; everyone else sees
+ * "Access denied", and the panel below never mounts or loads any data.
+ */
 export default function Admin() {
+  const { user, loading } = useAuth();
+  if (loading) {
+    return (
+      <div className="flex min-h-dvh items-center justify-center bg-[var(--bg-base)]">
+        <LogoLoader />
+      </div>
+    );
+  }
+  const isOwner = !!user?.emailVerified && user.email?.toLowerCase() === OWNER_EMAIL;
+  if (!isOwner) return <AccessDenied email={user?.email ?? null} />;
+  return <AdminPanel />;
+}
+
+function AdminPanel() {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [adminUser, setAdminUser] = useState("Admin");
   const [section, setSection] = useState<AdminSection>("home");

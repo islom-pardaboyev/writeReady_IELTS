@@ -19,3 +19,8 @@ export const adminDb = getFirestore(adminApp);
 // (minted server-side in api/staff-login.ts) — used client-side to recognize
 // an admin session, e.g. to bypass the maintenance gate.
 export const ADMIN_EMAIL = 'admin@writeready.internal';
+
+// The site owner's own account on the main site. /admin shows its sign-in form
+// only when this account is signed in; everyone else gets "Access denied".
+// This only hides the page — the admin password is still checked on the server.
+export const OWNER_EMAIL = 'ipardaboyev574@gmail.com';
