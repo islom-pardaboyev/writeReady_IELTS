@@ -543,10 +543,10 @@ export function UsersSection({
                     />
                   </Field>
                   <Button type="button" variant="outline" disabled={busy || !usageAdjust || Number(usageAdjust) <= 0} onClick={() => adjustUsage(selected, "give")}>
-                    Give {usageAdjust || "…"} more
+                    Take away {usageAdjust || "…"}
                   </Button>
                   <Button type="button" variant="outline" disabled={busy || !usageAdjust || Number(usageAdjust) <= 0} onClick={() => adjustUsage(selected, "take")}>
-                    Take away {usageAdjust || "…"}
+                    Give {usageAdjust || "…"} more
                   </Button>
                 </form>
               </>
