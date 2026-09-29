@@ -47,7 +47,8 @@ export function reloadToNewestBuild(): boolean {
   return true;
 }
 
-async function moveToNewestBuild(): Promise<void> {
+/** Switches on the waiting service worker, then reloads. Also used by the Reload button in UpdatePrompt. */
+export async function moveToNewestBuild(): Promise<void> {
   const reload = () => window.location.reload();
   try {
     const registration = await navigator.serviceWorker?.getRegistration();

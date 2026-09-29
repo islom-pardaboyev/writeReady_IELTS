@@ -91,18 +91,37 @@ export default defineConfig({
       // that a cached service worker would pin visitors to the deploy they
       // first saw, and UpdatePrompt would never have anything to offer.
       workbox: {
-        // Without the denylist every navigation — including the /api/not-found
-        // that vercel.json rewrites unknown URLs to — would be answered with a
-        // cached index.html, and the API would stop returning real statuses.
-        navigateFallback: '/index.html',
-        navigateFallbackDenylist: [/^\/api\//],
+        // Pages come from the network first, not from the cache. A cached
+        // index.html kept a returning visitor on the old build for the ~10
+        // seconds it took the new worker to download everything, and only
+        // then did UpdatePrompt appear. Now a fresh visit gets the new build
+        // at once; the cache is only for when the network is down or slow.
+        // /api/ is left out so the API keeps returning real statuses,
+        // including the /api/not-found that vercel.json rewrites unknown URLs to.
+        // null, not left out: vite-plugin-pwa fills in 'index.html' by default,
+        // which would answer every page from the cache again.
+        navigateFallback: null,
+        runtimeCaching: [
+          {
+            urlPattern: ({ request, url }) =>
+              request.mode === 'navigate' && !url.pathname.startsWith('/api/'),
+            handler: 'NetworkFirst',
+            options: {
+              cacheName: 'pages',
+              networkTimeoutSeconds: 4,
+              expiration: { maxEntries: 20 },
+            },
+          },
+        ],
         globPatterns: ['**/*.{js,css,html,ico,png,svg,webmanifest}'],
         // Precaching runs for every visitor, not just the ones who install, so
         // it should not spend a student's mobile data on the admin console.
         // These two chunks are ~600 KB together and load from the network on
         // the rare visit that needs them. Vite names a lazy chunk after its
-        // module, so renaming those pages means renaming these.
-        globIgnores: ['**/AdminPage-*.js', '**/CenterAdminPage-*.js'],
+        // module, so renaming those pages means renaming these. index.html is
+        // left out too: precached, it would answer '/' from the cache and
+        // skip the network-first rule above.
+        globIgnores: ['**/AdminPage-*.js', '**/CenterAdminPage-*.js', 'index.html'],
       },
     }),
   ],
