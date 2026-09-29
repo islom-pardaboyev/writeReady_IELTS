@@ -38,7 +38,7 @@ import { ScoreTestButton, ScoreTestDialog, type ScoreTestTask } from "@/componen
 import { useScoreTest } from "@/lib/scoreTest";
 import { answerTextStyle, useWritingSettings } from "@/lib/writingSettings";
 import { ShuffleBag } from "@/lib/shuffleBag";
-import { useTask1Chart } from "@/lib/task1Chart";
+import { useTask1ChartState } from "@/lib/task1Chart";
 import { hasAccess } from "@/lib/reportAccess";
 
 interface Task1 {
@@ -95,7 +95,7 @@ function Quick() {
   const task2BagRef = useRef(new ShuffleBag<Task2>());
   // Charts live in their own Firestore documents, so only the one on screen is
   // fetched — the shuffle bag holds prompts, not pictures.
-  const task1Chart = useTask1Chart(db, task1);
+  const { src: task1Chart, status: chartStatus, retry: retryChart } = useTask1ChartState(db, task1);
 
   const minWords = selectedTaskType === 1 ? 150 : 250;
   const wordCount = userText.trim() === "" ? 0 : userText.trim().split(/\s+/).length;
@@ -426,7 +426,7 @@ function Quick() {
         <div className="w-full overflow-y-auto bg-white dark:bg-neutral-900 border-b border-slate-200 dark:border-neutral-800 md:w-[calc(var(--split)*100%)] md:border-b-0 md:border-r max-h-[42vh] md:max-h-none">
           <div className="p-6 w-full">
             {selectedTaskType === 1 && task1 ? (
-              <WritingTask1Preview task1={{ image: task1Chart, report: task1.report }} />
+              <WritingTask1Preview task1={{ image: task1Chart, report: task1.report }} chartStatus={chartStatus} onRetryChart={retryChart} />
             ) : selectedTaskType === 2 && task2 ? (
               <WritingTask2Preview task2={task2.report} />
             ) : (

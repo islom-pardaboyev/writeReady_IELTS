@@ -156,7 +156,7 @@ export function LeaderboardSection() {
       ) : loadFailed && entries.length === 0 ? (
         <LoadError what="the leaderboard" onRetry={load} />
       ) : entries.length === 0 ? (
-        <EmptyState icon={Trophy} title="No reports this month">The leaderboard fills in once students get AI feedback this month.</EmptyState>
+        <EmptyState icon={Trophy} title="No students to rank yet">A student shows up once they have AI reports in both last month and this month. Nobody has both yet.</EmptyState>
       ) : (
         <ol aria-label="Leaderboard" className="flex flex-col gap-0.5 p-2">
           {entries.map((e, i) => {

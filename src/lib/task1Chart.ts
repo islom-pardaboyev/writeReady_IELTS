@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { doc, deleteDoc, getDoc, setDoc, type Firestore } from "firebase/firestore";
 
 // Task 1 charts, stored in Firestore as compressed data URLs, the same way
@@ -141,19 +141,25 @@ export interface ChartPrompt {
 // reopen the same prompt — so remember what we fetched for this page view.
 const cache = new Map<string, string>();
 
+// Throws when the fetch fails, so the writing screens can offer a retry instead
+// of showing a prompt that looks like it never had a chart.
+async function fetchChart(db: Firestore, id: string): Promise<string> {
+  const cached = cache.get(id);
+  if (cached !== undefined) return cached;
+
+  const snap = await getDoc(doc(db, CHART_COLLECTION, id));
+  const data = snap.exists() ? ((snap.data().data as string) ?? "") : "";
+  cache.set(id, data);
+  return data;
+}
+
 /** Resolves the chart for a prompt. Empty when the prompt has none. */
 export async function loadTask1Chart(db: Firestore, prompt: ChartPrompt): Promise<string> {
   const id = prompt.id;
   if (!id) return "";
 
-  const cached = cache.get(id);
-  if (cached !== undefined) return cached;
-
   try {
-    const snap = await getDoc(doc(db, CHART_COLLECTION, id));
-    const data = snap.exists() ? ((snap.data().data as string) ?? "") : "";
-    cache.set(id, data);
-    return data;
+    return await fetchChart(db, id);
   } catch (err) {
     // Not cached: a dropped connection should not stick for the whole visit.
     console.error("Could not load the Task 1 chart", err);
@@ -167,27 +173,60 @@ export function forgetTask1Chart(id: string): void {
 }
 
 /**
- * The chart for the prompt currently on screen. Shows a chart already fetched
- * this visit straight away, so coming back to a prompt does not flash empty.
+ * Where a chart is on its way to the screen: still being fetched, here, not
+ * part of this prompt, or the fetch failed.
  */
-export function useTask1Chart(db: Firestore, prompt: ChartPrompt | null): string {
+export type ChartStatus = "loading" | "ready" | "none" | "error";
+
+export interface ChartState {
+  src: string;
+  status: ChartStatus;
+  /** Tries the fetch again after an "error". */
+  retry: () => void;
+}
+
+/**
+ * The chart for the prompt currently on screen, and whether it has arrived.
+ * A chart already fetched this visit is ready on the first render, so coming
+ * back to a prompt does not flash a loader. A prompt with no chart is "none",
+ * not "loading" forever.
+ */
+export function useTask1ChartState(db: Firestore, prompt: ChartPrompt | null): ChartState {
   const id = prompt?.id ?? "";
-  const [src, setSrc] = useState("");
+  // How the last fetch for a prompt ended. A new object every time, so a success
+  // re-renders too: the chart is in the cache by then, but React skips a state
+  // set to a value it already holds.
+  const [settled, setSettled] = useState<{ id: string; failed: boolean } | null>(null);
+  const [attempt, setAttempt] = useState(0);
 
   useEffect(() => {
-    if (!id) {
-      setSrc("");
-      return;
-    }
+    if (!id || cache.has(id)) return;
     let active = true;
-    setSrc(cache.get(id) ?? "");
-    loadTask1Chart(db, { id }).then((resolved) => {
-      if (active) setSrc(resolved);
-    });
+    fetchChart(db, id).then(
+      () => active && setSettled({ id, failed: false }),
+      (err) => {
+        console.error("Could not load the Task 1 chart", err);
+        if (active) setSettled({ id, failed: true });
+      },
+    );
     return () => {
       active = false;
     };
-  }, [db, id]);
+  }, [db, id, attempt]);
 
-  return src;
+  const retry = useCallback(() => {
+    setSettled(null);
+    setAttempt((n) => n + 1);
+  }, []);
+
+  if (!id) return { src: "", status: "none", retry };
+  const cached = cache.get(id);
+  if (cached !== undefined) return { src: cached, status: cached ? "ready" : "none", retry };
+  // Not in the cache, so it is either still on its way or failed for this prompt (not an earlier one).
+  return { src: "", status: settled?.id === id && settled.failed ? "error" : "loading", retry };
+}
+
+/** Just the chart, for screens that need only the picture (the PDF report). */
+export function useTask1Chart(db: Firestore, prompt: ChartPrompt | null): string {
+  return useTask1ChartState(db, prompt).src;
 }

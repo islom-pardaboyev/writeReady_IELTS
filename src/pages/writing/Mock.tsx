@@ -38,7 +38,7 @@ import { useScoreTest } from "@/lib/scoreTest";
 import { answerTextStyle, useWritingSettings } from "@/lib/writingSettings";
 import { useFeatureFlag } from "@/hooks/useFeatureFlag";
 import { ShuffleBag } from "@/lib/shuffleBag";
-import { useTask1Chart } from "@/lib/task1Chart";
+import { useTask1ChartState } from "@/lib/task1Chart";
 import { TeacherPickerModal } from "@/components/ui/TeacherPickerModal";
 import { ModalCard, ModalTitle, ModalDescription } from "@/components/ui/ModalCard";
 import { HumanCheckConfirmModal } from "@/components/ui/HumanCheckConfirmModal";
@@ -105,7 +105,7 @@ function Mock() {
   const task2BagRef = useRef(new ShuffleBag<Task2>());
   // Charts live in their own Firestore documents, so only the one on screen is
   // fetched — the shuffle bag holds prompts, not pictures.
-  const task1Chart = useTask1Chart(db, task1);
+  const { src: task1Chart, status: chartStatus, retry: retryChart } = useTask1ChartState(db, task1);
 
   useEffect(() => {
     if (!user) return;
@@ -538,7 +538,7 @@ function Mock() {
         <div className="w-full overflow-y-auto bg-white dark:bg-neutral-900 border-b border-slate-200 dark:border-neutral-800 md:w-[calc(var(--split)*100%)] md:border-b-0 md:border-r max-h-[42vh] md:max-h-none">
           <div className="mock-question-scroll p-6 w-full h-full overflow-y-auto min-h-0">
             {activeTask === 1 && task1 ? (
-              <WritingTask1Preview task1={{ image: task1Chart, report: task1.report }} />
+              <WritingTask1Preview task1={{ image: task1Chart, report: task1.report }} chartStatus={chartStatus} onRetryChart={retryChart} />
             ) : activeTask === 2 && task2 ? (
               <WritingTask2Preview task2={task2.report} />
             ) : (
