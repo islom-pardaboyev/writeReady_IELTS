@@ -1,6 +1,7 @@
 /**
  * Posts the admin sends to every bot student (api/_lib/broadcast.ts), written
- * with two marks: **bold** and _italic_. Shared with the admin panel
+ * with two marks, **bold** and _italic_, and one tag: {name}, which becomes
+ * each student's Telegram first name as the post goes out. Shared with the admin panel
  * (src/pages/writing/admin/TelegramBotSection.tsx), so its preview shows
  * exactly what Telegram will. No Node imports: the browser loads this file.
  */
@@ -9,6 +10,14 @@
 export const TEXT_LIMIT = 4096;
 export const CAPTION_LIMIT = 1024;
 export const BUTTON_TEXT_LIMIT = 40;
+
+/** Where each student's first name goes (withName). */
+export const NAME_TAG = '{name}';
+/**
+ * A first name is cut to this many characters, and the tag counts as this
+ * many towards the limits, so a long name never pushes a post past them.
+ */
+export const NAME_ROOM = 32;
 
 const BOLD = /\*\*([^*\n]+?)\*\*/g;
 const ITALIC = /(^|[^\w])_([^_\n]+?)_(?=[^\w]|$)/g;
@@ -23,9 +32,41 @@ export function postToHtml(text: string): string {
     .replace(ITALIC, '$1<i>$2</i>');
 }
 
-/** How long the post is once the marks are gone, which is what Telegram's limits count. */
+/**
+ * How long the post is once the marks are gone, which is what Telegram's
+ * limits count. Each {name} counts as the longest name it can become.
+ */
 export function postLength(text: string): number {
-  return text.replace(BOLD, '$1').replace(ITALIC, '$1$2').length;
+  const plain = text.replace(BOLD, '$1').replace(ITALIC, '$1$2');
+  const names = plain.split(NAME_TAG).length - 1;
+  return plain.length + names * (NAME_ROOM - NAME_TAG.length);
+}
+
+/** Up to NAME_ROOM characters, never splitting a character in two. */
+function clipName(name: string): string {
+  let out = '';
+  for (const ch of name) {
+    if (out.length + ch.length > NAME_ROOM) break;
+    out += ch;
+  }
+  return out;
+}
+
+/**
+ * The post's HTML (postToHtml) for one student: every {name} becomes their
+ * first name. Without a name the tag goes, with the comma or space before it,
+ * so "Hey, {name}!" reads "Hey!" and "{name}, look" reads "look".
+ */
+export function withName(html: string, firstName: string | null | undefined): string {
+  if (!html.includes(NAME_TAG)) return html;
+  const name = clipName((firstName ?? '').trim());
+  if (!name) {
+    return html
+      .replace(/(^|\n)\{name\}[ \t]*,?[ \t]*/g, '$1')
+      .replace(/[ \t]*,?[ \t]*\{name\}/g, '');
+  }
+  const safe = name.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+  return html.split(NAME_TAG).join(safe);
 }
 
 export interface PostButton {

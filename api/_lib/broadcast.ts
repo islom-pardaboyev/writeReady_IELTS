@@ -2,7 +2,7 @@ import { FieldPath, type Query } from 'firebase-admin/firestore';
 import { db } from './db.js';
 import { tg, tgUpload, TelegramError, type Upload } from './telegramApi.js';
 import { BOT_USERS, adminIds, type BotUser } from './studentBot.js';
-import { postProblem, postToHtml, type PostButton } from './telegramText.js';
+import { NAME_TAG, postProblem, postToHtml, withName, type PostButton } from './telegramText.js';
 
 /**
  * Posts the admin sends to every student who uses the Telegram bot, from the
@@ -18,6 +18,9 @@ import { postProblem, postToHtml, type PostButton } from './telegramText.js';
  *
  * Every post carries a "Stop announcements" button. Students who pressed it,
  * or who blocked the bot, are skipped.
+ *
+ * A post is stored with its {name} tags (api/_lib/telegramText.ts); each
+ * student's own first name goes in as their message is sent.
  */
 
 export const BROADCASTS = 'bot_broadcasts';
@@ -117,21 +120,35 @@ function keyboard(button: PostButton | null) {
   };
 }
 
-/** Sends the post to one chat. With a picture to upload, returns Telegram's id for it. */
-async function deliver(chatId: number, post: Post, upload?: Upload | null): Promise<string | null> {
+/**
+ * Sends the post to one chat, with `firstName` in place of any {name}. With a
+ * picture to upload, returns Telegram's id for it.
+ */
+async function deliver(chatId: number, post: Post, firstName: string | undefined, upload?: Upload | null): Promise<string | null> {
+  const html = withName(post.html, firstName);
   const common = { chat_id: chatId, parse_mode: 'HTML', reply_markup: keyboard(post.button) };
   if (upload) {
-    const message = await tgUpload<{ photo?: { file_id: string }[] }>('sendPhoto', { ...common, caption: post.html || undefined }, upload);
+    const message = await tgUpload<{ photo?: { file_id: string }[] }>('sendPhoto', { ...common, caption: html || undefined }, upload);
     // The last size is the biggest. (Index, not .at(): Vercel type-checks api/ against an older library.)
     const sizes = message.photo ?? [];
     return sizes[sizes.length - 1]?.file_id ?? null;
   }
   if (post.photoFileId) {
-    await tg('sendPhoto', { ...common, photo: post.photoFileId, caption: post.html || undefined });
+    await tg('sendPhoto', { ...common, photo: post.photoFileId, caption: html || undefined });
     return post.photoFileId;
   }
-  await tg('sendMessage', { ...common, text: post.html });
+  await tg('sendMessage', { ...common, text: html });
   return null;
+}
+
+/** An admin's first name as the bot knows it, for {name} in their test. Empty when unknown. */
+async function adminFirstName(telegramId: string): Promise<string> {
+  try {
+    const snap = await db().collection(BOT_USERS).doc(telegramId).get();
+    return (snap.data() as BotUser | undefined)?.firstName ?? '';
+  } catch {
+    return '';
+  }
 }
 
 /**
@@ -147,9 +164,11 @@ export async function sendTest(post: Post, upload: Upload | null): Promise<{ pho
   let current = post;
   let pending = upload;
   let sentTo = 0;
+  const named = post.html.includes(NAME_TAG);
   for (const id of ids) {
     try {
-      const fileId = await deliver(Number(id), current, pending);
+      // With {name}, the admin sees their own name in it, as a student would.
+      const fileId = await deliver(Number(id), current, named ? await adminFirstName(String(id)) : undefined, pending);
       if (pending) {
         if (!fileId) throw new BroadcastError('Telegram did not accept the picture. Try another one.');
         current = { ...current, photoFileId: fileId };
@@ -173,7 +192,7 @@ export async function sendTest(post: Post, upload: Upload | null): Promise<{ pho
 async function deliverTo(user: BotUser, post: Post): Promise<'sent' | 'blocked' | 'failed'> {
   for (let attempt = 0; attempt < 2; attempt++) {
     try {
-      await deliver(user.chatId, post);
+      await deliver(user.chatId, post, user.firstName);
       return 'sent';
     } catch (e) {
       if (e instanceof TelegramError && e.unreachable) {
