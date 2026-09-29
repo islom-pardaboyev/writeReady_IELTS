@@ -108,9 +108,11 @@ export function ExamRoomDemo() {
     <figure className="m-0">
       <div className="overflow-hidden rounded-[18px] border border-[var(--border-color)] bg-[var(--bg-card)] shadow-[var(--shadow-lg)]">
         {/* The Mock Exam's own top bar */}
-        <div className="flex items-center justify-between gap-3 border-b border-[var(--border-color)] px-4 py-2.5 sm:px-5">
+        <div className="flex items-center justify-between gap-3 border-b border-[var(--border-color)] px-4 py-3 sm:px-6">
           <span className="text-xs font-semibold tracking-[0.16em] text-[var(--text-secondary)]">
-            WRITEREADY <ChevronRight className="mx-0.5 inline size-3 -translate-y-px text-[var(--border-strong)]" aria-hidden="true" />
+            <span className="hidden sm:inline">
+              WRITEREADY <ChevronRight className="mx-0.5 inline size-3 -translate-y-px text-[var(--border-strong)]" aria-hidden="true" />
+            </span>
             <span className="font-medium tracking-normal text-[var(--text-primary)]">Mock Exam</span>
           </span>
           <span aria-hidden="true" className="flex items-center gap-1.5 text-sm font-semibold text-[var(--text-secondary)]">
@@ -130,7 +132,7 @@ export function ExamRoomDemo() {
         </div>
 
         {/* Task tabs and the instruction line */}
-        <div className="flex flex-wrap items-center gap-x-4 gap-y-2 border-b border-[var(--border-color)] bg-[var(--bg-base)] px-4 py-2.5 sm:px-5">
+        <div className="flex flex-wrap items-center gap-x-4 gap-y-2 border-b border-[var(--border-color)] bg-[var(--bg-base)] px-4 py-2.5 sm:px-6">
           <span className="flex gap-1" aria-hidden="true">
             <span className="rounded-lg px-3 py-1 text-xs font-medium text-[var(--text-secondary)]">Task 1</span>
             <span className="rounded-lg bg-[var(--text-primary)] px-3 py-1 text-xs font-medium text-[var(--bg-card)]">Task 2</span>
@@ -153,18 +155,15 @@ export function ExamRoomDemo() {
 
         {/* Question, answer, and the report slip once it is marked */}
         <div className="grid md:grid-cols-[minmax(0,5fr)_minmax(0,7fr)]">
-          <div className="border-b border-[var(--border-color)] p-4 sm:p-5 md:border-b-0 md:border-r">
-            <p className="border border-[var(--border-color)] p-3.5 text-sm font-bold leading-relaxed text-[var(--text-primary)] sm:p-4">{PROMPT}</p>
-            <p className="mt-3 hidden text-xs leading-relaxed text-[var(--text-secondary)] md:block">
-              Give reasons for your answer and include relevant examples from your own knowledge or experience.
-            </p>
+          <div className="border-b border-[var(--border-color)] p-4 sm:p-6 md:border-b-0 md:border-r">
+            <p className="border border-[var(--border-color)] p-4 text-sm font-bold leading-relaxed text-[var(--text-primary)] sm:p-5">{PROMPT}</p>
           </div>
 
           <div className="flex min-w-0 flex-col">
             <div
               ref={answerRef}
               aria-hidden="true"
-              className="h-[20rem] overflow-y-auto px-4 py-4 text-base leading-[1.75] text-[var(--text-primary)] sm:h-60 sm:px-5 md:h-64 lg:h-48"
+              className="h-[20rem] overflow-y-auto px-4 py-4 text-base leading-[1.8] text-[var(--text-primary)] sm:h-60 sm:px-6 sm:py-6 md:h-64 lg:h-52"
             >
               {visible.map(({ w, part }, i) => {
                 const mark = ANSWER[part].mark;
@@ -184,7 +183,7 @@ export function ExamRoomDemo() {
             </div>
             <p className="sr-only">Sample answer: {FULL_TEXT}</p>
 
-            <div className="flex items-center justify-between border-t border-[var(--border-color)] px-4 py-2 text-xs text-[var(--text-secondary)] sm:px-5">
+            <div className="flex items-center justify-between border-t border-[var(--border-color)] px-4 py-2.5 text-xs text-[var(--text-secondary)] sm:px-6">
               <span className="font-mono tabular-nums">{shown} words</span>
               <span>{marked ? 'Marked: 2 grammar notes, 1 better word' : 'Writing…'}</span>
             </div>
@@ -198,12 +197,12 @@ export function ExamRoomDemo() {
           }`}
           aria-hidden={!marked}
         >
-          <div className="border-b border-[var(--border-color)] p-4 sm:p-5 md:border-b-0 md:border-r">
+          <div className="border-b border-[var(--border-color)] p-4 sm:p-6 md:border-b-0 md:border-r">
             <div className="flex items-baseline justify-between gap-3">
               <p className="text-sm font-semibold text-[var(--text-primary)]">Estimated band</p>
               <p className="font-mono text-3xl font-semibold tracking-[-0.02em] text-[var(--text-primary)] tabular-nums">6.5</p>
             </div>
-            <dl className="mt-3 flex flex-col gap-2">
+            <dl className="mt-5 flex flex-col gap-3">
               {CRITERIA.map(([name, band]) => (
                 <div key={name} className="grid grid-cols-[minmax(0,1fr)_2.5rem] items-center gap-x-3 gap-y-1">
                   <dt className="truncate text-xs text-[var(--text-secondary)]">{name}</dt>
@@ -222,17 +221,17 @@ export function ExamRoomDemo() {
             {NOTES.map((n, i) => (
               <li
                 key={n.from}
-                className="px-4 py-3 transition-opacity duration-500 sm:px-5"
+                className="px-4 py-4 transition-opacity duration-500 sm:px-6"
                 style={{ transitionDelay: marked ? `${250 + i * 150}ms` : '0ms', opacity: marked ? 1 : 0 }}
               >
                 <p className="text-xs font-semibold text-[var(--text-secondary)]">{n.kind}</p>
-                <p className="mt-0.5 text-sm text-[var(--text-primary)]">
+                <p className="mt-1 text-sm text-[var(--text-primary)]">
                   <span className={n.kind === 'Grammar' ? 'text-red-600 line-through decoration-1 dark:text-red-400' : 'text-[var(--text-secondary)]'}>{n.from}</span>
                   <ArrowRight className="mx-1.5 inline size-3.5 -translate-y-px text-[var(--text-secondary)]" aria-hidden="true" />
                   <span className="sr-only">becomes</span>
                   <span className="font-semibold text-emerald-700 dark:text-emerald-400">{n.to}</span>
                 </p>
-                <p className="mt-0.5 text-xs text-[var(--text-secondary)]">{n.why}</p>
+                <p className="mt-1 text-xs text-[var(--text-secondary)]">{n.why}</p>
               </li>
             ))}
           </ul>

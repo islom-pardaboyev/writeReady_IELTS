@@ -144,51 +144,57 @@ export function LandingPage() {
           {/* Ruled lines of an answer sheet, fading out under the headline */}
           <div
             aria-hidden="true"
-            className="pointer-events-none absolute inset-x-0 top-0 h-[560px] bg-[repeating-linear-gradient(to_bottom,transparent_0,transparent_35px,var(--border-color)_35px,var(--border-color)_36px)] [mask-image:linear-gradient(to_bottom,black_30%,transparent)]"
+            className="pointer-events-none absolute inset-x-0 top-0 h-[480px] bg-[repeating-linear-gradient(to_bottom,transparent_0,transparent_35px,var(--border-color)_35px,var(--border-color)_36px)] opacity-60 [mask-image:linear-gradient(to_bottom,black_15%,transparent)]"
           />
-          <div className="relative mx-auto max-w-[1160px] px-4 pb-16 pt-10 sm:px-6 sm:pt-14 lg:pb-20">
-            <h1
-              id="hero-title"
-              className="text-[clamp(2.25rem,4.4vw,3.6rem)] font-extrabold leading-[1.04] tracking-[-0.035em] text-balance text-[var(--text-primary)]"
-            >
-              Write your IELTS essay. Find out which sentences{' '}
-              <span className="text-brand-600 dark:text-brand-400">cost you marks.</span>
-            </h1>
-            <p className="mt-6 max-w-[52ch] text-lg leading-relaxed text-[var(--text-secondary)]">
-              Get an estimated band for your Task 1 or Task 2 answer, with a note on every sentence and better words in Uzbek.
-            </p>
-            <div className="mt-7 flex flex-wrap items-center gap-3">
-              <Link
-                to="/auth?mode=signup"
-                className="inline-flex h-12 items-center gap-2 rounded-full bg-[var(--ink-blue-solid)] px-7 text-base font-semibold text-white no-underline transition-opacity hover:opacity-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ring)] focus-visible:ring-offset-2"
+          <div className="relative mx-auto max-w-[1160px] px-4 pb-20 pt-16 sm:px-6 sm:pt-24 lg:pb-28 lg:pt-28">
+            {/* The text block is centred and given room, so the exam frame
+                below is the one busy thing in the first screen. */}
+            <div className="mx-auto max-w-[820px] text-center">
+              <h1
+                id="hero-title"
+                className="text-[clamp(2.25rem,4.4vw,3.6rem)] font-extrabold leading-[1.06] tracking-[-0.035em] text-balance text-[var(--text-primary)]"
               >
-                Check my essay
-                <ArrowRight className="size-4" aria-hidden="true" />
-              </Link>
-              <Link
-                to="/writing/mock"
-                className="inline-flex h-12 items-center rounded-full border border-[var(--border-color)] bg-[var(--bg-card)] px-6 text-base font-semibold text-[var(--text-primary)] no-underline transition-colors hover:bg-[var(--bg-subtle)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ring)] focus-visible:ring-offset-2"
-              >
-                Try a mock exam
-              </Link>
-            </div>
-            <p className="mt-4 text-sm text-[var(--text-secondary)]">Free: one band report every week.</p>
-            {botShown && (
-              <p className="mt-1.5 text-sm text-[var(--text-secondary)]">
-                No account yet?{' '}
-                <a
-                  href={TELEGRAM_BOT_URL}
-                  {...external}
-                  className="inline-flex items-center gap-0.5 rounded font-semibold text-[var(--ink-blue)] underline-offset-4 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ring)]"
-                >
-                  Get a free band score from our Telegram bot
-                  <ArrowUpRight className="size-3.5" aria-hidden="true" />
-                  <span className="sr-only">(opens in a new tab)</span>
-                </a>
+                <span className="sm:block">Write your IELTS essay.</span>{' '}
+                <span className="sm:block">
+                  Find out which sentences <span className="text-brand-600 dark:text-brand-400">cost you marks.</span>
+                </span>
+              </h1>
+              <p className="mx-auto mt-7 max-w-[46ch] text-lg leading-relaxed text-pretty text-[var(--text-secondary)]">
+                Get an estimated band for your Task 1 or Task 2 answer, with a note on every sentence and better words in Uzbek.
               </p>
-            )}
+              <div className="mt-10 flex flex-col items-stretch justify-center gap-3 sm:flex-row sm:items-center">
+                <Link
+                  to="/auth?mode=signup"
+                  className="inline-flex h-12 items-center justify-center gap-2 rounded-full bg-[var(--ink-blue-solid)] px-7 text-base font-semibold text-white no-underline transition-opacity hover:opacity-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ring)] focus-visible:ring-offset-2"
+                >
+                  Check my essay
+                  <ArrowRight className="size-4" aria-hidden="true" />
+                </Link>
+                <Link
+                  to="/writing/mock"
+                  className="inline-flex h-12 items-center justify-center rounded-full border border-[var(--border-color)] bg-[var(--bg-card)] px-6 text-base font-semibold text-[var(--text-primary)] no-underline transition-colors hover:bg-[var(--bg-subtle)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ring)] focus-visible:ring-offset-2"
+                >
+                  Try a mock exam
+                </Link>
+              </div>
+              <p className="mt-6 text-sm text-[var(--text-secondary)]">Free: one band report every week.</p>
+              {botShown && (
+                <p className="mt-1.5 text-sm text-[var(--text-secondary)]">
+                  No account yet?{' '}
+                  <a
+                    href={TELEGRAM_BOT_URL}
+                    {...external}
+                    className="inline-flex items-center gap-0.5 rounded font-semibold text-[var(--ink-blue)] underline-offset-4 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ring)]"
+                  >
+                    Get a free band score from our Telegram bot
+                    <ArrowUpRight className="size-3.5" aria-hidden="true" />
+                    <span className="sr-only">(opens in a new tab)</span>
+                  </a>
+                </p>
+              )}
+            </div>
 
-            <div className="mt-10">
+            <div className="mt-16 sm:mt-20 lg:mt-24">
               <ExamRoomDemo />
             </div>
           </div>
