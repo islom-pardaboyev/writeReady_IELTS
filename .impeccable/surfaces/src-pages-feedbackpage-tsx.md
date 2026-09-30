@@ -11,13 +11,15 @@ Audience: a student who just finished an essay, often on a phone, wanting to kno
 
 ## Direction contract
 
-THESIS: The report opens like an examiner's result sheet: a ruled table of the four criteria with each band and the reason behind it, the overall band set large beside it, then the three fixes as a checklist the student ticks off. It refuses the category default of a gradient score ring, four identical score cards and a row of icon tabs as the first thing read.
+THESIS: The report opens with the one number the student came for: the overall band set large, the four criteria in a single ruled row under it, then the three fixes as a checklist the student ticks off. The why behind each band waits one tap away in By criterion, so the first screen says the result once and nothing twice. It refuses the category default of a gradient score ring and a row of icon tabs as the first thing read.
+
+(Revised 2026-09-30: the sheet had grown to the question, a table header, a reason per criterion, a boxed disclaimer and a word count, and read as too much. Three lighter layouts were compared, band first, report form and a 4 to 9 scale; band first was chosen.)
 
 OWN-WORLD: Ink on Paper from DESIGN.md: white sheet on paper ground, 1px hairline rules between rows, Plex Mono for every band and count, one indigo ink for the primary action and the active tab. The report's own band colours (gold 7+, ink 6, rose below 6) only on the thin band bars. No kickers, no side stripes, no gradients, no emoji.
 
 STORY: The student sees the question they answered, reads the sheet (bands and why), sees what to reach for next, ticks through the three fixes, then opens the section they need: their marked essay, the criteria in full, readability, the sample answer, vocabulary, grammar, spelling or practice.
 
-FIRST VIEWPORT: Slim header with back link, title, task switch, Score card (solid) and PDF (outline). Then the sheet: question block on top, the criteria table (name, bar, band, reason) with the overall band column at the right, the "to reach the next band" line along its foot. The fix checklist starts just below on desktop.
+FIRST VIEWPORT: Slim header with back link, title, task switch, Score card (solid) and PDF (outline). Then the sheet: "Estimated overall band" and the band with ±0.5 on the left, the descriptor and a one-line AI-estimate note on the right; the four criteria as hairline tiles (name, band, bar), four across from 1024px and two by two below; the "to reach the next band" line; the question folded behind "Show the question". The fix checklist starts just below on desktop.
 
 FORM: Score sheet first, position 4 on the ordered structure list (Marked script, Report booklet, Split workbench, Score sheet first, Coach's plan, Card deck). Seed key 64658799. Signature interaction: ticking a fix strikes it through and advances the "n of 3 done" count, remembered on this device for this report.
 
