@@ -8,6 +8,7 @@ import { SkipLink } from '@/components/layout/SkipLink';
 import { FaqAccordion, FaqAnswerStyles } from '@/components/ui/FaqAccordion';
 import { ExamRoomDemo } from '@/components/landing/ExamRoomDemo';
 import { ReportSample } from '@/components/landing/ReportSample';
+import { HeroMarks } from '@/components/landing/HeroMarks';
 import { HOME_QUESTIONS } from '@/lib/faq';
 import { ChatBot } from '../components/ui/ChatBot';
 
@@ -91,6 +92,8 @@ export function LandingPage() {
             aria-hidden="true"
             className="pointer-events-none absolute inset-x-0 top-0 h-[480px] bg-[repeating-linear-gradient(to_bottom,transparent_0,transparent_35px,var(--border-color)_35px,var(--border-color)_36px)] opacity-60 [mask-image:linear-gradient(to_bottom,black_15%,transparent)]"
           />
+          {/* Pieces of a marked report drifting in the margins, from 1280px */}
+          <HeroMarks />
           <div className="relative mx-auto max-w-[1160px] px-4 pb-20 pt-16 sm:px-6 sm:pt-24 lg:pb-28 lg:pt-28">
             {/* The text block is centred and given room, so the exam frame
                 below is the one busy thing in the first screen. */}
