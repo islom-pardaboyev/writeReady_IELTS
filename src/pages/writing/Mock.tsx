@@ -178,6 +178,13 @@ function Mock() {
     },
   });
 
+  /** A fresh 60 minutes, and a time-up from before no longer counts. */
+  const restartClock = () => {
+    autoSubmitRef.current = false;
+    setAutoSubmittedByTimer(false);
+    setTimeLeft(TIMER_SECONDS);
+  };
+
   const startOver = () => {
     draft.clear();
     setUserText1("");
@@ -185,9 +192,7 @@ function Mock() {
     setActiveTask(1);
     if (task1List.length) setTask1(task1BagRef.current.next());
     if (task2List.length) setTask2(task2BagRef.current.next());
-    autoSubmitRef.current = false;
-    setAutoSubmittedByTimer(false);
-    setTimeLeft(TIMER_SECONDS);
+    restartClock();
   };
 
   const activeText = activeTask === 1 ? userText1 : userText2;
@@ -229,16 +234,19 @@ function Mock() {
       setTimerAnnouncement("Time's up. Your answers have been saved.");
   }, [timeLeft]);
 
+  // A new question restarts the exam clock, as the student asked for a fresh start.
   const handleGetAnother = () => {
     if (activeTask === 1) {
       if (task1List.length === 0) return;
       setUserText1("");
       setTask1(task1BagRef.current.next());
+      restartClock();
       return;
     }
     if (task2List.length === 0) return;
     setUserText2("");
     setTask2(task2BagRef.current.next());
+    restartClock();
   };
 
   const handleSplitPointerDown = (e: PointerEvent<HTMLDivElement>) => {

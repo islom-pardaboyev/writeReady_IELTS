@@ -93,7 +93,9 @@ function Practice() {
     (userText1.trim().length > 0 || userText2.trim().length > 0) && !checkingAccess,
   );
   const [timerRunning, setTimerRunning] = useState(false);
-  const elapsed = useStopwatch(timerRunning);
+  // Counts "New question" presses: each one starts the stopwatch again from 0:00.
+  const [questionRun, setQuestionRun] = useState(0);
+  const elapsed = useStopwatch(timerRunning, questionRun);
   const splitContainerRef = useRef<HTMLDivElement>(null);
   const isDraggingSplit = useRef(false);
   const task1BagRef = useRef(new ShuffleBag<Task1>());
@@ -198,11 +200,13 @@ function Practice() {
       if (task1List.length === 0) return;
       setUserText1("");
       setTask1(task1BagRef.current.next());
+      setQuestionRun((n) => n + 1);
       return;
     }
     if (task2List.length === 0) return;
     setUserText2("");
     setTask2(task2BagRef.current.next());
+    setQuestionRun((n) => n + 1);
   };
 
   const handleSplitPointerDown = (e: PointerEvent<HTMLDivElement>) => {
