@@ -12,8 +12,8 @@ import { HeroMarks } from '@/components/landing/HeroMarks';
 import { HOME_QUESTIONS } from '@/lib/faq';
 import { ChatBot } from '../components/ui/ChatBot';
 
-// What a full report holds, in the order it is laid out (see the FAQ answer
-// "Why is this better than just asking ChatGPT?" for the same list).
+// What a full report holds, in the order it is laid out (the FAQ answer
+// "Why is this better than just asking ChatGPT?" names the same parts).
 const REPORT_PARTS = [
   { title: 'Four band scores', text: 'One for each IELTS criterion, with the reason.' },
   { title: 'Notes on every sentence', text: 'Where you lost marks, and a better way to write it.' },

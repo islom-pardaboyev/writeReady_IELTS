@@ -47,28 +47,15 @@ export const GROUPS: Group[] = [
         q: "Why is this better than just asking ChatGPT?",
         home: true,
         plain:
-          "Ask ChatGPT for a band score and it will give you one. It marks against whatever you paste in, and it forgets the essay you wrote last week. WriteReady sends your essay with the official IELTS Writing band descriptors and the best-fit method examiners are trained to use, plus wording that stops the model putting everybody on Band 7, and we test that prompt against reference essays so the marking does not drift. Every full report comes back in the same shape: each sentence reviewed in order, up to 15 better words and up to 10 grammar points taken from your own essay (the words with Uzbek meanings), a band 8 to 9 answer to your exact question, and the three fixes worth doing first. Two reports a month apart can be compared, so you can see whether you improved. Around that you get exam-style prompts, a 60-minute timer, every report saved and downloadable, and a teacher you can pay to check the same essay. The colours, the spacing and the type are chosen so your eye lands on what matters first and an hour of practice does not wear you out.",
+          "ChatGPT will give you a band for anything you paste in, and it forgets last week's essay. WriteReady marks against the official IELTS band descriptors, the way examiners are trained to, and we check it against essays with known bands so the scores stay steady. Every report has the same parts: notes on each sentence, better words with Uzbek meanings, grammar fixes and a band 8 to 9 answer. Compare two reports and you can see whether you improved.",
         a: (
           <>
+            <p>ChatGPT will give you a band for anything you paste in, and it forgets last week&apos;s essay.</p>
             <p>
-              Ask ChatGPT for a band score and it will give you one. It marks against whatever you paste in, and it
-              forgets the essay you wrote last week.
-            </p>
-            <p>
-              WriteReady sends your essay with the <strong>official IELTS Writing band descriptors</strong> and the
-              best-fit method examiners are trained to use, plus wording that stops the model putting everybody on
-              Band 7. We test that prompt against reference essays, so the marking does not drift when we change
-              something.
-            </p>
-            <p>
-              Every full report comes back in the same shape: each sentence reviewed in order, up to 15 better
-              words and up to 10 grammar points taken from your own essay (the words with Uzbek meanings), a band 8 to 9 answer to your exact question, and the three fixes worth doing
-              first. Two reports a month apart can be compared, so you can see whether you improved.
-            </p>
-            <p>
-              Around that you get exam-style prompts, a 60-minute timer, every report saved and downloadable, and a
-              teacher you can pay to check the same essay. The colours, the spacing and the type are chosen so your eye
-              lands on what matters first and an hour of practice does not wear you out.
+              WriteReady marks against the <strong>official IELTS band descriptors</strong>, the way examiners are
+              trained to, and we check it against essays with known bands so the scores stay steady. Every report has
+              the same parts: notes on each sentence, better words with Uzbek meanings, grammar fixes and a band 8 to 9
+              answer. Compare two reports and you can see whether you improved.
             </p>
           </>
         ),
