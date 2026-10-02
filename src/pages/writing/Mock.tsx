@@ -360,7 +360,7 @@ function Mock() {
 
   return (
     <div
-      className="flex flex-col min-h-screen bg-slate-50 dark:bg-neutral-950 font-sans"
+      className="flex flex-col min-h-screen bg-slate-50 dark:bg-neutral-950 font-sans md:h-dvh md:min-h-0 md:overflow-hidden"
       // Arial and a black-and-white screen; see "Mock Exam: exam look" in index.css.
       data-exam-look={writing.examLook ? "" : undefined}
     >

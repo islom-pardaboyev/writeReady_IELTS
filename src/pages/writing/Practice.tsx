@@ -291,7 +291,7 @@ function Practice() {
 
   return (
     <div
-      className="flex flex-col min-h-screen bg-slate-50 dark:bg-neutral-950 font-sans"
+      className="flex flex-col min-h-screen bg-slate-50 dark:bg-neutral-950 font-sans md:h-dvh md:min-h-0 md:overflow-hidden"
     >
       {/* ── Top bar ── */}
       <div className="sticky top-0 z-30 border-b border-slate-200 bg-white text-slate-900 dark:border-neutral-800 dark:bg-neutral-900 dark:text-neutral-100">
