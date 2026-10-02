@@ -1,7 +1,8 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { getFirestore, FieldValue } from 'firebase-admin/firestore';
 import { createHmac } from 'crypto';
-import { initFirebase, getUid, currentMonthKey, currentWeekKey, resolvePaidStatus } from './_lib/shared.js';
+import { initFirebase, getUid, currentWeekKey, resolvePaidStatus } from './_lib/shared.js';
+import { nextRenewal, planCycle, usedThisCycle } from './_lib/planCycle.js';
 import { LIMITS, essayKeys, loadSavedReport, type SavedReport } from './_lib/savedReports.js';
 import { MAX_SENTENCES, countSentences } from './_lib/essayGuard.js';
 
@@ -25,7 +26,18 @@ export type CreditSource = 'paid' | 'bonus' | 'free';
 
 type CreditErrorCode = 'USER_NOT_FOUND' | 'LIMIT_REACHED' | 'FREE_LIMIT_REACHED' | 'FULL_ONLY';
 class CreditError extends Error {
+  /** For LIMIT_REACHED: when the plan's allowance refills, or null when the plan ends first. */
+  renewsAt: Date | null = null;
   constructor(public code: CreditErrorCode) { super(code); }
+}
+
+const dayMonth = (d: Date) => d.toLocaleDateString('en-GB', { day: 'numeric', month: 'long', timeZone: 'UTC' });
+
+// FeedbackPage.tsx spots this error by its "analysis limit reached" wording.
+function limitReachedMessage(renewsAt: Date | null): string {
+  return renewsAt
+    ? `Monthly analysis limit reached. Your reports renew on ${dayMonth(renewsAt)}.`
+    : 'Monthly analysis limit reached. Your plan ends before it renews: renew the plan to get more reports.';
 }
 
 function signToken(uid: string, source: CreditSource): string {
@@ -45,7 +57,7 @@ function signToken(uid: string, source: CreditSource): string {
  * this essay: another score-only one would change nothing, so it may only
  * spend an allowance that buys the full report, and never the weekly free one.
  */
-async function consumeCredit(uid: string, monthKey: string, { fullOnly = false } = {}): Promise<CreditSource> {
+async function consumeCredit(uid: string, { fullOnly = false } = {}): Promise<CreditSource> {
   const db = getFirestore();
   const userRef = db.collection('users').doc(uid);
   let source: CreditSource = 'paid';
@@ -91,10 +103,11 @@ async function consumeCredit(uid: string, monthKey: string, { fullOnly = false }
     // monthlyLimit covers every paid plan: a learning-center student's profile
     // carries the plan their center bought, and a Customizable plan carries its
     // own number, so one value serves students and individual customers alike.
-    const usage = data.usage ?? {};
-    const used = usage.monthKey === monthKey ? (usage.count ?? 0) : 0;
+    // The month is the plan's own, counted from its end date, so a plan given
+    // on the 20th refills on the 20th, not on the 1st (./_lib/planCycle.ts).
+    const used = usedThisCycle(data.usage, data.expiresAt);
     if (used < monthlyLimit) {
-      tx.set(userRef, { usage: { monthKey, count: used + 1 }, ...seen }, { merge: true });
+      tx.set(userRef, { usage: { monthKey: planCycle(data.expiresAt).key, count: used + 1 }, ...seen }, { merge: true });
       return;
     }
 
@@ -111,7 +124,9 @@ async function consumeCredit(uid: string, monthKey: string, { fullOnly = false }
       return;
     }
 
-    throw new CreditError('LIMIT_REACHED');
+    const limitReached = new CreditError('LIMIT_REACHED');
+    limitReached.renewsAt = nextRenewal(data.expiresAt);
+    throw limitReached;
   });
 
   return source;
@@ -146,7 +161,6 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     return res.status(401).json({ error: 'Invalid or missing auth token. Please sign in again.' });
   }
 
-  const monthKey = currentMonthKey();
   let source: CreditSource = 'paid';
 
   // A report is saved once it is marked. When the browser says which essay
@@ -182,13 +196,13 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   }
 
   try {
-    source = await consumeCredit(uid, monthKey, { fullOnly: saved !== null });
+    source = await consumeCredit(uid, { fullOnly: saved !== null });
   } catch (e: unknown) {
     // The student holds the score-only report and cannot buy the full one
     // right now: give them what they have rather than an error.
     if (saved) return res.status(200).json(savedResponse(saved));
     if (e instanceof CreditError) {
-      if (e.code === 'LIMIT_REACHED') return res.status(429).json({ error: 'Monthly analysis limit reached. Quota resets next month.' });
+      if (e.code === 'LIMIT_REACHED') return res.status(429).json({ error: limitReachedMessage(e.renewsAt) });
       if (e.code === 'FREE_LIMIT_REACHED') return res.status(429).json({ error: "You've used your free essay check for this week. Upgrade to Basic, Standard, or Premium for more reports, or come back next week." });
       if (e.code === 'USER_NOT_FOUND') return res.status(404).json({ error: 'User profile not found.' });
     }
@@ -199,6 +213,6 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   // `limited` is what the client needs: only the weekly free report is the
   // score-only one. `isBonus` is kept for older clients still in a browser tab.
   return res.status(200).json({
-    token, source, limited: source === 'free', isBonus: source !== 'paid', uid, monthKey,
+    token, source, limited: source === 'free', isBonus: source !== 'paid', uid,
   });
 }

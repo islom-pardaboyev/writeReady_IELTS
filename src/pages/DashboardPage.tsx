@@ -22,6 +22,9 @@ import { db } from '../firebase/config';
 import { GraduationCap, Clock, Download } from 'lucide-react';
 import { reportBand } from '@shared/bandScore';
 
+// A plan's allowance renews at 00:00 UTC on its day (api/_lib/planCycle.ts).
+const renewDay = new Intl.DateTimeFormat(undefined, { day: 'numeric', month: 'short', timeZone: 'UTC' });
+
 gsap.registerPlugin(ScrollTrigger);
 
 const modes = [
@@ -309,6 +312,7 @@ export function DashboardPage() {
                   </div>
                   <p className="text-xs text-[var(--text-secondary)]">
                     {usedCount} of {usageLimit} analyses used · {remaining} remaining
+                    {usage?.renewsAt && <> · renews {renewDay.format(usage.renewsAt)}</>}
                   </p>
                 </>
               )}
