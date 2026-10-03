@@ -1087,6 +1087,41 @@ export async function listBotStudents({ limit = 300, before }: { limit?: number;
   return { students, more: snap.docs.length > size };
 }
 
+/**
+ * Asks Telegram (getChat) for a bot student's current name and @username, for
+ * students saved without one or who changed it since their last message. Only
+ * works for people who started the bot, which every bot student did. The
+ * fresh name and @username are saved, so the list shows them from now on.
+ */
+export async function lookupBotStudent(telegramId: string): Promise<{
+  found: boolean;
+  name: string;
+  username: string;
+  bio: string;
+}> {
+  if (!/^\d{1,20}$/.test(telegramId)) return { found: false, name: '', username: '', bio: '' };
+  try {
+    const chat = await tg<{ first_name?: string; last_name?: string; username?: string; bio?: string }>(
+      'getChat', { chat_id: telegramId },
+    );
+    const firstName = chat.first_name ?? '';
+    const username = chat.username ?? '';
+    await userRef(telegramId).set({ firstName, username }, { merge: true });
+    return {
+      found: true,
+      name: [firstName, chat.last_name ?? ''].filter(Boolean).join(' '),
+      username,
+      bio: chat.bio ?? '',
+    };
+  } catch (e) {
+    // 400 chat not found / 403 blocked or deleted: Telegram will not say who it is.
+    if (e instanceof TelegramError && (e.code === 400 || e.code === 403)) {
+      return { found: false, name: '', username: '', bio: '' };
+    }
+    throw e;
+  }
+}
+
 /** Telegram user IDs allowed /admin: TELEGRAM_ADMIN_IDS in Vercel, comma separated. */
 export function adminIds(): string[] {
   return (process.env.TELEGRAM_ADMIN_IDS ?? '').split(',').map((id) => id.trim()).filter((id) => /^\d{1,20}$/.test(id));
