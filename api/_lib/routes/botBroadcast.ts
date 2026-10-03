@@ -3,7 +3,7 @@ import { initFirebase, readStaffToken, isAdminToken } from '../shared.js';
 import {
   BroadcastError, audience, readPhoto, readPost, recentBroadcasts, runBroadcast, sendTest, startBroadcast,
 } from '../broadcast.js';
-import { listBotStudents, lookupBotStudent } from '../studentBot.js';
+import { listBotStudents } from '../studentBot.js';
 
 /**
  * The admin panel's Telegram bot section (src/pages/writing/admin/TelegramBotSection.tsx):
@@ -19,7 +19,6 @@ import { listBotStudents, lookupBotStudent } from '../studentBot.js';
  *   send      record the post and send it to everyone, streaming progress
  *   continue  carry on a post that paused, streaming progress
  *   students  the bot's students, newest first ({ before } for the next page)
- *   lookup    a student's current name and @username from Telegram ({ telegramId })
  */
 /** How long one request sends before pausing; the function may run 300 s (vercel.json). */
 const RUN_MS = 240_000;
@@ -83,8 +82,6 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         return res.status(200).json(await listBotStudents({
           before: typeof body.before === 'number' ? body.before : undefined,
         }));
-      case 'lookup':
-        return res.status(200).json(await lookupBotStudent(String(body.telegramId ?? '')));
       default:
         return res.status(400).json({ error: 'Unknown action.' });
     }

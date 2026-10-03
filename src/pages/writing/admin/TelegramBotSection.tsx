@@ -255,68 +255,6 @@ function Muted({ children }: { children: ReactNode }) {
   return <span className="block text-xs text-[var(--text-secondary)]">{children}</span>;
 }
 
-const linkClass = "block text-xs text-[var(--ink-blue)] underline-offset-4 hover:underline";
-
-/**
- * A student's name, @username and ID. With no @username, the ID still opens
- * their profile in the Telegram app (tg://user), and "Look up" asks Telegram
- * for their current name and @username (api/_lib/studentBot.ts lookupBotStudent).
- */
-function StudentAccount({ student: s, onFound }: {
-  student: BotStudent;
-  onFound: (telegramId: string, fresh: Pick<BotStudent, "name" | "username">) => void;
-}) {
-  const [state, setState] = useState<"idle" | "looking" | "none" | "failed">("idle");
-  const [bio, setBio] = useState("");
-
-  const lookUp = async () => {
-    setState("looking");
-    try {
-      const res = await api({ action: "lookup", telegramId: s.telegramId });
-      if (!res.ok) throw new Error(await errorOf(res));
-      const data = (await res.json()) as { found: boolean; name: string; username: string; bio: string };
-      if (!data.found) return setState("none");
-      onFound(s.telegramId, { name: data.name || s.name, username: data.username });
-      setBio(data.bio);
-      setState(data.username ? "idle" : "none");
-    } catch (e) {
-      console.error(e);
-      setState("failed");
-    }
-  };
-
-  return (
-    <>
-      <span className="block font-medium text-[var(--text-primary)]">{s.name || "No name"}</span>
-      {s.username ? (
-        <a href={`https://t.me/${s.username}`} target="_blank" rel="noopener noreferrer" className={linkClass}>
-          @{s.username}
-          <span className="sr-only"> (opens in Telegram)</span>
-        </a>
-      ) : (
-        <a href={`tg://user?id=${s.telegramId}`} className={linkClass}>
-          Open in Telegram
-          <span className="sr-only"> (no @username, opens the profile by ID)</span>
-        </a>
-      )}
-      <Muted>ID {s.telegramId}</Muted>
-      {bio && <Muted>{bio}</Muted>}
-      {!s.username && (
-        <button
-          type="button"
-          onClick={lookUp}
-          disabled={state === "looking"}
-          className="mt-1 text-xs font-medium text-[var(--ink-blue)] underline-offset-4 hover:underline disabled:opacity-60"
-        >
-          {state === "looking" ? "Looking up…" : "Look up @username"}
-        </button>
-      )}
-      {state === "none" && <Muted>Telegram has no @username for them</Muted>}
-      {state === "failed" && <Muted>Could not look up. Try again.</Muted>}
-    </>
-  );
-}
-
 /**
  * Everyone who uses the bot, newest first, with their site account, what they
  * did, their free checks and their message settings. Loaded once when the
@@ -348,10 +286,6 @@ function StudentsPanel() {
   }, []);
 
   useEffect(() => { load(); }, [load]);
-
-  const updateStudent = useCallback((telegramId: string, fresh: Pick<BotStudent, "name" | "username">) => {
-    setStudents((list) => list.map((s) => (s.telegramId === telegramId ? { ...s, ...fresh } : s)));
-  }, []);
 
   const counts = useMemo(() => ({
     all: students.length,
@@ -424,7 +358,19 @@ function StudentsPanel() {
               {shown.map((s) => (
                 <TableRow key={s.telegramId} className="align-top">
                   <TableCell className="min-w-[160px] align-top">
-                    <StudentAccount student={s} onFound={updateStudent} />
+                    <span className="block font-medium text-[var(--text-primary)]">{s.name || "No name"}</span>
+                    {s.username && (
+                      <a
+                        href={`https://t.me/${s.username}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="block text-xs text-[var(--ink-blue)] underline-offset-4 hover:underline"
+                      >
+                        @{s.username}
+                        <span className="sr-only"> (opens in Telegram)</span>
+                      </a>
+                    )}
+                    <Muted>ID {s.telegramId}</Muted>
                     {s.blocked && <span className="mt-1 inline-block rounded-full bg-red-50 px-2 py-0.5 text-xs font-medium text-red-700 dark:bg-red-950/40 dark:text-red-300">Blocked the bot</span>}
                     {s.writing && !s.blocked && <Muted>Writing an essay now</Muted>}
                   </TableCell>
