@@ -7,6 +7,7 @@ import { useConfirm } from "@/hooks/useConfirm";
 import { formatDateTime } from "@/lib/duration";
 import { CUSTOM_PLAN_PRICES, customAnalysesOf, customPriceFor, effectivePlan, monthlyLimitOf } from "@/lib/plans";
 import { hasFreeReportThisWeek } from "@/lib/weeklyFree";
+import { monthAfter, nextRenewal, planCycle, usedThisCycle } from "@shared/planCycle";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/Button";
 import { Badge } from "@/components/ui/badge";
@@ -20,19 +21,6 @@ import type { SectionProps, SetState, UserRow } from "./types";
 type Filter = "all" | "today" | "paying" | "custom" | "expired";
 
 const DEFAULT_CUSTOM_ANALYSES = 10;
-
-/**
- * One month after the later of today and the plan's current end date, in the
- * YYYY-MM-DD form every plan's `expiresAt` uses. Renewing early adds a month
- * to what is left instead of throwing the remaining days away.
- */
-function monthAfter(currentEnd?: string): string {
-  const now = new Date();
-  const end = currentEnd ? new Date(currentEnd) : null;
-  const next = new Date(end && !Number.isNaN(end.getTime()) && end > now ? end : now);
-  next.setMonth(next.getMonth() + 1);
-  return next.toISOString().slice(0, 10);
-}
 
 function CustomCountSelect({ value, onChange, disabled }: { value: number; onChange: (n: number) => void; disabled?: boolean }) {
   return (
@@ -229,22 +217,21 @@ export function UsersSection({
     setBusy(false);
   };
 
-  // Paid plans only: this month's usage is tracked by calendar month, not by
-  // which plan was active when it was spent, so toggling a plan off and back
-  // on mid-month leaves the old count in place. This is the fix for that —
-  // kept out of free/bonus reports, which already have their own admin lever
-  // (the leaderboard's bonus grant).
+  // Paid plans only: this month's usage is counted in the plan's own month
+  // (api/_lib/planCycle.ts), not by which plan was active when it was spent,
+  // so a count can outlive a plan change that keeps the same day of the month.
+  // This is the fix for that — kept out of free/bonus reports, which already
+  // have their own admin lever (the leaderboard's bonus grant).
   const adjustUsage = async (user: UserRow, direction: "give" | "take") => {
     const n = Number(usageAdjust);
     if (!n || n <= 0) return;
     setBusy(true);
     setNotice(null);
     try {
-      const monthKey = new Date().toISOString().slice(0, 7);
       const limit = monthlyLimitOf(user);
-      const used = user.usage?.monthKey === monthKey ? (user.usage?.count ?? 0) : 0;
+      const used = usedThisCycle(user.usage, user.expiresAt);
       const nextUsed = Math.max(0, Math.min(limit, used + (direction === "take" ? n : -n)));
-      const usage = { monthKey, count: nextUsed };
+      const usage = { monthKey: planCycle(user.expiresAt).key, count: nextUsed };
       await updateDoc(doc(db, "users", user.id), { usage });
       patchUser(user.id, { usage });
       setUsageAdjust("");
@@ -348,10 +335,10 @@ export function UsersSection({
     // What this person's plan actually grants right now — the same rule
     // api/pre-check.ts applies, so this matches what happens when they ask
     // for a report, not just the plan label above (which can be an expired one).
-    const monthKey = new Date().toISOString().slice(0, 7);
     const grantedPlan = effectivePlan(selected);
     const monthlyLimit = monthlyLimitOf(selected);
-    const usedThisMonth = selected.usage?.monthKey === monthKey ? (selected.usage?.count ?? 0) : 0;
+    const usedThisMonth = usedThisCycle(selected.usage, selected.expiresAt);
+    const renewsAt = nextRenewal(selected.expiresAt);
     const remainingThisMonth = Math.max(0, monthlyLimit - usedThisMonth);
     const usagePct = monthlyLimit > 0 ? Math.min(100, (usedThisMonth / monthlyLimit) * 100) : 0;
     const bonus = selected.bonusAnalyses ?? 0;
@@ -523,6 +510,7 @@ export function UsersSection({
                 </div>
                 <p className="text-xs text-[var(--text-secondary)]">
                   {usedThisMonth} of {monthlyLimit} analyses used · {remainingThisMonth} remaining
+                  {renewsAt && ` · renews ${formatDate(renewsAt)}`}
                 </p>
                 <form
                   className="mt-4 flex flex-wrap items-end gap-2 border-t border-[var(--border-color)] pt-4"

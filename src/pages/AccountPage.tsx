@@ -40,6 +40,8 @@ const PRO_FEATURES = [
 const longDate = new Intl.DateTimeFormat(undefined, { day: 'numeric', month: 'long', year: 'numeric' });
 const monthYear = new Intl.DateTimeFormat(undefined, { month: 'long', year: 'numeric' });
 const whole = new Intl.NumberFormat();
+// A plan's allowance renews at 00:00 UTC on its day (api/_lib/planCycle.ts).
+const renewDay = new Intl.DateTimeFormat(undefined, { day: 'numeric', month: 'long', timeZone: 'UTC' });
 
 // My Account. Who you are and what you have sit in one card on the left
 // (sticky on wide screens); the things you change sit in the column beside it.
@@ -224,6 +226,9 @@ export function AccountPage() {
                         label="AI checks used this month"
                         className={usedCount / usageLimit >= 0.85 ? 'bg-red-500' : 'bg-brand-600 dark:bg-brand-400'}
                       />
+                      {usage?.renewsAt && (
+                        <p className="mt-2 text-xs text-[var(--text-secondary)]">Renews on {renewDay.format(usage.renewsAt)}</p>
+                      )}
                     </div>
                   )}
 

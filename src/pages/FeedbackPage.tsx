@@ -849,7 +849,7 @@ export function FeedbackPage() {
         // Asked for the full report but handed the score-only one back: the
         // server had no full report it could charge for.
         if (fresh && saved.tier === 'limited') {
-          throw new Error('You have no full reports left right now, so this essay keeps its score-only report. Your allowance resets next month.');
+          throw new Error('You have no full reports left right now, so this essay keeps its score-only report. Your allowance renews when your plan starts its next month.');
         }
         const reopened = fromSaved(saved, taskType);
         if (!reopened) throw new Error('Your saved report could not be opened. Please try again.');
