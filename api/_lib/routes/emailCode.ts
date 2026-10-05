@@ -3,7 +3,7 @@ import { randomBytes } from 'crypto';
 import { getAuth } from 'firebase-admin/auth';
 import { initFirebase } from '../shared.js';
 import { db } from '../db.js';
-import { CodeError, sendCode, verifyCode, type Deps } from '../emailCode.js';
+import { CodeError, sendCode, testerSignIn, verifyCode, type Deps } from '../emailCode.js';
 
 /**
  * POST /api/email-code
@@ -11,6 +11,8 @@ import { CodeError, sendCode, verifyCode, type Deps } from '../emailCode.js';
  *   { action: 'verify', email, code }              returns { customToken, created } for signInWithCustomToken
  *   { action: 'verify', email, code, password }    the same, for sign-up (a new account gets this password)
  *                                                  and for confirming the email of an existing password account
+ *   { action: 'tester', email, password }          for now: the shared test account (api/_lib/testerAccount.ts),
+ *                                                  signed in, and made the first time, with no code
  *
  * The rules live in api/_lib/emailCode.ts. The codes and their limits are in
  * the email_codes and email_code_ips collections, which only this server
@@ -145,6 +147,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     if (action === 'verify') {
       // A password means sign-up: the account is made with it once the code checks out.
       const { token, created } = await verifyCode(deps, email, code, password);
+      return res.status(200).json({ customToken: token, created });
+    }
+    if (action === 'tester') {
+      const { token, created } = await testerSignIn(deps, email, password);
       return res.status(200).json({ customToken: token, created });
     }
     return res.status(400).json({ error: 'Unknown action.' });

@@ -3,7 +3,8 @@ import { getFirestore, FieldValue, Timestamp } from 'firebase-admin/firestore';
 import { getApps } from 'firebase-admin/app';
 import { createHmac, timingSafeEqual } from 'crypto';
 import Anthropic from '@anthropic-ai/sdk';
-import { initFirebase, currentDayKey, currentMonthKey, currentWeekKey, getUid } from './_lib/shared.js';
+import { initFirebase, currentDayKey, currentWeekKey, getUid } from './_lib/shared.js';
+import { planCycle, usedThisCycle } from './_lib/planCycle.js';
 import { MAX_SENTENCES, countSentences, nextRefundUsage } from './_lib/essayGuard.js';
 import { CRITERIA, extractJson, normalizeScores, type BandScores, type Criterion } from './_lib/bandScore.js';
 import {
@@ -141,10 +142,11 @@ async function refundCredit(uid: string, source: CreditSource, { aiRan = false }
         }
         return;
       }
-      const monthKey = currentMonthKey();
-      const usage = data.usage ?? {};
-      if (usage.monthKey === monthKey && typeof usage.count === 'number' && usage.count > 0) {
-        tx.set(userRef, counted({ usage: { monthKey, count: usage.count - 1 } }), { merge: true });
+      // Back into the plan's current month (./_lib/planCycle.ts), the one
+      // api/pre-check.ts charged unless it has renewed since.
+      const used = usedThisCycle(data.usage, data.expiresAt);
+      if (used > 0) {
+        tx.set(userRef, counted({ usage: { monthKey: planCycle(data.expiresAt).key, count: used - 1 } }), { merge: true });
       }
     });
   } catch { /* best-effort refund; never throw from here */ }

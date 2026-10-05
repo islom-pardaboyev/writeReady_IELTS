@@ -22,6 +22,9 @@ import { db } from '../firebase/config';
 import { GraduationCap, Clock, Download } from 'lucide-react';
 import { reportBand } from '@shared/bandScore';
 
+// A plan's allowance renews at 00:00 UTC on its day (api/_lib/planCycle.ts).
+const renewDay = new Intl.DateTimeFormat(undefined, { day: 'numeric', month: 'short', timeZone: 'UTC' });
+
 gsap.registerPlugin(ScrollTrigger);
 
 const modes = [
@@ -30,6 +33,9 @@ const modes = [
   { id: 'quick', emoji: '⚡', title: 'Quick Write', desc: 'Task 1 or 2 · PDF + AI feedback' },
   { id: 'relax', emoji: '☕', title: 'Relax', desc: 'Your prompt · Write freely' },
 ];
+
+// Recent Analyses cards shown before "See more" — one row on desktop.
+const RECENT_PREVIEW_COUNT = 3;
 
 // The report's official overall band, the same number the report showed.
 function overallBand(scores: Record<string, number>): string {
@@ -197,8 +203,11 @@ export function DashboardPage() {
     () => (statsLoading ? null : dashboardStats(progress, new Date(), activity ?? {})),
     [progress, activity, statsLoading],
   );
-  // Newest first, as the Recent Analyses cards list them.
-  const reports = useMemo(() => progress.slice(-5).reverse(), [progress]);
+  // Newest first, as the Recent Analyses cards list them. One row shows
+  // until the student asks for the rest.
+  const reports = useMemo(() => [...progress].reverse(), [progress]);
+  const [showAllReports, setShowAllReports] = useState(false);
+  const visibleReports = showAllReports ? reports : reports.slice(0, RECENT_PREVIEW_COUNT);
 
   // Signed-out visitors belong on the landing page, not an empty dashboard.
   // After every hook above, so the hook count never changes between renders.
@@ -309,6 +318,7 @@ export function DashboardPage() {
                   </div>
                   <p className="text-xs text-[var(--text-secondary)]">
                     {usedCount} of {usageLimit} analyses used · {remaining} remaining
+                    {usage?.renewsAt && <> · renews {renewDay.format(usage.renewsAt)}</>}
                   </p>
                 </>
               )}
@@ -359,7 +369,11 @@ export function DashboardPage() {
             <div className="gs-db-history mb-10">
               <div className="flex items-center justify-between mb-4">
                 <h2 className="text-xl font-bold text-[var(--text-primary)]">Recent Analyses</h2>
-                <span className="text-xs text-[var(--text-secondary)] font-medium">Last 5 sessions</span>
+                {reports.length > 0 && (
+                  <span className="text-xs text-[var(--text-secondary)] font-medium">
+                    {showAllReports ? `Last ${reports.length} sessions` : `${visibleReports.length} of ${reports.length}`}
+                  </span>
+                )}
               </div>
 
               {reportsLoading ? (
@@ -376,7 +390,7 @@ export function DashboardPage() {
                 </Card>
               ) : (
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                  {reports.map((r) => {
+                  {visibleReports.map((r) => {
                     const band = overallBand(r.scores);
                     const scoreEntries = Object.entries(r.scores);
                     return (
@@ -424,6 +438,19 @@ export function DashboardPage() {
                       </Card>
                     );
                   })}
+                </div>
+              )}
+
+              {!reportsLoading && reports.length > RECENT_PREVIEW_COUNT && (
+                <div className="mt-4 flex justify-center">
+                  <Button
+                    variant="secondary"
+                    size="sm"
+                    onClick={() => setShowAllReports((v) => !v)}
+                    aria-expanded={showAllReports}
+                  >
+                    {showAllReports ? 'Show less' : `See more (${reports.length - RECENT_PREVIEW_COUNT})`}
+                  </Button>
                 </div>
               )}
             </div>

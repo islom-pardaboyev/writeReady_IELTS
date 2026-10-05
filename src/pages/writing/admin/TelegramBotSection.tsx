@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
-import { BellOff, Eye, ImagePlus, Megaphone, PenLine, Send, Users, X, type LucideIcon } from "lucide-react";
+import { BellOff, Eye, ImagePlus, Megaphone, PenLine, Send, UserRound, Users, X, type LucideIcon } from "lucide-react";
 import { adminAuth, adminDb } from "@/firebase/adminConfig";
 import { getFeatureFlag, setFeatureFlag } from "@/hooks/useFeatureFlag";
 import { useConfirm } from "@/hooks/useConfirm";
@@ -8,7 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { EmptyState, Field, FileButton, FilterChips, LoadError, Notice, PageHeading, Panel, RowSkeletons, SearchField, StatStrip, Switch } from "@/components/staff/parts";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { CAPTION_LIMIT, TEXT_LIMIT, postLength, postProblem, postToHtml } from "@shared/telegramText";
+import { CAPTION_LIMIT, NAME_ROOM, NAME_TAG, TEXT_LIMIT, postLength, postProblem, postToHtml, withName } from "@shared/telegramText";
 import { TELEGRAM_BOT_URL } from "@/lib/links";
 import { timeAgo } from "./format";
 
@@ -113,9 +113,12 @@ function ProgressBar({ p }: { p: Progress }) {
   );
 }
 
+/** Stands in for a student's first name in the preview. */
+const SAMPLE_NAME = "Aziza";
+
 /** Roughly how Telegram shows the post; the test shows it exactly. */
 function PostPreview({ text, photo, button }: { text: string; photo: Photo | null; button: { text: string; url: string } }) {
-  const html = postToHtml(text.trim());
+  const html = withName(postToHtml(text.trim()), SAMPLE_NAME);
   const empty = !html && !photo;
   return (
     <div className="rounded-xl bg-[var(--bg-subtle)] p-4">
@@ -440,6 +443,7 @@ export function TelegramBotSection() {
   const [loadFailed, setLoadFailed] = useState(false);
 
   const [text, setText] = useState("");
+  const textRef = useRef<HTMLTextAreaElement>(null);
   const [photo, setPhoto] = useState<Photo | null>(null);
   const [button, setButton] = useState({ text: "", url: "" });
   const [testing, setTesting] = useState(false);
@@ -480,6 +484,21 @@ export function TelegramBotSection() {
     [text, button, hasButton, photo],
   );
   const testedThis = tested?.sig === sig;
+  const hasName = text.includes(NAME_TAG);
+
+  /** Puts {name} where the cursor is (or over the selection), and keeps typing after it. */
+  const insertName = () => {
+    const el = textRef.current;
+    const start = el?.selectionStart ?? text.length;
+    const end = el?.selectionEnd ?? text.length;
+    setText(text.slice(0, start) + NAME_TAG + text.slice(end));
+    requestAnimationFrame(() => {
+      if (!el) return;
+      el.focus();
+      const at = start + NAME_TAG.length;
+      el.setSelectionRange(at, at);
+    });
+  };
   const busy = testing || running !== null;
   const otherSending = recent.some((r) => r.status === "sending");
 
@@ -507,7 +526,12 @@ export function TelegramBotSection() {
       if (!res.ok) throw new Error(await errorOf(res));
       const data = (await res.json()) as { photoFileId: string | null; sentTo: number };
       setTested({ sig, photoFileId: data.photoFileId });
-      setNotice({ tone: "success", text: "Sent to your Telegram. Check how it looks, then send it to everyone." });
+      setNotice({
+        tone: "success",
+        text: hasName
+          ? "Sent to your Telegram, with your own first name in it. Each student gets theirs. Check how it looks, then send it to everyone."
+          : "Sent to your Telegram. Check how it looks, then send it to everyone.",
+      });
     } catch (e) {
       setNotice({ tone: "error", text: (e as Error).message });
     }
@@ -650,14 +674,27 @@ export function TelegramBotSection() {
               htmlFor="tg-post-text"
               hint={
                 <span className="flex flex-wrap justify-between gap-2">
-                  <span>Use **bold** and _italic_. Links work as they are.</span>
+                  <span>
+                    Use **bold** and _italic_. Links work as they are.
+                    {hasName && ` Each ${NAME_TAG} counts as ${NAME_ROOM} characters, room for a long name.`}
+                  </span>
                   <span className={length > limit ? "font-medium text-red-600 dark:text-red-400" : "tabular-nums"}>
                     {num(length)} / {num(limit)}
                   </span>
                 </span>
               }
             >
+              <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5">
+                <Button type="button" variant="outline" size="sm" onClick={insertName} disabled={busy} aria-describedby="tg-name-help">
+                  <UserRound aria-hidden="true" />
+                  Insert student's name
+                </Button>
+                <span id="tg-name-help" className="text-xs text-[var(--text-secondary)]">
+                  Adds <code className="font-mono">{NAME_TAG}</code>. Each student sees their own first name, like "Hey, {SAMPLE_NAME}!"
+                </span>
+              </div>
               <Textarea
+                ref={textRef}
                 id="tg-post-text"
                 name="tg-post-text"
                 rows={8}
@@ -746,6 +783,12 @@ export function TelegramBotSection() {
 
         <Panel title="Preview" description="Roughly how it looks in Telegram. The test shows it exactly.">
           <PostPreview text={text} photo={photo} button={button} />
+          {hasName && (
+            <p className="mt-3 flex items-start gap-2 text-xs text-[var(--text-secondary)]">
+              <UserRound size={14} className="mt-0.5 shrink-0" aria-hidden="true" />
+              {SAMPLE_NAME} stands in for each student's first name. A student with no name on Telegram gets the line without it.
+            </p>
+          )}
           <p className="mt-3 flex items-start gap-2 text-xs text-[var(--text-secondary)]">
             <BellOff size={14} className="mt-0.5 shrink-0" aria-hidden="true" />
             Every post has a Stop announcements button. Students who press it, or who blocked the bot, are skipped.

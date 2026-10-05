@@ -1,4 +1,5 @@
 import { createHash, randomBytes, randomInt, timingSafeEqual } from 'crypto';
+import { TESTER_EMAIL, isTesterEmail } from './testerAccount.js';
 
 // Sign-in with a code sent by email: the student types their address, gets a
 // 6-digit code, types it in, and is signed in to the account with that email
@@ -235,6 +236,37 @@ export async function verifyCode(
     if (!existing.emailVerified) await deps.auth.claim(uid, password);
   } else {
     uid = await deps.auth.createUser(email, password);
+  }
+  return { token: await deps.auth.createCustomToken(uid), created: !existing };
+}
+
+/** The shared test account's password (api/_lib/testerAccount.ts). Server only, never sent to the browser. */
+const TESTER_PASSWORD = 'tester!';
+
+/**
+ * Temporary: signs in the shared test account with its fixed password and no
+ * emailed code, making it the first time (see api/_lib/testerAccount.ts).
+ * Anything else is refused, so this is no way into any other account. It is
+ * signed in with a custom token, so it keeps working even if someone signed
+ * in as the tester changes the password on My Account.
+ */
+export async function testerSignIn(
+  deps: Pick<Deps, 'auth'>,
+  rawEmail: unknown,
+  rawPassword: unknown,
+): Promise<{ token: string; created: boolean }> {
+  if (!isTesterEmail(rawEmail) || rawPassword !== TESTER_PASSWORD) {
+    throw new CodeError(401, 'Incorrect email or password.');
+  }
+  const existing = await deps.auth.getUserByEmail(TESTER_EMAIL);
+  let uid: string;
+  if (existing) {
+    if (existing.disabled) throw new CodeError(403, 'This account is switched off. Message us on Telegram.');
+    uid = existing.uid;
+    // Made some other way before this existed: mark it confirmed, or the site and the API keep it out.
+    if (!existing.emailVerified) await deps.auth.claim(uid, TESTER_PASSWORD);
+  } else {
+    uid = await deps.auth.createUser(TESTER_EMAIL, TESTER_PASSWORD);
   }
   return { token: await deps.auth.createCustomToken(uid), created: !existing };
 }

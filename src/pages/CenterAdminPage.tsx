@@ -18,6 +18,7 @@ import { PLAN_INFO } from "@/lib/plans";
 import { centerPlanOf, type CenterPlanId } from "@/lib/centerPricing";
 import { addCenterStudent, centerReports, removeCenterStudent, updateCenterStudent } from "@/lib/centerStudent";
 import { reportBand } from "@shared/bandScore";
+import { planCycle } from "@shared/planCycle";
 
 interface CenterData {
   id: string;
@@ -215,12 +216,15 @@ export default function CenterAdminPage() {
         getDocs(query(collection(db, "users"), where("centerId", "==", centerId))),
       ]);
       const seenAt = new Map(profiles.docs.map((d) => [d.id, d.data().lastActiveAt?.toDate?.() as Date | undefined]));
-      const monthKeyFormat = new Intl.DateTimeFormat("en-CA", { year: "numeric", month: "2-digit" });
-      const monthKey = monthKeyFormat.format(new Date());
+      // "This month" is the plan's own month, which runs from the day of the
+      // month the contract ends on, as the student's allowance does
+      // (api/_lib/planCycle.ts). Each profile carries the contract's end date.
+      const cycleStart = new Map(profiles.docs.map((d) => [d.id, planCycle(d.data().expiresAt).start]));
 
       const result: StudentAnalytics[] = studs.map((s) => {
         const mine = reports.filter((data) => data.uid === s.uid);
         let totalBand = 0; let bandCount = 0; let lastTs: Date | null = seenAt.get(s.uid) ?? null; let monthlyCount = 0;
+        const since = cycleStart.get(s.uid) ?? planCycle(null).start;
         mine.forEach((data) => {
           // Each report's official overall band, the number the student saw.
           const band = reportBand(data.scores);
@@ -228,7 +232,7 @@ export default function CenterAdminPage() {
           const ts = data.createdAt;
           if (ts) {
             if (!lastTs || ts > lastTs) lastTs = ts;
-            if (monthKeyFormat.format(ts) === monthKey) monthlyCount++;
+            if (ts >= since) monthlyCount++;
           }
         });
         return {

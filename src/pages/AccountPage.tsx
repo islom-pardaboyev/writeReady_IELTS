@@ -11,6 +11,8 @@ import { Badge } from '../components/ui/badge';
 import { Input } from '../components/ui/input';
 import { Label } from '../components/ui/label';
 import { PasswordInput } from '../components/ui/PasswordInput';
+import { PasswordRequirements } from '../components/auth/PasswordRequirements';
+import { unmetPasswordRules } from '../lib/passwordRules';
 import { ShortcutSettings } from '../components/shortcuts/ShortcutSettings';
 import { VerifiedCards } from '../components/ui/VerifiedCards';
 import { AppearanceSettings } from '../components/appearance/AppearanceSettings';
@@ -38,6 +40,8 @@ const PRO_FEATURES = [
 const longDate = new Intl.DateTimeFormat(undefined, { day: 'numeric', month: 'long', year: 'numeric' });
 const monthYear = new Intl.DateTimeFormat(undefined, { month: 'long', year: 'numeric' });
 const whole = new Intl.NumberFormat();
+// A plan's allowance renews at 00:00 UTC on its day (api/_lib/planCycle.ts).
+const renewDay = new Intl.DateTimeFormat(undefined, { day: 'numeric', month: 'long', timeZone: 'UTC' });
 
 // My Account. Who you are and what you have sit in one card on the left
 // (sticky on wide screens); the things you change sit in the column beside it.
@@ -61,6 +65,7 @@ export function AccountPage() {
   const [savingPassword, setSavingPassword] = useState(false);
   const [passwordError, setPasswordError] = useState<string | null>(null);
   const [passwordSuccess, setPasswordSuccess] = useState(false);
+  const [showUnmetRules, setShowUnmetRules] = useState(false);
 
   useEffect(() => {
     // Wait for Firebase Auth to finish rehydrating before deciding the visitor
@@ -148,8 +153,9 @@ export function AccountPage() {
     e.preventDefault();
     setPasswordError(null);
     setPasswordSuccess(false);
-    if (newPassword.length < 6) {
-      setPasswordError('New password must be at least 6 characters.');
+    if (unmetPasswordRules(newPassword).length > 0) {
+      setShowUnmetRules(true);
+      document.getElementById('newPassword')?.focus();
       return;
     }
     if (newPassword !== confirmPassword) {
@@ -163,6 +169,7 @@ export function AccountPage() {
       setCurrentPassword('');
       setNewPassword('');
       setConfirmPassword('');
+      setShowUnmetRules(false);
     } catch (err) {
       setPasswordError(friendlyAuthError(err, 'Could not update your password.'));
     } finally {
@@ -219,6 +226,9 @@ export function AccountPage() {
                         label="AI checks used this month"
                         className={usedCount / usageLimit >= 0.85 ? 'bg-red-500' : 'bg-brand-600 dark:bg-brand-400'}
                       />
+                      {usage?.renewsAt && (
+                        <p className="mt-2 text-xs text-[var(--text-secondary)]">Renews on {renewDay.format(usage.renewsAt)}</p>
+                      )}
                     </div>
                   )}
 
@@ -329,8 +339,12 @@ export function AccountPage() {
                             name="newPassword"
                             className="mt-1.5"
                             value={newPassword}
-                            onChange={(e) => setNewPassword(e.target.value)}
+                            onChange={(e) => {
+                              setNewPassword(e.target.value);
+                              if (showUnmetRules && unmetPasswordRules(e.target.value).length === 0) setShowUnmetRules(false);
+                            }}
                             autoComplete="new-password"
+                            aria-describedby="new-password-rules"
                           />
                         </div>
                         <div>
@@ -345,6 +359,7 @@ export function AccountPage() {
                           />
                         </div>
                       </div>
+                      <PasswordRequirements id="new-password-rules" password={newPassword} showUnmet={showUnmetRules} className="mt-3" />
                       <div aria-live="polite">
                         {passwordError && <p className="mt-3 text-sm text-red-600 dark:text-red-400">{passwordError}</p>}
                         {passwordSuccess && <p className="mt-3 text-sm text-emerald-600 dark:text-emerald-400">Password updated.</p>}

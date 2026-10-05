@@ -2,6 +2,7 @@ import { randomBytes } from 'crypto';
 import { FieldValue, Timestamp, type Query } from 'firebase-admin/firestore';
 import { db } from './db.js';
 import { currentMonthKey, currentWeekKey, resolvePaidStatus } from './shared.js';
+import { usedThisCycle } from './planCycle.js';
 import { LIMITS, essayKeys, loadScoreLock, saveScoreLock, type EssayKeys, type ScoreLock } from './savedReports.js';
 import type { BandScores } from './bandScore.js';
 import { tg, esc, botUsername, webhookSecret, TelegramError } from './telegramApi.js';
@@ -418,8 +419,7 @@ function paidPlanOf(account: Record<string, unknown> | null | undefined): PaidPl
   const { plan, isPaidPlan, monthlyLimit: limit } = resolvePaidStatus(account);
   if (!isPaidPlan) return null;
   if (plan === 'forever') return { name: PLAN_NAMES.forever, left: null, limit };
-  const usage = (account.usage ?? {}) as { monthKey?: string; count?: number };
-  const used = usage.monthKey === currentMonthKey() ? (usage.count ?? 0) : 0;
+  const used = usedThisCycle(account.usage, account.expiresAt);
   return { name: PLAN_NAMES[plan] ?? plan, left: Math.max(0, limit - used), limit };
 }
 

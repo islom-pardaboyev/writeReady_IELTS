@@ -22,9 +22,12 @@ export interface UserProfile {
 
 export interface UsageRecord {
   uid: string;
-  yearMonth: string;
+  /** The plan month the count belongs to (see api/_lib/planCycle.ts). */
+  cycleKey: string;
   count: number;
   limit: number;
+  /** When the monthly allowance refills; null on Free, or when the plan ends first. */
+  renewsAt: Date | null;
   updatedAt: Date;
 }
 

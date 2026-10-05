@@ -54,8 +54,8 @@ export default defineConfig({
     VitePWA({
       // 'prompt', not 'autoUpdate': autoUpdate reloads the page the moment a
       // deploy lands, and someone forty minutes into a Task 2 essay would lose
-      // the tab out from under them. src/components/ui/UpdatePrompt.tsx asks
-      // instead, and waits.
+      // the tab out from under them. src/components/ui/AppUpdater.tsx waits for
+      // the next link they click instead.
       registerType: 'prompt',
       includeAssets: ['logo.svg', 'logo.png', 'apple-touch-icon.png', 'robots.txt'],
       manifest: {
@@ -89,12 +89,12 @@ export default defineConfig({
       },
       // vercel.json sends /sw.js with `max-age=0, must-revalidate`. Without
       // that a cached service worker would pin visitors to the deploy they
-      // first saw, and UpdatePrompt would never have anything to offer.
+      // first saw, and AppUpdater would never find a new build.
       workbox: {
         // Pages come from the network first, not from the cache. A cached
         // index.html kept a returning visitor on the old build for the ~10
         // seconds it took the new worker to download everything, and only
-        // then did UpdatePrompt appear. Now a fresh visit gets the new build
+        // then did the update notice appear. Now a fresh visit gets the new build
         // at once; the cache is only for when the network is down or slow.
         // /api/ is left out so the API keeps returning real statuses,
         // including the /api/not-found that vercel.json rewrites unknown URLs to.

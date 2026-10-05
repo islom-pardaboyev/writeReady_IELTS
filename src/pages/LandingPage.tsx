@@ -7,11 +7,13 @@ import { Header } from '@/components/layout/Header';
 import { SkipLink } from '@/components/layout/SkipLink';
 import { FaqAccordion, FaqAnswerStyles } from '@/components/ui/FaqAccordion';
 import { ExamRoomDemo } from '@/components/landing/ExamRoomDemo';
+import { ReportSample } from '@/components/landing/ReportSample';
+import { HeroMarks } from '@/components/landing/HeroMarks';
 import { HOME_QUESTIONS } from '@/lib/faq';
 import { ChatBot } from '../components/ui/ChatBot';
 
-// What a full report holds, in the order it is laid out (see the FAQ answer
-// "Why is this better than just asking ChatGPT?" for the same list).
+// What a full report holds, in the order it is laid out (the FAQ answer
+// "Why is this better than just asking ChatGPT?" names the same parts).
 const REPORT_PARTS = [
   { title: 'Four band scores', text: 'One for each IELTS criterion, with the reason.' },
   { title: 'Notes on every sentence', text: 'Where you lost marks, and a better way to write it.' },
@@ -73,62 +75,6 @@ const H2 = 'text-[clamp(1.75rem,3.2vw,2.5rem)] font-extrabold leading-[1.1] trac
 const LEAD = 'mt-3 max-w-[56ch] text-lg leading-relaxed text-[var(--text-secondary)]';
 const external = { target: '_blank', rel: 'noopener noreferrer' } as const;
 
-// A report as it comes back, shortened: the bands, one sentence note and one
-// word. Sample content, labelled as such.
-function ReportSample() {
-  const bands: [string, number][] = [
-    ['Task Response', 6.5],
-    ['Coherence and Cohesion', 7],
-    ['Lexical Resource', 6.5],
-    ['Grammatical Range and Accuracy', 6],
-  ];
-  return (
-    <figure className="m-0">
-      <div className="overflow-hidden rounded-[18px] border border-[var(--border-color)] bg-[var(--bg-card)] shadow-[var(--shadow-md)]">
-        <div className="flex items-end justify-between gap-4 border-b border-[var(--border-color)] px-5 py-4">
-          <div>
-            <p className="text-xs text-[var(--text-secondary)]">Task 2 · Opinion essay</p>
-            <p className="mt-0.5 text-sm font-semibold text-[var(--text-primary)]">Estimated overall band</p>
-          </div>
-          <p className="font-mono text-4xl font-semibold leading-none tracking-[-0.03em] text-[var(--text-primary)] tabular-nums">6.5</p>
-        </div>
-        <dl className="grid gap-px bg-[var(--border-color)] sm:grid-cols-2">
-          {bands.map(([name, band]) => (
-            <div key={name} className="bg-[var(--bg-card)] px-5 py-3">
-              <dt className="text-xs text-[var(--text-secondary)]">{name}</dt>
-              <dd className="mt-1 flex items-center gap-3">
-                <span className="font-mono text-lg font-semibold text-[var(--text-primary)] tabular-nums">{band.toFixed(1)}</span>
-                <span aria-hidden="true" className="h-1 flex-1 overflow-hidden rounded-full bg-[var(--border-color)] dark:bg-[var(--border-strong)]">
-                  <span className="block h-full rounded-full bg-brand-600 dark:bg-brand-400" style={{ width: `${(band / 9) * 100}%` }} />
-                </span>
-              </dd>
-            </div>
-          ))}
-        </dl>
-        <div className="border-t border-[var(--border-color)] px-5 py-4">
-          <p className="text-xs font-semibold text-[var(--text-secondary)]">Sentence 2 · Grammar</p>
-          <p className="mt-1.5 text-sm leading-relaxed text-[var(--text-primary)]">
-            <span className="text-red-600 line-through decoration-1 dark:text-red-400">Technology have changed</span> the way we learn.
-          </p>
-          <p className="mt-1 text-sm leading-relaxed text-[var(--text-primary)]">
-            <span className="font-semibold text-emerald-700 dark:text-emerald-400">Technology has changed</span> the way we learn.
-          </p>
-          <p className="mt-1.5 text-xs text-[var(--text-secondary)]">"Technology" is one thing, so the verb is singular.</p>
-        </div>
-        <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1 border-t border-[var(--border-color)] px-5 py-4">
-          <p className="w-full text-xs font-semibold text-[var(--text-secondary)]">Better word</p>
-          <p className="text-sm text-[var(--text-secondary)]">dramatically</p>
-          <ArrowRight className="size-3.5 translate-y-0.5 text-[var(--text-secondary)]" aria-hidden="true" />
-          <span className="sr-only">becomes</span>
-          <p className="text-sm font-semibold text-[var(--text-primary)]">profoundly</p>
-          <p className="text-sm text-[var(--text-secondary)]">Uzbek: tubdan</p>
-        </div>
-      </div>
-      <figcaption className="mt-3 text-center text-xs text-[var(--text-secondary)]">Part of a sample report</figcaption>
-    </figure>
-  );
-}
-
 export function LandingPage() {
   // Admin → Telegram bot: the bot is left off the page until the admin announces it.
   const botShown = useShowTelegramBot();
@@ -144,51 +90,59 @@ export function LandingPage() {
           {/* Ruled lines of an answer sheet, fading out under the headline */}
           <div
             aria-hidden="true"
-            className="pointer-events-none absolute inset-x-0 top-0 h-[560px] bg-[repeating-linear-gradient(to_bottom,transparent_0,transparent_35px,var(--border-color)_35px,var(--border-color)_36px)] [mask-image:linear-gradient(to_bottom,black_30%,transparent)]"
+            className="pointer-events-none absolute inset-x-0 top-0 h-[480px] bg-[repeating-linear-gradient(to_bottom,transparent_0,transparent_35px,var(--border-color)_35px,var(--border-color)_36px)] opacity-60 [mask-image:linear-gradient(to_bottom,black_15%,transparent)]"
           />
-          <div className="relative mx-auto max-w-[1160px] px-4 pb-16 pt-10 sm:px-6 sm:pt-14 lg:pb-20">
-            <h1
-              id="hero-title"
-              className="text-[clamp(2.25rem,4.4vw,3.6rem)] font-extrabold leading-[1.04] tracking-[-0.035em] text-balance text-[var(--text-primary)]"
-            >
-              Write your IELTS essay. Find out which sentences{' '}
-              <span className="text-brand-600 dark:text-brand-400">cost you marks.</span>
-            </h1>
-            <p className="mt-6 max-w-[52ch] text-lg leading-relaxed text-[var(--text-secondary)]">
-              Get an estimated band for your Task 1 or Task 2 answer, with a note on every sentence and better words in Uzbek.
-            </p>
-            <div className="mt-7 flex flex-wrap items-center gap-3">
-              <Link
-                to="/auth?mode=signup"
-                className="inline-flex h-12 items-center gap-2 rounded-full bg-[var(--ink-blue-solid)] px-7 text-base font-semibold text-white no-underline transition-opacity hover:opacity-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ring)] focus-visible:ring-offset-2"
+          {/* Pieces of a marked report drifting in the margins, from 1280px */}
+          <HeroMarks />
+          <div className="relative mx-auto max-w-[1160px] px-4 pb-20 pt-16 sm:px-6 sm:pt-24 lg:pb-28 lg:pt-28">
+            {/* The text block is centred and given room, so the exam frame
+                below is the one busy thing in the first screen. */}
+            <div className="mx-auto max-w-[820px] text-center">
+              <h1
+                id="hero-title"
+                className="text-[clamp(2.25rem,4.4vw,3.6rem)] font-extrabold leading-[1.06] tracking-[-0.035em] text-balance text-[var(--text-primary)]"
               >
-                Check my essay
-                <ArrowRight className="size-4" aria-hidden="true" />
-              </Link>
-              <Link
-                to="/writing/mock"
-                className="inline-flex h-12 items-center rounded-full border border-[var(--border-color)] bg-[var(--bg-card)] px-6 text-base font-semibold text-[var(--text-primary)] no-underline transition-colors hover:bg-[var(--bg-subtle)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ring)] focus-visible:ring-offset-2"
-              >
-                Try a mock exam
-              </Link>
-            </div>
-            <p className="mt-4 text-sm text-[var(--text-secondary)]">Free: one band report every week.</p>
-            {botShown && (
-              <p className="mt-1.5 text-sm text-[var(--text-secondary)]">
-                No account yet?{' '}
-                <a
-                  href={TELEGRAM_BOT_URL}
-                  {...external}
-                  className="inline-flex items-center gap-0.5 rounded font-semibold text-[var(--ink-blue)] underline-offset-4 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ring)]"
-                >
-                  Get a free band score from our Telegram bot
-                  <ArrowUpRight className="size-3.5" aria-hidden="true" />
-                  <span className="sr-only">(opens in a new tab)</span>
-                </a>
+                <span className="sm:block">Write your IELTS essay.</span>{' '}
+                <span className="sm:block">
+                  Find out which sentences <span className="text-brand-600 dark:text-brand-400">cost you marks.</span>
+                </span>
+              </h1>
+              <p className="mx-auto mt-7 max-w-[46ch] text-lg leading-relaxed text-pretty text-[var(--text-secondary)]">
+                Get an estimated band for your Task 1 or Task 2 answer, with a note on every sentence and better words in Uzbek.
               </p>
-            )}
+              <div className="mt-10 flex flex-col items-stretch justify-center gap-3 sm:flex-row sm:items-center">
+                <Link
+                  to="/auth?mode=signup"
+                  className="inline-flex h-12 items-center justify-center gap-2 rounded-full bg-[var(--ink-blue-solid)] px-7 text-base font-semibold text-white no-underline transition-opacity hover:opacity-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ring)] focus-visible:ring-offset-2"
+                >
+                  Check my essay
+                  <ArrowRight className="size-4" aria-hidden="true" />
+                </Link>
+                <Link
+                  to="/writing/mock"
+                  className="inline-flex h-12 items-center justify-center rounded-full border border-[var(--border-color)] bg-[var(--bg-card)] px-6 text-base font-semibold text-[var(--text-primary)] no-underline transition-colors hover:bg-[var(--bg-subtle)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ring)] focus-visible:ring-offset-2"
+                >
+                  Try a mock exam
+                </Link>
+              </div>
+              <p className="mt-6 text-sm text-[var(--text-secondary)]">Free: one band report every week.</p>
+              {botShown && (
+                <p className="mt-1.5 text-sm text-[var(--text-secondary)]">
+                  No account yet?{' '}
+                  <a
+                    href={TELEGRAM_BOT_URL}
+                    {...external}
+                    className="inline-flex items-center gap-0.5 rounded font-semibold text-[var(--ink-blue)] underline-offset-4 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ring)]"
+                  >
+                    Get a free band score from our Telegram bot
+                    <ArrowUpRight className="size-3.5" aria-hidden="true" />
+                    <span className="sr-only">(opens in a new tab)</span>
+                  </a>
+                </p>
+              )}
+            </div>
 
-            <div className="mt-10">
+            <div className="mt-16 sm:mt-20 lg:mt-24">
               <ExamRoomDemo />
             </div>
           </div>

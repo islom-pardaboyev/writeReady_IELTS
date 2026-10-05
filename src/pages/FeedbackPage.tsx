@@ -849,7 +849,7 @@ export function FeedbackPage() {
         // Asked for the full report but handed the score-only one back: the
         // server had no full report it could charge for.
         if (fresh && saved.tier === 'limited') {
-          throw new Error('You have no full reports left right now, so this essay keeps its score-only report. Your allowance resets next month.');
+          throw new Error('You have no full reports left right now, so this essay keeps its score-only report. Your allowance renews when your plan starts its next month.');
         }
         const reopened = fromSaved(saved, taskType);
         if (!reopened) throw new Error('Your saved report could not be opened. Please try again.');
@@ -1445,22 +1445,17 @@ export function FeedbackPage() {
           {/* ── Main feedback UI ── */}
           {feedback && (
             <div>
-              {/* ── The result sheet: question, the four bands and why, the overall band ── */}
+              {/* ── The result sheet: the overall band, the four bands, the next band, the question ── */}
               <ResultSheet
                 question={questionBlock}
                 overall={feedback.scores.overall}
                 descriptor={bandLabel(feedback.scores.overall)}
-                words={essayWords}
                 bandGap={feedback.limited ? undefined : feedback.bandGapAnalysis || undefined}
-                criteria={CATEGORY_META.map((cat) => {
-                  const detail = (feedback.feedback as unknown as Record<string, CategoryFeedback> | undefined)?.[cat.key];
-                  return {
-                    key: cat.key,
-                    name: cat.key === 'taskAchievement' ? (selectedTask === 'task1' ? 'Task Achievement' : 'Task Response') : CAT_LABELS[cat.key],
-                    band: feedback.scores[cat.key as keyof typeof feedback.scores] as number,
-                    reason: feedback.limited ? undefined : detail?.issues?.[0] ?? detail?.strengths?.[0],
-                  };
-                })}
+                criteria={CATEGORY_META.map((cat) => ({
+                  key: cat.key,
+                  name: cat.key === 'taskAchievement' ? (selectedTask === 'task1' ? 'Task Achievement' : 'Task Response') : CAT_LABELS[cat.key],
+                  band: feedback.scores[cat.key as keyof typeof feedback.scores] as number,
+                }))}
               />
 
               {/* Why the bands are what they are, when that is not obvious */}

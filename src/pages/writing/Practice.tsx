@@ -93,7 +93,9 @@ function Practice() {
     (userText1.trim().length > 0 || userText2.trim().length > 0) && !checkingAccess,
   );
   const [timerRunning, setTimerRunning] = useState(false);
-  const elapsed = useStopwatch(timerRunning);
+  // Counts "New question" presses: each one starts the stopwatch again from 0:00.
+  const [questionRun, setQuestionRun] = useState(0);
+  const elapsed = useStopwatch(timerRunning, questionRun);
   const splitContainerRef = useRef<HTMLDivElement>(null);
   const isDraggingSplit = useRef(false);
   const task1BagRef = useRef(new ShuffleBag<Task1>());
@@ -198,11 +200,13 @@ function Practice() {
       if (task1List.length === 0) return;
       setUserText1("");
       setTask1(task1BagRef.current.next());
+      setQuestionRun((n) => n + 1);
       return;
     }
     if (task2List.length === 0) return;
     setUserText2("");
     setTask2(task2BagRef.current.next());
+    setQuestionRun((n) => n + 1);
   };
 
   const handleSplitPointerDown = (e: PointerEvent<HTMLDivElement>) => {
@@ -287,7 +291,7 @@ function Practice() {
 
   return (
     <div
-      className="flex flex-col min-h-screen bg-slate-50 dark:bg-neutral-950 font-sans"
+      className="flex flex-col min-h-screen bg-slate-50 dark:bg-neutral-950 font-sans md:h-dvh md:min-h-0 md:overflow-hidden"
     >
       {/* ── Top bar ── */}
       <div className="sticky top-0 z-30 border-b border-slate-200 bg-white text-slate-900 dark:border-neutral-800 dark:bg-neutral-900 dark:text-neutral-100">

@@ -89,7 +89,9 @@ function Quick() {
     userText.trim().length > 0 && !checkingAccess,
   );
   const [timerRunning, setTimerRunning] = useState(false);
-  const elapsed = useStopwatch(timerRunning);
+  // Counts "New question" presses: each one starts the stopwatch again from 0:00.
+  const [questionRun, setQuestionRun] = useState(0);
+  const elapsed = useStopwatch(timerRunning, questionRun);
   const splitContainerRef = useRef<HTMLDivElement>(null);
   const isDraggingSplit = useRef(false);
   const task1BagRef = useRef(new ShuffleBag<Task1>());
@@ -159,6 +161,8 @@ function Quick() {
     setUserText("");
     if (selectedTaskType === 1) setTask1(task1BagRef.current.next());
     else if (selectedTaskType === 2) setTask2(task2BagRef.current.next());
+    else return;
+    setQuestionRun((n) => n + 1);
   };
 
   const handleSplitPointerDown = (e: PointerEvent<HTMLDivElement>) => {
@@ -313,7 +317,7 @@ function Quick() {
 
   /* ── Writing screen ── */
   return (
-    <div className="flex flex-col min-h-screen bg-slate-50 dark:bg-neutral-950 font-sans">
+    <div className="flex flex-col min-h-screen bg-slate-50 dark:bg-neutral-950 font-sans md:h-dvh md:min-h-0 md:overflow-hidden">
 
       {/* ── Top bar ── */}
       <div className="sticky top-0 z-30 border-b border-slate-200 bg-white text-slate-900 dark:border-neutral-800 dark:bg-neutral-900 dark:text-neutral-100">
