@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { onAuthStateChanged, signInWithCustomToken, signOut } from "firebase/auth";
 import { CircleCheck, Download, FileText, Inbox, Loader2, RefreshCw, Upload, Wallet } from "lucide-react";
-import { adminAuth, adminDb } from "@/firebase/adminConfig";
+import { adminAuth, adminDb, endSessionWithoutRole, staffSessionOf } from "@/firebase/adminConfig";
 import { getHumanReviewsForTeacher, teacherEarningUZS, uploadTeacherFeedback } from "@/firebase/teachers";
 import { loadTask1Chart } from "@/lib/task1Chart";
 import { buildReviewDocx, downloadBlob, fileToBase64 } from "@/lib/reviewDocx";
@@ -39,6 +39,8 @@ export default function TeacherPortalPage() {
   const [reviewsFailed, setReviewsFailed] = useState(false);
   const [search, setSearch] = useState("");
   const searchRef = useRef<HTMLInputElement>(null);
+  // Set once someone signs in on this page (see the session check below).
+  const signedInHere = useRef(false);
   const [filter, setFilter] = useState<Filter>("pending");
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [busy, setBusy] = useState<"download" | "upload" | null>(null);
@@ -52,12 +54,28 @@ export default function TeacherPortalPage() {
     // Firebase Auth persists the signed-in session across reloads on its
     // own; wait for it to report a real user before trusting the localStorage
     // flag, so Firestore queries never race ahead of the restored session.
-    const unsub = onAuthStateChanged(adminAuth, (fbUser) => {
-      if (fbUser) {
+    // The session must be this teacher's: the admin and centre portals share
+    // this Firebase app, and a session from before sign-in carried the
+    // teacher's role is accepted nowhere now, so it is signed out and the
+    // teacher signs in again.
+    const unsub = onAuthStateChanged(adminAuth, async (fbUser) => {
+      // Only the session restored when the page opened is checked here. A
+      // sign-in made on this page sets everything up itself, and must not be
+      // undone by flags left over from someone signed in before.
+      if (!fbUser || signedInHere.current) return;
+      const session = await staffSessionOf(fbUser);
+      if (signedInHere.current || adminAuth.currentUser?.uid !== fbUser.uid) return;
+      if (session === undefined || (session?.role === "teacher" && session.teacherId === id)) {
         setIsLoggedIn(true);
         setTeacherId(id);
         setTeacherName(name ?? "Teacher");
+        return;
       }
+      localStorage.removeItem("teacherLoggedIn");
+      localStorage.removeItem("teacherId");
+      localStorage.removeItem("teacherName");
+      setIsLoggedIn(false);
+      await endSessionWithoutRole(fbUser, session);
     });
     return unsub;
   }, []);
@@ -82,6 +100,7 @@ export default function TeacherPortalPage() {
   }, [isLoggedIn, teacherId, loadReviews]);
 
   const login = async (loginValue: string, password: string): Promise<string | null> => {
+    signedInHere.current = true;
     try {
       // Credential check happens server-side (api/staff-login.ts) via the
       // Firebase Admin SDK, so the teacher's password never reaches the

@@ -35,41 +35,79 @@ export async function getUid(req: VercelRequest): Promise<string> {
 /** The fixed internal email of the admin account. api/staff-login.ts mints its sign-in token. */
 export const ADMIN_EMAIL = 'admin@writeready.internal';
 
+export type StaffRole = 'admin' | 'center' | 'teacher';
+
+/**
+ * What api/staff-login.ts writes into each staff sign-in token. Only the
+ * server can put claims in a custom token, and they stay in every ID token of
+ * that session, so these say who is staff. firestore.rules reads the same
+ * three (staffRole, isCenterFor, isTeacherFor).
+ *
+ * The email used to decide it, but an email can be changed from the browser
+ * on some Firebase settings, and the email-code sign-in hands students custom
+ * tokens too: a student who renamed their address to a staff one would have
+ * passed as that staff member.
+ */
+export interface StaffClaims {
+  staff: StaffRole;
+  centerId?: string;
+  teacherId?: string;
+}
+
 export interface StaffToken {
   uid: string;
   /** Lower-cased, '' when the token has none. */
   email: string;
-  /** The token's sign_in_provider: 'custom' for staff, 'password' or 'google.com' for students. */
+  /** The token's sign_in_provider: always 'custom' for staff. */
   provider: string;
+  role: StaffRole;
+  /** The centre's document id, for a centre. */
+  centerId: string;
+  /** The teacher's document id, for a teacher. */
+  teacherId: string;
 }
 
-/** The signed-in person behind an `Authorization: Bearer <ID token>` header, or null for a missing, bad or expired token. */
+/**
+ * The staff member behind an `Authorization: Bearer <ID token>` header, or
+ * null for a missing, bad or expired token and for anyone who is not staff.
+ *
+ * A staff session from before roles were written into sign-in tokens has no
+ * role, so it is null too: the routes answer 401 and the panel asks the
+ * person to sign in again, which gives them a token with their role.
+ */
 export async function readStaffToken(req: VercelRequest): Promise<StaffToken | null> {
   const header = req.headers.authorization ?? '';
   const token = header.startsWith('Bearer ') ? header.slice(7) : '';
   if (!token) return null;
   try {
     const d = await getAuth().verifyIdToken(token);
-    return { uid: d.uid, email: (d.email ?? '').toLowerCase(), provider: d.firebase?.sign_in_provider ?? '' };
+    return staffTokenOf(d);
   } catch {
     return null;
   }
 }
 
-/**
- * Staff sign in with a custom token from api/staff-login.ts, so their token's
- * provider is 'custom'. Anyone can make an account with a staff email through
- * Firebase's public sign-up address, but that account signs in with a
- * 'password' provider and must never count as staff. firestore.rules checks
- * the same two things (isStaff).
- */
+/** The staff part of a verified ID token, or null when it is not a staff sign-in. Exported for scripts/test-security-fixes.ts. */
+export function staffTokenOf(d: { uid: string; email?: string; firebase?: { sign_in_provider?: string }; [claim: string]: unknown }): StaffToken | null {
+  // Staff only ever sign in with a custom token from api/staff-login.ts.
+  const provider = d.firebase?.sign_in_provider ?? '';
+  if (provider !== 'custom') return null;
+  const role = d.staff;
+  const text = (v: unknown) => (typeof v === 'string' ? v : '');
+  const base = { uid: d.uid, email: text(d.email).toLowerCase(), provider, centerId: '', teacherId: '' };
+  if (role === 'admin') return { ...base, role };
+  if (role === 'center' && text(d.centerId)) return { ...base, role, centerId: text(d.centerId) };
+  if (role === 'teacher' && text(d.teacherId)) return { ...base, role, teacherId: text(d.teacherId) };
+  return null;
+}
+
 export function isAdminToken(t: StaffToken | null): boolean {
-  return t !== null && t.provider === 'custom' && t.email === ADMIN_EMAIL;
+  return t !== null && t.provider === 'custom' && t.role === 'admin';
 }
 
 /** The staff token of the learning centre with this id. */
 export function isCenterToken(t: StaffToken | null, centerId: string): boolean {
-  return t !== null && t.provider === 'custom' && t.email === `center_${centerId}@writeready.internal`.toLowerCase();
+  return t !== null && t.provider === 'custom' && t.role === 'center' && centerId !== '' && t.centerId === centerId;
 }
 
 export function currentMonthKey(): string {

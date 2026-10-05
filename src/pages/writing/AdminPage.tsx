@@ -14,7 +14,7 @@ import {
   Trophy,
   Users,
 } from "lucide-react";
-import { adminDb as db, adminAuth, ADMIN_EMAIL, OWNER_EMAIL } from "@/firebase/adminConfig";
+import { adminDb as db, adminAuth, ADMIN_EMAIL, OWNER_EMAIL, endSessionWithoutRole, staffSessionOf } from "@/firebase/adminConfig";
 import { useAuth } from "@/hooks/useAuth";
 import { LogoLoader } from "@/components/ui/LogoLoader";
 import { StaffShell, type StaffNavGroup } from "@/components/staff/StaffShell";
@@ -94,16 +94,29 @@ function AdminPanel() {
     // flag, so Firestore queries never race ahead of the restored session.
     // The teacher and center portals share this Firebase app, so the restored
     // user may not be the admin. Trusting the flag then shows the admin screen
-    // while every write is refused — send them back to sign in instead.
-    const unsub = onAuthStateChanged(adminAuth, (fbUser) => {
+    // while every write is refused — send them back to sign in instead. The
+    // same goes for an admin session from before sign-in carried the admin
+    // role (firestore.rules and the API now go by that role): it is signed
+    // out, and signing in again gives a session with the role.
+    const unsub = onAuthStateChanged(adminAuth, async (fbUser) => {
       if (!fbUser) return;
-      if (fbUser.email?.toLowerCase() === ADMIN_EMAIL) {
+      const session = await staffSessionOf(fbUser);
+      // Someone signed in or out while the role was being read: that newer
+      // session is handled where it was made.
+      if (adminAuth.currentUser?.uid !== fbUser.uid) return;
+      // Offline with an expired token the role cannot be read: the email is
+      // enough to show the screen, and every request is checked anyway.
+      const isAdmin = session === undefined
+        ? fbUser.email?.toLowerCase() === ADMIN_EMAIL
+        : session?.role === "admin";
+      if (isAdmin) {
         setIsLoggedIn(true);
         if (u) setAdminUser(u);
       } else {
         localStorage.removeItem("adminLoggedIn");
         localStorage.removeItem("adminUser");
         setIsLoggedIn(false);
+        await endSessionWithoutRole(fbUser, session);
       }
     });
     return unsub;

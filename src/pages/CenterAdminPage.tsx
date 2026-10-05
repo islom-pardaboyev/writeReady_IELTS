@@ -1,9 +1,8 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { collection, doc, getDoc, getDocs, query, serverTimestamp, setDoc, where } from "firebase/firestore";
+import { collection, doc, getDoc, getDocs, query, where } from "firebase/firestore";
 import { onAuthStateChanged, signInWithCustomToken, signOut as fbSignOut } from "firebase/auth";
 import { ChartColumn, LayoutDashboard, Plus, RefreshCw, Trash2, UserPlus, Users } from "lucide-react";
-import { adminDb as db, adminAuth } from "@/firebase/adminConfig";
-import { deleteStudentAuthAccount } from "@/firebase/createStudentAccount";
+import { adminDb as db, adminAuth, endSessionWithoutRole, staffSessionOf } from "@/firebase/adminConfig";
 import { useConfirm } from "@/hooks/useConfirm";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/Button";
@@ -17,7 +16,7 @@ import { EmptyState, Field, Initials, LoadError, Notice, PageHeading, Panel, Row
 import { daysUntil, formatDate, inDays, timeAgo } from "@/pages/writing/admin/format";
 import { PLAN_INFO } from "@/lib/plans";
 import { centerPlanOf, type CenterPlanId } from "@/lib/centerPricing";
-import { createCenterStudentAccount, removeCenterStudent, updateCenterStudent } from "@/lib/centerStudent";
+import { addCenterStudent, centerReports, removeCenterStudent, updateCenterStudent } from "@/lib/centerStudent";
 import { reportBand } from "@shared/bandScore";
 
 interface CenterData {
@@ -64,21 +63,6 @@ function mapStudentSnap(docs: { id: string; data: () => Record<string, unknown> 
     .sort((a, b) => a.fullName.localeCompare(b.fullName));
 }
 
-/**
- * The feedback reports of these students, and nobody else's. Firestore takes
- * at most 30 values in an `in` filter, so the list is fetched in slices. The
- * portal used to download every report and every user profile on the whole
- * platform and filter them here, which showed each center other people's data
- * and grew slower with every new student anywhere.
- */
-async function reportsFor(uids: string[]) {
-  const slices: string[][] = [];
-  for (let i = 0; i < uids.length; i += 30) slices.push(uids.slice(i, i + 30));
-  const snaps = await Promise.all(
-    slices.map((ids) => getDocs(query(collection(db, "feedback_reports"), where("uid", "in", ids)))),
-  );
-  return snaps.flatMap((snap) => snap.docs.map((d) => d.data()));
-}
 
 function contractStatus(expiresAt?: string) {
   const d = daysUntil(expiresAt);
@@ -91,6 +75,8 @@ function contractStatus(expiresAt?: string) {
 export default function CenterAdminPage() {
   const { confirm, dialog } = useConfirm();
   const searchRef = useRef<HTMLInputElement>(null);
+  // Set once someone signs in on this page (see the session check below).
+  const signedInHere = useRef(false);
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [centerId, setCenterId] = useState("");
   const [centerName, setCenterName] = useState("");
@@ -129,12 +115,28 @@ export default function CenterAdminPage() {
     // Firebase Auth persists the signed-in session across reloads on its
     // own; wait for it to report a real user before trusting the localStorage
     // flag, so Firestore queries never race ahead of the restored session.
-    const unsub = onAuthStateChanged(adminAuth, (fbUser) => {
-      if (fbUser) {
+    // The session must be this centre's: the admin and teacher portals share
+    // this Firebase app, and a session from before sign-in carried the
+    // centre's role is accepted nowhere now, so it is signed out and the
+    // centre signs in again.
+    const unsub = onAuthStateChanged(adminAuth, async (fbUser) => {
+      // Only the session restored when the page opened is checked here. A
+      // sign-in made on this page sets everything up itself, and must not be
+      // undone by flags left over from someone signed in before.
+      if (!fbUser || signedInHere.current) return;
+      const session = await staffSessionOf(fbUser);
+      if (signedInHere.current || adminAuth.currentUser?.uid !== fbUser.uid) return;
+      if (session === undefined || (session?.role === "center" && session.centerId === id)) {
         setIsLoggedIn(true);
         setCenterId(id);
         setCenterName(name ?? "Center");
+        return;
       }
+      localStorage.removeItem("centerAdminLoggedIn");
+      localStorage.removeItem("centerAdminId");
+      localStorage.removeItem("centerAdminName");
+      setIsLoggedIn(false);
+      await endSessionWithoutRole(fbUser, session);
     });
     return unsub;
   }, []);
@@ -170,15 +172,14 @@ export default function CenterAdminPage() {
     setStudentsLoading(false);
   }, []);
 
-  const loadReportsToday = useCallback(async (list: Student[]) => {
+  const loadReportsToday = useCallback(async (id: string) => {
     try {
       const todayStart = new Date();
       todayStart.setHours(0, 0, 0, 0);
-      const reports = await reportsFor(list.map((s) => s.uid));
+      const reports = await centerReports(id);
       let count = 0;
       reports.forEach((data) => {
-        const ts = data.createdAt?.toDate?.() as Date | undefined;
-        if (ts && ts >= todayStart) count++;
+        if (data.createdAt && data.createdAt >= todayStart) count++;
       });
       setReportsToday(count);
       setReportsFailed(false);
@@ -196,9 +197,9 @@ export default function CenterAdminPage() {
   }, [isLoggedIn, centerId, loadCenterData, loadStudents]);
 
   useEffect(() => {
-    if (students.length > 0) loadReportsToday(students);
+    if (students.length > 0 && centerId) loadReportsToday(centerId);
     else setReportsToday(0);
-  }, [students, loadReportsToday]);
+  }, [students, centerId, loadReportsToday]);
 
   const loadAnalytics = useCallback(async () => {
     setAnalyticsLoading(true);
@@ -210,7 +211,7 @@ export default function CenterAdminPage() {
       // a student who logs in and writes without asking for feedback used to
       // show as "not active yet". A center may read its own students' profiles.
       const [reports, profiles] = await Promise.all([
-        reportsFor(studs.map((s) => s.uid)),
+        centerReports(centerId),
         getDocs(query(collection(db, "users"), where("centerId", "==", centerId))),
       ]);
       const seenAt = new Map(profiles.docs.map((d) => [d.id, d.data().lastActiveAt?.toDate?.() as Date | undefined]));
@@ -224,7 +225,7 @@ export default function CenterAdminPage() {
           // Each report's official overall band, the number the student saw.
           const band = reportBand(data.scores);
           if (band !== null) { totalBand += band; bandCount++; }
-          const ts = data.createdAt?.toDate?.() as Date | undefined;
+          const ts = data.createdAt;
           if (ts) {
             if (!lastTs || ts > lastTs) lastTs = ts;
             if (monthKeyFormat.format(ts) === monthKey) monthlyCount++;
@@ -281,71 +282,14 @@ export default function CenterAdminPage() {
     setAdding(true);
     try {
       const loginKey = newLogin.trim().toLowerCase();
-      const existing = await getDocs(query(collection(db, "learningCenters", centerId, "students"), where("login", "==", loginKey)));
-      if (!existing.empty) { setAddError("That login is already used by one of your students."); setAdding(false); return; }
-
-      // The server makes the student's sign-in account, with its email already
-      // confirmed (api/center-student.ts), so they can actually sign in.
-      const fakeEmail = `${loginKey}@writeready.student`;
-      const made = await createCenterStudentAccount(centerId, loginKey, newPass.trim());
+      // The server makes the whole student (api/center-student.ts): the
+      // sign-in account, with its email already confirmed, the profile with
+      // the center's plan, and the center's record of them. It also checks
+      // the places left, which a check in this page alone could not enforce.
+      const made = await addCenterStudent(centerId, { fullName: newName.trim(), login: loginKey, password: newPass.trim() });
       if (!made.ok) { setAddError(made.error); setAdding(false); return; }
-      if (!made.uid) { setAddError("Could not create the student account. Try again."); setAdding(false); return; }
+      if (!made.uid) { setAddError("Could not add the student. Try again."); setAdding(false); return; }
       const uid = made.uid;
-
-      // The profile must repeat exactly what the center's own record says:
-      // firestore.rules compares the two, and a plan WriteReady changed after
-      // this page loaded would be refused. So read the record again first.
-      const fresh = await getDoc(doc(db, "learningCenters", centerId)).catch(() => null);
-      const centerNow = fresh?.exists() ? fresh.data() : null;
-      const plan = centerPlanOf(centerNow?.plan ?? centerData?.plan);
-      const endsAt: string = (centerNow?.expiresAt ?? centerData?.expiresAt ?? "") as string;
-
-      // User profile: grants the center's own plan, tied to its contract
-      // end. These fields have to stay in step with the admin panel's
-      // studentPlanFields() in
-      // src/pages/writing/admin/CentersSection.tsx and with firestore.rules.
-      const profile = {
-        email: fakeEmail,
-        studentLogin: loginKey,
-        fullName: newName.trim(),
-        plan,
-        expiresAt: endsAt ? `${endsAt}T23:59:59` : "",
-        subscriptionExpiresAt: endsAt || null,
-        centerId,
-        centerName,
-        bonusAnalyses: 0,
-      };
-
-      try {
-        await setDoc(doc(db, "users", uid), { ...profile, createdAt: serverTimestamp() });
-      } catch (err) {
-        // The rules compare this profile against the center's own record, so
-        // printing both side by side says which field was refused.
-        console.error("The student's profile was refused. Tried to write:", profile);
-        console.error("The center's record says:", centerNow
-          ? { plan: centerNow.plan, expiresAt: centerNow.expiresAt, expiresAtType: typeof centerNow.expiresAt }
-          : "could not be read");
-        // The sign-in account already exists at this point. Leaving it would
-        // hold the login hostage: the next try would be refused as "already
-        // taken" while the student still has no profile.
-        await deleteStudentAuthAccount(fakeEmail, newPass.trim());
-        throw err;
-      }
-
-      // Student record under the center (doc id = uid so it maps to the account).
-      try {
-        // No password here: it lives in the sign-in account only.
-        await setDoc(doc(db, "learningCenters", centerId, "students", uid), {
-          fullName: newName.trim(),
-          login: loginKey,
-          uid,
-          addedAt: serverTimestamp(),
-        });
-      } catch (err) {
-        console.error("The center's own student list refused the write for center", centerId);
-        await deleteStudentAuthAccount(fakeEmail, newPass.trim());
-        throw err;
-      }
 
       setNewName(""); setNewLogin(""); setNewPass("");
       await loadStudents(centerId);
@@ -400,6 +344,7 @@ export default function CenterAdminPage() {
   };
 
   const login = async (username: string, password: string): Promise<string | null> => {
+    signedInHere.current = true;
     try {
       const res = await fetch("/api/staff-login", {
         method: "POST",

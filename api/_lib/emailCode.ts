@@ -20,7 +20,24 @@ export const RESEND_GAP_MS = 60 * 1000;
 export const SENDS_PER_HOUR = 5;
 /** Codes one network can ask for in an hour: a whole class on one connection still fits. */
 export const IP_SENDS_PER_HOUR = 30;
+/**
+ * Wrong codes one address may have in a day, across all its codes. Without
+ * it, five codes an hour with five tries each let a stranger make 600 guesses
+ * a day at someone's account; with it, 20, about a 1-in-50,000 chance a day.
+ * A student who mistypes a few times never gets near it.
+ */
+export const WRONG_CODES_PER_DAY = 20;
 const HOUR = 60 * 60 * 1000;
+const DAY = 24 * HOUR;
+
+const TOO_MANY_TODAY = 'Too many wrong codes were tried for this email today. Try again tomorrow, or sign in with Google or your password.';
+
+/** The wrong codes counted for an address in the current 24 hours. */
+function wrongToday(cur: Doc | null, now: number): { failWindowStart: number; fails: number } {
+  const start = Number(cur?.failWindowStart);
+  if (!cur || !Number.isFinite(start) || now - start >= DAY) return { failWindowStart: now, fails: 0 };
+  return { failWindowStart: start, fails: Number(cur.fails) || 0 };
+}
 
 type Doc = Record<string, unknown>;
 
@@ -103,6 +120,9 @@ export async function sendCode(deps: Deps, rawEmail: unknown, ip: string): Promi
   const salt = randomBytes(16).toString('hex');
   const key = keyFor(email);
   const previous = await deps.update('email_codes', key, (cur) => {
+    // No new code once today's wrong codes are used up: each one is more guesses.
+    const wrong = wrongToday(cur, now);
+    if (wrong.fails >= WRONG_CODES_PER_DAY) throw new CodeError(429, TOO_MANY_TODAY);
     if (cur && now - Number(cur.lastSentAt) < RESEND_GAP_MS) {
       throw new CodeError(429, 'A code was just sent. Wait a minute before asking for another.');
     }
@@ -119,6 +139,7 @@ export async function sendCode(deps: Deps, rawEmail: unknown, ip: string): Promi
         lastSentAt: now,
         windowStart: fresh ? now : Number(cur!.windowStart),
         sends: sends + 1,
+        ...wrong,
       },
       result: cur,
     };
@@ -164,16 +185,24 @@ export async function verifyCode(
   }
   const now = deps.now();
 
-  type Outcome = { kind: 'missing' | 'expired' | 'locked' | 'ok' } | { kind: 'wrong'; left: number };
+  type Outcome = { kind: 'missing' | 'expired' | 'locked' | 'lockedToday' | 'ok' } | { kind: 'wrong'; left: number; today: boolean };
   const outcome = await deps.update<Outcome>('email_codes', keyFor(email), (cur) => {
     if (!cur || typeof cur.codeHash !== 'string') return { next: undefined, result: { kind: 'missing' } };
-    // What stays after a code is used up: the sending limits, not the code.
-    const limits = { lastSentAt: cur.lastSentAt, windowStart: cur.windowStart, sends: cur.sends };
+    const wrong = wrongToday(cur, now);
+    // What stays after a code is used up: the sending limits and today's
+    // wrong codes, not the code.
+    const limits = { lastSentAt: cur.lastSentAt, windowStart: cur.windowStart, sends: cur.sends, ...wrong };
+    if (wrong.fails >= WRONG_CODES_PER_DAY) return { next: undefined, result: { kind: 'lockedToday' } };
     if (now > Number(cur.expiresAt)) return { next: limits, result: { kind: 'expired' } };
     const attempts = Number(cur.attempts) || 0;
     if (attempts >= MAX_ATTEMPTS) return { next: undefined, result: { kind: 'locked' } };
     if (sameHash(hashCode(String(cur.salt), code), cur.codeHash)) return { next: limits, result: { kind: 'ok' } };
-    return { next: { ...cur, attempts: attempts + 1 }, result: { kind: 'wrong', left: MAX_ATTEMPTS - attempts - 1 } };
+    const leftOnCode = MAX_ATTEMPTS - attempts - 1;
+    const leftToday = WRONG_CODES_PER_DAY - wrong.fails - 1;
+    return {
+      next: { ...cur, attempts: attempts + 1, failWindowStart: wrong.failWindowStart, fails: wrong.fails + 1 },
+      result: { kind: 'wrong', left: Math.min(leftOnCode, leftToday), today: leftToday <= 0 },
+    };
   });
 
   switch (outcome.kind) {
@@ -183,7 +212,10 @@ export async function verifyCode(
       throw new CodeError(400, 'This code has expired. Ask for a new one.');
     case 'locked':
       throw new CodeError(429, 'Too many wrong tries. Ask for a new code.');
+    case 'lockedToday':
+      throw new CodeError(429, TOO_MANY_TODAY);
     case 'wrong':
+      if (outcome.left <= 0 && outcome.today) throw new CodeError(429, TOO_MANY_TODAY);
       throw new CodeError(
         400,
         outcome.left > 0

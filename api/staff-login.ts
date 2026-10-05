@@ -2,7 +2,7 @@ import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { getFirestore, FieldValue } from 'firebase-admin/firestore';
 import { getAuth } from 'firebase-admin/auth';
 import { createHash, randomBytes, timingSafeEqual } from 'crypto';
-import { initFirebase } from './_lib/shared.js';
+import { initFirebase, type StaffClaims } from './_lib/shared.js';
 
 // Server-side credential check for the admin / learning-center / teacher
 // panels, which all live on the isolated `admin-panel` secondary Firebase
@@ -37,9 +37,15 @@ const FAILURE_WINDOW_MS = 15 * 60 * 1000;
 // Look up the Firebase Auth account for a fixed internal email (creating it
 // with a random, never-reused password if it doesn't exist yet) and return a
 // fresh custom token for its uid. Looking the uid up by email — rather than
-// choosing one ourselves — means any existing Firestore rules keyed on that
-// uid/email keep working exactly as before.
-async function mintCustomTokenForEmail(email: string): Promise<string> {
+// choosing one ourselves — keeps each staff member on the account they
+// always had.
+//
+// The token carries the role (`claims`). firestore.rules and the api/ routes
+// decide who is staff from these claims alone, never from the email: only
+// this server can put claims in a token, while an email can be changed from
+// the browser on some Firebase settings. The email-code sign-in mints tokens
+// with no claims, so a student is never staff whatever their address says.
+async function mintCustomTokenForEmail(email: string, claims: StaffClaims): Promise<string> {
   const auth = getAuth();
   let uid: string;
   try {
@@ -47,7 +53,7 @@ async function mintCustomTokenForEmail(email: string): Promise<string> {
   } catch {
     uid = (await auth.createUser({ email, password: randomBytes(32).toString('hex') })).uid;
   }
-  return auth.createCustomToken(uid);
+  return auth.createCustomToken(uid, { ...claims });
 }
 
 /** Whether the request carries the site owner's verified sign-in on the main site. */
@@ -147,7 +153,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     const owner = await ownerSignedIn(req);
     const passwordOk = !!adminLogin && !!adminPassword && trimmedLogin === adminLogin && sameSecret(adminPassword, password);
     if (passwordOk && owner) {
-      const customToken = await mintCustomTokenForEmail(ADMIN_FB_EMAIL);
+      const customToken = await mintCustomTokenForEmail(ADMIN_FB_EMAIL, { staff: 'admin' });
       return res.status(200).json({ role: 'admin', customToken });
     }
     if (passwordOk) {
@@ -167,7 +173,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       if (!sameSecret(data.password, password)) {
         if (role === 'center') return fail(401, 'Incorrect login or password.');
       } else {
-        const customToken = await mintCustomTokenForEmail(`${CENTER_FB_PREFIX}${centerDoc.id}@writeready.internal`);
+        const customToken = await mintCustomTokenForEmail(`${CENTER_FB_PREFIX}${centerDoc.id}@writeready.internal`, { staff: 'center', centerId: centerDoc.id });
         return res.status(200).json({ role: 'center', customToken, centerId: centerDoc.id, centerName: data.name ?? 'Center' });
       }
     }
@@ -189,7 +195,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       batch.update(teacherRef, { login: FieldValue.delete(), password: FieldValue.delete() });
       await batch.commit().catch((e) => console.error('staff-login: could not move a teacher login:', e));
     }
-    const customToken = await mintCustomTokenForEmail(`${TEACHER_FB_PREFIX}${found.teacherId}@writeready.internal`);
+    const customToken = await mintCustomTokenForEmail(`${TEACHER_FB_PREFIX}${found.teacherId}@writeready.internal`, { staff: 'teacher', teacherId: found.teacherId });
     return res.status(200).json({ role: 'teacher', customToken, teacherId: found.teacherId, teacherName: data.name ?? 'Teacher' });
   }
 

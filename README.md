@@ -84,9 +84,11 @@ npm run lint    # oxlint
 ## Security notes
 
 - Staff (admin, centers, teachers) sign in through `api/staff-login.ts`, which checks passwords on the server and slows down repeated wrong guesses. The admin also needs the site owner's own signed-in session on the main site, so a stolen or guessed password is not enough on its own.
-- Every admin-only endpoint checks the email **and** that the token is a staff token (`isAdminToken` in `api/_lib/shared.ts`). Anyone can make an account with a staff email through Firebase's public sign-up address, but that account signs in with a `password` provider and never counts as staff.
+- **Staff are known by the role in their sign-in token, never by their email.** `api/staff-login.ts` writes `{ staff: 'admin' }`, `{ staff: 'center', centerId }` or `{ staff: 'teacher', teacherId }` into each custom token, and `firestore.rules` and the API (`staffTokenOf` in `api/_lib/shared.ts`) check only that. Only the server can put claims in a token. An email can be changed from the browser on some Firebase settings, and the email-code sign-in gives students custom tokens too, so a student who renamed their address to `teacher_…@writeready.internal` used to pass as that teacher.
 - Teacher logins are kept in `teacherAuth`, a collection no browser can read.
-- Creating, changing or removing a center's student goes through `api/center-student.ts`. It makes the sign-in account with the email already confirmed, and before it changes any account it checks that the profile belongs to the caller's center.
+- Creating, changing or removing a center's student goes through `api/center-student.ts`. It makes the whole student (sign-in account with the email confirmed, profile with the center's plan, and the center's record), refuses once the center's paid places (`studentLimit`) are used, and before it changes any account it checks that the profile belongs to the caller's center. Centers can only read their student list; they cannot write it or anyone's profile.
+- A center sees its students' report scores through `api/center-student.ts` (`reports`), which goes by each student's own profile. No center can read `feedback_reports` directly.
+- Email-code sign-in allows 20 wrong codes per address per day, across all its codes (`api/_lib/emailCode.ts`).
 - **No address is trusted by its ending.** A password account must have a confirmed email to use the site or the API (`api/_lib/emailGate.ts`, and `signedIn()` in `firestore.rules`). There is no exception for `@writeready.student`: anyone can register such an address for themselves.
 - Each report token works once, so one paid credit buys exactly one report. A report is refused before it is charged if it has more than 100 sentences, and only 5 refunds a day are given for reports the AI had already started writing (`api/_lib/essayGuard.ts`).
 - The daily limits on the help chat and on bug reports refuse the request when they cannot be checked, instead of letting it through.
@@ -95,7 +97,16 @@ npm run lint    # oxlint
 - Analytics is off. `src/lib/consent.ts` says it must wait for consent, and the cookie notice promises no tracking.
 - Security headers are set in `vercel.json`. The full Content-Security-Policy is sent as **Report-Only** so it cannot break the site: browse every page, signed in and out, with the console open, fix or allow what it reports, then rename `Content-Security-Policy-Report-Only` to `Content-Security-Policy`.
 
-### Before deploying this change
+### Before deploying the staff-role change (October 2026)
+
+Do these in order. Nothing here touches student data.
+
+1. Deploy the code first. Under the old rules everything keeps working: new staff tokens carry the role *and* the old staff email.
+2. Then publish `firestore.rules` in the Firebase console (Firestore > Rules). Publishing the rules before the code would lock every staff member out.
+3. Staff sign in again once: the admin panel, the center portal and the teacher portal sign out a session from before the change by themselves when they open. A tab left open across the deploy shows "sign in again" or a loading error until it is reloaded.
+4. Optional, recommended: Firebase console > Authentication > Settings > User actions > turn **Email enumeration protection** on. With it on, a browser cannot change an account's email without the new address confirming it.
+
+### Before deploying the earlier security change
 
 Do these in order:
 
@@ -123,4 +134,4 @@ npx tsx scripts/test-student-bot.ts       # the Telegram bot
 npx tsx scripts/test-score-store.ts       # saved reports and score-card verification
 ```
 
-`scripts/test-email-code-auth.ts` needs the Firebase Auth emulator. Firestore rules have no local test yet: the emulator needs Java.
+`scripts/test-email-code-auth.ts` needs the Firebase Auth emulator. `scripts/test-staff-rules.ts` checks `firestore.rules`, `api/staff-login.ts` and `api/center-student.ts` on the Auth and Firestore emulators (the Firestore emulator needs Java 21); the top of each file says how to start them.

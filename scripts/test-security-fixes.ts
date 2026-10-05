@@ -7,7 +7,8 @@
  * the parts that are plain functions:
  *
  *   - the sentence cap and the daily refund budget (api/_lib/essayGuard.ts)
- *   - which tokens count as the admin or a centre (api/_lib/shared.ts)
+ *   - which tokens count as the admin or a centre (api/_lib/shared.ts): the
+ *     role api/staff-login.ts writes into the token, never the email
  *   - who may run the cron job (api/_lib/cronAuth.ts)
  *   - which links a blog post may keep (src/lib/sanitizeHtml.ts, safeHref)
  *   - which report links may start a report by themselves (src/lib/feedbackIntent.ts)
@@ -18,7 +19,7 @@
 import {
   MAX_AI_REFUNDS_PER_DAY, MAX_SENTENCES, countSentences, nextRefundUsage,
 } from '../api/_lib/essayGuard.js';
-import { isAdminToken, isCenterToken, type StaffToken } from '../api/_lib/shared.js';
+import { isAdminToken, isCenterToken, staffTokenOf } from '../api/_lib/shared.js';
 import { cronAllowed } from '../api/_lib/cronAuth.js';
 import { safeHref } from '../src/lib/sanitizeHtml.js';
 
@@ -72,15 +73,34 @@ console.log('\nrefund budget');
 // ── Admin and centre tokens ──────────────────────────────────────────────────
 console.log('\nstaff tokens');
 {
-  const t = (email: string, provider: string): StaffToken => ({ uid: 'u', email, provider });
-  check('the admin custom token is the admin', isAdminToken(t('admin@writeready.internal', 'custom')));
-  check('an account made through public sign-up with the admin email is NOT', !isAdminToken(t('admin@writeready.internal', 'password')));
-  check('a Google account is not', !isAdminToken(t('admin@writeready.internal', 'google.com')));
-  check('another staff email is not the admin', !isAdminToken(t('center_abc@writeready.internal', 'custom')));
+  // A verified ID token as verifyIdToken returns it: the provider, the email,
+  // and any claims the server put in the custom token.
+  const t = (provider: string, email: string, claims: Record<string, unknown> = {}) =>
+    staffTokenOf({ uid: 'u', email, firebase: { sign_in_provider: provider }, ...claims });
+  const admin = t('custom', 'admin@writeready.internal', { staff: 'admin' });
+  const centre = t('custom', 'center_abc@writeready.internal', { staff: 'center', centerId: 'abc' });
+  const teacher = t('custom', 'teacher_t1@writeready.internal', { staff: 'teacher', teacherId: 't1' });
+
+  check('the admin token from staff-login is the admin', isAdminToken(admin));
+  check('a centre token is that centre', isCenterToken(centre, 'abc'));
+  check('but not another centre', !isCenterToken(centre, 'abd'));
+  check('a centre id differing only in case is another centre', !isCenterToken(t('custom', '', { staff: 'center', centerId: 'AbC' }), 'abc'));
+  check('a centre is not the admin', !isAdminToken(centre));
+  check('a teacher is neither', !isAdminToken(teacher) && !isCenterToken(teacher, 't1'));
   check('no token is not the admin', !isAdminToken(null));
-  check('a centre custom token is that centre', isCenterToken(t('center_abc@writeready.internal', 'custom'), 'abc'));
-  check('but not another centre', !isCenterToken(t('center_abc@writeready.internal', 'custom'), 'abd'));
-  check('and not through a password account', !isCenterToken(t('center_abc@writeready.internal', 'password'), 'abc'));
+
+  // The attack: an email-code sign-in (a custom token with no claims) whose
+  // email was changed to a staff address.
+  check('a custom token with the admin email but no role is not staff', t('custom', 'admin@writeready.internal') === null);
+  check('nor with a centre email', t('custom', 'center_abc@writeready.internal') === null && !isCenterToken(t('custom', 'center_abc@writeready.internal'), 'abc'));
+  check('a staff session from before roles is not staff (asked to sign in again)', t('custom', 'teacher_t1@writeready.internal') === null);
+  check('a role on a password sign-in is ignored', t('password', 'admin@writeready.internal', { staff: 'admin' }) === null);
+  check('a role on a Google sign-in is ignored', t('google.com', 'x@gmail.com', { staff: 'admin' }) === null);
+  check('an unknown role is not staff', t('custom', '', { staff: 'owner' }) === null);
+  check('a centre role with no centre id is not staff', t('custom', '', { staff: 'center' }) === null);
+  check('a teacher role with no teacher id is not staff', t('custom', '', { staff: 'teacher' }) === null);
+  check('a centre id that is not text is not staff', t('custom', '', { staff: 'center', centerId: 7 }) === null);
+  check('an empty centre id never matches', !isCenterToken(centre, ''));
 }
 
 // ── Cron secret ──────────────────────────────────────────────────────────────

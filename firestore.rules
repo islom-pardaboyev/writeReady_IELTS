@@ -31,63 +31,36 @@ service cloud.firestore {
           || request.auth.token.get('email_verified', false) == true);
     }
 
-    // Staff sign in through /api/staff-login, which mints custom tokens for
-    // fixed internal emails. Students sign in with a password, Google, or an
-    // emailed code. The code sign-in is a custom token too, but only ever for
-    // a real address: api/_lib/emailCode.ts refuses @writeready.internal ones.
-    // So staff means both: a custom token AND an internal email. A student can
-    // never pass that, and a code-signed-in student is still a student.
+    // Staff sign in through /api/staff-login, which mints a custom token that
+    // carries their role: { staff: 'admin' }, { staff: 'center', centerId } or
+    // { staff: 'teacher', teacherId }. Only the server can put claims in a
+    // token, so the role is what says who is staff, never the email. Students
+    // sign in with a password, Google, or an emailed code; the code sign-in is
+    // a custom token too, but with no claims, so it is never staff whatever
+    // address the account has (an email can be changed from the browser on
+    // some Firebase settings). The same rule is in api/_lib/shared.ts.
+    function staffRole() {
+      return request.auth.token.get('staff', '');
+    }
+
     function isStaff() {
       return signedIn()
         && request.auth.token.firebase.sign_in_provider == 'custom'
-        && request.auth.token.get('email', '').lower().matches('[^@]+@writeready[.]internal');
-    }
-
-    function staffEmail() {
-      return request.auth.token.get('email', '').lower();
+        && staffRole() in ['admin', 'center', 'teacher'];
     }
 
     function isAdmin() {
-      return isStaff() && staffEmail() == 'admin@writeready.internal';
-    }
-
-    function isCenter() {
-      return isStaff() && staffEmail().matches('center_[^@]+@writeready[.]internal');
+      return isStaff() && staffRole() == 'admin';
     }
 
     function isCenterFor(centerId) {
-      return isStaff() && staffEmail() == ('center_' + centerId + '@writeready.internal').lower();
-    }
-
-    function isTeacher() {
-      return isStaff() && staffEmail().matches('teacher_[^@]+@writeready[.]internal');
-    }
-
-    // What a learning centre bought. Its students' profiles are checked
-    // against this, so a centre can only hand out the plan it paid for.
-    // Centres added before plans existed have no `plan` field; every one of
-    // their students was given the premium allowance, so that is the default.
-    function centreDoc(centerId) {
-      return get(/databases/$(database)/documents/learningCenters/$(centerId)).data;
-    }
-
-    function centrePlan(centerId) {
-      return centreDoc(centerId).get('plan', 'premium');
-    }
-
-    function centreEndsAt(centerId) {
-      let ends = centreDoc(centerId).get('expiresAt', '');
-      return ends is string ? ends : '';
-    }
-
-    // Students' access runs to the end of the contract's last day — the same
-    // string src/pages/CenterAdminPage.tsx writes.
-    function centreStudentExpiry(centerId) {
-      return centreEndsAt(centerId) == '' ? '' : centreEndsAt(centerId) + 'T23:59:59';
+      return isStaff() && staffRole() == 'center'
+        && request.auth.token.get('centerId', '') == centerId;
     }
 
     function isTeacherFor(teacherId) {
-      return isStaff() && staffEmail() == ('teacher_' + teacherId + '@writeready.internal').lower();
+      return isStaff() && staffRole() == 'teacher'
+        && request.auth.token.get('teacherId', '') == teacherId;
     }
 
     function isStudent() {
@@ -150,22 +123,14 @@ service cloud.firestore {
       // center portal no longer downloads the whole collection.
       allow read: if isSelf(uid) || isCenterFor(resource.data.get('centerId', ''));
 
-      allow create: if
-        // A new sign-up always starts on the free plan.
-        (isSelf(uid)
-          && request.resource.data.keys().hasOnly(['email', 'plan', 'subscriptionExpiresAt', 'createdAt', 'notification'])
-          && request.resource.data.plan == 'free'
-          && request.resource.data.subscriptionExpiresAt == null)
-        // A learning center adds one of its own students. The student may
-        // only be given the plan and the end date the centre itself holds:
-        // that profile is what api/pre-check.ts reads to decide the quota.
-        || (isCenterFor(request.resource.data.centerId)
-          && request.resource.data.keys().hasOnly(['email', 'studentLogin', 'fullName', 'plan', 'expiresAt', 'subscriptionExpiresAt', 'centerId', 'centerName', 'createdAt', 'bonusAnalyses'])
-          && request.resource.data.plan == centrePlan(request.resource.data.centerId)
-          && request.resource.data.bonusAnalyses == 0
-          && request.resource.data.get('expiresAt', '') == centreStudentExpiry(request.resource.data.centerId)
-          && (request.resource.data.subscriptionExpiresAt == null
-            || request.resource.data.subscriptionExpiresAt == centreEndsAt(request.resource.data.centerId)));
+      // A new sign-up always starts on the free plan. A learning centre's
+      // students are made by api/center-student.ts with the Admin SDK, which
+      // checks the centre has a place left (it used to write the profile from
+      // the portal, where nothing could count its places).
+      allow create: if isSelf(uid)
+        && request.resource.data.keys().hasOnly(['email', 'plan', 'subscriptionExpiresAt', 'createdAt', 'notification'])
+        && request.resource.data.plan == 'free'
+        && request.resource.data.subscriptionExpiresAt == null;
 
       // Students can clear their welcome message, and pay for a Human Check.
       // The balance can only go down, and only together with the id of the
@@ -201,14 +166,13 @@ service cloud.firestore {
       allow read: if signedIn();
     }
 
-    // AI feedback reports are written by api/feedback.ts only. The center
-    // portal asks only for its own students' reports (where uid in [...]),
-    // but the rules cannot check that a report's uid belongs to the center,
-    // so a center can still read any report's scores. Reports hold scores and
-    // short notes, never the essay. To close this, save the student's
-    // centerId on each report and check it here.
+    // AI feedback reports are written by api/feedback.ts only, and each
+    // student reads their own. A learning centre gets its students' scores
+    // through api/center-student.ts ('reports'), which checks each student's
+    // profile names that centre: the rules cannot tie a report's uid to a
+    // centre, and any centre used to be able to read every report here.
     match /feedback_reports/{id} {
-      allow read: if (isStudent() && resource.data.uid == request.auth.uid) || isCenter();
+      allow read: if isStudent() && resource.data.uid == request.auth.uid;
     }
 
     // ── Same essay, same score, and score-card verification ───────────────
@@ -275,7 +239,7 @@ service cloud.firestore {
 
       // Students query by their own uid; teachers query by their own
       // teacherId (getHumanReviewsForTeacher). Naming the teacher here rather
-      // than isTeacher() is what stops one teacher listing the whole
+      // than any teacher is what stops one teacher listing the whole
       // collection and reading every student's essay.
       allow list: if (isStudent() && resource.data.uid == request.auth.uid)
         || isTeacherFor(resource.data.get('teacherId', ''));
@@ -308,8 +272,11 @@ service cloud.firestore {
     match /learningCenters/{centerId} {
       allow get: if isCenterFor(centerId);
 
+      // The centre's list of its students. Only api/center-student.ts writes
+      // it (adding, renaming and removing all go through there), because the
+      // number of records here is the number of places the centre has used.
       match /students/{studentId} {
-        allow read, write: if isCenterFor(centerId);
+        allow read: if isCenterFor(centerId);
       }
     }
 

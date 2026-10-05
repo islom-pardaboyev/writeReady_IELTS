@@ -7,8 +7,8 @@ import { initFirebase, readStaffToken, isAdminToken } from './_lib/shared.js';
 // (via the Admin SDK) rather than the Firestore client SDK, so an anonymous
 // visitor can check maintenance status without needing a Firestore rule that
 // opens that doc to public reads. Writes require a Firebase ID token for the
-// fixed admin account minted in api/staff-login.ts (isAdminToken checks both
-// the email and that the token is a staff custom token).
+// admin, minted in api/staff-login.ts (isAdminToken checks the admin role the
+// server wrote into that custom token).
 
 const UNITS = ['hours', 'days', 'months'] as const;
 type Unit = (typeof UNITS)[number];

@@ -1,8 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { addDoc, collection, deleteDoc, doc, getDocs, query, serverTimestamp, setDoc, updateDoc, where, writeBatch } from "firebase/firestore";
+import { addDoc, collection, deleteDoc, doc, getDocs, query, updateDoc, where, writeBatch } from "firebase/firestore";
 import { Building2, Eye, EyeOff, Pencil, Plus, RefreshCw, Trash2, UserPlus } from "lucide-react";
 import { adminDb as db } from "@/firebase/adminConfig";
-import { deleteStudentAuthAccount } from "@/firebase/createStudentAccount";
 import { useConfirm } from "@/hooks/useConfirm";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/Button";
@@ -13,7 +12,7 @@ import { ListDetail, ListPane, RowList, ListRow, DetailView, DetailHeader, Detai
 import { EmptyState, Field, FilterChips, Initials, LoadError, Notice, RowSkeletons, SearchField } from "@/components/staff/parts";
 import { daysUntil, formatDate, inDays, uzs } from "./format";
 import { PLAN_INFO } from "@/lib/plans";
-import { createCenterStudentAccount, removeCenterStudent, updateCenterStudent } from "@/lib/centerStudent";
+import { addCenterStudent, removeCenterStudent, updateCenterStudent } from "@/lib/centerStudent";
 import {
   CENTER_PLAN_IDS,
   DEFAULT_CENTER_PLAN,
@@ -328,44 +327,12 @@ export function CentersSection({ intent, clearIntent }: SectionProps) {
     setAdding(true);
     try {
       const loginKey = newLogin.trim().toLowerCase();
-      const existing = await getDocs(query(collection(db, "learningCenters", c.id, "students"), where("login", "==", loginKey)));
-      if (!existing.empty) { setStudentError("That login is already used in this center."); setAdding(false); return; }
-
-      // The server makes the student's sign-in account, with its email already
-      // confirmed (api/center-student.ts), so they can actually sign in.
-      const fakeEmail = `${loginKey}@writeready.student`;
-      const made = await createCenterStudentAccount(c.id, loginKey, newPassword.trim());
+      // The server makes the whole student (api/center-student.ts): the
+      // sign-in account, with its email already confirmed, the profile with
+      // the center's plan and contract end date (the same fields as
+      // studentPlanFields), and the center's record of them.
+      const made = await addCenterStudent(c.id, { fullName: newName.trim(), login: loginKey, password: newPassword.trim() });
       if (!made.ok) { setStudentError(made.error); setAdding(false); return; }
-      if (!made.uid) { setStudentError("Could not create the student account. Try again."); setAdding(false); return; }
-      const uid = made.uid;
-
-      try {
-        await setDoc(doc(db, "users", uid), {
-          email: fakeEmail,
-          studentLogin: loginKey,
-          fullName: newName.trim(),
-          // The student gets the plan their center bought, for as long as the
-          // contract runs.
-          ...studentPlanFields(c),
-          centerId: c.id,
-          centerName: c.name,
-          createdAt: serverTimestamp(),
-          bonusAnalyses: 0,
-        });
-        // No password here: it lives in the sign-in account only.
-        await setDoc(doc(db, "learningCenters", c.id, "students", uid), {
-          fullName: newName.trim(),
-          login: loginKey,
-          uid,
-          addedAt: serverTimestamp(),
-        });
-      } catch (err) {
-        // The sign-in account already exists by now. Leaving it behind would
-        // hold the login hostage: the next try is refused as "already taken"
-        // while the student still has no profile.
-        await deleteStudentAuthAccount(fakeEmail, newPassword.trim());
-        throw err;
-      }
 
       setNewName(""); setNewLogin(""); setNewPassword("");
       await loadStudents(c.id);

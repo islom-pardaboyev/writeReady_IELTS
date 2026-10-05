@@ -9,9 +9,9 @@ import { listBotStudents } from '../studentBot.js';
  * The admin panel's Telegram bot section (src/pages/writing/admin/TelegramBotSection.tsx):
  * posts to every bot student (api/_lib/broadcast.ts). Admin only: the request
  * carries a Firebase ID token for the admin account minted in
- * api/staff-login.ts, checked the same way as api/maintenance.ts (the email
- * and the staff token type, so an account made through Firebase's public
- * sign-up address with the admin's email would not pass).
+ * api/staff-login.ts, checked the same way as api/maintenance.ts (the admin
+ * role the server wrote into that custom token, so no account can pass by
+ * carrying the admin's email).
  *
  * POST { action }:
  *   overview  who a post would reach, and the recent posts

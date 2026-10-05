@@ -14,6 +14,7 @@ import {
   RESEND_GAP_MS,
   SENDS_PER_HOUR,
   IP_SENDS_PER_HOUR,
+  WRONG_CODES_PER_DAY,
   CodeError,
   keyFor,
   sendCode,
@@ -162,6 +163,47 @@ console.log('email-code sign-in');
   for (let i = 1; i < MAX_ATTEMPTS; i++) await verifyCode(w.deps, 'guess@example.com', wrong(code)).catch(() => {});
   check(`after ${MAX_ATTEMPTS} wrong codes even the right one is refused`, await rejects(() => verifyCode(w.deps, 'guess@example.com', code), 429));
   check('a malformed code is refused before counting', await rejects(() => verifyCode(w.deps, 'guess@example.com', '12ab'), 400, '6-digit'));
+}
+
+// Wrong codes across many codes run out for the day: a stranger cannot keep
+// asking for codes and guessing each one five times.
+{
+  const w = world();
+  const email = 'target@example.com';
+  let wrongTries = 0;
+  let lastError = '';
+  for (let round = 0; round < Math.ceil(WRONG_CODES_PER_DAY / MAX_ATTEMPTS); round++) {
+    await sendCode(w.deps, email, 'a');
+    const code = w.inbox.get(email)!;
+    for (let i = 0; i < MAX_ATTEMPTS && wrongTries < WRONG_CODES_PER_DAY; i++) {
+      await verifyCode(w.deps, email, wrong(code)).catch((e: Error) => { wrongTries++; lastError = e.message; });
+    }
+    w.advance(13 * 60 * 1000); // under five codes an hour
+  }
+  check(`${WRONG_CODES_PER_DAY} wrong codes across several codes are all refused`, wrongTries === WRONG_CODES_PER_DAY);
+  check('the last one says to come back tomorrow', lastError.includes('today'), lastError);
+  check('no new code is sent for the rest of the day', await rejects(() => sendCode(w.deps, email, 'b'), 429, 'today'));
+  w.advance(12 * 60 * 60 * 1000);
+  check('still none twelve hours later', await rejects(() => sendCode(w.deps, email, 'b'), 429, 'today'));
+  w.advance(12 * 60 * 60 * 1000);
+  await sendCode(w.deps, email, 'b');
+  const fresh = w.inbox.get(email)!;
+  check('a day later a new code comes and works', (await verifyCode(w.deps, email, fresh)).token.startsWith('token-for-'));
+  const other = world();
+  await sendCode(other.deps, 'someone.else@example.com', 'a');
+  check('another address is not affected', other.inbox.has('someone.else@example.com'));
+}
+
+// A student who mistypes a few times still gets in.
+{
+  const w = world();
+  await sendCode(w.deps, 'typo@example.com', 'a');
+  const code = w.inbox.get('typo@example.com')!;
+  for (let i = 0; i < 3; i++) await verifyCode(w.deps, 'typo@example.com', wrong(code)).catch(() => {});
+  check('three typos, then the right code signs in', (await verifyCode(w.deps, 'typo@example.com', code)).token.startsWith('token-for-'));
+  w.advance(RESEND_GAP_MS);
+  await sendCode(w.deps, 'typo@example.com', 'a');
+  check('and the next code can still be asked for', /^\d{6}$/.test(w.inbox.get('typo@example.com') ?? ''));
 }
 
 // Codes expire.
