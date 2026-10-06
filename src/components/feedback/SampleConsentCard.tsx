@@ -60,7 +60,8 @@ export function SampleConsentCard({
         setCredit(o.credit);
         setChosen(new Set(o.offer.map((x) => x.taskType)));
       })
-      .catch(() => { /* not worth an error on the report page: the card just does not appear */ });
+      // Not worth an error on the report page: the card just does not appear.
+      .catch((e) => console.warn('Could not check whether this essay can be shared as a sample:', e));
     return () => { live = false; };
   }, [mode, busy, candidates, tasks, answered]);
 

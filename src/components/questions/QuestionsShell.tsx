@@ -5,15 +5,14 @@ import { Link } from 'react-router';
  * The frame of the public sample-answer pages. It is light on purpose: the
  * build renders it to static HTML (scripts/prerender-questions.tsx), so it
  * reads nothing from the browser or Firebase, and the app renders the same
- * frame after it loads, so nothing on the page moves when it takes over.
- * `actions` is the right-hand side of the bar: Sign in / Start free in the
- * static HTML, the student's own links once the app knows who is signed in.
+ * frame for visitors, so nothing on the page moves when it takes over. A
+ * signed-in student gets the app's own layout instead (src/pages/questions/QuestionPages.tsx).
  */
 
 const navLink =
   'rounded-[6px] px-3 py-1.5 text-sm font-medium text-[var(--text-secondary)] no-underline transition-colors hover:bg-[var(--bg-subtle)] hover:text-[var(--text-primary)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ring)]';
 
-export function SignedOutActions() {
+function SignedOutActions() {
   return (
     <>
       <Link to="/auth" className={`${navLink} hidden sm:inline-flex`}>Sign in</Link>
@@ -27,7 +26,7 @@ export function SignedOutActions() {
   );
 }
 
-export function QuestionsShell({ children, actions }: { children: ReactNode; actions?: ReactNode }) {
+export function QuestionsShell({ children }: { children: ReactNode }) {
   return (
     <div className="flex min-h-screen flex-col bg-[var(--bg-base)] text-[var(--text-primary)]">
       <a
@@ -48,7 +47,7 @@ export function QuestionsShell({ children, actions }: { children: ReactNode; act
             <Link to="/questions" className={`${navLink} hidden md:inline-flex`}>Sample answers</Link>
             <Link to="/blog" className={`${navLink} hidden md:inline-flex`}>Blog</Link>
             <Link to="/pricing" className={`${navLink} hidden md:inline-flex`}>Pricing</Link>
-            {actions ?? <SignedOutActions />}
+            <SignedOutActions />
           </nav>
         </div>
       </header>

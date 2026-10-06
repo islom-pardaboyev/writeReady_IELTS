@@ -202,6 +202,10 @@ offer = (await consent.consentStatus('u1', { mode: 'quickwrite', tasks: [t2()] }
 check('Quick Write: offered', offer.length === 1);
 offer = (await consent.consentStatus('u1', { mode: 'relax', tasks: [t2(ESSAY2, null)] })).offer;
 check('Relax: a typed question that matches the bank is offered', offer.length === 1);
+fake.table(model.QUESTION_META).clear();
+offer = (await consent.consentStatus('u1', { mode: 'relax', tasks: [t2(ESSAY2, null)] })).offer;
+check('Relax: matched by the exact bank text before the morning job builds the index', offer.length === 1);
+seedBank();
 const customQ = 'Write about your favourite holiday and why you liked it.';
 await seedReport('u1', 'Task 2', customQ, ESSAY2, 9);
 offer = (await consent.consentStatus('u1', { mode: 'relax', tasks: [t2(ESSAY2, null, customQ)] })).offer;

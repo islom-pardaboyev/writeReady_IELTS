@@ -4,6 +4,7 @@ import { ScrollTrigger } from "gsap/ScrollTrigger";
 import { Link } from "react-router";
 import { X, Copy, Send, Check } from "lucide-react";
 import { Layout } from "../components/layout/Layout";
+import { AppShell } from "../components/layout/AppShell";
 import { Button } from "../components/ui/Button";
 import { Card } from "../components/ui/Card";
 import { useAuth } from "../hooks/useAuth";
@@ -225,8 +226,12 @@ export function PricingPage() {
     return () => ctx.revert();
   }, []);
 
+  // A signed-in student stays in the app, with the sidebar, like the
+  // dashboard; a visitor gets the public site's header and footer.
+  const Frame = user ? AppShell : Layout;
+
   return (
-    <Layout>
+    <Frame>
       <div
         ref={rootRef}
         className="bg-[var(--bg-base)] min-h-[calc(100vh-120px)] py-20"
@@ -770,6 +775,6 @@ export function PricingPage() {
           </div>
         </div>
       )}
-    </Layout>
+    </Frame>
   );
 }

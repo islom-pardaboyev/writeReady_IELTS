@@ -109,7 +109,8 @@ interface CheckedTask extends SessionTask {
  * accepted only when the bank still holds that question with the same text;
  * otherwise (Relax, where the student types the question) the text has to
  * match a bank question word for word, found through its questionKey
- * (./generate.ts keeps questionMeta.questionKey for every bank question).
+ * (./generate.ts keeps questionMeta.questionKey for every bank question), or
+ * by the bank's exact text.
  */
 async function findBankQuestion(taskType: SampleTaskType, claimedId: string | null, question: string): Promise<BankQuestion | null> {
   const store = db();
@@ -141,6 +142,16 @@ async function findBankQuestion(taskType: SampleTaskType, claimedId: string | nu
     if (doc.get('taskType') !== taskType) continue;
     const found = await fromBank(doc.id);
     if (found) return found;
+  }
+  // The questionKey index is built by the morning job; until it has run (or
+  // for a question added since), a question pasted exactly as the bank holds
+  // it is still found.
+  for (const text of new Set([question, question.trim()])) {
+    const exact = await store.collection(BANK[taskType]).where('report', '==', text).limit(1).get();
+    if (!exact.empty) {
+      const found = await fromBank(exact.docs[0].id);
+      if (found) return found;
+    }
   }
   return null;
 }

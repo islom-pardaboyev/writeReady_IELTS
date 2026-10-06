@@ -1,8 +1,9 @@
+import type { ReactNode } from 'react';
 import { Link, useLocation, useParams, useSearchParams } from 'react-router';
-import { LayoutDashboard } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
+import { AppShell } from '@/components/layout/AppShell';
 import { LogoLoader } from '@/components/ui/LogoLoader';
-import { QuestionsShell, SignedOutActions } from '@/components/questions/QuestionsShell';
+import { QuestionsShell } from '@/components/questions/QuestionsShell';
 import { QuestionView } from '@/components/questions/QuestionView';
 import { QuestionList } from '@/components/questions/QuestionList';
 import { pageDescription, pageTitle } from '@/lib/questionData';
@@ -11,22 +12,21 @@ import { useHead, useQuestionIndex, useQuestionPage } from './questionPageData';
 /**
  * /questions and /questions/:taskType/:slug in the app. The build has already
  * put the same page in the HTML (scripts/prerender-questions.tsx); these
- * render it again from the same data, inside the same frame, so the page does
- * not change when the app takes over. Imported eagerly in App.tsx for that
- * reason: a lazy page would flash a loading spinner over the finished HTML.
+ * render it again from the same data, so the content does not change when the
+ * app takes over. Imported eagerly in App.tsx for that reason: a lazy page
+ * would flash a loading spinner over the finished HTML.
  */
 
-function Actions() {
+/**
+ * A signed-in student reads these pages inside the app, with the sidebar,
+ * like the dashboard. Visitors and search engines get the public frame the
+ * build renders; it is also what shows while sign-in is still being checked,
+ * so the static page does not change before then.
+ */
+function Frame({ children }: { children: ReactNode }) {
   const { user, loading } = useAuth();
-  if (loading || !user) return <SignedOutActions />;
-  return (
-    <Link
-      to="/dashboard"
-      className="inline-flex h-9 items-center gap-1.5 rounded-lg border border-[var(--border-color)] bg-[var(--bg-card)] px-3 text-sm font-semibold text-[var(--text-primary)] no-underline transition-colors hover:bg-[var(--bg-subtle)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ring)]"
-    >
-      <LayoutDashboard className="h-4 w-4" aria-hidden /> Dashboard
-    </Link>
-  );
+  if (!loading && user) return <AppShell>{children}</AppShell>;
+  return <QuestionsShell>{children}</QuestionsShell>;
 }
 
 function Loading() {
@@ -64,11 +64,11 @@ export function QuestionsIndexPage() {
     '/questions',
   );
   return (
-    <QuestionsShell actions={<Actions />}>
+    <Frame>
       {load.state === 'ready' ? (
         <QuestionList key={task ?? 'all'} data={load.data} initialTask={task === 'task1' || task === 'task2' ? task : 'all'} />
       ) : load.state === 'loading' ? <Loading /> : <Missing error={load.state === 'error'} />}
-    </QuestionsShell>
+    </Frame>
   );
 }
 
@@ -79,8 +79,8 @@ export function QuestionPage() {
   const data = load.state === 'ready' ? load.data : null;
   useHead(data ? pageTitle(data) : null, data ? pageDescription(data) : null, pathname);
   return (
-    <QuestionsShell actions={<Actions />}>
+    <Frame>
       {data ? <QuestionView key={pathname} data={data} /> : load.state === 'loading' ? <Loading /> : <Missing error={load.state === 'error'} />}
-    </QuestionsShell>
+    </Frame>
   );
 }
