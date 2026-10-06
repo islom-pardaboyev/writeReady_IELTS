@@ -12,7 +12,7 @@
 import { existsSync } from 'fs';
 import { mkdir, readFile, writeFile } from 'fs/promises';
 import { dirname, join } from 'path';
-import { buildPages, decodeChart, imageSize, pageHtml, renderSite, sitemapXml, type RawQuestion, type RawSample } from './lib/questionSite';
+import { buildPages, decodeChart, imageSize, notFoundHtml, pageHtml, renderSite, sitemapXml, type RawQuestion, type RawSample } from './lib/questionSite';
 import { EMBEDDED_DATA_ID, pageDescription, pageTitle, titleCase } from '../src/lib/questionData';
 
 let failures = 0;
@@ -142,6 +142,8 @@ check('sitemap keeps the site pages, on www', xml.includes('<loc>https://www.wri
 check('sitemap lists /questions and every page', xml.includes('<loc>https://www.writeready.uz/questions</loc>') && site.pages.every((p) => xml.includes(`/questions/${p.taskType}/${p.slug}</loc>`)));
 check('sitemap has the chart as an image entry', xml.includes('xmlns:image="http://www.google.com/schemas/sitemap-image/1.1"') && xml.includes('<image:loc>https://www.writeready.uz/question-images/line-graph-energy-consumption.png</image:loc>'));
 check('sitemap lastmod from the page', xml.includes('<lastmod>2026-10-05</lastmod>'));
+const notFound = notFoundHtml(template);
+check('404 page is the app, kept out of search results', notFound.includes('<div id="root">') && count(notFound, /name="robots"/g) === 1 && notFound.includes('<meta name="robots" content="noindex" />'));
 const empty = buildPages([], []);
 check('no samples: an empty list page still builds', renderSite(template, empty).some((f) => f.path === 'questions/index.html') && sitemapXml(staticSitemap, empty).includes('/questions</loc>'));
 

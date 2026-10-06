@@ -6,6 +6,7 @@
  *   dist/question-data/...json                      the same data, for the app
  *   dist/question-images/<slug>.jpg                 each Task 1 chart, public for good
  *   dist/sitemap.xml                                public/sitemap.xml + every question
+ *   dist/404.html                                   the app, for a question page that does not exist
  *
  * It reads the published samples with the Admin SDK (FIREBASE_PROJECT_ID,
  * FIREBASE_CLIENT_EMAIL, FIREBASE_PRIVATE_KEY, which Vercel also gives the
@@ -21,7 +22,7 @@
 import { mkdir, readFile, writeFile } from 'fs/promises';
 import { dirname, join } from 'path';
 import { Timestamp } from 'firebase-admin/firestore';
-import { buildPages, renderSite, sitemapXml, type BuiltSite, type RawQuestion, type RawSample } from './lib/questionSite';
+import { buildPages, notFoundHtml, renderSite, sitemapXml, type BuiltSite, type RawQuestion, type RawSample } from './lib/questionSite';
 import type { QuestionTask } from '../src/lib/questionData';
 
 const DIST = 'dist';
@@ -124,6 +125,7 @@ async function main(): Promise<void> {
   const files = renderSite(template, site);
   for (const f of files) await write(f.path, f.content);
   await write('sitemap.xml', sitemapXml(staticSitemap, site));
+  await write('404.html', notFoundHtml(template));
   console.log(`prerender: ${site.pages.length} question pages, ${site.images.length} chart images, sitemap with ${site.pages.length + 1} new entries`);
 }
 

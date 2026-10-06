@@ -361,6 +361,18 @@ export function renderSite(template: string, site: BuiltSite): OutFile[] {
   return files;
 }
 
+/**
+ * dist/404.html, which Vercel serves (with a 404 status) for a file that does
+ * not exist: a question page that was never built or was taken down. It is
+ * the app itself, so the visitor gets the site's own "not found" screen with
+ * links back, instead of Vercel's plain-text one. Kept out of search results.
+ */
+export function notFoundHtml(template: string): string {
+  return template
+    .replace(/<meta\s+name="robots"[\s\S]*?\/?>/gi, '')
+    .replace(/<\/head>/i, '    <meta name="robots" content="noindex" />\n  </head>');
+}
+
 // ── Sitemap ──────────────────────────────────────────────────────────────────
 
 /**
