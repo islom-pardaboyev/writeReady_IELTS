@@ -26,8 +26,14 @@ import {
 /** Room under Telegram's 4096 for the "✅ Published" line a press adds. */
 export const CHUNK_LIMIT = 3900;
 
+/**
+ * Where samples go: ADMIN_TELEGRAM_CHAT_ID, or, when it is not set, the first
+ * id in TELEGRAM_ADMIN_IDS (the bot's /admin list). For an admin who chats
+ * with the bot privately the two are the same number.
+ */
 export function adminChatId(): string {
-  return (process.env.ADMIN_TELEGRAM_CHAT_ID ?? '').trim();
+  const chat = (process.env.ADMIN_TELEGRAM_CHAT_ID ?? '').trim();
+  return chat || (adminUserIds()[0] ?? '');
 }
 
 /** TELEGRAM_ADMIN_IDS, the same list api/_lib/studentBot.ts uses for /admin. */
@@ -187,7 +193,7 @@ async function loadChart(questionId: string): Promise<{ data: Buffer; type: stri
 export async function sendForReview(sampleId: string): Promise<boolean> {
   const chatId = adminChatId();
   if (!chatId) {
-    console.error('samples: ADMIN_TELEGRAM_CHAT_ID is not set; the sample waits until it is');
+    console.error('samples: neither ADMIN_TELEGRAM_CHAT_ID nor TELEGRAM_ADMIN_IDS is set; the sample waits until one is');
     return false;
   }
   const ref = db().collection(SAMPLES).doc(sampleId);

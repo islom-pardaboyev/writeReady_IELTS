@@ -392,6 +392,12 @@ check('one huge paragraph is cut without breaking entities', hugeLine.length > 1
 // ── Button presses and the webhook ──────────────────────────────────────────
 
 section('approval presses and webhook security');
+delete process.env.ADMIN_TELEGRAM_CHAT_ID;
+check('without ADMIN_TELEGRAM_CHAT_ID, samples go to the first TELEGRAM_ADMIN_IDS id', review.adminChatId() === '888' && review.pressAllowed(888, 888) && !review.pressAllowed(777, 777));
+process.env.TELEGRAM_ADMIN_IDS = '';
+check('with neither set, nothing is sent and no press is accepted', review.adminChatId() === '' && !review.pressAllowed(888, 888));
+process.env.ADMIN_TELEGRAM_CHAT_ID = '777';
+process.env.TELEGRAM_ADMIN_IDS = '888';
 check('private chat admin may press', review.pressAllowed(777, 777));
 check('a TELEGRAM_ADMIN_IDS member may press in the admin chat', review.pressAllowed(777, 888));
 check('a stranger in the admin chat may not', !review.pressAllowed(777, 999));

@@ -90,7 +90,7 @@ Set in Vercel (Production and Preview) and in a local `.env` file, which is neve
 | `TELEGRAM_TOKEN`, `CHAT_ID`, `TELEGRAM_TEACHERS_CHAT_ID` | Bug reports and teacher notifications |
 | `TELEGRAM_STUDENT_BOT_TOKEN`, `TELEGRAM_ADMIN_IDS` | The student Telegram bot, and who may use its `/admin` command |
 | `RESEND_API_KEY`, `RESEND_FROM` | Sign-in code emails |
-| `ADMIN_TELEGRAM_CHAT_ID` | Where @writeready_student_bot sends sample answers for approval, and the daily summary. Your own Telegram user id (a private chat with the bot), or a group the bot is in |
+| `ADMIN_TELEGRAM_CHAT_ID` | Optional. Where @writeready_student_bot sends sample answers for approval, and the daily summary: your own Telegram user id (a private chat with the bot), or a group the bot is in. Not set: the first id in `TELEGRAM_ADMIN_IDS` |
 | `VERCEL_DEPLOY_HOOK_URL` | A Vercel deploy hook for `main`. The evening job calls it when a sample was published that day, so the public pages are rebuilt. Secret: anyone with it can start builds |
 | `SAMPLES_PER_RUN` | Optional, default 10. How many questions get an AI model answer per day |
 | `SAMPLES_MODEL` | Optional, default `claude-haiku-4-5`. The model that writes the model answers |
