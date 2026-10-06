@@ -47,6 +47,7 @@ const deps: BotDeps = {
       scoreOnly: true,
       consistency: lock ? { kind: 'lock', scores: lock.scores } : null,
       extraInstruction: MISTAKES_INSTRUCTION,
+      extraFields: { topMistakes: { type: 'array', items: { type: 'string' } } },
     }, null).finalMessage();
     if (message.stop_reason === 'max_tokens') throw new Error('the reply was cut off');
     return readCheck(message.content.map((b) => (b.type === 'text' ? b.text : '')).join(''));

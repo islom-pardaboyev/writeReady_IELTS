@@ -467,6 +467,8 @@ export interface Marking {
    * the cache with the bot's.
    */
   extraInstruction?: string;
+  /** The fields extraInstruction asks for, added to the reply's schema after the scores. */
+  extraFields?: Record<string, JsonSchema>;
 }
 
 /**
@@ -490,6 +492,9 @@ export function startMarking(anthropic: Anthropic, m: Marking, sendChart: ChartB
     // Sonnet 5 does not accept `temperature`, so there is no knob for
     // run-to-run variation; scripts/compare-band-scores.ts measures it.
     thinking: { type: 'disabled' },
+    // The reply can only be JSON of this shape, so it always reads (see
+    // reportJsonSchema). A reply cut off at max_tokens is still incomplete.
+    output_config: { format: { type: 'json_schema', schema: reportJsonSchema(m.taskType, !m.scoreOnly, m.extraFields) } },
     // The fixed half carries the cache breakpoint. On a hit those tokens bill
     // at ~0.1x instead of full price, which is most of the cost of a report;
     // on a miss the write costs ~1.25x, so it pays from the second request
@@ -1107,6 +1112,84 @@ ${task}
       "complexStructures": "<varied and mostly working | varied but often faulty | one or two patterns only | rare>"
     }
   },`;
+}
+
+/* ── The reply's JSON schema ───────────────────────────────────────────────
+ *
+ * Sent as output_config.format, so the API only lets the model write JSON of
+ * exactly this shape. Before, the model wrote the JSON freehand, and a single
+ * slip (a missing closing bracket, a quote left unescaped) cost a reply that
+ * was already written and paid for: the student was refunded, but the tokens
+ * were billed all the same. It mirrors the template in the prompt field for
+ * field, in the same order, because the fields are written in schema order:
+ * scores still arrive early, where ScorePatch and the progress steps on the
+ * feedback page look for them. Change one, change the other.          */
+
+type JsonSchema = Record<string, unknown>;
+
+const STRING: JsonSchema = { type: 'string' };
+const STRINGS: JsonSchema = { type: 'array', items: STRING };
+const COUNT: JsonSchema = { type: 'integer' };
+const BAND: JsonSchema = { type: 'number', enum: Array.from({ length: 19 }, (_, i) => i / 2) };
+const oneOf = (values: string[]): JsonSchema => ({ type: 'string', enum: values });
+const listOf = (item: JsonSchema): JsonSchema => ({ type: 'array', items: item });
+
+/** Every field required, nothing extra: what structured outputs needs, and what keeps the order. */
+function object(properties: Record<string, JsonSchema>): JsonSchema {
+  return { type: 'object', properties, required: Object.keys(properties), additionalProperties: false };
+}
+
+const perCriterion = (field: JsonSchema) => object(Object.fromEntries(CRITERIA.map((k) => [k, field])));
+
+function evidenceJson(taskType: string): JsonSchema {
+  const task: Record<string, JsonSchema> = taskType === 'Task 1'
+    ? { mainFeatures: STRINGS, overview: STRING, accuracy: STRINGS, coverage: STRING }
+    : { questionParts: STRINGS, coverage: STRING, position: STRING, support: STRINGS };
+  return object({
+    offTask: STRINGS,
+    ...task,
+    cohesion: object({ paragraphs: COUNT, heavyLapses: STRINGS, lightLapses: STRINGS }),
+    vocabulary: object({ errors: STRINGS, precise: STRINGS }),
+    grammar: object({
+      sentences: COUNT,
+      realErrors: STRINGS,
+      slipOnlySentences: COUNT,
+      complexStructures: oneOf(['varied and mostly working', 'varied but often faulty', 'one or two patterns only', 'rare']),
+    }),
+  });
+}
+
+/**
+ * The schema of a marking's reply. `extra` adds fields after the scores, for
+ * the Telegram bot's short list of mistakes (Marking.extraFields).
+ */
+export function reportJsonSchema(taskType: string, fullReport: boolean, extra: Record<string, JsonSchema> = {}): JsonSchema {
+  const scoring: Record<string, JsonSchema> = {
+    taskType: oneOf([taskType]),
+    topic: STRING,
+    wordCount: COUNT,
+    evidence: evidenceJson(taskType),
+    bandRationale: perCriterion(STRING),
+    scores: object({ ...Object.fromEntries(CRITERIA.map((k) => [k, BAND])), overall: { type: 'number' } }),
+  };
+  if (!fullReport) return object({ ...scoring, ...extra });
+  return object({
+    ...scoring,
+    feedback: perCriterion(object({ strengths: STRINGS, issues: STRINGS })),
+    priorityFixes: STRINGS,
+    readability: object({ summary: STRING, tips: listOf(object({ problem: STRING, original: STRING, clearer: STRING })) }),
+    bandGapAnalysis: STRING,
+    sampleResponse: STRING,
+    sentenceAnalysis: listOf(object({
+      sentence: STRING,
+      type: oneOf(['word_choice', 'grammar', 'coherence', 'structure', 'ok']),
+      feedback: STRING,
+      improved: STRING,
+    })),
+    vocabulary: listOf(object({ word: STRING, uzbek: STRING, english: STRING, exampleFromEssay: STRING })),
+    grammar: listOf(object({ kind: oneOf(['mistake', 'add']), point: STRING, explanation: STRING, yours: STRING, example: STRING })),
+    ...extra,
+  });
 }
 
 /** The reasoning and the four bands. `evidence` and `bandRationale` are never
