@@ -394,7 +394,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       await relay(stream);
     }
 
-    res.end();
+    // The response stays open until the report is saved (below). Some hosts
+    // stop a function as soon as its response ends: `vercel dev` does, and
+    // every report marked locally was then never saved, so it could not be
+    // reopened for free or shared as a sample answer.
 
     // A report the student cannot use is never charged and never saved. That
     // covers a reply cut off at the token cap, a refusal, and any reply
@@ -410,14 +413,16 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       // The AI wrote it and the browser has the text, so this refund is counted.
       console.error(`feedback: incomplete report for ${uid} (${taskType}${chart ? ', with chart' : ''}): stop_reason ${stopReason ?? 'unknown'}, ${raw.length} chars, ${whyUnreadable(raw)}; refunded`);
       await refundCredit(uid, source, chargeId, { aiRan: true });
+      res.end();
       return;
     }
 
-    // This has to be awaited: the response has already been streamed and
-    // ended, and a serverless function can be frozen the moment its handler
-    // returns, which used to lose reports at random.
+    // This has to be awaited, before the response ends: a serverless function
+    // can be frozen the moment its handler returns, which used to lose reports
+    // at random. It holds the end of the stream back by a moment only.
     await store(raw, lock?.scores ?? report.scores, report.topic, report.issues);
     await keepCharge(uid, chargeId);
+    res.end();
 
     // A full report also stays downloadable as a PDF from the dashboard, for
     // as many reports as the plan keeps (./_lib/reportArchive.ts). The oldest
