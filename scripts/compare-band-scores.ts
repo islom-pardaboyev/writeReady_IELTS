@@ -87,7 +87,7 @@ const VARIANTS: Variant[] = [
   { key: 'legacy', label: 'old prompt (push-up only)', model: 'claude-sonnet-5', price: { in: 2, out: 10 }, thinking: { type: 'disabled' }, transform: makeLegacy },
 ];
 
-const MAX_TOKENS = 12000; // same as api/feedback.ts
+const MAX_TOKENS = 16000; // same as api/feedback.ts
 
 interface Scores { ta: number; cc: number; lr: number; gra: number; overall: number }
 interface Run { scores: Scores | null; costUsd: number; error?: string }

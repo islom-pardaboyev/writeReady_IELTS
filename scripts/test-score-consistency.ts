@@ -16,7 +16,7 @@ const { essayKeys, essaySignature, signatureSimilarity, NEAR_DUPLICATE, normaliz
 const { seal, unseal, sign, verifySignature } = await import('../api/_lib/seal.js');
 const { verificationCode, signedRecord, recordFromDoc } = await import('../api/_lib/verification.js');
 const { cleanCardName, parseCode, formatCode, verifyUrl, DEFAULT_CARD_NAME } = await import('../api/_lib/verifyCode.js');
-const { normalizeScores, writingBand } = await import('../api/_lib/bandScore.js');
+const { normalizeScores, writingBand, extractJson } = await import('../api/_lib/bandScore.js');
 const { ScorePatch, promptParts, limitedPromptParts } = await import('../api/feedback.js');
 
 let failures = 0;
@@ -146,6 +146,22 @@ const patched = run([...reply]);
 check('everything else is untouched', patched.replace(/"scores": \{[^}]*\}/, '') === reply.replace(/"scores":\{[^}]*\}/, ''));
 const noScores = '{"topic":"x","feedback":{}}';
 check('a reply with no scores passes through whole', run([...noScores]) === noScores);
+
+// ── Reading a reply with a stray quote or line break ───────────────────────
+console.log('\nReading the reply');
+const scoresOf = (text: string) => {
+  try { return normalizeScores((extractJson(text) as { scores?: unknown }).scores)?.overall ?? null; } catch { return null; }
+};
+const good = '{"evidence":{"realErrors":["\'aimed to stay\' missing \\"who\\""]},"scores":{"taskAchievement":6,"coherenceCohesion":7,"lexicalResource":6,"grammaticalRangeAccuracy":7,"overall":6.5}}';
+check('a valid reply reads as before', scoresOf(good) === 6.5);
+check('an unescaped quote inside a value is repaired',
+  scoresOf('{"evidence":{"realErrors":["\'aimed to stay\' missing "who" here"]},"scores":{"taskAchievement":6,"coherenceCohesion":7,"lexicalResource":6,"grammaticalRangeAccuracy":7,"overall":6.5}}') === 6.5);
+check('a quote followed by a comma inside a value is repaired',
+  scoresOf('{"bandRationale":{"lexicalResource":"uses "fluctuated", which is precise"},"scores":{"taskAchievement":6,"coherenceCohesion":7,"lexicalResource":6,"grammaticalRangeAccuracy":7}}') === 6.5);
+check('a raw line break inside a value is repaired',
+  scoresOf('{"sampleResponse":"First paragraph.\nSecond paragraph.","scores":{"taskAchievement":6,"coherenceCohesion":7,"lexicalResource":6,"grammaticalRangeAccuracy":7}}') === 6.5);
+check('a reply cut off mid-way still has no scores', scoresOf('{"evidence":{"realErrors":["\'aimed') === null);
+check('repairing never invents scores', scoresOf('{"topic":"x","note":"a "quoted" word"}') === null);
 
 // ── Prompt lines ────────────────────────────────────────────────────────────
 console.log('\nPrompt');

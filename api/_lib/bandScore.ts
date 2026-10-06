@@ -100,7 +100,69 @@ export function extractJson(raw: string): unknown {
   const start = raw.indexOf('{');
   const end = raw.lastIndexOf('}');
   if (start === -1 || end <= start) throw new Error('No JSON object in the reply.');
-  return JSON.parse(raw.slice(start, end + 1));
+  const text = raw.slice(start, end + 1);
+  try {
+    return JSON.parse(text);
+  } catch (e) {
+    // The model quotes the essay inside text values, and now and then leaves
+    // a double quote unescaped ("missing "who" here") or a line break raw.
+    // One such slip used to throw away the whole reply, scores and all.
+    try {
+      return JSON.parse(repairJson(text));
+    } catch {
+      throw e;
+    }
+  }
+}
+
+/**
+ * Escapes what JSON does not allow inside a string: a double quote that does
+ * not end the string, and raw line breaks or tabs. A quote ends the string
+ * only when what follows it can follow a string in JSON: a colon, a closing
+ * bracket, or a comma and then the next value.
+ */
+export function repairJson(text: string): string {
+  let out = '';
+  let inString = false;
+  for (let i = 0; i < text.length; i++) {
+    const c = text[i];
+    if (!inString) {
+      if (c === '"') inString = true;
+      out += c;
+    } else if (c === '\\') {
+      out += c + (text[i + 1] ?? '');
+      i++;
+    } else if (c === '"') {
+      if (endsString(text, i + 1)) {
+        inString = false;
+        out += c;
+      } else {
+        out += '\\"';
+      }
+    } else if (c === '\n') {
+      out += '\\n';
+    } else if (c === '\r') {
+      out += '\\r';
+    } else if (c === '\t') {
+      out += '\\t';
+    } else {
+      out += c;
+    }
+  }
+  return out;
+}
+
+function endsString(text: string, from: number): boolean {
+  let j = from;
+  while (j < text.length && /\s/.test(text[j])) j++;
+  const next = text[j];
+  if (next === undefined || next === ':' || next === '}' || next === ']') return true;
+  if (next !== ',') return false;
+  j++;
+  while (j < text.length && /\s/.test(text[j])) j++;
+  // After a comma in this report comes a key, a string, an object, an array
+  // or a number. A quote followed by ", which ..." is inside the text.
+  return j >= text.length || /["{[\d-]/.test(text[j]);
 }
 
 /**
