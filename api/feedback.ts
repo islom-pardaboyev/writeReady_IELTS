@@ -494,7 +494,13 @@ export function startMarking(anthropic: Anthropic, m: Marking, sendChart: ChartB
     thinking: { type: 'disabled' },
     // The reply can only be JSON of this shape, so it always reads (see
     // reportJsonSchema). A reply cut off at max_tokens is still incomplete.
-    output_config: { format: { type: 'json_schema', schema: reportJsonSchema(m.taskType, !m.scoreOnly, m.extraFields) } },
+    // Score-only markings only: the full report's schema is over the API's
+    // compiled-grammar limit (400 "The compiled grammar is too large"), so a
+    // full report is written freehand from the prompt's template and read
+    // with extractJson, as before.
+    ...(m.scoreOnly
+      ? { output_config: { format: { type: 'json_schema' as const, schema: reportJsonSchema(m.taskType, false, m.extraFields) } } }
+      : {}),
     // The fixed half carries the cache breakpoint. On a hit those tokens bill
     // at ~0.1x instead of full price, which is most of the cost of a report;
     // on a miss the write costs ~1.25x, so it pays from the second request
