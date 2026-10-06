@@ -41,7 +41,7 @@ const NAV_ITEMS = [
 ];
 
 export function AppSidebar() {
-  const { user, profile, logOut } = useAuth();
+  const { user, profile, logOut, avatarUrl } = useAuth();
   const location = useLocation();
   const navigate = useNavigate();
   const { open, isMobile, setMobileOpen } = useSidebar();
@@ -158,8 +158,8 @@ export function AppSidebar() {
       <SidebarFooter>
         {user && (open || isMobile) && (
           <div className="flex items-center gap-2 mb-3 px-0.5">
-            {user.photoURL ? (
-              <img src={user.photoURL} alt={firstName} width={32} height={32} className="rounded-full object-cover shrink-0" />
+            {avatarUrl ? (
+              <img src={avatarUrl} alt={firstName} width={32} height={32} className="size-8 rounded-full object-cover shrink-0" />
             ) : (
               <span className="w-8 h-8 rounded-full bg-[var(--sidebar-accent)] text-[var(--sidebar-primary)] flex items-center justify-center text-xs font-bold shrink-0">
                 {firstName.charAt(0).toUpperCase()}

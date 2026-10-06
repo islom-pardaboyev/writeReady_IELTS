@@ -17,7 +17,7 @@
  * browser (see the notes where it is used). Firestore rules need the emulator.
  */
 import {
-  MAX_AI_REFUNDS_PER_DAY, MAX_SENTENCES, countSentences, nextRefundUsage,
+  MAX_AI_REFUNDS_PER_DAY, MAX_SENTENCES, countSentences, nextRefundUsage, reportsPaused,
 } from '../api/_lib/essayGuard.js';
 import { isAdminToken, isCenterToken, staffTokenOf } from '../api/_lib/shared.js';
 import { cronAllowed } from '../api/_lib/cronAuth.js';
@@ -56,18 +56,17 @@ console.log('\nrefund budget');
 {
   const today = '2026-09-29';
   const first = nextRefundUsage(undefined, today);
-  check('the first refund of the day is allowed and counted', first?.count === 1 && first.dayKey === today);
+  check('the first refund of the day is counted', first.count === 1 && first.dayKey === today);
   let cur: unknown = undefined;
-  let allowed = 0;
-  for (let i = 0; i < MAX_AI_REFUNDS_PER_DAY + 4; i++) {
-    const next = nextRefundUsage(cur, today);
-    if (next) { allowed++; cur = next; }
-  }
-  check(`only ${MAX_AI_REFUNDS_PER_DAY} refunds are given in a day`, allowed === MAX_AI_REFUNDS_PER_DAY);
-  check('after that the report stays charged', nextRefundUsage(cur, today) === null);
-  check('a new day starts again', nextRefundUsage(cur, '2026-09-30')?.count === 1);
-  check('junk in the stored field does not lock anyone out', nextRefundUsage('x', today)?.count === 1 && nextRefundUsage({ dayKey: today, count: 'a' }, today)?.count === 1);
-  check('a negative stored count does not give extra refunds', nextRefundUsage({ dayKey: today, count: -50 }, today)?.count === 1);
+  for (let i = 0; i < MAX_AI_REFUNDS_PER_DAY + 4; i++) cur = nextRefundUsage(cur, today);
+  check('every failed report is refunded, however many there are', (cur as { count: number }).count === MAX_AI_REFUNDS_PER_DAY + 4);
+  let fresh: unknown = undefined;
+  for (let i = 0; i < MAX_AI_REFUNDS_PER_DAY - 1; i++) fresh = nextRefundUsage(fresh, today);
+  check('new reports are not paused below the limit', !reportsPaused(fresh, today));
+  check(`new reports pause after ${MAX_AI_REFUNDS_PER_DAY} failed ones`, reportsPaused(nextRefundUsage(fresh, today), today));
+  check('a new day starts again', !reportsPaused(cur, '2026-09-30') && nextRefundUsage(cur, '2026-09-30').count === 1);
+  check('junk in the stored field does not lock anyone out', !reportsPaused('x', today) && !reportsPaused({ dayKey: today, count: 'a' }, today));
+  check('a negative stored count counts from zero', nextRefundUsage({ dayKey: today, count: -50 }, today).count === 1);
 }
 
 // ── Admin and centre tokens ──────────────────────────────────────────────────

@@ -18,6 +18,8 @@ export interface UserProfile {
   balanceUZS?: number;
   /** Admin-granted, for an early customer worth thanking on their account page. */
   founder?: boolean;
+  /** Set while the student has their own photo (profile_photos/{uid}); changes with each new one. */
+  photoVersion?: number;
 }
 
 export interface UsageRecord {

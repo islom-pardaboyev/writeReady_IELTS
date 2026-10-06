@@ -17,6 +17,13 @@ export interface AuthContextValue {
   refreshProfile: () => Promise<void>;
   updateDisplayName: (name: string) => Promise<void>;
   changePassword: (currentPassword: string, newPassword: string) => Promise<void>;
+  /**
+   * The picture to show for the signed-in student: their own photo when they
+   * set one (src/lib/profilePhoto.ts), else their Google photo, else null.
+   */
+  avatarUrl: string | null;
+  /** Shows a photo just saved (or removed, with null) everywhere at once. */
+  photoChanged: (version: number | null, photo: string | null) => void;
 }
 
 export const AuthContext = createContext<AuthContextValue | null>(null);

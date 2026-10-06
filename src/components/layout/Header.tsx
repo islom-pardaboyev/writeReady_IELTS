@@ -76,7 +76,7 @@ const dropdownLinkClass =
  * screen, so it would swap to the wide layout while it was too wide to fit.
  */
 export function Header() {
-  const { user, profile, logOut } = useAuth();
+  const { user, profile, logOut, avatarUrl } = useAuth();
   const navigate = useNavigate();
   const marqueeRef = useRef<MarqueeElement>(null);
 
@@ -169,13 +169,13 @@ export function Header() {
                 {/* Avatar only on a phone; the name and chevron need room the
                     row does not have next to the menu button. */}
                 <Button variant="secondary" className="px-2 md:px-4">
-                  {user.photoURL ? (
+                  {avatarUrl ? (
                     <img
-                      src={user.photoURL}
+                      src={avatarUrl}
                       alt={firstName}
                       width={30}
                       height={30}
-                      className="rounded-full object-cover shrink-0"
+                      className="size-[30px] rounded-full object-cover shrink-0"
                     />
                   ) : (
                     <span className="w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold shrink-0">

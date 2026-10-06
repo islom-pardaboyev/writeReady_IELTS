@@ -34,6 +34,17 @@ export const PLAN_INFO: Record<Plan, PlanInfo> = {
 
 export const PAID_PLANS: Plan[] = ['basic', 'standard', 'premium', 'custom', 'forever'];
 
+/**
+ * How many of a student's newest AI reports stay downloadable as a PDF from
+ * the dashboard. A new report pushes the oldest one out, and the server
+ * deletes it (api/_lib/reportArchive.ts, which keeps the same numbers).
+ * Lifetime gets Premium's number, since it is the bigger plan.
+ */
+export function pdfHistoryLimit(plan: Plan): number {
+  if (plan === 'premium' || plan === 'forever') return 10;
+  return plan === 'free' ? 0 : 3;
+}
+
 /** Every plan but Free. `plan` must already be the effective one (see effectivePlan). */
 export const isPaidPlan = (plan: Plan | undefined): boolean => !!plan && plan !== 'free';
 

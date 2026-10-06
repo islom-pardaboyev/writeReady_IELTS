@@ -353,6 +353,12 @@ export function PricingPage() {
                   </span>
                   Sample essay + PDF export
                 </li>
+                <li className="flex items-start gap-2.5 text-[var(--text-primary)]">
+                  <span className="text-brand-500 font-bold shrink-0 mt-px">
+                    ✓
+                  </span>
+                  Download your last 3 reports as PDFs from the dashboard
+                </li>
               </ul>
               <Button
                 onClick={() => openPaymentModal(PLANS[0])}
@@ -457,6 +463,12 @@ export function PricingPage() {
                     ✓
                   </span>
                   Everything in Basic & Standard
+                </li>
+                <li className="flex items-start gap-2.5 text-white/85">
+                  <span className="text-brand-300 font-bold shrink-0 mt-px">
+                    ✓
+                  </span>
+                  Download your last 10 reports as PDFs (other plans keep 3)
                 </li>
                 <li className="flex items-start gap-2.5 text-white/85">
                   <span className="text-brand-300 font-bold shrink-0 mt-px">

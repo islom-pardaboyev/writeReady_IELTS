@@ -193,6 +193,17 @@ service cloud.firestore {
     match /score_verifications/{code} {
       allow read, write: if false;
     }
+    // The reports a student can download again as a PDF, sealed like
+    // saved_reports (api/_lib/reportArchive.ts). Read through /api/report-pdf.
+    match /report_archive/{id} {
+      allow read, write: if false;
+    }
+
+    // A student's profile photo. Written only by api/_lib/routes/profilePhoto.ts,
+    // which checks the file; the student reads their own.
+    match /profile_photos/{uid} {
+      allow read: if isSelf(uid);
+    }
 
     // ── Telegram student bot ──────────────────────────────────────────────
 

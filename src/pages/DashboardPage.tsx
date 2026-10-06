@@ -17,9 +17,11 @@ import { dashboardStats, hasProgress } from '../lib/dashboardStats';
 import { TelegramBotCard } from '../components/ui/TelegramBotCard';
 import { doc, updateDoc } from 'firebase/firestore';
 import { hasFreeReportThisWeek } from '../lib/weeklyFree';
-import { PLAN_INFO, isPaidPlan as isPaidPlanFn } from '../lib/plans';
+import { PLAN_INFO, isPaidPlan as isPaidPlanFn, pdfHistoryLimit } from '../lib/plans';
+import { downloadArchivedReport, listDownloadableReports } from '../lib/reportDownload';
+import { useSingleRun } from '../hooks/useSingleRun';
 import { db } from '../firebase/config';
-import { GraduationCap, Clock, Download } from 'lucide-react';
+import { GraduationCap, Clock, Download, Loader2 } from 'lucide-react';
 import { reportBand } from '@shared/bandScore';
 
 // A plan's allowance renews at 00:00 UTC on its day (api/_lib/planCycle.ts).
@@ -209,6 +211,31 @@ export function DashboardPage() {
   const [showAllReports, setShowAllReports] = useState(false);
   const visibleReports = showAllReports ? reports : reports.slice(0, RECENT_PREVIEW_COUNT);
 
+  // Which recent reports can still be downloaded as a PDF: the newest 10 on
+  // Premium, 3 on the other paid plans (api/_lib/reportArchive.ts).
+  const pdfLimit = pdfHistoryLimit(profile?.plan ?? 'free');
+  const [downloadable, setDownloadable] = useState<Set<string>>(new Set());
+  const [downloadingId, setDownloadingId] = useState<string | null>(null);
+  const [downloadError, setDownloadError] = useState<string | null>(null);
+  const { run: runDownload } = useSingleRun();
+  useEffect(() => {
+    if (!user || pdfLimit === 0) return;
+    listDownloadableReports(user)
+      .then((ids) => setDownloadable(new Set(ids)))
+      .catch((e) => console.error('Could not list downloadable reports:', e));
+  }, [user, pdfLimit, progress]);
+  const downloadReport = (reportId: string) => user && runDownload(async () => {
+    setDownloadingId(reportId);
+    setDownloadError(null);
+    try {
+      await downloadArchivedReport(user, reportId);
+    } catch (e) {
+      setDownloadError(e instanceof Error ? e.message : 'Could not download the report.');
+    } finally {
+      setDownloadingId(null);
+    }
+  });
+
   // Signed-out visitors belong on the landing page, not an empty dashboard.
   // After every hook above, so the hook count never changes between renders.
   if (!loading && !user) return <Navigate to="/" replace />;
@@ -375,6 +402,14 @@ export function DashboardPage() {
                   </span>
                 )}
               </div>
+              {pdfLimit > 0 && (
+                <p className="text-xs text-[var(--text-secondary)] -mt-2 mb-4">
+                  You can download your last {pdfLimit} reports as PDFs. Each new report replaces the oldest one.
+                </p>
+              )}
+              {downloadError && (
+                <p role="alert" className="text-xs text-red-600 dark:text-red-400 -mt-2 mb-4">{downloadError}</p>
+              )}
 
               {reportsLoading ? (
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -434,6 +469,20 @@ export function DashboardPage() {
                           <span className="text-[0.7rem] text-[var(--text-secondary)]">
                             {timeAgo(r.createdAt)}
                           </span>
+                          {downloadable.has(r.id) && (
+                            <button
+                              type="button"
+                              onClick={() => downloadReport(r.id)}
+                              disabled={downloadingId !== null}
+                              aria-label={`Download PDF: ${r.topic}`}
+                              className="flex items-center gap-1 text-[0.7rem] font-medium text-brand-blue-600 dark:text-brand-blue-400 bg-transparent border-0 p-0 cursor-pointer hover:underline underline-offset-4 disabled:opacity-60 disabled:cursor-default"
+                            >
+                              {downloadingId === r.id
+                                ? <Loader2 className="w-3 h-3 animate-spin" aria-hidden />
+                                : <Download className="w-3 h-3" aria-hidden />}
+                              {downloadingId === r.id ? 'Preparing…' : 'Download PDF'}
+                            </button>
+                          )}
                         </div>
                       </Card>
                     );

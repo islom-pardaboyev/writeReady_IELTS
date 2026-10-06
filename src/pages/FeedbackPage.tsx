@@ -14,8 +14,9 @@ import type { ReportData } from '../lib/reportEncoding';
 import { getFeedbackReportHistory } from '../firebase/firestore';
 import { db } from '../firebase/config';
 import { loadTask1Chart, useTask1Chart } from '../lib/task1Chart';
-import type { CategoryFeedback, EnhancedFeedbackCategories, EnhancedFeedbackResult, GrammarPoint, ReadabilityTip, SentenceAnalysis } from '../types';
-import { CRITERIA, bandLabel, extractJson, normalizeScores } from '@shared/bandScore';
+import type { EnhancedFeedbackResult, GrammarPoint, ReadabilityTip, SentenceAnalysis } from '../types';
+import { bandLabel, extractJson } from '@shared/bandScore';
+import { looseText, toFeedbackResult, withRealQuotes } from '../lib/feedbackResult';
 import { hasFreeReportThisWeek } from '../lib/weeklyFree';
 import { isPaidPlan } from '../lib/plans';
 import { downloadFeedbackPdf } from '../lib/feedbackPdf';
@@ -344,74 +345,6 @@ function UpgradePrompt() {
   );
 }
 
-/**
- * A report as this page shows it, built from the model's JSON. The scores go
- * through the same rules the server used before saving (api/_lib/bandScore.ts),
- * so the band on screen is the band in the student's history. Before, the page
- * showed the model's own sum for the overall band, which could differ from the
- * saved one.
- *
- * Null when there are no real scores. The server refunds exactly those
- * reports, so the page can say "you were not charged" and mean it. Missing
- * lists become empty ones, so a short reply can never crash a tab.
- */
-function toFeedbackResult(parsed: unknown, limited: boolean, taskType: 'Task 1' | 'Task 2'): EnhancedFeedbackResult | null {
-  if (!parsed || typeof parsed !== 'object') return null;
-  const p = parsed as Record<string, unknown>;
-  const scores = normalizeScores(p.scores);
-  if (!scores) return null;
-  const list = <T,>(v: unknown): T[] => (Array.isArray(v) ? (v as T[]) : []);
-  const text = (v: unknown) => (typeof v === 'string' ? v : '');
-  const strings = (v: unknown) => list<unknown>(v).filter((x): x is string => typeof x === 'string');
-
-  // Only the categories the model wrote, each with both lists present. The
-  // score-only free report has none, and shows none.
-  const rawCategories = (p.feedback && typeof p.feedback === 'object' ? p.feedback : {}) as Record<string, Partial<CategoryFeedback> | undefined>;
-  const feedback = Object.fromEntries(
-    CRITERIA.filter((k) => rawCategories[k]).map((k) => [k, {
-      strengths: strings(rawCategories[k]?.strengths),
-      issues: strings(rawCategories[k]?.issues),
-    }]),
-  ) as unknown as EnhancedFeedbackCategories;
-
-  const rawReadability = (p.readability && typeof p.readability === 'object' ? p.readability : {}) as Record<string, unknown>;
-  const tips = list<Record<string, unknown>>(rawReadability.tips)
-    .map((t) => ({ problem: text(t?.problem), original: text(t?.original), clearer: text(t?.clearer) }))
-    .filter((t) => t.problem && t.clearer);
-
-  // `kind` and `yours` are newer fields: kept only when they are what the page
-  // expects, so an older or odd reply still shows as a plain grammar point.
-  const grammar = list<Record<string, unknown>>(p.grammar)
-    .filter((g) => g && typeof g === 'object')
-    .map((g): GrammarPoint => {
-      const yours = text(g.yours).trim();
-      return {
-        point: text(g.point),
-        explanation: text(g.explanation),
-        example: text(g.example),
-        ...(g.kind === 'mistake' || g.kind === 'add' ? { kind: g.kind } : {}),
-        ...(yours ? { yours } : {}),
-      };
-    })
-    .filter((g) => g.point);
-
-  return {
-    taskType,
-    topic: text(p.topic) || 'General',
-    wordCount: typeof p.wordCount === 'number' ? p.wordCount : 0,
-    scores,
-    feedback,
-    priorityFixes: strings(p.priorityFixes),
-    readability: tips.length ? { summary: text(rawReadability.summary), tips } : undefined,
-    bandGapAnalysis: text(p.bandGapAnalysis),
-    sampleResponse: text(p.sampleResponse),
-    sentenceAnalysis: list(p.sentenceAnalysis),
-    vocabulary: list(p.vocabulary),
-    grammar,
-    limited,
-  };
-}
-
 /** A report the server kept for this student (api/pre-check.ts), as this page shows it. */
 interface SavedReport { raw: string; tier: 'full' | 'limited'; reportId: string }
 
@@ -422,34 +355,6 @@ function fromSaved(saved: SavedReport, taskType: 'Task 1' | 'Task 2'): EnhancedF
   } catch {
     return null;
   }
-}
-
-/** Lower case, no quote marks, plain dashes, single spaces: enough to find a quote in a sentence. */
-const looseText = (t: string | null | undefined) =>
-  (t ?? '').toLowerCase().replace(/[“”"'‘’]/g, '').replace(/[–—]/g, '-').replace(/…/g, '...').replace(/\s+/g, ' ').trim();
-
-/**
- * Hides a quote the AI says it copied from the essay but did not. It is told
- * to copy exactly, yet it sometimes fixes a word on the way, and a "Your
- * version" the student never wrote would only confuse them. The fix itself
- * stays: a grammar point falls back to a plain example, a readability tip to
- * its easier version.
- */
-function withRealQuotes(result: EnhancedFeedbackResult, essay: string): EnhancedFeedbackResult {
-  const text = looseText(essay);
-  if (!text) return result; // nothing to check against
-  const inEssay = (quote: string) => text.includes(looseText(quote));
-  const grammar = (result.grammar ?? []).map((g) => {
-    if (!g.yours || inEssay(g.yours)) return g;
-    const plain = { ...g };
-    delete plain.yours;
-    return plain;
-  });
-  const readability = result.readability && {
-    ...result.readability,
-    tips: result.readability.tips.map((t) => (t.original && !inEssay(t.original) ? { ...t, original: '' } : t)),
-  };
-  return { ...result, grammar, readability };
 }
 
 /**
@@ -868,6 +773,8 @@ export function FeedbackPage() {
           taskType,
           preCheckToken,
           chartImage: chart || undefined,
+          // Lets the dashboard's PDF of this report fetch the same chart later.
+          chartId: taskKey === 'task1' ? reportData.task1?.id || undefined : undefined,
         }),
       });
 
@@ -944,6 +851,8 @@ export function FeedbackPage() {
         .catch(() => {/* non-critical */});
     } catch (err) {
       setFeedbackErrors((p) => ({ ...p, [taskKey]: err instanceof Error ? err.message : 'Something went wrong.' }));
+      // The server has given the credit back by now; show the count it left.
+      refreshProfile().catch(() => {});
       const restore = previous;
       if (restore) setFeedbacks((p) => (p[taskKey] ? p : { ...p, [taskKey]: restore }));
     } finally {

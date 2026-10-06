@@ -1,11 +1,12 @@
 import type { ReactNode } from 'react';
 import { Link } from 'react-router';
 import type { User } from 'firebase/auth';
-import { ChevronRight, Flame, Pencil, Settings } from 'lucide-react';
+import { Camera, ChevronRight, Flame, Pencil, Settings } from 'lucide-react';
 import { Card } from '../ui/Card';
 import { Badge } from '../ui/badge';
 import { Button } from '../ui/Button';
 import { InkBanner, Meter, ProfileAvatar } from '../profile/parts';
+import { useAuth } from '../../hooks/useAuth';
 import { PLAN_INFO, planBadgeVariant } from '../../lib/plans';
 import { joinedDate, profileName } from '../../lib/profileInfo';
 import { bandDescriptor, isTask1, nextHalfBand, PROGRESS_ID, type DashboardStats } from '../../lib/dashboardStats';
@@ -33,6 +34,8 @@ export function ProfileHeader({ user, profile }: { user: User; profile: UserProf
   const handle = profile.studentLogin;
   const joined = joinedDate(user, profile);
   const plan = profile.plan ?? 'free';
+  const { avatarUrl } = useAuth();
+  const photoLabel = profile.photoVersion ? 'Change profile photo' : 'Add a profile photo';
 
   return (
     <Card className="gs-db-welcome mb-6 overflow-hidden rounded-[18px]">
@@ -47,8 +50,18 @@ export function ProfileHeader({ user, profile }: { user: User; profile: UserProf
       </InkBanner>
 
       <div className="flex flex-col gap-4 px-5 pb-5 sm:flex-row sm:items-end sm:gap-5 sm:px-7 sm:pb-6">
-        <div className="-mt-12 sm:-mt-14">
-          <ProfileAvatar user={user} name={name} />
+        <div className="relative -mt-12 self-start sm:-mt-14 sm:self-auto">
+          <ProfileAvatar src={avatarUrl} name={name} />
+          {/* The photo's own edit button, where people look for it (Telegram
+              and most apps put it on the picture). Opens My Account's photo row. */}
+          <Link
+            to="/account#photo"
+            aria-label={photoLabel}
+            title={photoLabel}
+            className="absolute -bottom-1.5 -right-1.5 grid size-9 place-items-center rounded-full border border-[var(--border-color)] bg-[var(--bg-card)] text-[var(--text-secondary)] no-underline shadow-[var(--shadow-sm)] transition-colors duration-150 hover:text-brand-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ring)] focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--bg-card)] motion-reduce:transition-none dark:hover:text-brand-400"
+          >
+            <Camera className="size-4" aria-hidden="true" />
+          </Link>
         </div>
 
         <div className="min-w-0 flex-1 sm:pb-1">

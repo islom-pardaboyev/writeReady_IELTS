@@ -7,6 +7,8 @@
     { "source": "/api/bot-daily", "destination": "/api/combined?route=bot-daily" },
     { "source": "/api/bot-broadcast", "destination": "/api/combined?route=bot-broadcast" },
     { "source": "/api/email-code", "destination": "/api/combined?route=email-code" },
+    { "source": "/api/report-pdf", "destination": "/api/combined?route=report-pdf" },
+    { "source": "/api/profile-photo", "destination": "/api/combined?route=profile-photo" },
     { "source": "/api/(.*)", "destination": "/api/$1" },
 
     { "source": "/", "destination": "/index.html" },

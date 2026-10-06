@@ -18,6 +18,7 @@ import { VerifiedCards } from '../components/ui/VerifiedCards';
 import { AppearanceSettings } from '../components/appearance/AppearanceSettings';
 import { WritingSettingsCard } from '../components/appearance/WritingSettingsCard';
 import { InkBanner, Meter, ProfileAvatar } from '../components/profile/parts';
+import { PHOTO_UPLOAD_ID, PhotoSection } from '../components/profile/PhotoEditor';
 import { PLAN_INFO, isPaidPlan, planBadgeVariant } from '../lib/plans';
 import { hasFreeReportThisWeek } from '../lib/weeklyFree';
 import { joinedDate, profileName } from '../lib/profileInfo';
@@ -47,7 +48,7 @@ const renewDay = new Intl.DateTimeFormat(undefined, { day: 'numeric', month: 'lo
 // (sticky on wide screens); the things you change sit in the column beside it.
 // On a phone the card comes first and the settings follow.
 export function AccountPage() {
-  const { user, profile, logOut, updateDisplayName, changePassword, loading: authLoading } = useAuth();
+  const { user, profile, logOut, updateDisplayName, changePassword, avatarUrl, loading: authLoading } = useAuth();
   const { usage } = useUsage(user?.uid ?? null);
   const navigate = useNavigate();
   const { hash } = useLocation();
@@ -74,11 +75,18 @@ export function AccountPage() {
     if (!authLoading && !user) navigate('/auth');
   }, [user, authLoading, navigate]);
 
-  // The dashboard's "Edit profile" button lands here. The card only exists
-  // once the profile has loaded, so wait for it.
+  // The dashboard's "Edit profile" button lands here, and its camera button
+  // on #photo, ready to choose a file. The card only exists once the profile
+  // has loaded, so wait for it.
+  const hasProfile = !!profile;
   useEffect(() => {
-    if (hash === '#edit-profile' && profile) editCardRef.current?.scrollIntoView({ block: 'start' });
-  }, [hash, profile]);
+    if (!hasProfile) return;
+    if (hash === '#edit-profile') editCardRef.current?.scrollIntoView({ block: 'start' });
+    if (hash === '#photo') {
+      editCardRef.current?.scrollIntoView({ block: 'start' });
+      document.getElementById(PHOTO_UPLOAD_ID)?.focus({ preventScroll: true });
+    }
+  }, [hash, hasProfile]);
 
   useEffect(() => {
     if (user) setNameInput(user.displayName ?? '');
@@ -193,7 +201,7 @@ export function AccountPage() {
                 <InkBanner className="h-20" />
                 <div className="px-5 pb-5">
                   <div className="-mt-9">
-                    <ProfileAvatar user={user} name={displayName} size="md" />
+                    <ProfileAvatar src={avatarUrl} name={displayName} size="md" />
                   </div>
                   <h2 className="mt-3 break-words text-lg font-bold leading-snug tracking-[-0.01em] text-[var(--text-primary)]">{displayName}</h2>
                   <p className="truncate text-sm text-[var(--text-secondary)]">
@@ -291,10 +299,12 @@ export function AccountPage() {
               <Card id="edit-profile" ref={editCardRef} className="gs-acc-section scroll-mt-6 p-6">
                 <h2 className="font-sans text-lg font-bold text-[var(--text-primary)]">Profile</h2>
                 <p className="mb-5 mt-1 text-sm leading-relaxed text-[var(--text-secondary)]">
-                  Your name appears on your dashboard, your reports and your score cards.
+                  Your photo and name appear on your dashboard. Your name also goes on your reports and score cards.
                 </p>
 
-                <form onSubmit={handleSaveName}>
+                <PhotoSection name={displayName} />
+
+                <form onSubmit={handleSaveName} className="mt-6 border-t border-[var(--border-color)] pt-5">
                   <Label htmlFor="displayName">Display name</Label>
                   <div className="mt-1.5 flex items-center gap-2">
                     <Input

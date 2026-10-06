@@ -1,6 +1,7 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { getFirestore, FieldValue } from 'firebase-admin/firestore';
 import { initFirebase, getUid } from '../shared.js';
+import { sweepStaleCharges } from '../charges.js';
 
 /**
  * Records that a signed-in person is on the site, so the admin panel can show
@@ -14,6 +15,9 @@ import { initFirebase, getUid } from '../shared.js';
  *
  * Firestore rules let a student change almost nothing on their own profile, so
  * the stamp is written here with the Admin SDK instead of from the browser.
+ *
+ * It also gives back any report credit still pending for a report that could
+ * not finish (../charges.ts), so the student's count is right when they look.
  */
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   res.setHeader('Access-Control-Allow-Origin', '*');
@@ -33,11 +37,19 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   }
 
   try {
-    // update(), not set(merge): a profile that does not exist yet is left
-    // alone, so this can never create a half-built one that would stop
-    // createUserProfile() writing the real thing.
-    await getFirestore().collection('users').doc(uid).update({
-      lastActiveAt: FieldValue.serverTimestamp(),
+    // A missing profile is left alone (never created half-built here), so
+    // createUserProfile() can still write the real thing.
+    const db = getFirestore();
+    const ref = db.collection('users').doc(uid);
+    await db.runTransaction(async (tx) => {
+      const snap = await tx.get(ref);
+      if (!snap.exists) throw Object.assign(new Error('no profile'), { code: 5 });
+      const { fields, refunded } = sweepStaleCharges(snap.data()!);
+      if (refunded) console.warn(`seen: gave ${uid} back ${refunded} report credit(s) for reports that never finished`);
+      // merge, not update(): update() would replace the whole pendingCharges
+      // map instead of deleting the given entries. The profile exists (read
+      // above, in this transaction), so nothing is created.
+      tx.set(ref, { ...fields, lastActiveAt: FieldValue.serverTimestamp() }, { merge: true });
     });
   } catch (e: unknown) {
     // Still nothing worth showing a visitor an error over, but a stamp that

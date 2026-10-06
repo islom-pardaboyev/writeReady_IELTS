@@ -238,8 +238,15 @@ export const GROUPS: Group[] = [
       },
       {
         q: "Can I keep a copy of my feedback?",
-        plain: "Yes. Every report can be downloaded as a PDF, and your past reports stay in your account.",
-        a: <>Yes. Every report downloads as a PDF, and your past reports stay in your account.</>,
+        plain:
+          "Yes. You can download any report as a PDF while it is open. Your scores stay in your account. Later, you can download your last 10 reports from the dashboard on Premium, or your last 3 on the other paid plans. A new report replaces the oldest one.",
+        a: (
+          <>
+            Yes. You can download any report as a PDF while it is open. Your scores stay in your account. Later, you can
+            download your last <strong>10</strong> reports from the dashboard on Premium, or your last{" "}
+            <strong>3</strong> on the other paid plans. A new report replaces the oldest one.
+          </>
+        ),
       },
       {
         q: "Is the feedback in Uzbek or English?",

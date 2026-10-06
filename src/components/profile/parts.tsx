@@ -1,5 +1,4 @@
 import { useEffect, useState } from 'react';
-import type { User } from 'firebase/auth';
 
 // Pieces the dashboard header and My Account share, so a student sees the
 // same banner, photo and meters in both places.
@@ -25,20 +24,20 @@ const AVATAR_SIZE = {
 } as const;
 
 /** The student's photo, or their initials when there is none (or it fails to load). */
-export function ProfileAvatar({ user, name, size = 'lg' }: { user: User; name: string; size?: keyof typeof AVATAR_SIZE }) {
-  const [broken, setBroken] = useState(false);
+export function ProfileAvatar({ src, name, size = 'lg' }: { src: string | null; name: string; size?: keyof typeof AVATAR_SIZE }) {
+  const [broken, setBroken] = useState<string | null>(null);
   const initials = name.split(/\s+/).map((w) => w[0]).join('').slice(0, 2).toUpperCase();
   const frame = `relative shrink-0 overflow-hidden rounded-[18px] ring-4 ring-[var(--bg-card)] shadow-[var(--shadow-md)] ${AVATAR_SIZE[size]}`;
 
-  if (user.photoURL && !broken) {
+  if (src && broken !== src) {
     return (
       <img
-        src={user.photoURL}
+        src={src}
         alt=""
         width={112}
         height={112}
         referrerPolicy="no-referrer"
-        onError={() => setBroken(true)}
+        onError={() => setBroken(src)}
         className={`${frame} bg-[var(--bg-subtle)] object-cover`}
       />
     );

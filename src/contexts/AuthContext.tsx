@@ -18,6 +18,7 @@ import { markSeen, watchSeen } from '../lib/seen';
 import type { UserProfile } from '../types';
 import { AuthContext } from './authContextDef';
 import { clearAllDrafts } from '../hooks/useDraft';
+import { fetchProfilePhoto, rememberProfilePhoto } from '../lib/profilePhoto';
 
 /**
  * A password account whose email nobody confirmed (made before sign-up asked
@@ -36,6 +37,30 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [loading, setLoading] = useState(true);
+  // The student's own photo, tagged with the uid and version it belongs to,
+  // so a stale one is never shown after a change or a different sign-in.
+  const [ownPhoto, setOwnPhoto] = useState<{ key: string; photo: string | null } | null>(null);
+  const photoKey = user && profile?.photoVersion ? `${user.uid}:${profile.photoVersion}` : null;
+
+  useEffect(() => {
+    if (!user || !profile?.photoVersion) return;
+    const key = `${user.uid}:${profile.photoVersion}`;
+    let live = true;
+    fetchProfilePhoto(user.uid, profile.photoVersion).then((photo) => {
+      if (live) setOwnPhoto({ key, photo });
+    });
+    return () => { live = false; };
+  }, [user, profile?.photoVersion]);
+
+  const avatarUrl = (photoKey && ownPhoto?.key === photoKey ? ownPhoto.photo : null) ?? user?.photoURL ?? null;
+
+  const photoChanged = (version: number | null, photo: string | null) => {
+    if (user && version && photo) {
+      rememberProfilePhoto(user.uid, version, photo);
+      setOwnPhoto({ key: `${user.uid}:${version}`, photo });
+    }
+    setProfile((p) => (p ? { ...p, photoVersion: version ?? undefined } : p));
+  };
 
   const loadProfile = async (u: User) => {
     let p = await getUserProfile(u.uid);
@@ -120,7 +145,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   return (
-    <AuthContext.Provider value={{ user, profile, loading, signIn, signInWithGoogle, logOut, refreshProfile, updateDisplayName, changePassword }}>
+    <AuthContext.Provider value={{ user, profile, loading, signIn, signInWithGoogle, logOut, refreshProfile, updateDisplayName, changePassword, avatarUrl, photoChanged }}>
       {children}
     </AuthContext.Provider>
   );

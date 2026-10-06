@@ -63,6 +63,7 @@ export async function getUserProfile(uid: string): Promise<UserProfile | null> {
     studentLogin: typeof d.studentLogin === 'string' ? d.studentLogin : undefined,
     balanceUZS: typeof d.balanceUZS === 'number' ? d.balanceUZS : 0,
     founder: d.founder === true,
+    photoVersion: typeof d.photoVersion === 'number' ? d.photoVersion : undefined,
   };
 }
 
@@ -90,11 +91,13 @@ export async function createUserProfile(uid: string, email: string): Promise<voi
 // its own isolated Firebase app/auth session, see teachers.ts) can pass its
 // own `adminDb` instead of the main site's `db`.
 export async function deleteUserAccount(uid: string, dbInstance: Firestore = db): Promise<void> {
-  const uidFilteredCollections = ['feedback_reports', 'saved_reports', 'score_verifications', 'submissions', 'humanReviews'];
+  const uidFilteredCollections = ['feedback_reports', 'saved_reports', 'report_archive', 'score_verifications', 'submissions', 'humanReviews'];
   for (const col of uidFilteredCollections) {
     const snap = await getDocs(query(collection(dbInstance, col), where('uid', '==', uid)));
     await Promise.all(snap.docs.map((d) => deleteDoc(d.ref)));
   }
+
+  await deleteDoc(doc(dbInstance, 'profile_photos', uid));
 
   const notifSnap = await getDocs(collection(dbInstance, 'notifications', uid, 'items'));
   await Promise.all(notifSnap.docs.map((d) => deleteDoc(d.ref)));

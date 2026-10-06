@@ -1,10 +1,11 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { getFirestore, FieldValue } from 'firebase-admin/firestore';
 import { createHmac } from 'crypto';
-import { initFirebase, getUid, currentWeekKey, resolvePaidStatus } from './_lib/shared.js';
+import { initFirebase, getUid, currentDayKey, currentWeekKey, resolvePaidStatus } from './_lib/shared.js';
 import { nextRenewal, planCycle, usedThisCycle } from './_lib/planCycle.js';
 import { LIMITS, essayKeys, loadSavedReport, type SavedReport } from './_lib/savedReports.js';
-import { MAX_SENTENCES, countSentences } from './_lib/essayGuard.js';
+import { MAX_SENTENCES, countSentences, reportsPaused } from './_lib/essayGuard.js';
+import { chargeIdOf, newCharge, sweepStaleCharges, type CreditSource } from './_lib/charges.js';
 
 // Free-plan users (no subscription) get 1 AI feedback report per calendar
 // week instead of a single lifetime bonus report.
@@ -22,9 +23,9 @@ const FREE_WEEKLY_LIMIT = 1;
  * worth having: it buys the same full report a paying student gets. Only the
  * automatic weekly free report is the score-only one.
  */
-export type CreditSource = 'paid' | 'bonus' | 'free';
+export type { CreditSource };
 
-type CreditErrorCode = 'USER_NOT_FOUND' | 'LIMIT_REACHED' | 'FREE_LIMIT_REACHED' | 'FULL_ONLY';
+type CreditErrorCode = 'USER_NOT_FOUND' | 'LIMIT_REACHED' | 'FREE_LIMIT_REACHED' | 'FULL_ONLY' | 'PAUSED';
 class CreditError extends Error {
   /** For LIMIT_REACHED: when the plan's allowance refills, or null when the plan ends first. */
   renewsAt: Date | null = null;
@@ -40,13 +41,12 @@ function limitReachedMessage(renewsAt: Date | null): string {
     : 'Monthly analysis limit reached. Your plan ends before it renews: renew the plan to get more reports.';
 }
 
-function signToken(uid: string, source: CreditSource): string {
+function signToken(uid: string, source: CreditSource, ts: number): string {
   // No default: a secret written in the source code would let anyone sign
   // their own tokens. api/feedback.ts refuses to run without it too.
   const secret = process.env.NONCE_SECRET;
   if (!secret) throw new Error('NONCE_SECRET is not set');
   const b64uid = Buffer.from(uid).toString('base64url');
-  const ts = Date.now().toString();
   const payload = `${b64uid}.${source}.${ts}`;
   const sig = createHmac('sha256', secret).update(payload).digest('hex');
   return `${payload}.${sig}`;
@@ -57,19 +57,48 @@ function signToken(uid: string, source: CreditSource): string {
  * this essay: another score-only one would change nothing, so it may only
  * spend an allowance that buys the full report, and never the weekly free one.
  */
-async function consumeCredit(uid: string, { fullOnly = false } = {}): Promise<CreditSource> {
+async function consumeCredit(uid: string, { fullOnly = false } = {}): Promise<{ source: CreditSource; token: string }> {
   const db = getFirestore();
   const userRef = db.collection('users').doc(uid);
-  let source: CreditSource = 'paid';
   // Asking for a report is the clearest sign a student is here, and this
   // write happens anyway, so "last active" comes along for free.
   const seen = { lastActiveAt: FieldValue.serverTimestamp() };
+  // The token's timestamp and the pending charge's, so they name one moment.
+  const at = Date.now();
 
-  await db.runTransaction(async (tx) => {
+  const result = await db.runTransaction(async (tx) => {
     const snap = await tx.get(userRef);
-    if (!snap.exists) throw new CreditError('USER_NOT_FOUND');
+    if (!snap.exists) return new CreditError('USER_NOT_FOUND');
 
-    const data = snap.data()!;
+    // Charges for reports that could never finish come back first, so the
+    // numbers below are the ones the student really has (./_lib/charges.ts).
+    const sweep = sweepStaleCharges(snap.data()!, at);
+    const data = sweep.data;
+
+    // Takes the credit and writes down the pending charge api/feedback.ts
+    // settles. Everything goes in one write, refunds from the sweep included.
+    const take = (src: CreditSource, fields: Record<string, unknown>) => {
+      const token = signToken(uid, src, at);
+      const sig = token.slice(token.lastIndexOf('.') + 1);
+      const swept = (sweep.fields.pendingCharges ?? {}) as Record<string, unknown>;
+      tx.set(userRef, {
+        ...sweep.fields,
+        ...fields,
+        ...seen,
+        pendingCharges: { ...swept, [chargeIdOf(sig)]: newCharge(src, data, at) },
+      }, { merge: true });
+      return { source: src, token };
+    };
+    // A refusal still saves what the sweep gave back.
+    const refuse = (error: CreditError) => {
+      if (Object.keys(sweep.fields).length) tx.set(userRef, sweep.fields, { merge: true });
+      return error;
+    };
+
+    // Too many reports the AI started and could not finish today. They were
+    // all refunded; new ones wait for tomorrow (./_lib/essayGuard.ts).
+    if (reportsPaused(data.aiRefunds, currentDayKey())) return refuse(new CreditError('PAUSED'));
+
     // One shared definition of "has paid" across every route — see
     // resolvePaidStatus in ./_lib/shared.ts. It applies the expiresAt rule (a
     // lapsed paid plan reverts to free, because nothing else ever downgrades
@@ -82,22 +111,16 @@ async function consumeCredit(uid: string, { fullOnly = false } = {}): Promise<Cr
       // Admin-granted bonus reports are consumed first (separate from the
       // automatic weekly free allowance).
       const bonus = typeof data.bonusAnalyses === 'number' ? data.bonusAnalyses : 0;
-      if (bonus > 0) {
-        tx.set(userRef, { bonusAnalyses: bonus - 1, ...seen }, { merge: true });
-        source = 'bonus';
-        return;
-      }
+      if (bonus > 0) return take('bonus', { bonusAnalyses: bonus - 1 });
 
-      if (fullOnly) throw new CreditError('FULL_ONLY');
+      if (fullOnly) return refuse(new CreditError('FULL_ONLY'));
 
       // Free plan: 1 AI feedback report per calendar week.
       const weekKey = currentWeekKey();
-      const freeUsage = data.freeUsage ?? {};
+      const freeUsage = (data.freeUsage ?? {}) as { weekKey?: string; count?: number };
       const freeUsed = freeUsage.weekKey === weekKey ? (freeUsage.count ?? 0) : 0;
-      if (freeUsed >= FREE_WEEKLY_LIMIT) throw new CreditError('FREE_LIMIT_REACHED');
-      tx.set(userRef, { freeUsage: { weekKey, count: freeUsed + 1 }, ...seen }, { merge: true });
-      source = 'free';
-      return;
+      if (freeUsed >= FREE_WEEKLY_LIMIT) return refuse(new CreditError('FREE_LIMIT_REACHED'));
+      return take('free', { freeUsage: { weekKey, count: freeUsed + 1 } });
     }
 
     // monthlyLimit covers every paid plan: a learning-center student's profile
@@ -107,8 +130,7 @@ async function consumeCredit(uid: string, { fullOnly = false } = {}): Promise<Cr
     // on the 20th refills on the 20th, not on the 1st (./_lib/planCycle.ts).
     const used = usedThisCycle(data.usage, data.expiresAt);
     if (used < monthlyLimit) {
-      tx.set(userRef, { usage: { monthKey: planCycle(data.expiresAt).key, count: used + 1 }, ...seen }, { merge: true });
-      return;
+      return take('paid', { usage: { monthKey: planCycle(data.expiresAt).key, count: used + 1 } });
     }
 
     // The month's allowance is spent. Fall back to admin-granted bonus reports
@@ -118,18 +140,15 @@ async function consumeCredit(uid: string, { fullOnly = false } = {}): Promise<Cr
     // the reward for topping the leaderboard sat on their account unusable,
     // and they were told their limit was reached while holding one.
     const paidBonus = typeof data.bonusAnalyses === 'number' ? data.bonusAnalyses : 0;
-    if (paidBonus > 0) {
-      tx.set(userRef, { bonusAnalyses: paidBonus - 1, ...seen }, { merge: true });
-      source = 'bonus';
-      return;
-    }
+    if (paidBonus > 0) return take('bonus', { bonusAnalyses: paidBonus - 1 });
 
     const limitReached = new CreditError('LIMIT_REACHED');
     limitReached.renewsAt = nextRenewal(data.expiresAt);
-    throw limitReached;
+    return refuse(limitReached);
   });
 
-  return source;
+  if (result instanceof CreditError) throw result;
+  return result;
 }
 
 function savedResponse(saved: SavedReport) {
@@ -160,8 +179,6 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   try { uid = await getUid(req); } catch {
     return res.status(401).json({ error: 'Invalid or missing auth token. Please sign in again.' });
   }
-
-  let source: CreditSource = 'paid';
 
   // A report is saved once it is marked. When the browser says which essay
   // it wants, look for this student's saved report on it first: opening it
@@ -195,8 +212,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     if (!saved && lookupOnly === true) return res.status(200).json({ saved: null });
   }
 
+  let source: CreditSource;
+  let token: string;
   try {
-    source = await consumeCredit(uid, { fullOnly: saved !== null });
+    ({ source, token } = await consumeCredit(uid, { fullOnly: saved !== null }));
   } catch (e: unknown) {
     // The student holds the score-only report and cannot buy the full one
     // right now: give them what they have rather than an error.
@@ -205,11 +224,11 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       if (e.code === 'LIMIT_REACHED') return res.status(429).json({ error: limitReachedMessage(e.renewsAt) });
       if (e.code === 'FREE_LIMIT_REACHED') return res.status(429).json({ error: "You've used your free essay check for this week. Upgrade to Basic, Standard, or Premium for more reports, or come back next week." });
       if (e.code === 'USER_NOT_FOUND') return res.status(404).json({ error: 'User profile not found.' });
+      if (e.code === 'PAUSED') return res.status(429).json({ error: "Several of your reports didn't finish today. You weren't charged for any of them, but new reports are paused until tomorrow. If this keeps happening, message @writeready_admin on Telegram." });
     }
     return res.status(500).json({ error: 'Usage tracking error. Please try again.' });
   }
 
-  const token = signToken(uid, source);
   // `limited` is what the client needs: only the weekly free report is the
   // score-only one. `isBonus` is kept for older clients still in a browser tab.
   return res.status(200).json({
