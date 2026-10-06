@@ -9,6 +9,7 @@ import { saveBotReport } from '../botSave.js';
 import { startMarking } from '../../feedback.js';
 import { cronAllowed } from '../cronAuth.js';
 import { handleReviewPress, type ReviewCallback } from '../samples/review.js';
+import { prepareForPage } from '../samples/generate.js';
 
 /**
  * The student Telegram bot's webhook. Telegram posts every message and button
@@ -91,7 +92,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       initFirebase();
       // Approve / Reject / Regenerate on a sample answer, from the admin chat
       // (api/_lib/samples/review.ts). Anything else is the student bot's.
-      if (update.callback_query && (await handleReviewPress(update.callback_query as unknown as ReviewCallback))) {
+      const apiKey = process.env.ANTHROPIC_API_KEY;
+      const onApproved = (sampleId: string) => prepareForPage(sampleId, apiKey ? new Anthropic({ apiKey }) : null);
+      if (update.callback_query && (await handleReviewPress(update.callback_query as unknown as ReviewCallback, { onApproved }))) {
         return res.status(200).end();
       }
       await handleUpdate(update, deps);

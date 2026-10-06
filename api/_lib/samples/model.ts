@@ -42,6 +42,16 @@ export const CONFIG_DOC = 'samples';
 export const BANK = { task1: 'task1_reports', task2: 'task2_reports' } as const;
 /** Task 1 charts, one data URL per question (src/lib/task1Chart.ts). */
 export const CHARTS = 'task1_images';
+/**
+ * Questions students typed themselves in Relax and shared a Band 7+ essay
+ * on, with their own chart for Task 1. They get a public page like a bank
+ * question once a sample on them is approved, but never join the bank the
+ * writing modes practise from. Ids start with "cq_".
+ */
+export const CUSTOM_QUESTIONS = 'customQuestions';
+export const isCustomQuestionId = (id: string) => id.startsWith('cq_');
+/** A Relax chart travels in the report link at up to ~150 KB (src/lib/task1Chart.ts); this leaves room. */
+export const MAX_CUSTOM_CHART_CHARS = 400_000;
 
 export const SITE = 'https://www.writeready.uz';
 
@@ -115,6 +125,8 @@ export interface Sample {
   grammarHighlights: string[];
   /** Student samples only. */
   mode?: SampleMode;
+  /** 'custom': a question the student typed in Relax (CUSTOM_QUESTIONS). Absent for the bank. */
+  questionSource?: 'bank' | 'custom';
   status: SampleStatus;
   sourceCredit?: string;
   createdAt: unknown;

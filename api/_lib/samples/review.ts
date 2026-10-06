@@ -4,9 +4,10 @@ import { db } from '../db.js';
 import { esc, tg, tgUpload, TelegramError } from '../telegramApi.js';
 import { CAPTION_LIMIT } from '../telegramText.js';
 import {
-  CHARTS, MODE_LABEL, QUEUE, SAMPLES, SUBMISSIONS,
+  MODE_LABEL, QUEUE, SAMPLES, SUBMISSIONS,
   type Criteria, type SampleMode, type SampleStatus, type SampleTaskType, type SampleVocab,
 } from './model.js';
+import { loadChartDataUrl } from './questions.js';
 
 /**
  * The admin's one job: Approve or Reject in Telegram.
@@ -73,6 +74,7 @@ interface ReviewSample {
   vocabulary: SampleVocab[];
   mode?: SampleMode;
   status: SampleStatus;
+  questionSource?: 'bank' | 'custom';
   review?: { consentId?: string; buttonHtml?: string };
 }
 
@@ -99,6 +101,8 @@ export function headerLines(s: ReviewSample): string[] {
   if (s.sourceType === 'student' && (s.mode === 'mock' || s.mode === 'practice')) {
     lines.push(`${task} of 2 • #${s.review?.consentId ?? '------'}`);
   }
+  // Approving it publishes the student's question (and chart) too.
+  if (s.questionSource === 'custom') lines.push(`📝 Student's own question${s.taskType === 'task1' ? ' and chart' : ''}: approving publishes them too`);
   return lines;
 }
 
@@ -175,9 +179,8 @@ export const buttons = (id: string, sourceType: 'student' | 'ai') => ({
 
 /** The chart as a file to upload: Telegram gets the bytes, so no public address is needed yet. */
 async function loadChart(questionId: string): Promise<{ data: Buffer; type: string; ext: string } | null> {
-  const snap = await db().collection(CHARTS).doc(questionId).get();
-  const raw = snap.exists ? snap.get('data') : undefined;
-  if (typeof raw !== 'string') return null;
+  const raw = await loadChartDataUrl(questionId);
+  if (!raw) return null;
   const m = /^data:([a-z]+\/[a-z0-9.+-]+);base64,(.+)$/is.exec(raw);
   if (!m) return null;
   const type = m[1].toLowerCase();
@@ -305,9 +308,14 @@ const STATUS_LABEL: Record<string, string> = {
 
 /**
  * Handles a press on a review button. Returns false when the update is not
- * one of ours, so the student bot gets it as before.
+ * one of ours, so the student bot gets it as before. `onApproved` runs after
+ * the message is updated (api/_lib/routes/telegram.ts gives the sample's
+ * question its page address there: ./generate.ts prepareForPage).
  */
-export async function handleReviewPress(cb: ReviewCallback): Promise<boolean> {
+export async function handleReviewPress(
+  cb: ReviewCallback,
+  { onApproved }: { onApproved?: (sampleId: string) => Promise<unknown> } = {},
+): Promise<boolean> {
   const press = readPress(cb.data);
   if (!press) return false;
   const answer = (text: string) =>
@@ -360,5 +368,8 @@ export async function handleReviewPress(cb: ReviewCallback): Promise<boolean> {
     if (!(e instanceof TelegramError && e.code === 400)) console.error('samples: could not update the review message:', e);
   }
   await answer(label ?? 'Done');
+  if (outcome.kind === 'done' && press.action === 'approve' && onApproved) {
+    await onApproved(press.sampleId).catch((e) => console.error(`samples: after approving ${press.sampleId}:`, e));
+  }
   return true;
 }

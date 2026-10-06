@@ -4,12 +4,13 @@ import { db } from '../db.js';
 import { essayKeys } from '../savedReports.js';
 import { bandDescriptors } from '../../feedback.js';
 import {
-  BANK, BANK_SOURCE_CREDIT, CHARTS, QUESTION_META, QUEUE, RUNS, SAMPLES,
+  BANK, BANK_SOURCE_CREDIT, QUESTION_META, QUEUE, RUNS, SAMPLES,
   countWords, draftSchema, enrichSchema, imageUrlFor, replyJsonSchema, zodProblems,
   type Draft, type Enrichment, type SampleTaskType,
 } from './model.js';
 import { assignSlug, baseSlug } from './slug.js';
 import { sendForReview } from './review.js';
+import { loadChartDataUrl } from './questions.js';
 
 /**
  * The daily AI work, through the Message Batches API (half price, results
@@ -294,8 +295,7 @@ async function inFlight(): Promise<{ questions: Set<string>; samples: Set<string
 }
 
 async function loadChart(questionId: string): Promise<ReturnType<typeof chartBlock>> {
-  const snap = await db().collection(CHARTS).doc(questionId).get();
-  return snap.exists ? chartBlock(snap.get('data')) : null;
+  return chartBlock(await loadChartDataUrl(questionId));
 }
 
 // ── Sending a batch ──────────────────────────────────────────────────────────
@@ -669,9 +669,15 @@ async function saveEnrichment(record: RunRequest, text: string, stopReason: stri
     await bumpEnrichAttempts(record.sampleId);
     return false;
   }
-  const n = checked.notes;
-  await applyMeta(record.questionId, record.taskType, n, record.imageExt);
-  const ref = db().collection(SAMPLES).doc(record.sampleId!);
+  return storeNotes(record.sampleId!, record.questionId, record.taskType, checked.notes, record.imageExt);
+}
+
+/** The question's metadata, and the essay's outline and grammar notes, saved on the sample. */
+async function storeNotes(
+  sampleId: string, questionId: string, taskType: SampleTaskType, n: Enrichment, imageExt?: 'jpg' | 'png' | 'pdf',
+): Promise<boolean> {
+  await applyMeta(questionId, taskType, n, imageExt);
+  const ref = db().collection(SAMPLES).doc(sampleId);
   const snap = await ref.get();
   if (!snap.exists) return false;
   await ref.set({
@@ -682,4 +688,61 @@ async function saveEnrichment(record: RunRequest, text: string, stopReason: stri
     ...(snap.get('status') === 'published' ? { pageChangedAt: FieldValue.serverTimestamp() } : {}),
   }, { merge: true });
   return true;
+}
+
+// ── Right after Approve ──────────────────────────────────────────────────────
+
+const CHART_WORDS = /^(?:the\s+)?(?:(?:line|bar|pie)\s+(?:graph|chart)s?|graphs?|charts?|tables?|maps?|diagrams?|process(?:\s+diagram)?|plans?)\b/i;
+
+/**
+ * A title made from the question itself, for when the AI cannot give one:
+ * "The bar chart below shows the number of cars per 1000 people in five
+ * countries" -> "Number of cars per 1000 people in five countries".
+ */
+export function fallbackTitle(question: string): string {
+  let text = question.replace(/\s+/g, ' ').trim().split(/(?<=[.?!])\s/)[0] ?? '';
+  text = text
+    .replace(CHART_WORDS, '')
+    .replace(/^\s*(?:and\s+(?:the\s+)?\w+\s+)?(?:below|above)?\s*/i, '')
+    .replace(/^(?:shows?|illustrates?|compares?|gives?|presents?|describes?|provides?|depicts?)\s+(?:information\s+(?:about|on)\s+)?/i, '')
+    .replace(/^(?:the|a|an)\s+/i, '')
+    .replace(/[.?!]+$/, '');
+  const words = text.split(' ').filter(Boolean).slice(0, 8).join(' ');
+  return words ? words.charAt(0).toUpperCase() + words.slice(1) : 'IELTS Writing question';
+}
+
+/**
+ * Gives an approved sample's question its title, topic and page address
+ * straight away, with one Claude Haiku call instead of waiting for the next
+ * daily batch, so the evening rebuild can show it. A student's essay also
+ * gets its outline and grammar notes. If the AI cannot help, the question
+ * still gets an address made from its own words (topic "Other"), and the
+ * daily batch adds the notes later.
+ */
+export async function prepareForPage(sampleId: string, client: Pick<Anthropic, 'messages'> | null): Promise<'had-slug' | 'ai' | 'fallback' | 'missing'> {
+  const ref = db().collection(SAMPLES).doc(sampleId);
+  const snap = await ref.get();
+  if (!snap.exists) return 'missing';
+  const s = snap.data() as { slug?: string; questionId: string; taskType: SampleTaskType; questionText: string; sampleAnswer: string; band: number; enrichedAt?: unknown; sourceType: string };
+  if (s.slug) return 'had-slug';
+
+  const chart = s.taskType === 'task1' ? await loadChart(s.questionId).catch(() => null) : null;
+  if (client) {
+    try {
+      const { params } = buildRequest('now', 'enrich', s.taskType, s.questionText, { essay: s.sampleAnswer, band: s.band, chart: chart?.block ?? null });
+      const message = await client.messages.create(params, { timeout: 40_000, maxRetries: 1 });
+      const text = message.content.map((b) => (b.type === 'text' ? b.text : '')).join('');
+      const checked = checkEnrichment(s.taskType, text, message.stop_reason);
+      if ('notes' in checked) {
+        if (s.sourceType === 'student' && !s.enrichedAt) await storeNotes(sampleId, s.questionId, s.taskType, checked.notes, chart?.ext);
+        else await applyMeta(s.questionId, s.taskType, checked.notes, chart?.ext);
+        return 'ai';
+      }
+      console.error(`samples: notes for approved sample ${sampleId} failed: ${checked.problems.join('; ')}`);
+    } catch (e) {
+      console.error(`samples: could not prepare approved sample ${sampleId}:`, e);
+    }
+  }
+  await applyMeta(s.questionId, s.taskType, { title: fallbackTitle(s.questionText), topic: 'Other' }, chart?.ext);
+  return 'fallback';
 }

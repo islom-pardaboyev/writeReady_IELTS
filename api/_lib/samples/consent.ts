@@ -5,11 +5,12 @@ import { currentDayKey } from '../shared.js';
 import { extractJson, type BandScores } from '../bandScore.js';
 import { essayKeys, loadSavedReport, normalizeText, LIMITS, type SavedReport, type TaskType } from '../savedReports.js';
 import {
-  BANK, BANK_SOURCE_CREDIT, CONSENTS, CONSENT_LIMITS, CREDITS, QUESTION_META, SAMPLES, SUBMISSIONS,
-  countWords, imageUrlFor, type Criteria, type SampleMode, type SampleTaskType, type SampleVocab,
+  BANK, BANK_SOURCE_CREDIT, CONSENTS, CONSENT_LIMITS, CREDITS, CUSTOM_QUESTIONS, MAX_CUSTOM_CHART_CHARS, QUESTION_META, SAMPLES, SUBMISSIONS,
+  chartExt, countWords, imageUrlFor, type Criteria, type SampleMode, type SampleTaskType, type SampleVocab,
 } from './model.js';
 import { DAILY_CONSENT_LIMIT, MIN_BAND, qualifyingTasks, readMode } from './qualify.js';
 import { stripPersonalDetails } from './pii.js';
+import { findCustomQuestion, questionKeyOf, readUploadedChart } from './questions.js';
 
 /**
  * "🎉 Band 7+! Can we show your essay anonymously as a sample answer?"
@@ -20,6 +21,11 @@ import { stripPersonalDetails } from './pii.js';
  * write: the band comes from the student's saved report on that exact essay,
  * the question from the bank itself. The browser only says which essays it
  * has on screen.
+ *
+ * In Relax the student types the question. One that is word for word a bank
+ * question counts as that bank question. Any other becomes a custom question
+ * (customQuestions), shared together with the essay, and, for Task 1, the
+ * chart the student uploaded: the admin approves all of it at once.
  *
  * Sharing gives one free assessment per consent action, however many tasks
  * the action shares: a Mock with two Band 7 tasks still gives +1. The credit
@@ -43,6 +49,10 @@ export interface SessionTask {
   questionId: string | null;
   question: string;
   essay: string;
+  /** Relax Task 1: the chart the student uploaded, sent with the answer (not with the status check). */
+  chart: string | null;
+  /** Relax Task 1: whether the page holds a chart, for the status check. */
+  hasChart: boolean;
 }
 
 export interface Session {
@@ -73,7 +83,8 @@ export function readSession(body: unknown): Session {
       throw new ConsentError('BAD_REQUEST', 'The essay or question is missing.');
     }
     const questionId = typeof t.questionId === 'string' && ID.test(t.questionId) ? t.questionId : null;
-    return { taskType, questionId, question, essay };
+    const chart = taskType === 'task1' ? readUploadedChart(t.chart, MAX_CUSTOM_CHART_CHARS) : null;
+    return { taskType, questionId, question, essay, chart, hasChart: !!chart || (taskType === 'task1' && t.hasChart === true) };
   });
   return { mode, tasks };
 }
@@ -86,22 +97,39 @@ export function readShare(raw: unknown): SampleTaskType[] {
 
 // ── Checking a task ──────────────────────────────────────────────────────────
 
-interface BankQuestion {
+interface QuestionRef {
+  /** Empty for a custom question not shared before: it gets its id when the essay is shared. */
   id: string;
-  /** The bank's own wording, which the sample shows. */
+  /** The wording the sample shows: the bank's own, or the student's. */
   text: string;
   slug: string;
   imageAlt: string;
   imageExt: 'jpg' | 'png' | 'pdf';
+  source: 'bank' | 'custom';
 }
+
+type BankQuestion = QuestionRef;
 
 interface CheckedTask extends SessionTask {
   contentKey: string;
   band: number | null;
   saved: SavedReport | null;
-  bank: BankQuestion | null;
+  ref: QuestionRef | null;
   /** For qualifyingTasks: the bank question this essay answers, as the server sees it. */
   questionId: string | null;
+  /** For qualifyingTasks: a Relax essay on the student's own question. */
+  custom: boolean;
+}
+
+/** Slug, alt text and chart type the question already has, if any. */
+async function metaOf(id: string): Promise<Pick<QuestionRef, 'slug' | 'imageAlt' | 'imageExt'>> {
+  const meta = await db().collection(QUESTION_META).doc(id).get();
+  const m = meta.exists ? meta.data() ?? {} : {};
+  return {
+    slug: typeof m.slug === 'string' ? m.slug : '',
+    imageAlt: typeof m.imageAlt === 'string' ? m.imageAlt : '',
+    imageExt: m.imageExt === 'png' || m.imageExt === 'pdf' ? m.imageExt : 'jpg',
+  };
 }
 
 /**
@@ -116,20 +144,10 @@ async function findBankQuestion(taskType: SampleTaskType, claimedId: string | nu
   const store = db();
   const wanted = normalizeText(question);
   const fromBank = async (id: string): Promise<BankQuestion | null> => {
-    const [snap, meta] = await Promise.all([
-      store.collection(BANK[taskType]).doc(id).get(),
-      store.collection(QUESTION_META).doc(id).get(),
-    ]);
+    const [snap, meta] = await Promise.all([store.collection(BANK[taskType]).doc(id).get(), metaOf(id)]);
     const text = snap.exists ? snap.get('report') : undefined;
     if (typeof text !== 'string' || normalizeText(text) !== wanted) return null;
-    const m = meta.exists ? meta.data() ?? {} : {};
-    return {
-      id,
-      text,
-      slug: typeof m.slug === 'string' ? m.slug : '',
-      imageAlt: typeof m.imageAlt === 'string' ? m.imageAlt : '',
-      imageExt: m.imageExt === 'png' || m.imageExt === 'pdf' ? m.imageExt : 'jpg',
-    };
+    return { id, text, ...meta, source: 'bank' };
   };
 
   if (claimedId) {
@@ -156,13 +174,25 @@ async function findBankQuestion(taskType: SampleTaskType, claimedId: string | nu
   return null;
 }
 
-async function checkTask(uid: string, t: SessionTask): Promise<CheckedTask> {
+async function checkTask(uid: string, t: SessionTask, mode: SampleMode): Promise<CheckedTask> {
   const { contentKey } = essayKeys(LABEL[t.taskType], t.question, t.essay);
   const saved = await loadSavedReport(uid, contentKey);
   const band = saved ? saved.scores.overall : null;
   // Below Band 7 there is nothing to offer, so the bank is not even asked.
-  const bank = band !== null && band >= MIN_BAND ? await findBankQuestion(t.taskType, t.questionId, t.question) : null;
-  return { ...t, contentKey, band, saved, bank, questionId: bank?.id ?? null };
+  const strong = band !== null && band >= MIN_BAND;
+  const bank = strong ? await findBankQuestion(t.taskType, t.questionId, t.question) : null;
+  if (bank) return { ...t, contentKey, band, saved, ref: bank, questionId: bank.id, custom: false };
+
+  // Relax, on the student's own question: a Task 1 needs its chart, or its
+  // page would have nothing to describe.
+  if (strong && mode === 'relax' && (t.taskType === 'task2' || t.hasChart)) {
+    const known = await findCustomQuestion(t.taskType, t.question);
+    const ref: QuestionRef = known
+      ? { id: known.id, text: known.text, ...(await metaOf(known.id)), source: 'custom' }
+      : { id: '', text: t.question.trim(), slug: '', imageAlt: '', imageExt: (t.chart && chartExt(t.chart)) || 'jpg', source: 'custom' };
+    return { ...t, contentKey, band, saved, ref, questionId: null, custom: true };
+  }
+  return { ...t, contentKey, band, saved, ref: null, questionId: null, custom: false };
 }
 
 const consentRef = (uid: string, contentKey: string) => db().collection(CONSENTS).doc(`${uid}_${contentKey}`);
@@ -191,7 +221,7 @@ export interface Status {
 }
 
 export async function consentStatus(uid: string, session: Session): Promise<Status> {
-  const checked = await Promise.all(session.tasks.map((t) => checkTask(uid, t)));
+  const checked = await Promise.all(session.tasks.map((t) => checkTask(uid, t, session.mode)));
   const qualifying = qualifyingTasks(session.mode, checked);
   if (!qualifying.length) return { offer: [], credit: false };
   const store = db();
@@ -280,7 +310,7 @@ export async function submitConsent(
   share: SampleTaskType[],
 ): Promise<ConsentResult> {
   const store = db();
-  const checked = await Promise.all(session.tasks.map((t) => checkTask(uid, t)));
+  const checked = await Promise.all(session.tasks.map((t) => checkTask(uid, t, session.mode)));
   const offered = qualifyingTasks(session.mode, checked);
   if (!offered.length) throw new ConsentError('NOTHING_TO_SHARE', 'None of these essays can be shared.');
   const chosen = decision === 'yes' ? offered.filter((t) => share.includes(t.taskType)) : [];
@@ -295,6 +325,14 @@ export async function submitConsent(
   // Ids are made up front, so the transaction can be retried without
   // creating a second set.
   const ids = new Map(chosen.map((t) => [t.taskType, store.collection(SAMPLES).doc().id]));
+  // A student's own question shared for the first time becomes a custom
+  // question; a Task 1 one keeps the chart the student marked against.
+  const newQuestions = new Map<SampleTaskType, string>();
+  for (const t of chosen) {
+    if (t.ref?.source !== 'custom' || t.ref.id) continue;
+    if (t.taskType === 'task1' && !t.chart) throw new ConsentError('BAD_REQUEST', 'The chart for this question is missing. Open the report again from Relax and try once more.');
+    newQuestions.set(t.taskType, `cq_${store.collection(CUSTOM_QUESTIONS).doc().id}`);
+  }
 
   return store.runTransaction(async (tx) => {
     const answered = await tx.getAll(...offered.map((t) => consentRef(uid, t.contentKey)));
@@ -333,18 +371,30 @@ export async function submitConsent(
 
     sharing.forEach((t) => {
       const id = ids.get(t.taskType)!;
-      const bank = t.bank!;
+      const ref = t.ref!;
+      const questionId = ref.id || newQuestions.get(t.taskType)!;
+      const custom = ref.source === 'custom';
+      if (custom && !ref.id) {
+        tx.create(store.collection(CUSTOM_QUESTIONS).doc(questionId), {
+          taskType: t.taskType,
+          text: ref.text,
+          questionKey: questionKeyOf(t.taskType, ref.text),
+          ...(t.taskType === 'task1' ? { chart: t.chart } : {}),
+          firstSampleId: id,
+          createdAt: FieldValue.serverTimestamp(),
+        });
+      }
       const scores = t.saved!.scores;
       const { text: essay, removed } = stripPersonalDetails(t.essay);
       const vocabulary = t.saved!.tier === 'full' ? feedbackVocabulary(t.saved!.raw) : [];
-      const imageUrl = t.taskType === 'task1' && bank.slug ? imageUrlFor(bank.slug, bank.imageExt) : '';
+      const imageUrl = t.taskType === 'task1' && ref.slug ? imageUrlFor(ref.slug, ref.imageExt) : '';
       const now = FieldValue.serverTimestamp();
       tx.set(store.collection(SAMPLES).doc(id), {
-        questionId: bank.id,
-        slug: bank.slug,
+        questionId,
+        slug: ref.slug,
         taskType: t.taskType,
-        questionText: bank.text,
-        ...(t.taskType === 'task1' ? { imageUrl, imageAlt: bank.imageAlt } : {}),
+        questionText: ref.text,
+        ...(t.taskType === 'task1' ? { imageUrl, imageAlt: ref.imageAlt } : {}),
         sourceType: 'student',
         sampleAnswer: essay,
         band: scores.overall,
@@ -355,7 +405,8 @@ export async function submitConsent(
         grammarHighlights: [],
         mode: session.mode,
         status: 'pending',
-        sourceCredit: BANK_SOURCE_CREDIT,
+        // The partner channels are credited only on their own (bank) questions.
+        ...(custom ? { questionSource: 'custom' } : { sourceCredit: BANK_SOURCE_CREDIT }),
         submissionId: id,
         // For the Telegram header: "Task 1 of 2 • #K7Q2XA". No userId here.
         review: { consentId },
@@ -368,7 +419,8 @@ export async function submitConsent(
         sessionKey: key,
         contentKey: t.contentKey,
         sampleId: id,
-        questionId: bank.id,
+        questionId,
+        questionSource: ref.source,
         taskType: t.taskType,
         mode: session.mode,
         essay,

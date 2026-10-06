@@ -36,7 +36,7 @@ import { useSidebar } from "@/components/ui/sidebar-context";
 const NAV_ITEMS = [
   { to: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
   { to: "/writing/mock", label: "Writing", icon: PenLine },
-  { to: "/questions", label: "Sample answers", icon: BookOpenCheck },
+  { to: "/questions", label: "Sample answers", icon: BookOpenCheck , beta: true},
   { to: "/blog", label: "Blog", icon: Newspaper },
   { to: "/pricing", label: "Pricing", icon: Wallet },
   { to: "/account", label: "My Account", icon: UserIcon },
@@ -86,7 +86,7 @@ export function AppSidebar() {
               const Icon = item.icon;
               return (
                 <SidebarMenuItem key={item.to}>
-                  <SidebarMenuButton
+                  <SidebarMenuButton className="relative"
                     variant="light"
                     isActive={isActive}
                     tooltip={item.label}
@@ -97,6 +97,16 @@ export function AppSidebar() {
                   >
                     <Icon size={18} className="shrink-0" />
                     {(open || isMobile) && <span className="truncate">{item.label}</span>}
+                    {item.beta && (
+  <span
+    className="ml-auto inline-flex items-center rounded-full px-2 py-0.5
+               text-[9px] font-semibold uppercase tracking-wider
+               bg-indigo-500/15 dark:text-indigo-300 ring-1 ring-inset ring-indigo-400/30
+               shadow-[0_0_10px_-2px_rgba(99,102,241,0.45)]"
+  >
+    Beta
+  </span>
+)}
                   </SidebarMenuButton>
                 </SidebarMenuItem>
               );

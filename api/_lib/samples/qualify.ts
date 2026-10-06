@@ -4,16 +4,20 @@ import { MODES, type SampleMode, type SampleTaskType } from './model.js';
  * Which essays may be offered as a public sample answer.
  *
  * A task qualifies when its OWN overall band is 7.0 or higher AND its
- * question is in the question bank. The band is the one saved on the server
+ * question is a bank question (or, in Relax only, the student's own
+ * question, shared with the essay). The band is the one saved on the server
  * for this exact essay (api/_lib/savedReports.ts), never one the browser
  * sends, and the bank question is confirmed on the server too
- * (./consent.ts). A question the student typed themselves never qualifies.
+ * (./consent.ts). Outside Relax, a question that is not in the bank never
+ * qualifies.
  *
  *   Mock, Practice  Task 1 and Task 2 are judged separately: one can
  *                   qualify without the other.
  *   Quick Write     one task.
- *   Relax           one task, and only when its question is word for word a
- *                   bank question (Relax has the student type the question).
+ *   Relax           one task. The student types the question: one that is
+ *                   word for word a bank question counts as that question;
+ *                   any other is the student's own (custom) question, shared
+ *                   with the essay, and for Task 1 only with its chart.
  */
 
 export const MIN_BAND = 7;
@@ -36,10 +40,12 @@ export interface TaskFacts {
   band: number | null;
   /** The bank question this essay answers, as confirmed on the server; null for a custom question. */
   questionId: string | null;
+  /** A Relax essay on the student's own question that may be shared with it (./consent.ts decides). */
+  custom?: boolean;
 }
 
 export function taskQualifies(t: TaskFacts): boolean {
-  return t.band !== null && Number.isFinite(t.band) && t.band >= MIN_BAND && !!t.questionId;
+  return t.band !== null && Number.isFinite(t.band) && t.band >= MIN_BAND && (!!t.questionId || t.custom === true);
 }
 
 /**
@@ -49,6 +55,8 @@ export function taskQualifies(t: TaskFacts): boolean {
  */
 export function qualifyingTasks<T extends TaskFacts>(mode: SampleMode, tasks: T[]): T[] {
   if (tasks.length === 0 || tasks.length > TASKS_PER_MODE[mode]) return [];
+  // Only Relax has the student type the question.
+  if (mode !== 'relax' && tasks.some((t) => t.custom)) return [];
   const types = new Set(tasks.map((t) => t.taskType));
   if (types.size !== tasks.length) return [];
   return tasks
