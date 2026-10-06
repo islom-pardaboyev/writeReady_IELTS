@@ -327,6 +327,7 @@ export function LandingPage() {
         </div>
         <nav aria-label="Legal" className="mb-3 flex flex-wrap items-center justify-center gap-x-4 gap-y-1 text-sm">
           {[
+            ['/questions', 'Sample answers'],
             ['/faq', 'FAQ'],
             ['/privacy', 'Privacy Policy'],
             ['/terms', 'Terms of Service'],

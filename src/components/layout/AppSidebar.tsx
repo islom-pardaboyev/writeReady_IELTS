@@ -2,6 +2,7 @@ import { Link, useLocation, useNavigate } from "react-router";
 import {
   LayoutDashboard,
   PenLine,
+  BookOpenCheck,
   Newspaper,
   Wallet,
   User as UserIcon,
@@ -35,6 +36,7 @@ import { useSidebar } from "@/components/ui/sidebar-context";
 const NAV_ITEMS = [
   { to: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
   { to: "/writing/mock", label: "Writing", icon: PenLine },
+  { to: "/questions", label: "Sample answers", icon: BookOpenCheck },
   { to: "/blog", label: "Blog", icon: Newspaper },
   { to: "/pricing", label: "Pricing", icon: Wallet },
   { to: "/account", label: "My Account", icon: UserIcon },
