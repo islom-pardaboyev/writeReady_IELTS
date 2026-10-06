@@ -8,13 +8,20 @@ interface Task1Data {
 
 interface Task2Data {
   report: string;
+  /** The bank question's id; none for a question the student typed (Relax). */
+  id?: string;
 }
+
+/** Which writing page made the link. Older links have none. */
+export type ReportMode = 'mock' | 'practice' | 'quickwrite' | 'relax';
 
 export interface ReportData {
   task1?: Task1Data | null;
   task2?: Task2Data | null;
   userText1: string;
   userText2: string;
+  /** Labels a shared sample answer (src/components/feedback/SampleConsentCard.tsx). */
+  mode?: ReportMode;
 }
 
 export function encodeReport(data: ReportData): string {

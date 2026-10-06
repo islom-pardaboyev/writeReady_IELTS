@@ -217,12 +217,14 @@ function Relax() {
               task2: undefined,
               userText1: userText,
               userText2: "",
+              mode: "relax",
             })
           : encodeReport({
               task1: undefined,
               task2: { report: task2Prompt },
               userText1: "",
               userText2: userText,
+              mode: "relax",
             });
       // The essay goes with the report from here, and is saved there.
       draft.clear();

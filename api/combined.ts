@@ -5,7 +5,7 @@ import type { VercelRequest, VercelResponse } from '@vercel/node';
  * most 12 functions and the site already had 12 before the Telegram bot, so
  * these share one. vercel.json rewrites each address here with ?route=, so
  * the addresses themselves (/api/seen, /api/telegram, /api/bot-link,
- * /api/bot-daily, /api/bot-broadcast, /api/email-code, /api/report-pdf, /api/profile-photo) stay the same for the
+ * /api/bot-daily, /api/bot-broadcast, /api/email-code, /api/report-pdf, /api/profile-photo, /api/samples, /api/samples-cron) stay the same for the
  * browser, Telegram and the cron jobs.
  *
  * Each route is loaded only when it is asked for, so a /api/seen stamp does
@@ -23,6 +23,8 @@ const ROUTES: Record<string, () => Promise<{ default: Handler }>> = {
   'email-code': () => import('./_lib/routes/emailCode.js'),
   'report-pdf': () => import('./_lib/routes/reportPdf.js'),
   'profile-photo': () => import('./_lib/routes/profilePhoto.js'),
+  samples: () => import('./_lib/routes/samples.js'),
+  'samples-cron': () => import('./_lib/routes/samplesCron.js'),
 };
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {

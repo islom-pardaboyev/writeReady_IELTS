@@ -1,4 +1,4 @@
 User-agent: *
 Allow: /
 
-Sitemap: https://writeready.uz/sitemap.xml
+Sitemap: https://www.writeready.uz/sitemap.xml

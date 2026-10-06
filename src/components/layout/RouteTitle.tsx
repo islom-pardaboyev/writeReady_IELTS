@@ -2,8 +2,9 @@ import { useEffect } from 'react';
 import { useLocation } from 'react-router';
 
 // The title from index.html, kept for the home page because search results
-// show it.
-const HOME_TITLE = document.title;
+// show it. Written out rather than read from document.title: a sample-answer
+// page arrives from the build with its own title already in place.
+const HOME_TITLE = 'WriteReady IELTS — AI Writing Coach for Uzbek Students';
 
 type TitleFor = string | ((query: URLSearchParams) => string);
 
@@ -23,6 +24,8 @@ const ROUTE_TITLES: [RegExp, TitleFor][] = [
   [/^\/v(\/[^/]+)?$/i, 'Verify a score'],
   // A blog post swaps in its own title once the post has loaded.
   [/^\/blog(\/[^/]+)?$/, 'IELTS Blog'],
+  // The pages set their full title themselves once their data is in.
+  [/^\/questions(\/[^/]+\/[^/]+)?$/, 'IELTS Writing Sample Answers'],
   [/^\/admin$/, 'Admin'],
   [/^\/teacher-portal$/, 'Teacher portal'],
   [/^\/center-admin$/, 'Learning center portal'],

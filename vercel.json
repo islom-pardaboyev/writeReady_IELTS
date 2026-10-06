@@ -9,6 +9,8 @@
     { "source": "/api/email-code", "destination": "/api/combined?route=email-code" },
     { "source": "/api/report-pdf", "destination": "/api/combined?route=report-pdf" },
     { "source": "/api/profile-photo", "destination": "/api/combined?route=profile-photo" },
+    { "source": "/api/samples", "destination": "/api/combined?route=samples" },
+    { "source": "/api/samples-cron", "destination": "/api/combined?route=samples-cron" },
     { "source": "/api/(.*)", "destination": "/api/$1" },
 
     { "source": "/", "destination": "/index.html" },
@@ -17,6 +19,8 @@
     { "source": "/writing/(mock|practice|relax|quick)", "destination": "/index.html" },
     { "source": "/(v|V)", "destination": "/index.html" },
     { "source": "/(v|V)/([^/]+)", "destination": "/index.html" },
+    { "source": "/questions", "destination": "/questions/index.html" },
+    { "source": "/questions/:task(task1|task2)/:slug([a-z0-9-]+)", "destination": "/questions/:task/:slug/index.html" },
 
     { "source": "/((?!api/|@|src/|node_modules/|.*\\.[a-zA-Z0-9]+$).*)", "destination": "/api/not-found" }
   ],
@@ -35,6 +39,10 @@
     {
       "source": "/sw.js",
       "headers": [{ "key": "Cache-Control", "value": "public, max-age=0, must-revalidate" }]
+    },
+    {
+      "source": "/question-images/(.*)",
+      "headers": [{ "key": "Cache-Control", "value": "public, max-age=86400, stale-while-revalidate=604800" }]
     },
     {
       "source": "/(v|V)(/.*)?",
@@ -76,6 +84,8 @@
     { "path": "/api/bot-daily", "schedule": "0 15 * * *" },
     { "path": "/api/bot-daily", "schedule": "0 16 * * *" },
     { "path": "/api/bot-daily", "schedule": "0 17 * * *" },
-    { "path": "/api/bot-daily", "schedule": "0 18 * * *" }
+    { "path": "/api/bot-daily", "schedule": "0 18 * * *" },
+    { "path": "/api/samples-cron", "schedule": "0 2 * * *" },
+    { "path": "/api/samples-cron", "schedule": "0 15 * * *" }
   ]
 }

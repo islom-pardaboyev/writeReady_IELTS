@@ -24,6 +24,27 @@ The free weekly report uses exactly the same scoring rules as a paid report. It 
 
 **Score test (admin only).** Admin → Settings → Score test adds a "Test scores" button to the top bar of every writing mode (and "Scores only (test)" next to Get AI feedback), for one chosen account. Use Relax mode for outside sample essays, since it is the mode where you type the question yourself. It marks the essay with the free report's prompt and shows only the band scores. It spends no report, saves nothing, and marks fresh every time, so it shows how the site grades an essay. Each run is still one paid AI call. `api/feedback.ts` (`runScoreTest`) checks the switch and the account on every request.
 
+## Public sample answers (/questions)
+
+Every bank question gets a public, search-friendly page at `/questions/<task1|task2>/<slug>` with Band 7+ sample answers: the question, the chart (Task 1), an outline, the answers, vocabulary with Uzbek, grammar highlights, related questions and the question's source. The admin's only job is to tap Approve or Reject in Telegram.
+
+1. **Student answers.** When an essay on a bank question is marked Band 7 or higher, the feedback page asks the student to share it anonymously (`src/components/feedback/SampleConsentCard.tsx`). The server checks the band from the student's saved report and the question against the bank, removes obvious personal details, and gives one free assessment per consent action, once (`api/_lib/samples/consent.ts`, at most 3 a day).
+2. **AI model answers.** `/api/samples-cron` runs at 07:00 and 20:00 Tashkent. The morning run sends up to `SAMPLES_PER_RUN` questions that have no sample to Claude Haiku through the Message Batches API (half price), Task 1 always with its chart; both runs collect finished batches. Every reply is checked with zod; one that fails is kept as `needs_manual` and never published (`api/_lib/samples/generate.ts`). Cost per run is in `generationRuns`.
+3. **Approval.** New samples go to `ADMIN_TELEGRAM_CHAT_ID` with ✅ Approve / ❌ Reject (and 🔁 Regenerate for AI answers). Presses are only accepted from that chat (`api/_lib/samples/review.ts`).
+4. **Publishing.** The evening run calls `VERCEL_DEPLOY_HOOK_URL` if anything was published, and sends the daily summary. `npm run build` ends with `scripts/prerender-questions.tsx`, which reads the published samples with the Admin SDK and writes the static pages, their JSON, the chart images (`/question-images/<slug>.jpg`, public and permanent) and `sitemap.xml`.
+
+All the new collections (`samples`, `sampleSubmissions`, `questionMeta`, `slugs`, `sampleConsents`, `sampleCredits`, `sampleConsentLimits`, `sampleQueue`, `generationRuns`) are written by the server only; `firestore.rules` has no rule for them, so browsers cannot read them. A student's account id is kept only in `sampleSubmissions`.
+
+To take a published sample down: set its `status` to `rejected` in the Firebase console, then run the evening job with `&rebuild=1` (below).
+
+```bash
+curl -H "Authorization: Bearer $CRON_SECRET" "https://www.writeready.uz/api/samples-cron?job=morning"
+```
+
+```bash
+curl -H "Authorization: Bearer $CRON_SECRET" "https://www.writeready.uz/api/samples-cron?job=evening&rebuild=1"
+```
+
 ## Project layout
 
 ```
@@ -69,13 +90,18 @@ Set in Vercel (Production and Preview) and in a local `.env` file, which is neve
 | `TELEGRAM_TOKEN`, `CHAT_ID`, `TELEGRAM_TEACHERS_CHAT_ID` | Bug reports and teacher notifications |
 | `TELEGRAM_STUDENT_BOT_TOKEN`, `TELEGRAM_ADMIN_IDS` | The student Telegram bot, and who may use its `/admin` command |
 | `RESEND_API_KEY`, `RESEND_FROM` | Sign-in code emails |
+| `ADMIN_TELEGRAM_CHAT_ID` | Where @writeready_student_bot sends sample answers for approval, and the daily summary. Your own Telegram user id (a private chat with the bot), or a group the bot is in |
+| `VERCEL_DEPLOY_HOOK_URL` | A Vercel deploy hook for `main`. The evening job calls it when a sample was published that day, so the public pages are rebuilt. Secret: anyone with it can start builds |
+| `SAMPLES_PER_RUN` | Optional, default 10. How many questions get an AI model answer per day |
+| `SAMPLES_MODEL` | Optional, default `claude-haiku-4-5`. The model that writes the model answers |
+| `QUESTIONS_PRERENDER` | Optional. `skip` builds without reading the samples (the question pages come out empty). Leave unset |
 
 Never put a secret in a `VITE_` variable: those are built into the public JavaScript. The admin login and password used to be copied into `VITE_LOGIN` and `VITE_PASSWORD`, which nothing reads any more. Delete them, in Vercel and in `.env`.
 
 ## Scripts
 
 ```bash
-npm run build   # type-check (strict) and build
+npm run build   # type-check (strict), build, then the question pages (scripts/prerender-questions.tsx)
 npm run lint    # oxlint
 ```
 
@@ -132,6 +158,8 @@ npx tsx scripts/test-security-fixes.ts    # sentence cap, refund budget, staff t
 npx tsx scripts/test-email-code.ts        # email codes and the email gate
 npx tsx scripts/test-student-bot.ts       # the Telegram bot
 npx tsx scripts/test-score-store.ts       # saved reports and score-card verification
+npx tsx scripts/test-samples.ts           # sample answers: consent and credit, qualification, zod checks, Telegram approval, batches
+npx tsx --tsconfig tsconfig.scripts.json scripts/test-prerender.tsx   # the built question pages, their head tags and the sitemap
 ```
 
 `scripts/test-email-code-auth.ts` needs the Firebase Auth emulator. `scripts/test-staff-rules.ts` checks `firestore.rules`, `api/staff-login.ts` and `api/center-student.ts` on the Auth and Firestore emulators (the Firestore emulator needs Java 21); the top of each file says how to start them.

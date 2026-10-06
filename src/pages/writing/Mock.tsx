@@ -298,7 +298,7 @@ function Mock() {
         return;
       }
 
-      const encoded = encodeReport({ task1, task2, userText1, userText2 });
+      const encoded = encodeReport({ task1, task2, userText1, userText2, mode: "mock" });
       // The essay goes with the report from here, and is saved there.
       draft.clear();
       allowFeedbackStart(encoded);

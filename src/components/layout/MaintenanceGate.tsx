@@ -50,7 +50,9 @@ export function MaintenanceGate({ children }: { children: ReactNode }) {
   // and the partner portals so teachers and centers keep working. Score-card
   // verification stays open too: a card is shared and scanned whenever, and
   // "this site is closed" must never read as "this card is fake".
-  if (STAFF_PATHS.has(location.pathname) || /^\/v(\/|$)/i.test(location.pathname)) return <>{children}</>;
+  // The sample-answer pages are static HTML that stays up whatever the
+  // switch says, so the app shows them too rather than a spinner over them.
+  if (STAFF_PATHS.has(location.pathname) || /^\/v(\/|$)/i.test(location.pathname) || /^\/questions(\/|$)/.test(location.pathname)) return <>{children}</>;
   if (isAdmin) return <>{children}</>;
   if (status === null) return PageSpinner;
   if (status.enabled) return <MaintenancePage startedAt={status.startedAt} endsAt={status.endsAt} />;

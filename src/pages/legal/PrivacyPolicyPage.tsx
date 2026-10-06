@@ -1,3 +1,4 @@
+import { Link } from "react-router";
 import { LegalPage } from "./LegalPage";
 import { LEGAL, TELEGRAM_CONTACT_URL } from "@/lib/legal";
 
@@ -114,6 +115,15 @@ export function PrivacyPolicyPage() {
         If you ask for a Human Check, the essay you choose is also shown to the teacher you pick, together with your
         name and email, so they can mark it and send the correction back.
       </p>
+      <p>
+        <strong>Sample answers.</strong> If an essay of yours scores Band 7 or higher on a question from our question
+        bank, we may ask whether it can be shown to other students as a sample answer. Only if you agree, a copy is made
+        with obvious personal details removed (names, phone numbers, email addresses, Telegram usernames) and reviewed by
+        our team; if approved, it is published on that question&rsquo;s public page with its band scores, without your
+        name or account. We keep a private record of which account shared it, only to give you the free assessment once
+        and to stop misuse. See section 11 of the <Link to="/terms#sample-answers">Terms of Service</Link>, and ask us any
+        time to take a shared essay down.
+      </p>
 
       <h2 id="why">4. Why we use it</h2>
       <ul>
@@ -161,13 +171,14 @@ export function PrivacyPolicyPage() {
           </tr>
           <tr>
             <td>Telegram</td>
-            <td>Carries messages between you and our staff, including bug reports, teacher notifications and payment receipts you send.</td>
+            <td>Carries messages between you and our staff, including bug reports, teacher notifications and payment receipts you send, and, without your name, the essays you choose to share as sample answers, for our review.</td>
           </tr>
         </tbody>
       </table>
       <p>
         We also give data to people, not only companies: the teacher you choose for a Human Check, and the staff of your
-        learning centre if one enrolled you. Beyond that we share nothing, unless a court or the law of {LEGAL.country}{" "}
+        learning centre if one enrolled you. An essay you choose to share as a sample answer is public, without your
+        name. Beyond that we share nothing, unless a court or the law of {LEGAL.country}{" "}
         requires it.
       </p>
 

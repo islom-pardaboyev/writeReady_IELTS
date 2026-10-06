@@ -256,7 +256,7 @@ function Practice() {
       }
       // The essay goes with the report from here, and is saved there.
       draft.clear();
-      const encoded = encodeReport({ task1, task2, userText1, userText2 });
+      const encoded = encodeReport({ task1, task2, userText1, userText2, mode: "practice" });
       allowFeedbackStart(encoded);
       navigate(`/feedback/${encoded}`);
     } catch (err) {

@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "tsc -b && vite build",
+    "build": "tsc -b && vite build && tsx --tsconfig tsconfig.scripts.json scripts/prerender-questions.tsx",
     "lint": "oxlint",
     "preview": "vite preview",
     "og:image": "bash scripts/build-og-image.sh",
@@ -49,7 +49,8 @@
     "react-router": "^7.18.0",
     "tailwind-merge": "^3.6.0",
     "tailwindcss": "^4.3.1",
-    "tw-animate-css": "^1.4.0"
+    "tw-animate-css": "^1.4.0",
+    "zod": "^3.25.76"
   },
   "devDependencies": {
     "@types/node": "^24.13.2",
@@ -59,6 +60,7 @@
     "@vitejs/plugin-react": "^6.0.2",
     "oxlint": "^1.69.0",
     "shadcn": "^4.12.0",
+    "tsx": "^4.21.0",
     "typescript": "~6.0.2",
     "vite": "^8.1.0",
     "vite-plugin-pwa": "^1.3.0"

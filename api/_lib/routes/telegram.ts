@@ -8,6 +8,7 @@ import { webhookSecret } from '../telegramApi.js';
 import { saveBotReport } from '../botSave.js';
 import { startMarking } from '../../feedback.js';
 import { cronAllowed } from '../cronAuth.js';
+import { handleReviewPress, type ReviewCallback } from '../samples/review.js';
 
 /**
  * The student Telegram bot's webhook. Telegram posts every message and button
@@ -88,6 +89,11 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (update && typeof update.update_id === 'number') {
     try {
       initFirebase();
+      // Approve / Reject / Regenerate on a sample answer, from the admin chat
+      // (api/_lib/samples/review.ts). Anything else is the student bot's.
+      if (update.callback_query && (await handleReviewPress(update.callback_query as unknown as ReviewCallback))) {
+        return res.status(200).end();
+      }
       await handleUpdate(update, deps);
     } catch (e) {
       console.error('telegram: update failed:', e);

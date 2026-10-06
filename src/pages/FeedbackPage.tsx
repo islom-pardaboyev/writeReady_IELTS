@@ -25,6 +25,7 @@ import { LogoLoader } from '@/components/ui/LogoLoader';
 import { FeedbackRating } from '@/components/ui/FeedbackRating';
 import { ScoreCardDialog } from '@/components/ui/ScoreCardDialog';
 import { FixChecklist, ResultSheet } from '@/components/report/ResultSheet';
+import { SampleConsentCard } from '@/components/feedback/SampleConsentCard';
 
 type TaskKey = 'task1' | 'task2';
 // The bands and the three fixes sit above the tabs, on the result sheet, so
@@ -1365,6 +1366,14 @@ export function FeedbackPage() {
                   name: cat.key === 'taskAchievement' ? (selectedTask === 'task1' ? 'Task Achievement' : 'Task Response') : CAT_LABELS[cat.key],
                   band: feedback.scores[cat.key as keyof typeof feedback.scores] as number,
                 }))}
+              />
+
+              {/* Band 7+ on a bank question: may it be shown as a sample answer? */}
+              <SampleConsentCard
+                reportData={reportData}
+                feedbacks={feedbacks}
+                loadings={loadings}
+                onAnswered={() => { refreshProfile().catch(() => {}); }}
               />
 
               {/* Why the bands are what they are, when that is not obvious */}

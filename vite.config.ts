@@ -121,7 +121,10 @@ export default defineConfig({
         // module, so renaming those pages means renaming these. index.html is
         // left out too: precached, it would answer '/' from the cache and
         // skip the network-first rule above.
-        globIgnores: ['**/AdminPage-*.js', '**/CenterAdminPage-*.js', 'index.html'],
+        // The sample-answer pages, their data and charts (built after Vite by
+        // scripts/prerender-questions.tsx) are hundreds of files a visitor
+        // opens one at a time; they come from the network like any page.
+        globIgnores: ['**/AdminPage-*.js', '**/CenterAdminPage-*.js', 'index.html', 'questions/**', 'question-data/**', 'question-images/**'],
       },
     }),
   ],

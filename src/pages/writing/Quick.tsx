@@ -15,7 +15,7 @@ import { useSingleRun } from "@/hooks/useSingleRun";
 import { BusyLabel } from "@/components/ui/BusyLabel";
 import { LogoLoader } from "@/components/ui/LogoLoader";
 import WritingTask1Preview from "@/components/writingTask1Preview/WritingTask1Preview";
-import { NavLink, useNavigate } from "react-router";
+import { NavLink, useLocation, useNavigate, useSearchParams } from "react-router";
 import { useAuth } from "@/hooks/useAuth";
 import { useUnsavedWork } from "@/hooks/useUnsavedWork";
 import { useDraft } from "@/hooks/useDraft";
@@ -47,17 +47,36 @@ interface Task1 {
   report: string;
 }
 interface Task2 {
+  id?: string;
   report: string;
+}
+
+/**
+ * A question to open with, from a sample-answer page's "Write your own
+ * answer" button: /writing/quick?task=2&q=<question id>.
+ */
+function readPreload(params: URLSearchParams): { task: 1 | 2; id: string } | null {
+  const task = params.get("task") === "1" ? 1 : params.get("task") === "2" ? 2 : null;
+  const id = params.get("q") ?? "";
+  return task && /^[\w-]{1,128}$/.test(id) ? { task, id } : null;
 }
 
 function Quick() {
   const navigate = useNavigate();
+  const location = useLocation();
+  const [searchParams] = useSearchParams();
   const { user, loading: authLoading } = useAuth();
+  // Read once: the question asked for when the page opened.
+  const preload = useRef(readPreload(searchParams)).current;
 
-  // Redirect to auth if not logged in
+  // Not signed in: sign in (or, coming from a sample answer, sign up) and come
+  // straight back here, to the same question.
   useEffect(() => {
-    if (!authLoading && !user) navigate("/auth", { replace: true });
-  }, [user, authLoading, navigate]);
+    if (!authLoading && !user) {
+      const next = encodeURIComponent(location.pathname + location.search);
+      navigate(`/auth?${preload ? "mode=signup&" : ""}next=${next}`, { replace: true });
+    }
+  }, [user, authLoading, navigate, location.pathname, location.search, preload]);
 
   const { busy: finishing, run: runFinish } = useSingleRun();
 
@@ -117,6 +136,22 @@ function Quick() {
         task2BagRef.current.setItems(t2Docs);
         setTask1(task1BagRef.current.next());
         setTask2(task2BagRef.current.next());
+        if (preload) {
+          // The question a sample-answer page sent the student here to write.
+          // A question added since the browser saved its list is read directly.
+          const list = preload.task === 1 ? t1Docs : t2Docs;
+          let wanted = list.find((p) => p.id === preload.id) ?? null;
+          if (!wanted) {
+            const snap = await getDoc(doc(db, preload.task === 1 ? "task1_reports" : "task2_reports", preload.id)).catch(() => null);
+            const report = snap?.exists() ? snap.data().report : undefined;
+            if (typeof report === "string" && report.trim()) wanted = { id: preload.id, report };
+          }
+          if (wanted) {
+            if (preload.task === 1) setTask1(wanted);
+            else setTask2(wanted);
+            setSelectedTaskType(preload.task);
+          }
+        }
       } catch (err) {
         console.error(err);
       } finally {
@@ -124,7 +159,7 @@ function Quick() {
       }
     };
     fetchTasks();
-  }, [user]);
+  }, [user, preload]);
 
   // Start the timer as soon as the writing screen is shown, not on first keystroke
   useEffect(() => {
@@ -144,6 +179,12 @@ function Quick() {
     ready: Boolean(user) && !loading,
     isEmpty: (d) => !d.userText?.trim(),
     restore: (d) => {
+      // Opened for one question from a sample-answer page: an essay saved for
+      // another question is not put back over it.
+      if (preload) {
+        const saved = preload.task === 1 ? d.task1 : d.task2;
+        if (d.selectedTaskType !== preload.task || saved?.id !== preload.id) throw new Error("a different question was asked for");
+      }
       if (typeof d.task1?.report === "string") setTask1(d.task1);
       if (typeof d.task2?.report === "string") setTask2(d.task2);
       setUserText(typeof d.userText === "string" ? d.userText : "");
@@ -213,8 +254,8 @@ function Quick() {
 
       const encoded = encodeReport(
         selectedTaskType === 1
-          ? { task1, task2: null, userText1: userText, userText2: "" }
-          : { task1: null, task2, userText1: "", userText2: userText }
+          ? { task1, task2: null, userText1: userText, userText2: "", mode: "quickwrite" }
+          : { task1: null, task2, userText1: "", userText2: userText, mode: "quickwrite" }
       );
       // The essay goes with the report from here, and is saved there.
       draft.clear();

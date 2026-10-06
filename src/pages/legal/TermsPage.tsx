@@ -13,6 +13,7 @@ const SECTIONS = [
   { id: "refunds", title: "Payments are not refundable" },
   { id: "human-check", title: "Human Check" },
   { id: "your-work", title: "Your essays stay yours" },
+  { id: "sample-answers", title: "Sharing your essay as a sample answer" },
   { id: "fair-use", title: "Fair use" },
   { id: "availability", title: "Availability and changes" },
   { id: "liability", title: "Our responsibility, and its limits" },
@@ -122,14 +123,34 @@ export function TermsPage() {
       <p>
         You keep every right in what you write. You give us permission to store your essay and to send it to the AI
         provider and, if you ask for it, to the teacher you pick, only so that you can be given feedback. We do not
-        publish your writing, sell it, or hand it to anyone else.
+        publish your writing, sell it, or hand it to anyone else, except an essay you choose to share as a sample
+        answer (section 11).
       </p>
       <p>
         The site itself, with its design, its code, its prompts and its explanations, belongs to us. Please do not copy
         it, scrape it or resell it.
       </p>
 
-      <h2 id="fair-use">11. Fair use</h2>
+      <h2 id="sample-answers">11. Sharing your essay as a sample answer</h2>
+      <p>
+        If an essay scores Band 7 or higher on a question from our question bank, we may ask whether you want to share
+        it as a sample answer for other students. We only use it if you tap &ldquo;Yes, share anonymously&rdquo;. Your
+        name, email, photo and account are never shown with it. Before anyone sees it, we remove obvious personal
+        details (names, phone numbers, email addresses and Telegram usernames), and a member of our team reviews it. We
+        may choose not to publish it.
+      </p>
+      <p>
+        A published sample appears on that question&rsquo;s public page at {LEGAL.site}/questions, with its band
+        scores and the writing mode it was written in. Each time you agree to share, you get one free assessment; a
+        Mock or Practice test counts once, even if you share both tasks. You can share up to three times a day.
+      </p>
+      <p>
+        You keep the copyright in your essay. By sharing it you give us a free, non-exclusive permission to show, store
+        and copy it on WriteReady, and in previews of our pages, for as long as it is published. To have it removed,
+        message us on Telegram and we will take it down; the free assessment you received stays yours.
+      </p>
+
+      <h2 id="fair-use">12. Fair use</h2>
       <p>While using WriteReady, do not:</p>
       <ul>
         <li>submit someone else&apos;s writing as your own to get it marked;</li>
@@ -140,7 +161,7 @@ export function TermsPage() {
       </ul>
       <p>If you do, we may suspend or close the account.</p>
 
-      <h2 id="availability">12. Availability and changes</h2>
+      <h2 id="availability">13. Availability and changes</h2>
       <p>
         We work to keep WriteReady up, but we cannot promise it will never be down. We may take it offline for
         maintenance, change features, or stop offering a feature. A short outage is not a reason for money back. If we
@@ -148,7 +169,7 @@ export function TermsPage() {
         as section 8 says.
       </p>
 
-      <h2 id="liability">13. Our responsibility, and its limits</h2>
+      <h2 id="liability">14. Our responsibility, and its limits</h2>
       <p>
         We give the service as it is. We do not promise a particular IELTS result, and we are not responsible for what
         you decide based on an AI band estimate.
@@ -159,19 +180,19 @@ export function TermsPage() {
         or fraud caused by us.
       </p>
 
-      <h2 id="ending">14. Ending this agreement</h2>
+      <h2 id="ending">15. Ending this agreement</h2>
       <p>
         You can stop at any time and ask us to delete your account. We can end your access if you break these terms, or
         if we close the service. Deleting the account removes your profile, your reports and your submissions.
       </p>
 
-      <h2 id="law">15. Which law applies</h2>
+      <h2 id="law">16. Which law applies</h2>
       <p>
         These terms follow the law of {LEGAL.country}, and the courts of {LEGAL.country} decide any dispute. If you live
         in a country whose consumer law gives you stronger rights, you keep those rights.
       </p>
 
-      <h2 id="contact">16. How to contact us</h2>
+      <h2 id="contact">17. How to contact us</h2>
       <p>
         Message us on Telegram at{" "}
         <a href={TELEGRAM_CONTACT_URL} target="_blank" rel="noopener noreferrer">@{LEGAL.telegram}</a>

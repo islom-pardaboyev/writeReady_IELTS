@@ -15,6 +15,9 @@ import { OfflineGate } from './components/layout/OfflineGate';
 import { HomeRoute } from './components/layout/HomeRoute';
 import { NotFoundPage } from './pages/NotFoundPage';
 import { AuthPage } from './pages/AuthPage';
+// Not lazy: the build already put these pages in the HTML, and a lazy page
+// would show a loading spinner over them while its code downloads.
+import { QuestionPage, QuestionsIndexPage } from './pages/questions/QuestionPages';
 import { LogoLoader } from '@/components/ui/LogoLoader';
 import { AccentPainter } from '@/lib/appearance';
 
@@ -93,6 +96,8 @@ export default function App() {
             <Route path="/terms" element={withSuspense(<TermsPage />)} />
             <Route path="/blog" element={withSuspense(<BlogIndexPage />)} />
             <Route path="/blog/:slug" element={withSuspense(<BlogPostPage />)} />
+            <Route path="/questions" element={<QuestionsIndexPage />} />
+            <Route path="/questions/:taskType/:slug" element={<QuestionPage />} />
             <Route path="*" element={<NotFoundPage />} />
           </Routes>
         </MaintenanceGate>
