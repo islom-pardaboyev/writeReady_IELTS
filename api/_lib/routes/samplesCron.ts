@@ -2,7 +2,7 @@ import type { VercelRequest, VercelResponse } from '@vercel/node';
 import Anthropic from '@anthropic-ai/sdk';
 import { initFirebase } from '../shared.js';
 import { cronAllowed } from '../cronAuth.js';
-import { anthropicBatches, collectBatches, submitBatch } from '../samples/generate.js';
+import { anthropicBatches, collectBatches, prepareWaitingPages, submitBatch } from '../samples/generate.js';
 import { dayNumbers, rebuildIfChanged, resendUnsent, sendSummary, summaryText } from '../samples/daily.js';
 
 /**
@@ -43,7 +43,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     return res.status(500).json({ error: 'Firebase init failed.' });
   }
   const apiKey = process.env.ANTHROPIC_API_KEY;
-  const api = apiKey ? anthropicBatches(new Anthropic({ apiKey })) : null;
+  const client = apiKey ? new Anthropic({ apiKey }) : null;
+  const api = client ? anthropicBatches(client) : null;
   if (!api) console.error('samples-cron: ANTHROPIC_API_KEY is not set; no drafts this run');
 
   const report: Record<string, unknown> = { job };
@@ -62,6 +63,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
   if (api) await step('collected', () => collectBatches(api));
   await step('resent', () => resendUnsent());
+  // Before the rebuild: an approved sample with no page address yet gets one.
+  await step('pagesPrepared', () => prepareWaitingPages(client));
   if (job === 'morning' && api) await step('submitted', () => submitBatch(api));
   if (job === 'evening') {
     const rebuild = await step('rebuild', () => rebuildIfChanged({ force: req.query.rebuild === '1' }));

@@ -117,7 +117,8 @@ export function PrivacyPolicyPage() {
       </p>
       <p>
         <strong>Sample answers.</strong> If an essay of yours scores Band 7 or higher on a question from our question
-        bank, we may ask whether it can be shown to other students as a sample answer. Only if you agree, a copy is made
+        bank, or on your own question in Relax mode, we may ask whether it can be shown to other students as a sample
+        answer; your own question, and for Task 1 the chart you uploaded, go with it. Only if you agree, a copy is made
         with obvious personal details removed (names, phone numbers, email addresses, Telegram usernames) and reviewed by
         our team; if approved, it is published on that question&rsquo;s public page with its band scores, without your
         name or account. We keep a private record of which account shared it, only to give you the free assessment once

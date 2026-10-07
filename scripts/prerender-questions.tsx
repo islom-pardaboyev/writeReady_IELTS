@@ -69,22 +69,26 @@ async function load(): Promise<{ questions: RawQuestion[]; samples: RawSample[] 
   const entries = [...ids.entries()];
   for (let i = 0; i < entries.length; i += 100) {
     const part = entries.slice(i, i + 100);
+    // A student's own Relax question lives in customQuestions, with its chart;
+    // a bank question in task1_reports / task2_reports, its chart in task1_images.
+    const custom = (id: string) => id.startsWith('cq_');
     const [bank, metas, charts] = await Promise.all([
-      db.getAll(...part.map(([id, t]) => db.collection(t === 'task1' ? 'task1_reports' : 'task2_reports').doc(id))),
+      db.getAll(...part.map(([id, t]) => db.collection(custom(id) ? 'customQuestions' : t === 'task1' ? 'task1_reports' : 'task2_reports').doc(id))),
       db.getAll(...part.map(([id]) => db.collection('questionMeta').doc(id))),
-      Promise.all(part.map(([id, t]) => (t === 'task1' ? db.collection('task1_images').doc(id).get() : Promise.resolve(null)))),
+      Promise.all(part.map(([id, t]) => (t === 'task1' && !custom(id) ? db.collection('task1_images').doc(id).get() : Promise.resolve(null)))),
     ]);
     part.forEach(([id, taskType], j) => {
-      const text = bank[j].exists ? bank[j].get('report') : undefined;
+      const text = bank[j].exists ? bank[j].get(custom(id) ? 'text' : 'report') : undefined;
       if (typeof text !== 'string' || !text.trim()) {
         console.warn(`prerender: question ${id} is no longer in the bank; its samples are not shown`);
         return;
       }
       const m = metas[j].exists ? metas[j].data() ?? {} : {};
-      const chart = charts[j]?.exists ? charts[j]!.get('data') : null;
+      const chart = custom(id) ? bank[j].get('chart') : charts[j]?.exists ? charts[j]!.get('data') : null;
       questions.push({
         id,
         taskType,
+        ...(custom(id) ? { custom: true } : {}),
         text,
         slug: typeof m.slug === 'string' ? m.slug : '',
         title: typeof m.title === 'string' ? m.title : '',

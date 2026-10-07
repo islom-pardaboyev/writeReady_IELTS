@@ -2,7 +2,7 @@ import { Link } from 'react-router';
 import { BookOpen, ChevronRight, ExternalLink, FileText, ListOrdered, PenLine, Sparkles, Users } from 'lucide-react';
 import { PROMPT_SOURCES } from '@/lib/promptSources';
 import {
-  fmtBand, questionPath, taskLabel, titleCase, writeItPath,
+  fmtBand, questionPath, taskLabel, titleCase, writeItPathFor,
   type PublicSample, type QuestionPageData, type QuestionSummary,
 } from '@/lib/questionData';
 
@@ -19,7 +19,7 @@ const MODE_NAMES: Record<string, string> = { mock: 'Mock exam', practice: 'Pract
 function WriteButton({ data, className = '' }: { data: QuestionPageData; className?: string }) {
   return (
     <Link
-      to={writeItPath(data.taskType, data.questionId)}
+      to={writeItPathFor(data)}
       className={`inline-flex min-h-11 items-center justify-center gap-2 rounded-lg bg-[var(--ink-blue)] px-5 py-2.5 text-center text-sm font-semibold text-white no-underline transition-opacity hover:opacity-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ring)] focus-visible:ring-offset-2 dark:text-[var(--primary-foreground)] ${className}`}
     >
       <PenLine className="h-4 w-4 shrink-0" aria-hidden />

@@ -133,8 +133,10 @@ export function TermsPage() {
 
       <h2 id="sample-answers">11. Sharing your essay as a sample answer</h2>
       <p>
-        If an essay scores Band 7 or higher on a question from our question bank, we may ask whether you want to share
-        it as a sample answer for other students. We only use it if you tap &ldquo;Yes, share anonymously&rdquo;. Your
+        If an essay scores Band 7 or higher on a question from our question bank, or on your own question in Relax
+        mode, we may ask whether you want to share it as a sample answer for other students. If it was your own
+        question, the question, and for Task 1 the chart you uploaded, are shared with it. We only use it if you tap
+        &ldquo;Yes, share anonymously&rdquo;. Your
         name, email, photo and account are never shown with it. Before anyone sees it, we remove obvious personal
         details (names, phone numbers, email addresses and Telegram usernames), and a member of our team reviews it. We
         may choose not to publish it.

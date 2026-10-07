@@ -67,6 +67,8 @@ export interface QuestionPageData {
   questionId: string;
   slug: string;
   taskType: QuestionTask;
+  /** A question a student typed in Relax: written again in Relax, not Quick Write. */
+  custom?: boolean;
   title: string;
   topic: string;
   chartType?: string;
@@ -146,3 +148,11 @@ export function excerptOf(text: string, max = 180): string {
 /** The Quick Write address that opens this question, chart and all. */
 export const writeItPath = (taskType: QuestionTask, questionId: string) =>
   `/writing/quick?task=${taskType === 'task1' ? 1 : 2}&q=${encodeURIComponent(questionId)}`;
+
+/**
+ * Where "Write your own answer" goes: Quick Write for a bank question; Relax,
+ * filled in from this page's data, for a question a student typed (it is not
+ * in the bank Quick Write draws from).
+ */
+export const writeItPathFor = (d: Pick<QuestionPageData, 'taskType' | 'questionId' | 'slug' | 'custom'>) =>
+  d.custom ? `/writing/relax?from=${d.taskType}/${encodeURIComponent(d.slug)}` : writeItPath(d.taskType, d.questionId);

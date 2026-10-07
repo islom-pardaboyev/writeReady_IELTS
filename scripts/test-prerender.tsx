@@ -68,6 +68,7 @@ const questions: RawQuestion[] = [
   { id: 'q4', taskType: 'task2', text: 'Cities are growing. Problems and solutions.', slug: 'growing-cities', title: 'Growing cities', topic: 'Cities & Housing', chart: null },
   { id: 'q5', taskType: 'task1', text: 'The process diagram shows how bricks are made.', slug: 'process-brick-making', title: 'Brick making', topic: 'Other', chartType: 'Process', chart: null },
   { id: 'q6', taskType: 'task2', text: 'A question nobody answered.', slug: 'unanswered', title: 'Unanswered', topic: 'Society', chart: null },
+  { id: 'cq_own1', taskType: 'task2', custom: true, text: 'Some students prefer studying alone. Others prefer groups. Discuss both views.', slug: 'studying-alone-or-in-groups', title: 'Studying alone or in groups', topic: 'Education', chart: null },
 ];
 const sample = (o: Partial<RawSample> & Pick<RawSample, 'id' | 'questionId' | 'taskType'>): RawSample => ({
   slug: '', sourceType: 'ai', band: 8, criteria: null, sampleAnswer: essay, wordCount: 260, outline: ['Introduction', 'Body 1', 'Body 2', 'Conclusion'],
@@ -82,10 +83,11 @@ const samples: RawSample[] = [
   sample({ id: 's5', questionId: 'q4', taskType: 'task2', band: 7 }),
   sample({ id: 's6', questionId: 'q5', taskType: 'task1', sourceType: 'student', band: 7, mode: 'relax', criteria: { taskScore: 7, cc: 7, lr: 7, gra: 7 } }),
   sample({ id: 's7', questionId: 'q-gone', taskType: 'task2' }),
+  sample({ id: 's8', questionId: 'cq_own1', taskType: 'task2', sourceType: 'student', band: 7.5, mode: 'relax', criteria: { taskScore: 7.5, cc: 7.5, lr: 7.5, gra: 7 }, sourceCredit: undefined }),
 ];
 
 const site = buildPages(questions, samples, day('2026-10-06'));
-check('one page per question with a published sample', site.pages.length === 5, site.pages.map((p) => p.slug));
+check('one page per question with a published sample', site.pages.length === 6, site.pages.map((p) => p.slug));
 check('a question with no sample gets no page', !site.pages.some((p) => p.slug === 'unanswered'));
 const q2 = site.pages.find((p) => p.slug === 'children-and-technology')!;
 check('student answer comes first, then the model answer', q2.samples.map((s) => s.sourceType).join() === 'student,ai');
@@ -100,7 +102,9 @@ check('Task 1 without a chart: page without an image, and a warning', site.pages
 check('titles', pageTitle(q1) === 'IELTS Writing Task 1: Line Graph — Energy Consumption in the USA — Band 8 Sample Answer' && pageTitle(q2) === 'IELTS Writing Task 2: Children and Technology — Band 8 Sample Answer', [pageTitle(q1), pageTitle(q2)]);
 check('description under 160 characters', pageDescription(q2).length <= 160 && pageDescription(q2).includes('a real student answer and a model answer'), pageDescription(q2));
 check('title case keeps acronyms', titleCase('energy use in the USA and UK') === 'Energy Use in the USA and UK');
-check('index lists every page', site.index.questions.length === 5 && site.index.topics.at(-1) === 'Other');
+check('index lists every page', site.index.questions.length === 6 && site.index.topics.at(-1) === 'Other');
+const ownPage = site.pages.find((p) => p.slug === 'studying-alone-or-in-groups')!;
+check('a student\'s own question gets a page, marked custom', !!ownPage && ownPage.custom === true && ownPage.sourceCredit === undefined);
 
 const files = renderSite(template, site);
 const file = (path: string) => String(files.find((f) => f.path === path)?.content ?? '');
@@ -126,6 +130,9 @@ check('the page content is in the HTML', text(html1).includes('Energy Consumptio
 check('chart image tag: eager, sized, with alt', /<img src="\/question-images\/line-graph-energy-consumption\.png" alt="Line graph showing energy consumption in the USA from 1980 to 2030" width="1400" height="900" loading="eager" fetchPriority="high"/i.test(html1), html1.match(/<img src="\/question-images[^>]*>/)?.[0]);
 check('the call to action opens Quick Write with this question', html1.includes('href="/writing/quick?task=1&amp;q=q1"') && html1.includes('Write your own answer and get your band score'));
 check('the source credit is shown', html1.includes('Question source:') && html1.includes('https://t.me/CDI_Report'));
+const htmlOwn = file('questions/task2/studying-alone-or-in-groups/index.html');
+check('own question: "Write your own answer" opens Relax with it', htmlOwn.includes('href="/writing/relax?from=task2/studying-alone-or-in-groups"'));
+check('own question: no partner source credit', !htmlOwn.includes('Question source:'));
 check('Student answer label', text(html2).includes('Student answer — Band') && text(html2).includes('Written by a WriteReady student in Mock exam, shared anonymously'));
 check('vocabulary has Uzbek', html2.includes('lang="uz"'));
 check('the loading logo is gone, the app script stays', !html1.includes('wr-splash') && /<script type="module"[^>]*src="\/(assets|src)\//.test(html1));

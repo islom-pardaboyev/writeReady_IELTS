@@ -692,6 +692,22 @@ async function storeNotes(
 
 // ── Right after Approve ──────────────────────────────────────────────────────
 
+/**
+ * Published samples whose question still has no page address (approved before
+ * prepareForPage existed, or when the AI call failed): the cron gives them one,
+ * so the rebuild that follows shows them.
+ */
+export async function prepareWaitingPages(client: Pick<Anthropic, 'messages'> | null, max = 10): Promise<number> {
+  const snap = await db().collection(SAMPLES).where('status', '==', 'published').get();
+  let done = 0;
+  for (const d of snap.docs) {
+    if (done >= max) break;
+    if (d.get('slug')) continue;
+    if ((await prepareForPage(d.id, client)) !== 'had-slug') done++;
+  }
+  return done;
+}
+
 const CHART_WORDS = /^(?:the\s+)?(?:(?:line|bar|pie)\s+(?:graph|chart)s?|graphs?|charts?|tables?|maps?|diagrams?|process(?:\s+diagram)?|plans?)\b/i;
 
 /**
@@ -706,9 +722,13 @@ export function fallbackTitle(question: string): string {
     .replace(/^\s*(?:and\s+(?:the\s+)?\w+\s+)?(?:below|above)?\s*/i, '')
     .replace(/^(?:shows?|illustrates?|compares?|gives?|presents?|describes?|provides?|depicts?)\s+(?:information\s+(?:about|on)\s+)?/i, '')
     .replace(/^(?:the|a|an)\s+/i, '')
-    .replace(/[.?!]+$/, '');
-  const words = text.split(' ').filter(Boolean).slice(0, 8).join(' ');
-  return words ? words.charAt(0).toUpperCase() + words.slice(1) : 'IELTS Writing question';
+    .replace(/[.?!]+$/, '')
+    // "... from 1980 to 2030", "... in 2005": the years belong in the text, not the title.
+    .replace(/\s+(?:from|between|in|during|over|since)\s+(?:the\s+)?\d{4}\b.*$/i, '');
+  const words = text.split(' ').filter(Boolean).slice(0, 9);
+  while (words.length > 1 && /^(?:in|of|the|a|an|and|or|from|to|between|for|per|with|by|on|at)$/i.test(words[words.length - 1])) words.pop();
+  const title = words.join(' ');
+  return title ? title.charAt(0).toUpperCase() + title.slice(1) : 'IELTS Writing question';
 }
 
 /**

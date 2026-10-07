@@ -46,6 +46,8 @@ export interface RawQuestion {
   imageAlt?: string;
   /** The stored chart, a data URL (src/lib/task1Chart.ts). */
   chart: string | null;
+  /** A question a student typed in Relax (customQuestions), not a bank question. */
+  custom?: boolean;
 }
 
 export interface OutFile {
@@ -176,6 +178,7 @@ export function buildPages(questions: RawQuestion[], samples: RawSample[], now =
       questionId: q.id,
       slug,
       taskType: q.taskType,
+      ...(q.custom ? { custom: true } : {}),
       title: q.title || excerptOf(q.text, 60),
       topic: q.topic || 'Other',
       ...(q.taskType === 'task1' && q.chartType ? { chartType: q.chartType } : {}),

@@ -15,6 +15,13 @@ export interface SessionTask {
   questionId?: string;
   question: string;
   essay: string;
+  /**
+   * Relax Task 1 on the student's own question: the chart they uploaded. It is
+   * shared with the essay, so it is sent only with "Yes"; the status check
+   * only says it is there (hasChart).
+   */
+  chart?: string;
+  hasChart?: boolean;
 }
 
 export interface Offer {
@@ -26,7 +33,11 @@ export interface Offer {
 export function sessionTasks(data: ReportData): SessionTask[] {
   const tasks: SessionTask[] = [];
   if (data.task1?.report && data.userText1?.trim()) {
-    tasks.push({ taskType: 'Task 1', questionId: data.task1.id, question: data.task1.report, essay: data.userText1 });
+    const chart = data.task1.image;
+    tasks.push({
+      taskType: 'Task 1', questionId: data.task1.id, question: data.task1.report, essay: data.userText1,
+      ...(chart ? { chart, hasChart: true } : {}),
+    });
   }
   if (data.task2?.report && data.userText2?.trim()) {
     tasks.push({ taskType: 'Task 2', questionId: data.task2.id, question: data.task2.report, essay: data.userText2 });
@@ -49,7 +60,8 @@ async function post<T>(body: Record<string, unknown>): Promise<T> {
 
 /** The essays the student may be asked about, and whether sharing still earns the free assessment. */
 export async function fetchOffer(mode: ReportMode, tasks: SessionTask[]): Promise<{ offer: Offer[]; credit: boolean }> {
-  const { offer, credit } = await post<{ offer?: Offer[]; credit?: boolean }>({ action: 'status', mode, tasks });
+  const light = tasks.map(({ chart: _chart, ...t }) => t);
+  const { offer, credit } = await post<{ offer?: Offer[]; credit?: boolean }>({ action: 'status', mode, tasks: light });
   return { offer: Array.isArray(offer) ? offer : [], credit: credit === true };
 }
 

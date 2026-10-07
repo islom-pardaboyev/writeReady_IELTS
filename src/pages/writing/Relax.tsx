@@ -11,7 +11,7 @@ import { downloadEssayPdf, type EssayPdfTask } from "@/lib/essayPdf";
 import { recordFinishedEssays } from "@/lib/activity";
 import { useSingleRun } from "@/hooks/useSingleRun";
 import { BusyLabel } from "@/components/ui/BusyLabel";
-import { NavLink, useNavigate } from "react-router";
+import { NavLink, useNavigate, useSearchParams } from "react-router";
 import { doc, getDoc } from "firebase/firestore";
 import { auth, db } from "@/firebase/firebase";
 import { Button } from "@/components/ui/Button";
@@ -45,9 +45,26 @@ import { isPdfSrc as isPdf } from "@/lib/loadImageForPdf";
 import { compressChartFile, LINK_CHART_MAX_BYTES } from "@/lib/task1Chart";
 import { hasAccess } from "@/lib/reportAccess";
 import { allowFeedbackStart } from "@/lib/feedbackIntent";
+import { questionDataPath, type QuestionPageData } from "@/lib/questionData";
+
+/**
+ * A question to open with, from a sample-answer page whose question a student
+ * wrote in Relax: /writing/relax?from=task2/<slug>. Its text and chart come
+ * from that page's public data, not the database.
+ */
+function readFrom(params: URLSearchParams): { task: 1 | 2; slug: string } | null {
+  const m = /^task([12])\/([a-z0-9-]{1,80})$/.exec(params.get("from") ?? "");
+  return m ? { task: m[1] === "1" ? 1 : 2, slug: m[2] } : null;
+}
 
 function Relax() {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  // Read once: the question asked for when the page opened.
+  const from = useRef(readFrom(searchParams)).current;
+  const [preloading, setPreloading] = useState(from !== null);
+  /** The question text filled in from a sample page, so a draft for another question is not put back over it. */
+  const preloaded = useRef<string | null>(null);
   const { busy: finishing, run: runFinish } = useSingleRun();
   const [step, setStep] = useState<"select" | "configure" | "write">("select");
   const [activeTask, setActiveTask] = useState<1 | 2 | null>(null);
@@ -108,12 +125,15 @@ function Relax() {
     page: "relax",
     uid: user?.uid,
     value: draftValue,
-    ready: !authLoading,
+    ready: !authLoading && !preloading,
     isEmpty: (d) => !d.userText?.trim() && !d.prompt?.trim() && !d.task2Prompt?.trim(),
     shrink: (d) => ({ ...d, imageUrl: null }),
     restore: (d) => {
       const task = d.activeTask === 1 || d.activeTask === 2 ? d.activeTask : null;
       if (!task) return;
+      if (preloaded.current !== null && (task === 1 ? d.prompt : d.task2Prompt) !== preloaded.current) {
+        throw new Error("a different question was asked for");
+      }
       setActiveTask(task);
       setStep(d.step === "write" ? "write" : "configure");
       setPrompt(typeof d.prompt === "string" ? d.prompt : "");
@@ -122,6 +142,40 @@ function Relax() {
       setImageUrl(typeof d.imageUrl === "string" && d.imageUrl.startsWith("data:image/") ? d.imageUrl : null);
     },
   });
+
+  // Opened from a sample page: fill in its question, and for Task 1 its chart,
+  // shrunk like an upload so the report link stays a sane length.
+  useEffect(() => {
+    if (!from) return;
+    let live = true;
+    (async () => {
+      try {
+        const res = await fetch(questionDataPath(from.task === 1 ? "task1" : "task2", from.slug));
+        if (!res.ok || !(res.headers.get("content-type") ?? "").includes("json")) throw new Error(`no question data (${res.status})`);
+        const data = (await res.json()) as QuestionPageData;
+        let chart: string | null = null;
+        if (from.task === 1 && data.image) {
+          const blob = await (await fetch(data.image.src)).blob();
+          chart = (await compressChartFile(blob, LINK_CHART_MAX_BYTES)).full;
+        }
+        if (!live) return;
+        setActiveTask(from.task);
+        if (from.task === 1) setPrompt(data.questionText);
+        else setTask2Prompt(data.questionText);
+        setImageUrl(chart);
+        setUserText("");
+        preloaded.current = data.questionText;
+        setStep("configure");
+      } catch (err) {
+        console.warn("Could not open that question in Relax:", err);
+      } finally {
+        if (live) setPreloading(false);
+      }
+    })();
+    return () => {
+      live = false;
+    };
+  }, [from]);
 
   const handleSelectTask = (task: 1 | 2) => {
     setActiveTask(task);

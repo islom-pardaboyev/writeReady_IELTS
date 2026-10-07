@@ -112,8 +112,9 @@ function seedBank() {
   fake.put(model.QUESTION_META, 'q2', { taskType: 'task2', questionKey: essayKeys('Task 2', Q2, '').questionKey });
 }
 
-const t1 = (essay = ESSAY1, questionId: string | null = 'q1', question = Q1) => ({ taskType: 'task1' as const, questionId, question, essay });
-const t2 = (essay = ESSAY2, questionId: string | null = 'q2', question = Q2) => ({ taskType: 'task2' as const, questionId, question, essay });
+const t1 = (essay = ESSAY1, questionId: string | null = 'q1', question = Q1, chart: string | null = null) =>
+  ({ taskType: 'task1' as const, questionId, question, essay, chart, hasChart: !!chart });
+const t2 = (essay = ESSAY2, questionId: string | null = 'q2', question = Q2) => ({ taskType: 'task2' as const, questionId, question, essay, chart: null, hasChart: false });
 
 function freshWorld() {
   fake.reset();
@@ -175,7 +176,9 @@ check('Practice: judged separately (7 + 6)', qualifyingTasks('practice', [fact('
 check('Quick Write: one task qualifies', qualifyingTasks('quickwrite', [fact('task2', 8)]).length === 1);
 check('Quick Write: two tasks is not a Quick Write session', qualifyingTasks('quickwrite', [fact('task1', 8), fact('task2', 8)]).length === 0);
 check('Relax: bank question qualifies', qualifyingTasks('relax', [fact('task2', 7)]).length === 1);
-check('Relax: custom question never qualifies', qualifyingTasks('relax', [fact('task2', 9, null)]).length === 0);
+check('a question that is neither bank nor Relax-own never qualifies', qualifyingTasks('relax', [fact('task2', 9, null)]).length === 0);
+check('Relax: the student\'s own question qualifies', qualifyingTasks('relax', [{ ...fact('task2', 7, null), custom: true }]).length === 1);
+check('outside Relax an own question is refused', qualifyingTasks('quickwrite', [{ ...fact('task2', 8, null), custom: true }]).length === 0);
 check('6.5 never qualifies', qualifyingTasks('mock', [fact('task1', 6.5)]).length === 0);
 check('no saved band never qualifies', qualifyingTasks('mock', [fact('task1', null)]).length === 0);
 check('the same task twice is refused', qualifyingTasks('mock', [fact('task2', 7), fact('task2', 8)]).length === 0);
@@ -209,7 +212,7 @@ seedBank();
 const customQ = 'Write about your favourite holiday and why you liked it.';
 await seedReport('u1', 'Task 2', customQ, ESSAY2, 9);
 offer = (await consent.consentStatus('u1', { mode: 'relax', tasks: [t2(ESSAY2, null, customQ)] })).offer;
-check('Relax: a custom question is skipped silently', offer.length === 0);
+check('Relax: an own Task 2 question is offered now', offer.length === 1, offer);
 offer = (await consent.consentStatus('u1', { mode: 'quickwrite', tasks: [t2(ESSAY2, 'q2', customQ)] })).offer;
 check('a bank id with another question\'s text is refused', offer.length === 0);
 offer = (await consent.consentStatus('u1', { mode: 'quickwrite', tasks: [t2(ESSAY2, 'missing-id')] })).offer;
@@ -544,6 +547,71 @@ check('student sample gets the question slug', enriched.slug === 'children-and-t
 check('the essay itself is unchanged', enriched.sampleAnswer === stripPersonalDetails(ESSAY2).text);
 
 // ── Evening: rebuild and summary ────────────────────────────────────────────
+
+// ── Relax: the student's own question ───────────────────────────────────────
+
+section("Relax: the student's own question");
+freshWorld();
+const OWN1 = 'The bar chart shows the results of a survey about what makes a business successful in the USA and Europe.';
+const OWN_ESSAY = `The bar chart compares opinions in the USA and Europe. ${words(180)}`;
+const PNG_CHART = `data:image/png;base64,${Buffer.from('fake-png-bytes').toString('base64')}`;
+await seedReport('u1', 'Task 1', OWN1, OWN_ESSAY, 8);
+const relax1 = (chart: string | null) => ({ mode: 'relax' as const, tasks: [t1(OWN_ESSAY, null, OWN1, chart)] });
+check('own Task 1 question without its chart is not offered', (await consent.consentStatus('u1', relax1(null))).offer.length === 0);
+check('own Task 1 question with its chart is offered', (await consent.consentStatus('u1', { mode: 'relax', tasks: [{ ...t1(OWN_ESSAY, null, OWN1), hasChart: true }] })).offer.length === 1);
+check('the same own question in Quick Write is refused', (await consent.consentStatus('u1', { mode: 'quickwrite', tasks: [{ ...t1(OWN_ESSAY, null, OWN1), hasChart: true }] })).offer.length === 0);
+await rejects('saying yes without sending the chart is refused', () =>
+  consent.submitConsent('u1', { mode: 'relax', tasks: [{ ...t1(OWN_ESSAY, null, OWN1), hasChart: true }] }, 'yes', ['task1']), 'BAD_REQUEST');
+check('the chart is checked before it is kept', consent.readSession({ mode: 'relax', tasks: [{ taskType: 'Task 1', question: OWN1, essay: 'x', chart: 'data:text/html;base64,PHNjcmlwdD4=' }] }).tasks[0].chart === null);
+calls = [];
+const own = await consent.submitConsent('u1', relax1(PNG_CHART), 'yes', ['task1']);
+const ownSample = fake.table(model.SAMPLES).get(own.sampleIds[0])!;
+const cq = fake.all(model.CUSTOM_QUESTIONS);
+check('own question shared: a custom question is created with the chart', cq.length === 1 && cq[0].id.startsWith('cq_') && cq[0].chart === PNG_CHART && cq[0].text === OWN1 && cq[0].taskType === 'task1');
+check('the sample points at it and is marked custom', ownSample.questionId === cq[0].id && ownSample.questionSource === 'custom' && ownSample.status === 'pending');
+check('no partner source credit on a student\'s own question', ownSample.sourceCredit === undefined);
+check('the credit is given as usual', own.credited && fake.table('users').get('u1')?.bonusAnalyses === 1);
+check('the own question never joins the practice bank', !fake.table(model.BANK.task1).has(cq[0].id));
+await review.sendForReview(own.sampleIds[0]);
+const ownPhoto = calls.find((c) => c.method === 'sendPhoto');
+check('Telegram gets the student\'s chart', !!ownPhoto && String(ownPhoto.body.photo).includes(`chart-${cq[0].id}.png`));
+check('Telegram says approving publishes the question and chart', String(ownPhoto?.body.caption).includes("Student's own question and chart: approving publishes them too"));
+// Another student, same wording: the same custom question, one page.
+await seedReport('u2', 'Task 1', OWN1, OWN_ESSAY + ' Another ending.', 7.5);
+const own2 = await consent.submitConsent('u2', { mode: 'relax', tasks: [t1(OWN_ESSAY + ' Another ending.', null, OWN1, PNG_CHART)] }, 'yes', ['task1']);
+check('the same own question shared again reuses it', fake.all(model.CUSTOM_QUESTIONS).length === 1 && fake.table(model.SAMPLES).get(own2.sampleIds[0])?.questionId === cq[0].id);
+
+// ── Right after Approve: a page address at once ──────────────────────────────
+
+section('page address right after approval');
+check('fallback title from a Task 1 question', generate.fallbackTitle('The bar chart below shows the number of cars per 1000 people in five countries in 2005. Summarise the information.') === 'Number of cars per 1000 people in five countries', generate.fallbackTitle('The bar chart below shows the number of cars per 1000 people in five countries in 2005. Summarise the information.'));
+check('fallback title from a line graph question', generate.fallbackTitle('The line graph illustrates energy use in the USA from 1980 to 2030.') === 'Energy use in the USA', generate.fallbackTitle('The line graph illustrates energy use in the USA from 1980 to 2030.'));
+check('fallback title from a Task 2 question', generate.fallbackTitle('Some people think children should not use technology at school. To what extent do you agree?') === 'Some people think children should not use technology', generate.fallbackTitle('Some people think children should not use technology at school. To what extent do you agree?'));
+const notes = JSON.stringify({ outline: ['Intro', 'Overview', 'Details'], grammarHighlights: ['Uses while for contrast.', 'Uses the passive.'], title: 'Business success factors', topic: 'Economy & Business', chartType: 'Bar chart', imageAlt: 'Bar chart comparing business success factors in the USA and Europe' });
+let aiCalls = 0;
+const fakeClient = { messages: { create: async () => { aiCalls++; return { content: [{ type: 'text', text: notes }], stop_reason: 'end_turn' }; } } } as never;
+let approvedHook: string[] = [];
+calls = [];
+await review.handleReviewPress(
+  { id: 'cbA', from: { id: 777 }, data: `smp:a:${own.sampleIds[0]}`, message: { message_id: 1, chat: { id: 777 } } },
+  { onApproved: async (id) => { approvedHook.push(id); return generate.prepareForPage(id, fakeClient); } },
+);
+const ready = fake.table(model.SAMPLES).get(own.sampleIds[0])!;
+check('approving runs the page step once', approvedHook.length === 1 && aiCalls === 1);
+check('the approved sample gets its page address and chart address', ready.status === 'published' && ready.slug === 'bar-chart-business-success-factors' && ready.imageUrl === 'https://www.writeready.uz/question-images/bar-chart-business-success-factors.png', [ready.slug, ready.imageUrl]);
+check('its outline and grammar notes are written', (ready.outline as string[]).length === 3 && !!ready.enrichedAt);
+check('the question metadata is saved', fake.table(model.QUESTION_META).get(cq[0].id)?.title === 'Business success factors');
+check('the other sample on the same question gets the address too', fake.table(model.SAMPLES).get(own2.sampleIds[0])?.slug === 'bar-chart-business-success-factors');
+check('a rejected press does not run the page step', await (async () => { approvedHook = []; await review.handleReviewPress({ id: 'cbR', from: { id: 777 }, data: `smp:r:${own2.sampleIds[0]}`, message: { message_id: 2, chat: { id: 777 } } }, { onApproved: async (id) => approvedHook.push(id) }); return approvedHook.length === 0; })());
+// Without the AI: an address from the question's own words.
+freshWorld();
+await seedReport('u1', 'Task 2', Q2, ESSAY2, 8);
+const [plain] = (await consent.submitConsent('u1', quick, 'yes', ['task2'])).sampleIds;
+await review.applyPress('approve', plain);
+check('a published sample with no address is found by the daily job', (await generate.prepareWaitingPages(null)) === 1);
+check('without the AI it still gets an address from its own words', fake.table(model.SAMPLES).get(plain)?.slug === 'some-people-think-children-should-not-use', fake.table(model.SAMPLES).get(plain)?.slug);
+check('and the page counts as changed, so the evening rebuilds', !!fake.table(model.SAMPLES).get(plain)?.pageChangedAt);
+check('a sample that has its address is left alone', (await generate.prepareWaitingPages(null)) === 0);
 
 section('evening rebuild and summary');
 let hookCalls = 0;
