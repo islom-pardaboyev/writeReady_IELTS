@@ -1,5 +1,6 @@
+import { createHash } from 'crypto';
 import Anthropic from '@anthropic-ai/sdk';
-import { FieldValue, Timestamp } from 'firebase-admin/firestore';
+import { FieldValue, Timestamp, type DocumentReference } from 'firebase-admin/firestore';
 import { db } from '../db.js';
 import { essayKeys } from '../savedReports.js';
 import { bandDescriptors } from '../../feedback.js';
@@ -281,8 +282,11 @@ interface RunRequest {
   regenerate?: boolean;
 }
 
+/** A run whose batch is still out, or being collected right now. */
+const OPEN_RUN = ['submitted', 'collecting'];
+
 async function inFlight(): Promise<{ questions: Set<string>; samples: Set<string> }> {
-  const snap = await db().collection(RUNS).where('status', '==', 'submitted').get();
+  const snap = await db().collection(RUNS).where('status', 'in', OPEN_RUN).get();
   const questions = new Set<string>();
   const samples = new Set<string>();
   for (const d of snap.docs) {
@@ -428,29 +432,62 @@ export interface CollectResult {
 }
 
 const MAX_RUN_AGE_MS = 30 * 3600 * 1000;
+/** Longer than a function may run (vercel.json: 300 s), so a claim this old belongs to a run that died. */
+const STALE_CLAIM_MS = 15 * 60 * 1000;
+
+/**
+ * Takes a finished run for this invocation alone. Two invocations can overlap
+ * (a retried cron, a run started by hand), and only the one whose transaction
+ * moves the run to 'collecting' goes on. A claim left by an invocation that
+ * timed out is taken over once it is stale.
+ */
+async function claimRun(ref: DocumentReference): Promise<boolean> {
+  const store = db();
+  return store.runTransaction(async (tx) => {
+    const snap = await tx.get(ref);
+    const status = snap.get('status');
+    const stale = status === 'collecting' && Date.now() - millis(snap.get('claimedAt')) > STALE_CLAIM_MS;
+    if (status !== 'submitted' && !stale) return false;
+    tx.set(ref, { status: 'collecting', claimedAt: Timestamp.now() }, { merge: true });
+    return true;
+  });
+}
+
+/**
+ * The sample id for one reply of one batch. The same reply always gets the
+ * same id, so collecting a run again (after a timeout) never saves a draft
+ * twice. Short and [\w-] only: it rides in Telegram's button data.
+ */
+export function draftSampleId(batchId: string, customId: string): string {
+  return `ai_${createHash('sha256').update(`${batchId}\n${customId}`).digest('hex').slice(0, 24)}`;
+}
 
 /** Reads every finished batch, saves what came back, and sends the new drafts for review. */
 export async function collectBatches(api: BatchApi): Promise<CollectResult> {
   const store = db();
   const total: CollectResult = { runs: 0, drafts: 0, needsManual: 0, enriched: 0, failed: 0, costUSD: 0 };
-  const runs = await store.collection(RUNS).where('status', '==', 'submitted').get();
+  const runs = await store.collection(RUNS).where('status', 'in', OPEN_RUN).get();
   for (const run of runs.docs) {
     const batchId = String(run.get('batchId'));
-    let status: string;
-    try {
-      status = await api.status(batchId);
-    } catch (e) {
-      console.error(`samples: could not check batch ${batchId}:`, e);
-      continue;
-    }
-    if (status !== 'ended') {
-      // A batch ends within 24 hours by itself; one that never reports back
-      // must not keep its questions out of every later run.
-      if (Date.now() - millis(run.get('submittedAt')) > MAX_RUN_AGE_MS) {
-        await run.ref.set({ status: 'abandoned', collectedAt: FieldValue.serverTimestamp() }, { merge: true });
+    // A 'collecting' run's batch had ended already when it was claimed.
+    if (run.get('status') === 'submitted') {
+      let status: string;
+      try {
+        status = await api.status(batchId);
+      } catch (e) {
+        console.error(`samples: could not check batch ${batchId}:`, e);
+        continue;
       }
-      continue;
+      if (status !== 'ended') {
+        // A batch ends within 24 hours by itself; one that never reports back
+        // must not keep its questions out of every later run.
+        if (Date.now() - millis(run.get('submittedAt')) > MAX_RUN_AGE_MS) {
+          await run.ref.set({ status: 'abandoned', collectedAt: FieldValue.serverTimestamp() }, { merge: true });
+        }
+        continue;
+      }
     }
+    if (!(await claimRun(run.ref))) continue;
 
     const records = new Map(((run.get('requests') ?? []) as RunRequest[]).map((r) => [r.customId, r]));
     const usage: TokenUsage = { input: 0, output: 0, cacheWrite: 0, cacheRead: 0 };
@@ -468,10 +505,16 @@ export async function collectBatches(api: BatchApi): Promise<CollectResult> {
           usage.cacheRead += message.usage.cache_read_input_tokens ?? 0;
           const textOut = message.content.map((b) => (b.type === 'text' ? b.text : '')).join('');
           if (record.kind === 'draft') {
-            const saved = await saveDraft(record, textOut, message.stop_reason);
+            const id = draftSampleId(batchId, record.customId);
+            // Saved already by an earlier pass over this run that timed out.
+            // Its review message, if it never went out, is sent by resendUnsent.
+            const earlier = await store.collection(SAMPLES).doc(id).get();
+            const saved = earlier.exists
+              ? { id, status: earlier.get('status') === 'needs_manual' ? 'needs_manual' : 'pending', repeat: true }
+              : { ...(await saveDraft(id, record, textOut, message.stop_reason)), repeat: false };
             if (saved.status === 'pending') {
               counts.drafts++;
-              toReview.push(saved.id);
+              if (!saved.repeat) toReview.push(saved.id);
             } else counts.needsManual++;
           } else if (await saveEnrichment(record, textOut, message.stop_reason)) counts.enriched++;
           else counts.failed++;
@@ -482,7 +525,7 @@ export async function collectBatches(api: BatchApi): Promise<CollectResult> {
           // is kept as needs_manual.
           const invalid = result.result.type === 'errored' && result.result.error.error.type === 'invalid_request_error';
           if (record.kind === 'draft' && invalid) {
-            await saveDraftFailure(record, [`The API refused the request: ${result.result.type === 'errored' ? result.result.error.error.message : ''}`], '');
+            await saveDraftFailure(draftSampleId(batchId, record.customId), record, [`The API refused the request: ${result.result.type === 'errored' ? result.result.error.error.message : ''}`], '');
             counts.needsManual++;
           } else if (record.kind === 'enrich') {
             await bumpEnrichAttempts(record.sampleId);
@@ -600,15 +643,15 @@ export async function applyMeta(
   return { slug, imageAlt, imageExt: ext };
 }
 
-async function saveDraft(record: RunRequest, text: string, stopReason: string | null): Promise<{ id: string; status: 'pending' | 'needs_manual' }> {
+async function saveDraft(id: string, record: RunRequest, text: string, stopReason: string | null): Promise<{ id: string; status: 'pending' | 'needs_manual' }> {
   const checked = checkDraft(record.taskType, text, stopReason);
   if ('problems' in checked) {
-    return { id: await saveDraftFailure(record, checked.problems, text), status: 'needs_manual' };
+    return { id: await saveDraftFailure(id, record, checked.problems, text), status: 'needs_manual' };
   }
   const d = checked.draft;
   const meta = await applyMeta(record.questionId, record.taskType, d, record.imageExt);
   const now = FieldValue.serverTimestamp();
-  const ref = await db().collection(SAMPLES).add({
+  await db().collection(SAMPLES).doc(id).create({
     questionId: record.questionId,
     slug: meta.slug,
     taskType: record.taskType,
@@ -628,13 +671,13 @@ async function saveDraft(record: RunRequest, text: string, stopReason: string | 
     createdAt: now,
     updatedAt: now,
   });
-  return { id: ref.id, status: 'pending' };
+  return { id, status: 'pending' };
 }
 
-async function saveDraftFailure(record: RunRequest, problems: string[], raw: string): Promise<string> {
+async function saveDraftFailure(id: string, record: RunRequest, problems: string[], raw: string): Promise<string> {
   console.error(`samples: draft for ${record.questionId} needs manual review: ${problems.join('; ')}`);
   const now = FieldValue.serverTimestamp();
-  const ref = await db().collection(SAMPLES).add({
+  await db().collection(SAMPLES).doc(id).create({
     questionId: record.questionId,
     slug: '',
     taskType: record.taskType,
@@ -654,7 +697,7 @@ async function saveDraftFailure(record: RunRequest, problems: string[], raw: str
     createdAt: now,
     updatedAt: now,
   });
-  return ref.id;
+  return id;
 }
 
 async function bumpEnrichAttempts(sampleId: string | undefined): Promise<void> {

@@ -511,6 +511,19 @@ check('drafts are sent for review with Regenerate', calls.some((c) => c.method =
 check('Task 1 draft starts with the chart photo', calls.some((c) => c.method === 'sendPhoto' && String(c.body.caption).startsWith('🤖 AI model answer — Band 8')));
 const run = fake.all(model.RUNS)[0];
 check('token use and cost recorded', (run.usage as { input: number }).input === 12000 && Number(run.costUSD) > 0 && run.status === 'collected', run);
+// The same run collected again (an overlapping or retried cron) saves nothing twice.
+fake.put(model.RUNS, 'batch_3', { ...fake.table(model.RUNS).get('batch_3')!, status: 'submitted' });
+const before = fake.all(model.SAMPLES).length;
+calls = [];
+const twice = await Promise.all([generate.collectBatches(api), generate.collectBatches(api)]);
+check('two overlapping collects: only one takes the run', twice.filter((c) => c.runs === 1).length === 1, twice);
+check('a run collected again saves no new samples', fake.all(model.SAMPLES).length === before, fake.all(model.SAMPLES).length - before);
+check('a run collected again sends nothing to review twice', !calls.some((c) => c.method === 'sendMessage' || c.method === 'sendPhoto'), calls.map((c) => c.method));
+fake.put(model.RUNS, 'batch_3', { ...fake.table(model.RUNS).get('batch_3')!, status: 'collecting', claimedAt: Date.now() });
+check('a fresh claim by another run is left alone', (await generate.collectBatches(api)).runs === 0);
+fake.put(model.RUNS, 'batch_3', { ...fake.table(model.RUNS).get('batch_3')!, status: 'collecting', claimedAt: Date.now() - 20 * 60 * 1000 });
+check('a stale claim (the run timed out) is taken over', (await generate.collectBatches(api)).runs === 1 && fake.all(model.SAMPLES).length === before);
+check('draft ids fit Telegram button data', /^[\w-]{1,40}$/.test(generate.draftSampleId('msgbatch_01HkcTjaV5uDC8jWR4ZsDV8d', 'draft-12')));
 check('cost uses Batch prices', Math.abs(Number(run.costUSD) - generate.costUSD({ input: 12000, output: 4500, cacheWrite: 0, cacheRead: 9000 })) < 1e-9 && Math.abs(generate.costUSD({ input: 1e6, output: 1e6, cacheWrite: 0, cacheRead: 0 }) - 3) < 1e-9);
 
 // Regenerate: the draft is rejected and the question comes back first.
