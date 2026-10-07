@@ -417,17 +417,11 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       return;
     }
 
-    // This has to be awaited, before the response ends: a serverless function
-    // can be frozen the moment its handler returns, which used to lose reports
-    // at random. It holds the end of the stream back by a moment only.
-    await store(raw, lock?.scores ?? report.scores, report.topic, report.issues);
-    await keepCharge(uid, chargeId);
-    res.end();
-
     // A full report also stays downloadable as a PDF from the dashboard, for
     // as many reports as the plan keeps (./_lib/reportArchive.ts). The oldest
     // past that number is deleted here.
-    if (tier === 'full') {
+    const archive = async () => {
+      if (tier !== 'full') return;
       try {
         const user = await db.collection('users').doc(uid).get();
         const limit = pdfHistoryLimit(resolvePaidStatus(user.data() ?? {}).plan);
@@ -441,7 +435,19 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       } catch (e) {
         console.error('feedback: report_archive save failed:', e);
       }
-    }
+    };
+
+    // Both have to be awaited, before the response ends: a serverless
+    // function can be frozen the moment its handler returns, which used to
+    // lose reports at random. The PDF copy was saved after res.end(), and so
+    // most full reports never got their "Download PDF". Side by side, they
+    // hold the end of the stream back by a moment only.
+    await Promise.all([
+      store(raw, lock?.scores ?? report.scores, report.topic, report.issues),
+      archive(),
+    ]);
+    await keepCharge(uid, chargeId);
+    res.end();
   } catch (err) {
     // Log the real error (e.g. Claude API unavailable / out of credits) for the
     // admin, but never expose the raw provider message — it can leak billing

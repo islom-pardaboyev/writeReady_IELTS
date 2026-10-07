@@ -21,7 +21,7 @@ import { downloadArchivedReport, listDownloadableReports } from '../lib/reportDo
 import { useSingleRun } from '../hooks/useSingleRun';
 import { db } from '../firebase/config';
 import { GraduationCap, Clock, Download, Loader2 } from 'lucide-react';
-import { reportBand } from '@shared/bandScore';
+import { CRITERIA, reportBand, type Criterion } from '@shared/bandScore';
 
 // A plan's allowance renews at 00:00 UTC on its day (api/_lib/planCycle.ts).
 const renewDay = new Intl.DateTimeFormat(undefined, { day: 'numeric', month: 'short', timeZone: 'UTC' });
@@ -80,12 +80,28 @@ function ScoreBar({ label, value }: { label: string; value: number }) {
   );
 }
 
-const SCORE_LABELS: Record<string, string> = {
+const SCORE_LABELS: Record<Criterion, string> = {
   taskAchievement: 'TA',
   coherenceCohesion: 'CC',
   lexicalResource: 'LR',
   grammaticalRangeAccuracy: 'GRA',
 };
+
+/**
+ * The four criteria in the examiner's order. The stored scores also hold the
+ * overall band (shown large on the card already, and listed as "ove" when
+ * every key was printed), and a stored map keeps no fixed key order, so the
+ * rows came out shuffled from card to card.
+ */
+function criterionRows(scores: Record<string, number>, taskType: string) {
+  const task2 = !taskType.toLowerCase().includes('1');
+  return CRITERIA.filter((c) => typeof scores[c] === 'number').map((c) => ({
+    key: c,
+    // Task 2 calls the first criterion Task Response.
+    label: c === 'taskAchievement' && task2 ? 'TR' : SCORE_LABELS[c],
+    value: scores[c],
+  }));
+}
 
 export function DashboardPage() {
   const { user, profile, loading, refreshProfile } = useAuth();
@@ -408,7 +424,7 @@ export function DashboardPage() {
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
                   {visibleReports.map((r) => {
                     const band = overallBand(r.scores);
-                    const scoreEntries = Object.entries(r.scores);
+                    const scoreRows = criterionRows(r.scores, r.taskType ?? '');
                     return (
                       <Card
                         key={r.id}
@@ -433,14 +449,10 @@ export function DashboardPage() {
                         </div>
 
                         {/* Score bars */}
-                        {scoreEntries.length > 0 && (
+                        {scoreRows.length > 0 && (
                           <div className="flex flex-col gap-1.5">
-                            {scoreEntries.map(([key, val]) => (
-                              <ScoreBar
-                                key={key}
-                                label={SCORE_LABELS[key] ?? key.slice(0, 3)}
-                                value={typeof val === 'number' ? val : 0}
-                              />
+                            {scoreRows.map((row) => (
+                              <ScoreBar key={row.key} label={row.label} value={row.value} />
                             ))}
                           </div>
                         )}
