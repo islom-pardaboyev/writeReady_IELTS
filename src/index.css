@@ -806,3 +806,28 @@ html.dark [data-exam-look] .exam-answer {
     }
   }
 }
+
+/* ── Pricing: the study month (src/components/pricing/StudyMonth.tsx) ───────
+   A marked day inks its dot with a small overshoot, the capacity marker and
+   fill glide to the plan that covers the month, and the plan sheet swaps with
+   the same entrance as the staff detail pane. */
+.study-ink {
+  transition: transform 220ms cubic-bezier(0.34, 1.56, 0.64, 1), opacity 150ms ease-out;
+}
+.study-fill,
+.study-marker {
+  transition: transform 380ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+.plan-sheet-in {
+  animation: staff-detail-in 220ms cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+@media (prefers-reduced-motion: reduce) {
+  .study-ink,
+  .study-fill,
+  .study-marker {
+    transition: none;
+  }
+  .plan-sheet-in {
+    animation: none;
+  }
+}

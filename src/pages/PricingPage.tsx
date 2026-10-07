@@ -1,24 +1,20 @@
-import { useRef, useLayoutEffect, useEffect, useState, useId } from "react";
-import gsap from "gsap";
-import { ScrollTrigger } from "gsap/ScrollTrigger";
+import { useRef, useEffect, useState, useId } from "react";
 import { Link } from "react-router";
-import { X, Copy, Send, Check } from "lucide-react";
+import { X, Copy, Send, Check, CircleCheck } from "lucide-react";
 import { Layout } from "../components/layout/Layout";
 import { AppShell } from "../components/layout/AppShell";
 import { Button } from "../components/ui/Button";
-import { Card } from "../components/ui/Card";
 import { useAuth } from "../hooks/useAuth";
 import { CUSTOM_PLAN_PRICES, PLAN_INFO, customPriceFor } from "../lib/plans";
 import { formatSum, formatUZS } from "@/lib/money";
-
-gsap.registerPlugin(ScrollTrigger);
+import { cn } from "@/lib/utils";
+import { CapacityScale, StudyCalendar } from "../components/pricing/StudyMonth";
+import { PRESETS, presetDays, spanTitle, useStudyMonth, type CoveringPlan } from "../lib/studyMonth";
 
 const CARD_NUMBER = "9860 1606 4046 4600";
 const CARDHOLDER = "PI";
 const TELEGRAM_USERNAME = "writeready_admin";
 const MIN_TOPUP_UZS = 50000;
-
-const FONT_MONO = "[font-family:'IBM_Plex_Mono',monospace]";
 
 type PlanId = "basic" | "standard" | "premium";
 
@@ -90,13 +86,50 @@ const PLANS: SelectedPlan[] = [
   },
 ];
 
+/** What each plan includes, word for word as the plans are sold. */
+const FEATURES: Record<CoveringPlan, string[]> = {
+  free: ["1 AI analysis per week (one essay)", "All 4 writing modes", "Question bank + PDF export"],
+  basic: [
+    "5 AI analyses / month",
+    "Full band-score & sentence-level feedback",
+    "Vocabulary & grammar practice",
+    "Sample essay + PDF export",
+    "Download your last 3 reports as PDFs from the dashboard",
+  ],
+  standard: ["12 AI analyses / month", "Everything in Basic"],
+  premium: [
+    "25 AI analyses / month (highest)",
+    "Everything in Basic & Standard",
+    "Download your last 10 reports as PDFs (other plans keep 3)",
+    "Priority support",
+  ],
+};
+
+const TAGLINE: Record<CoveringPlan, string> = {
+  free: "Start practising for free",
+  basic: "Try AI feedback",
+  standard: "Most popular choice",
+  premium: "All features, maximum analyses",
+};
+
+const PLAN_ORDER: CoveringPlan[] = ["free", "basic", "standard", "premium"];
+const planOf = (id: Exclude<CoveringPlan, "free">) => PLANS.find((p) => p.id === id)!;
+
+/** How many essays a month the student's current plan already holds (Free: one a week). */
+function currentAllowance(plan: string, customAnalyses?: number): number | null {
+  if (plan === "forever") return Infinity;
+  if (plan === "custom") return customAnalyses ?? null;
+  if (plan === "basic" || plan === "standard" || plan === "premium") return PLAN_INFO[plan].monthlyAnalyses;
+  return null;
+}
+
 export function PricingPage() {
   const { user, profile } = useAuth();
-  const rootRef = useRef<HTMLDivElement>(null);
   const [paymentTarget, setPaymentTarget] = useState<PaymentTarget | null>(null);
   const [copied, setCopied] = useState(false);
   const [topUpAmount, setTopUpAmount] = useState("");
   const [customAnalyses, setCustomAnalyses] = useState(10);
+  const { span, selected, setSelected, activePreset, recommendation } = useStudyMonth();
   const modalTitleId = useId();
   const modalRef = useRef<HTMLDivElement>(null);
   const lastFocusedRef = useRef<HTMLElement | null>(null);
@@ -138,7 +171,8 @@ export function PricingPage() {
     }
   }, [paymentTarget]);
 
-  const currentPlan = profile?.plan ?? "free";
+  // A visitor who is not signed in has no plan yet, so Free reads "Start for free".
+  const currentPlan: string = user ? profile?.plan ?? "free" : "none";
   const balance = profile?.balanceUZS ?? 0;
 
   const openPaymentModal = (plan: SelectedPlan) => {
@@ -201,419 +235,371 @@ export function PricingPage() {
     }
   };
 
-  useLayoutEffect(() => {
-    const ctx = gsap.context(() => {
-      gsap.set(".gs-pricing-header", { y: 32, opacity: 0 });
-      gsap.set(".gs-plan-card", { y: 40, opacity: 0, scale: 0.97 });
-
-      gsap.to(".gs-pricing-header", {
-        y: 0,
-        opacity: 1,
-        duration: 0.65,
-        ease: "power3.out",
-        delay: 0.1,
-      });
-      gsap.to(".gs-plan-card", {
-        scrollTrigger: { trigger: ".gs-plans", start: "top 82%" },
-        y: 0,
-        opacity: 1,
-        scale: 1,
-        duration: 0.65,
-        stagger: 0.12,
-        ease: "power2.out",
-      });
-    }, rootRef);
-
-    return () => ctx.revert();
-  }, []);
-
   // A signed-in student stays in the app, with the sidebar, like the
   // dashboard; a visitor gets the public site's header and footer.
   const Frame = user ? AppShell : Layout;
 
+  const rec = recommendation;
+  const allowance = currentAllowance(currentPlan, profile?.customAnalyses);
+  const lifetime = currentPlan === "forever";
+  // A paid plan the student already holds that covers the marked month.
+  const covered = rec.count > 0 && allowance !== null && allowance >= rec.count;
+  const recLabel = rec.plan ? PLAN_INFO[rec.plan].label : "";
+  const spare = rec.plan && rec.plan !== "free" ? PLAN_INFO[rec.plan].monthlyAnalyses - rec.count : 0;
+  const summary =
+    rec.count === 0 ? "Mark the days you'll write, or start from a pattern."
+    : covered ? `Your ${PLAN_INFO[currentPlan as keyof typeof PLAN_INFO]?.label ?? "current"} plan already covers this.`
+    : rec.plan === "free" ? "One essay a week at most: the Free plan covers that."
+    : rec.over ? `More than any plan holds. Premium gives you ${PLAN_INFO.premium.monthlyAnalyses}, nearly one a day.`
+    : spare === 0 ? `${recLabel} covers exactly that.`
+    : `${recLabel} covers them, with ${spare} to spare.`;
+
+  const planButton = (id: CoveringPlan, variant: "default" | "outline", className?: string) => {
+    if (currentPlan === id) {
+      return (
+        <Button variant="outline" className={className} disabled>
+          Your current plan
+        </Button>
+      );
+    }
+    if (id === "free") {
+      return (
+        <Button asChild variant="outline" className={className}>
+          <Link to={user ? "/dashboard" : "/auth?mode=signup"}>{user ? "Switch to Free" : "Start for free"}</Link>
+        </Button>
+      );
+    }
+    return (
+      <Button variant={variant} className={className} onClick={() => openPaymentModal(planOf(id))}>
+        Get {PLAN_INFO[id].label}
+      </Button>
+    );
+  };
+
+  const priceLine = (id: CoveringPlan) =>
+    id === "free" ? "No card needed" : (
+      <>
+        That&rsquo;s {perAnalysisText(id)} UZS per analysis
+        {id !== "basic" && <> · <span className="whitespace-nowrap font-semibold text-[var(--ink-blue)]">save up to {savingVsBasic(id)}%</span></>}
+      </>
+    );
+
   return (
     <Frame>
-      <div
-        ref={rootRef}
-        className="bg-[var(--bg-base)] min-h-[calc(100vh-120px)] py-20"
-      >
-        <div className="container mx-auto px-6">
-          {/* Header */}
-          <div className="gs-pricing-header text-center mb-14">
-            <div className="inline-block bg-brand-50 text-brand-700 text-xs font-bold tracking-[0.08em] uppercase px-4 py-1.5 rounded-[20px] mb-5 dark:bg-brand-900/30 dark:text-brand-300">
-              Pricing
-            </div>
-            <h1
-              className={`text-[clamp(2rem,5vw,2.75rem)] font-extrabold text-[var(--text-primary)] mb-3 leading-[1.15]`}
-            >
-              Simple, transparent pricing
+      <div className="min-h-[calc(100vh-120px)] bg-[var(--bg-base)] py-10 sm:py-14">
+        <div className="mx-auto max-w-[1160px] px-4 sm:px-6">
+          <header className="max-w-[620px]">
+            <h1 className="text-[clamp(2rem,4.2vw,2.75rem)] font-extrabold leading-[1.08] tracking-[-0.03em] text-[var(--text-primary)]">
+              Plan your writing month
             </h1>
-            <p className="text-[var(--text-secondary)] text-[1.0625rem] max-w-[480px] mx-auto">
-              Start for free. When you&rsquo;re ready for AI feedback, choose the plan
-              that fits you.
+            <p className="mt-3 text-[1.0625rem] leading-relaxed text-[var(--text-secondary)]">
+              Mark the days you&rsquo;ll write an essay in the next four weeks, and see the plan that covers them.
             </p>
-          </div>
+          </header>
 
-          {/* Plans grid */}
-          <div className="gs-plans grid grid-cols-[repeat(auto-fit,minmax(240px,1fr))] gap-6 max-w-[1100px] mx-auto">
-            {/* Free */}
-            <Card className="gs-plan-card hover:-translate-y-1 hover:shadow-xl transition-[transform,box-shadow] duration-200 p-7 flex flex-col">
-              <div className="mb-5">
-                <div
-                  className={`text-[1.25rem] font-bold text-[var(--text-primary)] mb-1`}
-                >
-                  Free
-                </div>
-                <div className="text-sm text-[var(--text-secondary)]">
-                  Start practising for free
-                </div>
+          <div className="mt-8 grid gap-5 lg:grid-cols-[minmax(0,1fr)_minmax(320px,380px)] lg:items-start lg:gap-6">
+            {/* The study month */}
+            <section
+              aria-labelledby="study-title"
+              className="rounded-[18px] border border-[var(--border-color)] bg-[var(--bg-card)] p-4 shadow-[var(--shadow-sm)] sm:p-6"
+            >
+              <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
+                <h2 id="study-title" className="text-base font-semibold text-[var(--text-primary)]">Your next 4 weeks</h2>
+                <p className="font-mono text-xs tabular-nums text-[var(--text-secondary)]">{spanTitle(span)}</p>
               </div>
-              <div className="mb-7">
-                <span
-                  className={`${FONT_MONO} text-3xl font-semibold text-[var(--text-primary)]`}
-                >
-                  Free
-                </span>
-              </div>
-              <ul className="flex flex-col gap-2.5 mb-7 flex-1 text-[0.875rem]">
-                <li className="flex items-start gap-2.5 text-[var(--text-primary)]">
-                  <span className="text-green-500 font-bold shrink-0 mt-px">
-                    ✓
-                  </span>
-                  1 AI analysis per week (one essay)
-                </li>
-                <li className="flex items-start gap-2.5 text-[var(--text-primary)]">
-                  <span className="text-green-500 font-bold shrink-0 mt-px">
-                    ✓
-                  </span>
-                  All 4 writing modes
-                </li>
-                <li className="flex items-start gap-2.5 text-[var(--text-primary)]">
-                  <span className="text-green-500 font-bold shrink-0 mt-px">
-                    ✓
-                  </span>
-                  Question bank + PDF export
-                </li>
-              </ul>
-              <Link
-                to={user ? "/dashboard" : "/auth?mode=signup"}
-                className="block"
-              >
-                <Button
-                  variant="secondary"
-                  className={`w-full ${currentPlan === "free" ? "opacity-60" : ""}`}
-                  disabled={currentPlan === "free"}
-                >
-                  {currentPlan === "free" ? "Current plan" : "Switch to Free"}
-                </Button>
-              </Link>
-            </Card>
 
-            {/* Basic */}
-            <Card className="gs-plan-card hover:-translate-y-1 hover:shadow-xl transition-[transform,box-shadow] duration-200 p-7 flex flex-col">
-              <div className="mb-5">
-                <div
-                  className={`text-[1.25rem] font-bold text-[var(--text-primary)] mb-1`}
-                >
-                  Basic
-                </div>
-                <div className="text-sm text-[var(--text-secondary)]">
-                  Try AI feedback
-                </div>
+              <div role="group" aria-label="Writing patterns" className="mt-4 flex flex-wrap items-center gap-2">
+                {PRESETS.map((preset) => {
+                  const on = activePreset === preset.id;
+                  return (
+                    <button
+                      key={preset.id}
+                      type="button"
+                      aria-pressed={on}
+                      onClick={() => setSelected(presetDays(span, preset.weekdays))}
+                      className={cn(
+                        "h-8 rounded-full px-3.5 text-[0.8125rem] font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ring)] focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--bg-card)]",
+                        on
+                          ? "bg-[var(--accent)] text-[var(--accent-foreground)]"
+                          : "border border-[var(--border-color)] bg-[var(--bg-card)] text-[var(--text-secondary)] hover:bg-[var(--bg-subtle)] hover:text-[var(--text-primary)]",
+                      )}
+                    >
+                      {preset.label}
+                    </button>
+                  );
+                })}
+                {selected.size > 0 && (
+                  <button
+                    type="button"
+                    onClick={() => setSelected(new Set())}
+                    className="ml-auto h-8 rounded-md px-2 text-[0.8125rem] font-medium text-[var(--text-secondary)] underline-offset-4 hover:text-[var(--text-primary)] hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ring)]"
+                  >
+                    Clear
+                  </button>
+                )}
               </div>
-              <div className="mb-7">
-                <span
-                  className={`${FONT_MONO} text-3xl font-semibold text-[var(--text-primary)]`}
-                >
-                  19,000
-                </span>
-                <span className="text-sm text-[var(--text-secondary)] ml-1.5">
-                  UZS / month
-                </span>
-                <p className="mt-1.5 text-xs text-[var(--text-secondary)]">
-                  That&rsquo;s {perAnalysisText("basic")} UZS per analysis
-                </p>
-              </div>
-              <ul className="flex flex-col gap-2.5 mb-7 flex-1 text-[0.875rem]">
-                <li className="flex items-start gap-2.5 text-[var(--text-primary)]">
-                  <span className="text-brand-500 font-bold shrink-0 mt-px">
-                    ✓
-                  </span>
-                  5 AI analyses / month
-                </li>
-                <li className="flex items-start gap-2.5 text-[var(--text-primary)]">
-                  <span className="text-brand-500 font-bold shrink-0 mt-px">
-                    ✓
-                  </span>
-                  Full band-score & sentence-level feedback
-                </li>
-                <li className="flex items-start gap-2.5 text-[var(--text-primary)]">
-                  <span className="text-brand-500 font-bold shrink-0 mt-px">
-                    ✓
-                  </span>
-                  Vocabulary & grammar practice
-                </li>
-                <li className="flex items-start gap-2.5 text-[var(--text-primary)]">
-                  <span className="text-brand-500 font-bold shrink-0 mt-px">
-                    ✓
-                  </span>
-                  Sample essay + PDF export
-                </li>
-                <li className="flex items-start gap-2.5 text-[var(--text-primary)]">
-                  <span className="text-brand-500 font-bold shrink-0 mt-px">
-                    ✓
-                  </span>
-                  Download your last 3 reports as PDFs from the dashboard
-                </li>
-              </ul>
-              <Button
-                onClick={() => openPaymentModal(PLANS[0])}
-                variant="secondary"
-                className={`w-full border-brand-300 hover:border-brand-400 ${currentPlan === "basic" ? "opacity-60" : ""}`}
-                disabled={currentPlan === "basic"}
-              >
-                {currentPlan === "basic" ? "Current plan" : "Get Basic →"}
-              </Button>
-            </Card>
 
-            {/* Standard — Popular */}
-            <Card className="gs-plan-card hover:-translate-y-1 transition-[transform,box-shadow] duration-200 p-7 flex flex-col relative border-2 border-[var(--ink-blue)] shadow-[0_8px_32px_color-mix(in_srgb,var(--ink-blue-solid)_18%,transparent)]">
-              <div className="absolute -top-[13px] left-1/2 -translate-x-1/2 bg-[var(--ink-blue-solid)] text-white text-[0.6875rem] font-bold tracking-[0.08em] uppercase px-4 py-[0.3rem] rounded-[20px] whitespace-nowrap">
-                ⭐ Most popular
+              <div className="mt-5">
+                <StudyCalendar span={span} selected={selected} onChange={setSelected} />
               </div>
-              <div className="mb-5">
-                <div
-                  className={`text-[1.25rem] font-bold text-[var(--text-primary)] mb-1`}
-                >
-                  Standard
-                </div>
-                <div className="text-sm text-[var(--text-secondary)]">
-                  Most popular choice
-                </div>
-              </div>
-              <div className="mb-7">
-                <span
-                  className={`${FONT_MONO} text-3xl font-semibold text-[var(--ink-blue)]`}
-                >
-                  29,000
-                </span>
-                <span className="text-sm text-[var(--text-secondary)] ml-1.5">
-                  UZS / month
-                </span>
-                <p className="mt-1.5 text-xs text-[var(--text-secondary)]">
-                  That&rsquo;s {perAnalysisText("standard")} UZS per analysis ·{" "}
-                  <span className="whitespace-nowrap font-semibold text-[var(--ink-blue)]">save up to {savingVsBasic("standard")}%</span>
-                </p>
-              </div>
-              <ul className="flex flex-col gap-2.5 mb-7 flex-1 text-[0.875rem]">
-                <li className="flex items-start gap-2.5 text-[var(--text-primary)]">
-                  <span className="text-brand-500 font-bold shrink-0 mt-px">
-                    ✓
-                  </span>
-                  12 AI analyses / month
-                </li>
-                <li className="flex items-start gap-2.5 text-[var(--text-primary)]">
-                  <span className="text-brand-500 font-bold shrink-0 mt-px">
-                    ✓
-                  </span>
-                  Everything in Basic
-                </li>
-              </ul>
-              <Button
-                onClick={() => openPaymentModal(PLANS[1])}
-                className={`w-full bg-[var(--ink-blue)] border-0 hover:opacity-90 ${currentPlan === "standard" ? "opacity-60" : ""}`}
-                disabled={currentPlan === "standard"}
-              >
-                {currentPlan === "standard" ? "Current plan" : "Get Standard →"}
-              </Button>
-            </Card>
-
-            {/* Premium */}
-            <Card className="gs-plan-card hover:-translate-y-1 hover:shadow-xl transition-[transform,box-shadow] duration-200 p-7 flex flex-col relative bg-linear-to-br from-slate-900 to-brand-900 border-brand-800">
-              <div className="absolute -top-[13px] left-1/2 -translate-x-1/2 bg-[var(--gold)] text-slate-900 text-[0.6875rem] font-bold tracking-[0.08em] uppercase px-4 py-[0.3rem] rounded-[20px] whitespace-nowrap">
-                Best value · save up to {savingVsBasic("premium")}%
-              </div>
-              <div className="mb-5">
-                <div
-                  className={`text-[1.25rem] font-bold text-white mb-1`}
-                >
-                  Premium
-                </div>
-                <div className="text-sm text-white/75">
-                  All features, maximum analyses
-                </div>
-              </div>
-              <div className="mb-7">
-                <span
-                  className={`${FONT_MONO} text-3xl font-semibold text-white`}
-                >
-                  49,000
-                </span>
-                <span className="text-sm text-white/75 ml-1.5">
-                  UZS / month
-                </span>
-                <p className="mt-1.5 text-xs text-white/75">
-                  That&rsquo;s just {perAnalysisText("premium")} UZS per analysis ·{" "}
-                  <span className="whitespace-nowrap font-semibold text-amber-300">save up to {savingVsBasic("premium")}%</span>
-                </p>
-              </div>
-              <ul className="flex flex-col gap-2.5 mb-7 flex-1 text-[0.875rem]">
-                <li className="flex items-start gap-2.5 text-white/85">
-                  <span className="text-brand-300 font-bold shrink-0 mt-px">
-                    ✓
-                  </span>
-                  25 AI analyses / month (highest)
-                </li>
-                <li className="flex items-start gap-2.5 text-white/85">
-                  <span className="text-brand-300 font-bold shrink-0 mt-px">
-                    ✓
-                  </span>
-                  Everything in Basic & Standard
-                </li>
-                <li className="flex items-start gap-2.5 text-white/85">
-                  <span className="text-brand-300 font-bold shrink-0 mt-px">
-                    ✓
-                  </span>
-                  Download your last 10 reports as PDFs (other plans keep 3)
-                </li>
-                <li className="flex items-start gap-2.5 text-white/85">
-                  <span className="text-brand-300 font-bold shrink-0 mt-px">
-                    ✓
-                  </span>
-                  Priority support
-                </li>
-              </ul>
-              <Button
-                onClick={() => openPaymentModal(PLANS[2])}
-                className={`w-full bg-[var(--ink-blue)] border-0 hover:opacity-90 ${currentPlan === "premium" ? "opacity-60" : ""}`}
-                disabled={currentPlan === "premium"}
-              >
-                {currentPlan === "premium" ? "Current plan" : "Get Premium →"}
-              </Button>
-            </Card>
-          </div>
-          <p className="mx-auto mt-5 max-w-[68ch] text-center text-xs leading-relaxed text-[var(--text-secondary)]">
-            The price per analysis is the monthly price divided by the analyses in the plan; you still pay monthly.
-            Savings compare with Basic and assume you use all of the month&rsquo;s analyses.
-          </p>
-
-          {/* Customizable plan */}
-          <div className="gs-plan-card max-w-[640px] mx-auto mt-10 bg-[var(--bg-card)] border-2 border-dashed border-[var(--border-color)] rounded-2xl p-7">
-            <div className="mb-1">
-              <div className="text-lg font-bold text-[var(--text-primary)]">
-                Customizable
-              </div>
-              <div className="text-sm text-[var(--text-secondary)]">
-                {ownCustom
-                  ? `You're on ${ownCustom} analyses a month. Pick another number to change it.`
-                  : "None of the three fit? Pick the exact number of analyses you need."}
-              </div>
-            </div>
-
-            <div className="mt-5 max-h-[280px] overflow-y-auto rounded-xl border border-[var(--border-color)]">
-              <table className="w-full text-sm border-collapse">
-                <thead className="sticky top-0 bg-[var(--bg-subtle)]">
-                  <tr>
-                    <th className="w-10"></th>
-                    <th className="text-left font-semibold text-[var(--text-secondary)] py-2.5 px-3">
-                      AI analyses / month
-                    </th>
-                    <th className={`${FONT_MONO} text-right font-semibold text-[var(--text-secondary)] py-2.5 px-3`}>
-                      Price / month
-                    </th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {CUSTOM_PLAN_PRICES.map(({ analyses, price }) => {
-                    const inputId = `custom-analyses-${analyses}`;
-                    const isSelected = analyses === customAnalyses;
-                    return (
-                      <tr
-                        key={analyses}
-                        className={isSelected ? "bg-brand-50 dark:bg-brand-900/20" : ""}
-                      >
-                        <td className="py-2 px-3">
-                          <input
-                            type="radio"
-                            id={inputId}
-                            name="custom-analyses"
-                            checked={isSelected}
-                            onChange={() => setCustomAnalyses(analyses)}
-                            className="accent-[var(--ink-blue)]"
-                          />
-                        </td>
-                        <td className="py-2 px-3">
-                          <label htmlFor={inputId} className="block cursor-pointer text-[var(--text-primary)]">
-                            {analyses}
-                          </label>
-                        </td>
-                        <td className={`${FONT_MONO} text-right py-2 px-3`}>
-                          <label htmlFor={inputId} className="block cursor-pointer text-[var(--text-primary)]">
-                            {formatUZS(price)}
-                          </label>
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-            </div>
-
-            <div className="flex items-center justify-between gap-4 mt-5 flex-wrap">
-              <p className="text-xs text-[var(--text-secondary)]">
-                {customAnalyses} analyses · {customPerAnalysisText(customPrice, customAnalyses)} UZS per analysis
+              <p className="mt-4 text-xs text-[var(--text-secondary)]">
+                Tap a day to mark it. With a mouse, drag across days to mark several at once.
               </p>
-              <Button
-                onClick={openCustomPayment}
-                variant="secondary"
-                className={`shrink-0 ${ownCustom === customAnalyses ? "opacity-60" : ""}`}
-                disabled={ownCustom === customAnalyses}
-              >
-                {ownCustom === customAnalyses ? "Current plan" : `Get Customizable (${formatUZS(customPrice)}) →`}
-              </Button>
-            </div>
+              {/* On phones the plan sits below the calendar, so the count and the
+                  plan it lands on stay pinned to the bottom of the screen while the
+                  calendar is in view, beside the chat button rather than under it. */}
+              {/* The backing runs the full width under the chat button and fades
+                  to the card, so days scrolling beneath never show beside the bar.
+                  No z-index: the site header, stacked higher, covers it on the way out. */}
+              <div className="sticky bottom-0 -mx-4 -mb-4 mt-1 rounded-b-[18px] bg-[linear-gradient(to_bottom,transparent,var(--bg-card)_20px)] px-4 pt-5 pb-[30px] sm:-mx-6 sm:-mb-6 sm:px-6 lg:hidden">
+                <a
+                  href="#month-plan"
+                  className="mr-14 flex min-h-11 items-center justify-between gap-3 rounded-[10px] border border-[var(--border-color)] bg-[var(--bg-card)] px-3.5 py-2 text-sm text-[var(--text-primary)] no-underline shadow-[var(--shadow-md)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ring)]"
+                >
+                  <span className="min-w-0 truncate">
+                    <span className="font-mono font-semibold tabular-nums">{rec.count}</span> {rec.count === 1 ? "essay" : "essays"}
+                    {rec.plan ? <>: <span className="font-semibold">{recLabel}</span></> : ": mark a day"}
+                  </span>
+                  {rec.plan && <span className="shrink-0 text-xs font-medium text-[var(--ink-blue)]">See the plan</span>}
+                </a>
+              </div>
+            </section>
+
+            {/* What covers it */}
+            <aside id="month-plan" aria-label="The plan for your month" className="scroll-mt-20 lg:sticky lg:top-6">
+              <div className="rounded-[18px] border border-[var(--border-color)] bg-[var(--bg-card)] shadow-[var(--shadow-sm)]">
+                <div className="p-5 sm:p-6">
+                  <p aria-live="polite" className="m-0">
+                    <span className="font-mono text-[2.75rem] font-semibold leading-none tabular-nums tracking-[-0.02em] text-[var(--text-primary)]">
+                      {rec.count}
+                    </span>
+                    <span className="ml-2 text-sm font-medium text-[var(--text-secondary)]">
+                      {rec.count === 1 ? "essay" : "essays"} in 4 weeks
+                    </span>
+                    <span className="mt-2 block text-sm text-[var(--text-primary)]">{summary}</span>
+                  </p>
+                  <div className="mt-5">
+                    <CapacityScale plan={rec.plan} over={rec.over} />
+                  </div>
+                </div>
+
+                <div className="border-t border-[var(--border-color)]">
+                  {rec.plan ? (
+                    <div key={rec.plan} className="plan-sheet-in p-5 sm:p-6">
+                      <div className="flex items-start justify-between gap-3">
+                        <div className="min-w-0">
+                          <h3 className="text-xl font-bold tracking-[-0.02em] text-[var(--text-primary)]">{recLabel}</h3>
+                          <p className="mt-0.5 text-sm text-[var(--text-secondary)]">{TAGLINE[rec.plan]}</p>
+                        </div>
+                        <p className="shrink-0 text-right">
+                          {rec.plan === "free" ? (
+                            <span className="text-[1.75rem] font-semibold leading-none tracking-[-0.02em] text-[var(--text-primary)]">Free</span>
+                          ) : (
+                            <>
+                              <span className="font-mono text-[1.75rem] font-semibold leading-none tabular-nums text-[var(--text-primary)]">
+                                {formatSum(PLAN_INFO[rec.plan].monthlyPriceUZS)}
+                              </span>
+                              <span className="mt-1 block text-xs text-[var(--text-secondary)]">UZS / month</span>
+                            </>
+                          )}
+                        </p>
+                      </div>
+                      <p className="mt-3 text-xs text-[var(--text-secondary)]">{priceLine(rec.plan)}</p>
+
+                      <ul className="mt-4 flex flex-col gap-2 text-sm">
+                        {FEATURES[rec.plan].map((f) => (
+                          <li key={f} className="flex items-start gap-2.5 text-[var(--text-primary)]">
+                            <Check className="mt-0.5 size-4 shrink-0 text-[var(--ink-blue)]" aria-hidden="true" />
+                            {f}
+                          </li>
+                        ))}
+                      </ul>
+
+                      <div className="mt-6">
+                        {lifetime ? (
+                          <p className="m-0 flex items-center gap-2 rounded-[10px] bg-[var(--bg-subtle)] px-3.5 py-2.5 text-sm text-[var(--text-primary)]">
+                            <CircleCheck className="size-4 shrink-0 text-[var(--ink-blue)]" aria-hidden="true" />
+                            You&rsquo;re on Lifetime: every month is covered.
+                          </p>
+                        ) : (
+                          planButton(rec.plan, "default", "h-11 w-full")
+                        )}
+                      </div>
+
+                      {rec.exact && !lifetime && ownCustom !== rec.exact.analyses && (
+                        <button
+                          type="button"
+                          onClick={() => setPaymentTarget({ kind: "custom", analyses: rec.exact!.analyses, price: rec.exact!.price })}
+                          className="mt-3 w-full rounded-md text-center text-xs text-[var(--text-secondary)] underline-offset-4 hover:text-[var(--text-primary)] hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ring)]"
+                        >
+                          Or exactly {rec.exact.analyses} analyses for {formatUZS(rec.exact.price)} a month (Customizable)
+                        </button>
+                      )}
+                    </div>
+                  ) : (
+                    <div className="p-5 text-sm text-[var(--text-secondary)] sm:p-6">
+                      The plan that fits appears here once you mark a day.
+                    </div>
+                  )}
+                </div>
+              </div>
+            </aside>
           </div>
 
-          {/* Balance top-up */}
-          {user && (
-            <div className="gs-plan-card max-w-[560px] mx-auto mt-10 bg-[var(--bg-card)] border border-[var(--border-color)] rounded-2xl p-7">
-              <div className="flex items-center justify-between gap-4 mb-4 flex-wrap">
+          {/* Every plan */}
+          <section aria-labelledby="all-plans" className="mt-16">
+            <div className="flex flex-wrap items-baseline justify-between gap-x-6 gap-y-1">
+              <h2 id="all-plans" className="text-xl font-bold tracking-[-0.02em] text-[var(--text-primary)]">Every plan</h2>
+              <p className="text-sm text-[var(--text-secondary)]">Paid monthly by card transfer. Cancel anytime.</p>
+            </div>
+
+            <ul className="mt-5 overflow-hidden rounded-[18px] border border-[var(--border-color)] bg-[var(--bg-card)] shadow-[var(--shadow-sm)]">
+              {PLAN_ORDER.map((id) => {
+                const fits = rec.plan === id;
+                return (
+                  <li
+                    key={id}
+                    className={cn(
+                      "grid gap-4 border-b border-[var(--border-color)] p-5 transition-colors sm:p-6 md:grid-cols-[200px_minmax(0,1fr)_230px] md:items-center md:gap-8",
+                      fits && "bg-[color-mix(in_srgb,var(--accent)_55%,transparent)]",
+                    )}
+                  >
+                    <div>
+                      <div className="flex flex-wrap items-center gap-2">
+                        <h3 className="text-lg font-bold text-[var(--text-primary)]">{PLAN_INFO[id].label}</h3>
+                        {fits && (
+                          <span className="rounded-full bg-[var(--ink-blue)] px-2.5 py-0.5 text-xs font-semibold text-white dark:text-[var(--primary-foreground)]">
+                            Fits your month
+                          </span>
+                        )}
+                      </div>
+                      <p className="mt-0.5 text-sm text-[var(--text-secondary)]">{TAGLINE[id]}</p>
+                    </div>
+
+                    <ul className="grid gap-x-6 gap-y-1.5 text-sm text-[var(--text-primary)] lg:grid-cols-2">
+                      {FEATURES[id].map((f) => (
+                        <li key={f} className="flex items-start gap-2">
+                          <Check className="mt-0.5 size-4 shrink-0 text-[var(--text-secondary)]" aria-hidden="true" />
+                          {f}
+                        </li>
+                      ))}
+                    </ul>
+
+                    <div className="flex flex-wrap items-center justify-between gap-3 md:flex-col md:items-end md:justify-center md:text-right">
+                      <div>
+                        <p className="m-0">
+                          {id === "free" ? (
+                            <span className="text-xl font-semibold text-[var(--text-primary)]">Free</span>
+                          ) : (
+                            <>
+                              <span className="font-mono text-xl font-semibold tabular-nums text-[var(--text-primary)]">
+                                {formatSum(PLAN_INFO[id].monthlyPriceUZS)}
+                              </span>
+                              <span className="ml-1.5 text-xs text-[var(--text-secondary)]">UZS / month</span>
+                            </>
+                          )}
+                        </p>
+                        <p className="m-0 mt-1 text-xs text-[var(--text-secondary)]">{priceLine(id)}</p>
+                      </div>
+                      {!lifetime && planButton(id, "outline", "h-9 bg-transparent")}
+                    </div>
+                  </li>
+                );
+              })}
+
+              {/* Customizable */}
+              <li className="grid gap-4 p-5 sm:p-6 md:grid-cols-[200px_minmax(0,1fr)_230px] md:items-center md:gap-8">
                 <div>
-                  <div className={`text-lg font-bold text-[var(--text-primary)]`}>
-                    Account Balance
-                  </div>
-                  <div className="text-sm text-[var(--text-secondary)]">
-                    Used for pay-per-use features like Human Check
-                  </div>
+                  <h3 className="text-lg font-bold text-[var(--text-primary)]">Customizable</h3>
+                  <p className="mt-0.5 text-sm text-[var(--text-secondary)]">
+                    {ownCustom ? `You're on ${ownCustom} analyses a month.` : "Pick the exact number you need."}
+                  </p>
                 </div>
-                <div className={`${FONT_MONO} text-2xl font-bold text-emerald-600`}>
-                  {formatUZS(balance)}
+                <div className="flex flex-wrap items-center gap-3 text-sm">
+                  <label htmlFor="custom-analyses" className="text-[var(--text-primary)]">AI analyses a month</label>
+                  <select
+                    id="custom-analyses"
+                    name="custom-analyses"
+                    value={customAnalyses}
+                    onChange={(e) => setCustomAnalyses(Number(e.target.value))}
+                    className="h-9 rounded-md border border-[var(--border-color)] bg-[var(--bg-card)] px-2.5 font-mono text-sm tabular-nums text-[var(--text-primary)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ring)]"
+                  >
+                    {CUSTOM_PLAN_PRICES.map(({ analyses }) => (
+                      <option key={analyses} value={analyses}>{analyses}</option>
+                    ))}
+                  </select>
+                  <span className="text-xs text-[var(--text-secondary)]">
+                    {customPerAnalysisText(customPrice, customAnalyses)} UZS per analysis
+                  </span>
                 </div>
+                <div className="flex flex-wrap items-center justify-between gap-3 md:flex-col md:items-end md:justify-center md:text-right">
+                  <p className="m-0">
+                    <span className="font-mono text-xl font-semibold tabular-nums text-[var(--text-primary)]">{formatSum(customPrice)}</span>
+                    <span className="ml-1.5 text-xs text-[var(--text-secondary)]">UZS / month</span>
+                  </p>
+                  {!lifetime && (
+                    ownCustom === customAnalyses ? (
+                      <Button variant="outline" className="h-9" disabled>Your current plan</Button>
+                    ) : (
+                      <Button variant="outline" className="h-9" onClick={openCustomPayment}>Get Customizable</Button>
+                    )
+                  )}
+                </div>
+              </li>
+            </ul>
+            <p className="mt-4 max-w-[72ch] text-xs leading-relaxed text-[var(--text-secondary)]">
+              The price per analysis is the monthly price divided by the analyses in the plan; you still pay monthly.
+              Savings compare with Basic and assume you use all of the month&rsquo;s analyses.
+            </p>
+          </section>
+
+          {/* Balance */}
+          {user && (
+            <section
+              aria-labelledby="balance-title"
+              className="mt-12 grid gap-5 rounded-[18px] border border-[var(--border-color)] bg-[var(--bg-card)] p-5 shadow-[var(--shadow-sm)] sm:p-6 md:grid-cols-[minmax(0,1fr)_minmax(0,420px)] md:items-end md:gap-10"
+            >
+              <div>
+                <h2 id="balance-title" className="text-lg font-bold text-[var(--text-primary)]">Account balance</h2>
+                <p className="mt-0.5 text-sm text-[var(--text-secondary)]">Used for pay-per-use features like Human Check.</p>
+                <p className="m-0 mt-4 font-mono text-[1.875rem] font-semibold leading-none tabular-nums text-[var(--text-primary)]">
+                  {formatSum(balance)}
+                  <span className="ml-1.5 font-sans text-sm font-medium text-[var(--text-secondary)]">UZS</span>
+                </p>
               </div>
-              <div className="flex items-center gap-2 flex-wrap">
-                <input autoComplete="off"
-                  name="top-up-amount"
-                  type="number"
-                  min={MIN_TOPUP_UZS}
-                  step="1000"
-                  aria-label={`Top-up amount in UZS, minimum ${formatSum(MIN_TOPUP_UZS)}`}
-                  placeholder={`Amount (min ${formatUZS(MIN_TOPUP_UZS)})…`}
-                  value={topUpAmount}
-                  onChange={(e) => setTopUpAmount(e.target.value)}
-                  className={`flex-1 min-w-[160px] h-11 px-4 rounded-xl border bg-[var(--bg-base)] text-[var(--text-primary)] text-sm outline-none focus:border-[var(--ink-blue)] ${topUpTooLow ? "border-red-400" : "border-[var(--border-color)]"}`}
-                />
-                <Button
-                  onClick={openBalanceTopUp}
-                  disabled={!topUpAmount || topUpValue < MIN_TOPUP_UZS}
-                  className="bg-emerald-600 hover:bg-emerald-700 shrink-0"
-                >
-                  Top Up →
-                </Button>
-              </div>
-              <p className={`text-xs mt-2 ${topUpTooLow ? "text-red-500" : "text-[var(--text-secondary)]"}`}>
-                Minimum top-up is {formatUZS(MIN_TOPUP_UZS)}. Enter any amount above that.
-              </p>
-            </div>
+              <form
+                onSubmit={(e) => { e.preventDefault(); openBalanceTopUp(); }}
+                className="min-w-0"
+              >
+                <label htmlFor="top-up-amount" className="text-sm font-medium text-[var(--text-primary)]">Top up</label>
+                <div className="mt-1.5 flex gap-2">
+                  <input
+                    id="top-up-amount"
+                    autoComplete="off"
+                    name="top-up-amount"
+                    type="number"
+                    inputMode="numeric"
+                    min={MIN_TOPUP_UZS}
+                    step="1000"
+                    aria-describedby="top-up-hint"
+                    aria-invalid={topUpTooLow}
+                    placeholder={`e.g. ${formatSum(100000)}…`}
+                    value={topUpAmount}
+                    onChange={(e) => setTopUpAmount(e.target.value)}
+                    className={cn(
+                      "h-10 min-w-0 flex-1 rounded-md border bg-[var(--bg-card)] px-3 font-mono text-sm tabular-nums text-[var(--text-primary)] placeholder:font-sans placeholder:text-[var(--text-secondary)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ring)]",
+                      topUpTooLow ? "border-red-400 dark:border-red-500" : "border-[var(--border-color)]",
+                    )}
+                  />
+                  <Button type="submit" variant="outline" disabled={!topUpAmount || topUpValue < MIN_TOPUP_UZS}>
+                    Top up
+                  </Button>
+                </div>
+                <p id="top-up-hint" className={cn("mt-1.5 text-xs", topUpTooLow ? "text-red-600 dark:text-red-400" : "text-[var(--text-secondary)]")}>
+                  The minimum is {formatUZS(MIN_TOPUP_UZS)}.
+                </p>
+              </form>
+            </section>
           )}
         </div>
       </div>
@@ -670,7 +656,7 @@ export function PricingPage() {
                       <p className="text-base font-medium text-[var(--text-primary)]">{receipt.item}</p>
                       <p className="mt-0.5 text-xs text-[var(--text-secondary)]">{receipt.detail}</p>
                     </div>
-                    <p className={`${FONT_MONO} shrink-0 text-base tabular-nums text-[var(--text-primary)]`}>
+                    <p className={`font-mono shrink-0 text-base tabular-nums text-[var(--text-primary)]`}>
                       {uzsFigure(receipt.amount)}
                     </p>
                   </div>
@@ -693,7 +679,7 @@ export function PricingPage() {
 
                   <div className="mt-4 flex items-baseline justify-between gap-4 border-t border-dashed border-[var(--border-strong)] pt-4">
                     <span className="text-sm font-semibold text-[var(--text-primary)]">Total due</span>
-                    <span className={`${FONT_MONO} text-[1.875rem] font-semibold leading-none tabular-nums text-[var(--text-primary)]`}>
+                    <span className={`font-mono text-[1.875rem] font-semibold leading-none tabular-nums text-[var(--text-primary)]`}>
                       {uzsFigure(receipt.amount)}
                       <span className="ml-1.5 text-sm font-medium text-[var(--text-secondary)]">UZS</span>
                     </span>
@@ -712,18 +698,18 @@ export function PricingPage() {
                     <li className="flex gap-3">
                       <span
                         aria-hidden="true"
-                        className={`${FONT_MONO} flex size-6 shrink-0 items-center justify-center rounded-full border border-[var(--border-strong)] text-xs text-[var(--text-secondary)]`}
+                        className={`font-mono flex size-6 shrink-0 items-center justify-center rounded-full border border-[var(--border-strong)] text-xs text-[var(--text-secondary)]`}
                       >
                         1
                       </span>
                       <div className="min-w-0 flex-1">
                         <p className="text-sm leading-6 text-[var(--text-primary)]">
                           Transfer{" "}
-                          <span className={`${FONT_MONO} font-medium tabular-nums`}>{uzsFigure(receipt.amount)} UZS</span>{" "}
+                          <span className={`font-mono font-medium tabular-nums`}>{uzsFigure(receipt.amount)} UZS</span>{" "}
                           to this card
                         </p>
                         <div className="mt-2.5 rounded-[10px] bg-[var(--bg-subtle)] px-4 py-3 dark:bg-[var(--bg-base)]">
-                          <p className={`${FONT_MONO} whitespace-nowrap text-lg font-medium tabular-nums tracking-[0.02em] text-[var(--text-primary)]`}>
+                          <p className={`font-mono whitespace-nowrap text-lg font-medium tabular-nums tracking-[0.02em] text-[var(--text-primary)]`}>
                             {CARD_NUMBER}
                           </p>
                           <div className="mt-2 flex items-center justify-between gap-3">
@@ -746,7 +732,7 @@ export function PricingPage() {
                     <li className="flex gap-3">
                       <span
                         aria-hidden="true"
-                        className={`${FONT_MONO} flex size-6 shrink-0 items-center justify-center rounded-full border border-[var(--border-strong)] text-xs text-[var(--text-secondary)]`}
+                        className={`font-mono flex size-6 shrink-0 items-center justify-center rounded-full border border-[var(--border-strong)] text-xs text-[var(--text-secondary)]`}
                       >
                         2
                       </span>
