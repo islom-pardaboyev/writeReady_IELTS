@@ -228,8 +228,8 @@ await seedReport('u1', 'Task 1', Q1, ESSAY1, 7);
 await seedReport('u1', 'Task 2', Q2, ESSAY2, 7.5);
 const mock = { mode: 'mock' as const, tasks: [t1(), t2()] };
 let result = await consent.submitConsent('u1', mock, 'yes', ['task1', 'task2']);
-check('Mock: both tasks shared', result.sampleIds.length === 2 && result.credited);
-check('Mock with two tasks gives +1 in total', fake.table('users').get('u1')?.bonusAnalyses === 1, fake.table('users').get('u1'));
+check('Mock: both tasks shared, the free assessment reserved', result.sampleIds.length === 2 && result.creditPending);
+check('sharing alone pays nothing', fake.table('users').get('u1')?.bonusAnalyses === 0, fake.table('users').get('u1'));
 const samples = fake.all(model.SAMPLES);
 const subs = fake.all(model.SUBMISSIONS);
 check('each shared task is its own sample', samples.length === 2 && subs.length === 2);
@@ -246,7 +246,44 @@ check('both share one consent code', new Set(samples.map((s) => (s.review as { c
 check('Task 1 sample keeps the bank question text', samples.find((s) => s.taskType === 'task1')?.questionText === Q1);
 check('nothing offered after answering', (await consent.consentStatus('u1', mock)).offer.length === 0);
 await rejects('the same answer again is refused', () => consent.submitConsent('u1', mock, 'yes', ['task1', 'task2']), 'ALREADY_DECIDED');
-check('...and gives no second credit', fake.table('users').get('u1')?.bonusAnalyses === 1);
+check('...and reserves no second credit', fake.all(model.CREDITS).length === 1 && fake.all(model.CREDITS)[0].state === 'pending');
+
+// The credit is paid when the admin approves, once per consent action.
+const [mockT1, mockT2] = result.sampleIds;
+const firstPress = await review.applyPress('approve', mockT1);
+check('approving pays the free assessment', fake.table('users').get('u1')?.bonusAnalyses === 1 && fake.all(model.CREDITS)[0].state === 'paid');
+check('the press says the student was paid', firstPress.kind === 'done' && firstPress.label.includes('+1 free report'), firstPress);
+const bell = fake.all('notifications/u1/items');
+check('the student is told in the bell', bell.length === 1 && bell[0].type === 'sample_published' && bell[0].credited === true && String(bell[0].preview).includes('1 free full AI report'), bell);
+check('...and on the dashboard', String(fake.table('users').get('u1')?.notification).includes('now a sample answer'));
+await review.applyPress('approve', mockT2);
+check('Mock with two approved tasks gives +1 in total', fake.table('users').get('u1')?.bonusAnalyses === 1);
+check('the second approval still thanks the student', fake.all('notifications/u1/items').length === 2 && fake.all('notifications/u1/items').some((n) => n.credited === false));
+
+// Rejected: nothing is paid.
+freshWorld();
+await seedReport('u1', 'Task 2', Q2, ESSAY2, 8.5);
+const fake9 = await consent.submitConsent('u1', { mode: 'quickwrite', tasks: [t2()] }, 'yes', ['task2']);
+await review.applyPress('reject', fake9.sampleIds[0]);
+check('a rejected essay earns nothing', fake.table('users').get('u1')?.bonusAnalyses === 0 && fake.all(model.CREDITS)[0].state === 'pending');
+check('...and the student is not notified', fake.all('notifications/u1/items').length === 0);
+
+// Shared before this change: the credit was paid then, so approval pays nothing more.
+freshWorld();
+await seedReport('u1', 'Task 2', Q2, ESSAY2, 8);
+const legacy = await consent.submitConsent('u1', { mode: 'quickwrite', tasks: [t2()] }, 'yes', ['task2']);
+const legacyCredit = fake.all(model.CREDITS)[0];
+fake.put(model.CREDITS, legacyCredit.id, { uid: 'u1', consentId: 'OLD' });
+await review.applyPress('approve', legacy.sampleIds[0]);
+check('a credit paid at sharing (before this change) is not paid twice', fake.table('users').get('u1')?.bonusAnalyses === 0);
+
+// A deleted account: nothing paid, no profile recreated.
+freshWorld();
+await seedReport('u1', 'Task 2', Q2, ESSAY2, 8);
+const gone = await consent.submitConsent('u1', { mode: 'quickwrite', tasks: [t2()] }, 'yes', ['task2']);
+fake.table('users').delete('u1');
+await review.applyPress('approve', gone.sampleIds[0]);
+check('a deleted account is not recreated by an approval', !fake.table('users').has('u1') && fake.all('notifications/u1/items').length === 0);
 
 // Two identical requests at once (a double tap): one wins, one credit.
 freshWorld();
@@ -258,7 +295,7 @@ const both = await Promise.allSettled([
 ]);
 check('double tap: one succeeds', both.filter((r) => r.status === 'fulfilled').length === 1);
 check('double tap: one sample', fake.all(model.SAMPLES).length === 1);
-check('double tap: +1 credit only', fake.table('users').get('u1')?.bonusAnalyses === 1);
+check('double tap: one credit reserved', fake.all(model.CREDITS).length === 1);
 
 // Only one Mock task chosen: the other is a "no", never asked again.
 freshWorld();
@@ -273,20 +310,20 @@ check('nothing offered afterwards', (await consent.consentStatus('u1', mock)).of
 freshWorld();
 await seedReport('u1', 'Task 2', Q2, ESSAY2, 7);
 result = await consent.submitConsent('u1', mock, 'yes', ['task2']);
-check('first task of the session earns +1', result.credited && fake.table('users').get('u1')?.bonusAnalyses === 1);
+check('first task of the session reserves +1', result.creditPending);
 await seedReport('u1', 'Task 1', Q1, ESSAY1, 8);
 offer = (await consent.consentStatus('u1', mock)).offer;
 check('the later task is offered', offer.map((o) => o.taskType).join() === 'task1', offer);
 check('...without promising a second free assessment', (await consent.consentStatus('u1', mock)).credit === false);
 result = await consent.submitConsent('u1', mock, 'yes', ['task1']);
 check('the later task is shared', result.sampleIds.length === 1);
-check('...without a second credit for the same Mock', !result.credited && fake.table('users').get('u1')?.bonusAnalyses === 1);
+check('...without a second credit for the same Mock', !result.creditPending && fake.all(model.CREDITS).length === 1);
 
 // "No thanks": no sample, no credit, never asked again.
 freshWorld();
 await seedReport('u1', 'Task 2', Q2, ESSAY2, 7);
 result = await consent.submitConsent('u1', quick, 'no', []);
-check('"No thanks" shares nothing and gives nothing', result.sampleIds.length === 0 && !result.credited && fake.all(model.SAMPLES).length === 0 && fake.table('users').get('u1')?.bonusAnalyses === 0);
+check('"No thanks" shares nothing and gives nothing', result.sampleIds.length === 0 && !result.creditPending && fake.all(model.SAMPLES).length === 0 && fake.all(model.CREDITS).length === 0);
 check('"No thanks" is remembered', (await consent.consentStatus('u1', quick)).offer.length === 0);
 await rejects('"yes" with nothing chosen is refused', async () => {
   await seedReport('u1', 'Task 1', Q1, ESSAY1, 7);
@@ -305,10 +342,10 @@ for (let i = 0; i < DAILY_CONSENT_LIMIT + 1; i++) {
 for (let i = 0; i < DAILY_CONSENT_LIMIT; i++) {
   await consent.submitConsent('u1', { mode: 'quickwrite', tasks: [t2(`Essay number ${i}. ${words(270)}`)] }, 'yes', ['task2']);
 }
-check('three shares in a day give +3', fake.table('users').get('u1')?.bonusAnalyses === 3);
+check('three shares in a day reserve 3', fake.all(model.CREDITS).length === 3);
 await rejects('a fourth share that day is refused', () =>
   consent.submitConsent('u1', { mode: 'quickwrite', tasks: [t2(`Essay number 3. ${words(270)}`)] }, 'yes', ['task2']), 'DAILY_LIMIT');
-check('...with no fourth credit or sample', fake.table('users').get('u1')?.bonusAnalyses === 3 && fake.all(model.SAMPLES).length === 3);
+check('...with no fourth credit or sample', fake.all(model.CREDITS).length === 3 && fake.all(model.SAMPLES).length === 3);
 check('"No thanks" does not count towards the limit', (await consent.submitConsent('u1', { mode: 'quickwrite', tasks: [t2(`Essay number 3. ${words(270)}`)] }, 'no', [])).decision === 'no');
 
 // A score-only (free) report has no vocabulary to share.
@@ -379,6 +416,8 @@ check('student sample: Approve and Reject only', kb(t2msg).map((b) => b.text).jo
 check('the sample remembers its messages', !!(fake.all(model.SAMPLES)[0].review as { sentAt?: unknown }).sentAt);
 calls = [];
 check('a sample is never sent twice', !(await review.sendForReview(shared.sampleIds[0])) && calls.length === 0);
+check('no writing record is said plainly', caption.includes('No writing record'), caption);
+
 
 // Long essays are split, buttons on the last part.
 const long = review.reviewMessages({
@@ -428,7 +467,7 @@ const published = fake.table(model.SAMPLES).get(target)!;
 check('Approve publishes', published.status === 'published' && !!published.publishedAt && !!published.pageChangedAt);
 check('Approve updates the submission too', fake.table(model.SUBMISSIONS).get(target)?.status === 'published');
 const edit = calls.find((c) => c.method === 'editMessageText');
-check('the message is edited to say Published', !!edit && String(edit.body.text).endsWith('<b>✅ Published</b>'), calls.map((c) => c.method));
+check('the message is edited to say Published, and that the student was paid', !!edit && String(edit.body.text).endsWith('<b>✅ Published · +1 free report sent to the student</b>'), edit && String(edit.body.text).slice(-80));
 check('the buttons are gone', !!edit && edit.body.reply_markup === undefined);
 calls = [];
 await webhook(press(`smp:r:${target}`));
@@ -583,7 +622,7 @@ const cq = fake.all(model.CUSTOM_QUESTIONS);
 check('own question shared: a custom question is created with the chart', cq.length === 1 && cq[0].id.startsWith('cq_') && cq[0].chart === PNG_CHART && cq[0].text === OWN1 && cq[0].taskType === 'task1');
 check('the sample points at it and is marked custom', ownSample.questionId === cq[0].id && ownSample.questionSource === 'custom' && ownSample.status === 'pending');
 check('no partner source credit on a student\'s own question', ownSample.sourceCredit === undefined);
-check('the credit is given as usual', own.credited && fake.table('users').get('u1')?.bonusAnalyses === 1);
+check('the credit is reserved as usual', own.creditPending);
 check('the own question never joins the practice bank', !fake.table(model.BANK.task1).has(cq[0].id));
 await review.sendForReview(own.sampleIds[0]);
 const ownPhoto = calls.find((c) => c.method === 'sendPhoto');
@@ -645,6 +684,45 @@ check('summary format', text.startsWith('📊 Published today: 3 | Waiting: 5 | 
 check('tiny costs keep their digits', daily.formatCost(0.0031) === '$0.0031');
 check('cron picks the job from the schedule', jobFor(undefined, '0 2 * * *') === 'morning' && jobFor(undefined, '0 15 * * *') === 'evening' && jobFor('evening', '0 2 * * *') === 'evening');
 check('Tashkent day starts at 19:00 UTC', daily.tashkentDayStart(new Date('2026-10-06T20:00:00Z')).toISOString() === '2026-10-06T19:00:00.000Z');
+
+// ── How it was written, and where it was seen before ────────────────────────
+
+section('writing record and seen before');
+check('writing record: typed slowly reads as normal', review.writingLine({ pastedChars: 30, chars: 1600, activeSeconds: 34 * 60 }) === '✍️ 34 min writing · 2% pasted', review.writingLine({ pastedChars: 30, chars: 1600, activeSeconds: 34 * 60 }));
+check('writing record: mostly pasted is flagged', review.writingLine({ pastedChars: 1550, chars: 1600, activeSeconds: 40 }) === '⚠️ under 1 min writing · 97% pasted');
+check('writing record: typed faster than anyone can is flagged', review.writingLine({ pastedChars: 0, chars: 1600, activeSeconds: 60 }).startsWith('⚠️'));
+check('a writing record that is not believable is dropped', model.readWritingRecord({ pastedChars: -1, chars: 10, activeSeconds: 5 }) === null && model.readWritingRecord({ pastedChars: 1, chars: 0, activeSeconds: 5 }) === null && model.readWritingRecord('x') === null);
+check('pasted never counts above the essay length', model.readWritingRecord({ pastedChars: 5000, chars: 1600, activeSeconds: 5 })?.pastedChars === 1600);
+freshWorld();
+calls = [];
+await seedReport('u1', 'Task 2', Q2, ESSAY2, 8);
+const typed = await consent.submitConsent('u1', consent.readSession({ mode: 'quickwrite', tasks: [{ taskType: 'Task 2', questionId: 'q2', question: Q2, essay: ESSAY2, writing: { pastedChars: 1500, chars: 1520, activeSeconds: 50 } }] }), 'yes', ['task2']);
+const typedSample = fake.table(model.SAMPLES).get(typed.sampleIds[0])!;
+check('the writing record is kept for the reviewer', (typedSample.review as { writing?: { pastedChars: number } }).writing?.pastedChars === 1500);
+check('...and privately with the submission', (fake.table(model.SUBMISSIONS).get(typed.sampleIds[0])?.writing as { chars: number })?.chars === 1520);
+await review.sendForReview(typed.sampleIds[0]);
+check('Telegram shows the pasted essay with a warning', calls.some((c) => String(c.body.text).includes('⚠️ under 1 min writing · 99% pasted')), calls.map((c) => String(c.body.text).slice(0, 200)));
+check('a first share of new text is not flagged as seen', !(typedSample.review as { seenBefore?: string }).seenBefore);
+// Another account shares the very same essay.
+await seedReport('u2', 'Task 2', Q2, ESSAY2, 8);
+const copied = await consent.submitConsent('u2', { mode: 'quickwrite', tasks: [t2()] }, 'yes', ['task2']);
+check('the same text from another account is flagged', (fake.table(model.SAMPLES).get(copied.sampleIds[0])!.review as { seenBefore?: string }).seenBefore === 'shared');
+// An essay copied from a sample answer already on the site.
+freshWorld();
+const COPIED = `This sample essay is on the site already. ${words(270)}`;
+fake.put(model.SAMPLES, 'onsite', { questionId: 'q2', taskType: 'task2', status: 'published', sourceType: 'ai', sampleAnswer: COPIED });
+await seedReport('u1', 'Task 2', Q2, COPIED, 8);
+const fromSite = await consent.submitConsent('u1', { mode: 'quickwrite', tasks: [t2(COPIED)] }, 'yes', ['task2']);
+check('an essay copied from a sample answer is flagged', (fake.table(model.SAMPLES).get(fromSite.sampleIds[0])!.review as { seenBefore?: string }).seenBefore === 'sample');
+// Marked from another account first: its score lock is older than this student's report.
+freshWorld();
+const MARKED = `An essay someone else had marked first. ${words(270)}`;
+await seedReport('u1', 'Task 2', Q2, MARKED, 8);
+const markedKey = essayKeys('Task 2', Q2, MARKED).contentKey;
+const { Timestamp: Ts } = await import('firebase-admin/firestore');
+fake.put('score_locks', markedKey, { createdAt: Ts.fromMillis(Date.now() - 3 * 3600 * 1000) });
+const marked = await consent.submitConsent('u1', { mode: 'quickwrite', tasks: [t2(MARKED)] }, 'yes', ['task2']);
+check('an essay marked from another account first is flagged', (fake.table(model.SAMPLES).get(marked.sampleIds[0])!.review as { seenBefore?: string }).seenBefore === 'marked');
 
 console.log(`\n${passes} passed, ${failures} failed`);
 process.exit(failures ? 1 : 0);

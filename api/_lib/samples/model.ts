@@ -82,6 +82,34 @@ export type SampleMode = 'mock' | 'practice' | 'quickwrite' | 'relax';
 export type SampleSource = 'student' | 'ai';
 export type SampleStatus = 'pending' | 'published' | 'rejected' | 'needs_manual';
 
+/**
+ * How a shared essay was written, as the student's browser counted it
+ * (src/lib/writingTrace.ts): a hint for the reviewer, never proof.
+ */
+export interface WritingRecord {
+  pastedChars: number;
+  chars: number;
+  activeSeconds: number;
+}
+
+/** Reads a writing record from a request, or null when it is missing or not believable. */
+export function readWritingRecord(raw: unknown): WritingRecord | null {
+  if (!raw || typeof raw !== 'object') return null;
+  const r = raw as Record<string, unknown>;
+  const int = (v: unknown, max: number) => (typeof v === 'number' && Number.isInteger(v) && v >= 0 && v <= max ? v : null);
+  const chars = int(r.chars, 20_000);
+  const pasted = int(r.pastedChars, 20_000);
+  const seconds = int(r.activeSeconds, 24 * 3600);
+  if (chars === null || pasted === null || seconds === null || !chars) return null;
+  return { pastedChars: Math.min(pasted, chars), chars, activeSeconds: seconds };
+}
+
+/**
+ * Where else this exact essay text has been seen: shared by another account,
+ * already a sample answer on the site, or checked from another account first.
+ */
+export type SeenBefore = 'shared' | 'sample' | 'marked';
+
 export const MODES: readonly SampleMode[] = ['mock', 'practice', 'quickwrite', 'relax'];
 export const MODE_LABEL: Record<SampleMode, string> = {
   mock: 'Mock',

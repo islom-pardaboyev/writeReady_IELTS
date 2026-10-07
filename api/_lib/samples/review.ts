@@ -1,11 +1,11 @@
 import { timingSafeEqual } from 'crypto';
-import { FieldValue } from 'firebase-admin/firestore';
+import { FieldValue, type DocumentReference } from 'firebase-admin/firestore';
 import { db } from '../db.js';
 import { esc, tg, tgUpload, TelegramError } from '../telegramApi.js';
 import { CAPTION_LIMIT } from '../telegramText.js';
 import {
-  MODE_LABEL, QUEUE, SAMPLES, SUBMISSIONS,
-  type Criteria, type SampleMode, type SampleStatus, type SampleTaskType, type SampleVocab,
+  CREDITS, MODE_LABEL, QUEUE, SAMPLES, SUBMISSIONS,
+  type Criteria, type SampleMode, type SampleStatus, type SampleTaskType, type SampleVocab, type SeenBefore, type WritingRecord,
 } from './model.js';
 import { loadChartDataUrl } from './questions.js';
 
@@ -75,8 +75,33 @@ interface ReviewSample {
   mode?: SampleMode;
   status: SampleStatus;
   questionSource?: 'bank' | 'custom';
-  review?: { consentId?: string; buttonHtml?: string };
+  review?: { consentId?: string; buttonHtml?: string; writing?: WritingRecord; seenBefore?: SeenBefore };
 }
+
+/** Half or more of the essay pasted in, or written faster than anyone types an essay. */
+const PASTED_SHARE = 0.5;
+/** About 40 words a minute: a fast typist, sustained. */
+const FASTEST_CHARS_PER_SECOND = 4;
+
+/**
+ * "✍️ 34 min writing · 2% pasted", with a ⚠️ when the numbers look like an
+ * essay that was pasted in. The student's browser counted them
+ * (src/lib/writingTrace.ts), so they are a hint, not proof.
+ */
+export function writingLine(w: WritingRecord | undefined): string {
+  if (!w) return '✍️ No writing record (written in another browser, or the Telegram bot)';
+  const pct = Math.round((w.pastedChars / w.chars) * 100);
+  const time = w.activeSeconds < 60 ? 'under 1 min' : `${Math.round(w.activeSeconds / 60)} min`;
+  const typed = w.chars - w.pastedChars;
+  const suspicious = w.pastedChars / w.chars >= PASTED_SHARE || typed > Math.max(w.activeSeconds, 1) * FASTEST_CHARS_PER_SECOND;
+  return `${suspicious ? '⚠️' : '✍️'} ${time} writing · ${pct}% pasted`;
+}
+
+const SEEN_LINE: Record<SeenBefore, string> = {
+  shared: '⚠️ The same text was shared before from another account',
+  sample: '⚠️ The same text is already a sample answer on the site',
+  marked: '⚠️ The same text was checked on WriteReady before, from another account',
+};
 
 const fmtBand = (n: number) => (Number.isInteger(n) ? String(n) : n.toFixed(1));
 
@@ -100,6 +125,10 @@ export function headerLines(s: ReviewSample): string[] {
   // came from the same student's test.
   if (s.sourceType === 'student' && (s.mode === 'mock' || s.mode === 'practice')) {
     lines.push(`${task} of 2 • #${s.review?.consentId ?? '------'}`);
+  }
+  if (s.sourceType === 'student') {
+    lines.push(writingLine(s.review?.writing));
+    if (s.review?.seenBefore && SEEN_LINE[s.review.seenBefore]) lines.push(SEEN_LINE[s.review.seenBefore]);
   }
   // Approving it publishes the student's question (and chart) too.
   if (s.questionSource === 'custom') lines.push(`📝 Student's own question${s.taskType === 'task1' ? ' and chart' : ''}: approving publishes them too`);
@@ -271,16 +300,50 @@ export function readPress(data: string | undefined): { action: Action; sampleId:
 
 type Outcome = { kind: 'done'; label: string } | { kind: 'already'; status: string } | { kind: 'missing' } | { kind: 'refused'; reason: string };
 
-/** Applies a press to the sample. Exported for scripts/test-samples.ts. */
+/** What the student reads in the bell and on the dashboard when their essay is published. */
+export function publishedNotice(taskType: SampleTaskType, credited: boolean): string {
+  const task = taskType === 'task1' ? 'Task 1' : 'Task 2';
+  return credited
+    ? `🎉 Your ${task} essay is now a sample answer for other students. As a thank-you, 1 free full AI report has been added to your account.`
+    : `🎉 Your ${task} essay is now a sample answer for other students. Thank you for sharing it!`;
+}
+
+/**
+ * Applies a press to the sample. Approving a student's essay also pays the
+ * free assessment that sharing reserved (./consent.ts), once per consent
+ * action: the first approved essay of a Mock pays it, the second finds it
+ * paid. A credit written before payment moved here has no `state` and was
+ * paid when it was shared. Exported for scripts/test-samples.ts.
+ */
 export async function applyPress(action: Action, sampleId: string): Promise<Outcome> {
   const store = db();
   const ref = store.collection(SAMPLES).doc(sampleId);
   return store.runTransaction(async (tx): Promise<Outcome> => {
     const snap = await tx.get(ref);
     if (!snap.exists) return { kind: 'missing' };
-    const s = snap.data() as { status: SampleStatus; sourceType: string; questionId: string; submissionId?: string };
+    const s = snap.data() as { status: SampleStatus; sourceType: string; questionId: string; taskType: SampleTaskType; submissionId?: string };
     if (s.status !== 'pending') return { kind: 'already', status: s.status };
     if (action === 'regenerate' && s.sourceType !== 'ai') return { kind: 'refused', reason: 'Only AI drafts can be regenerated.' };
+
+    // Every read before the first write, as a transaction requires.
+    let pay: { uid: string; creditRef: DocumentReference } | null = null;
+    let studentUid: string | null = null;
+    if (action === 'approve' && s.submissionId) {
+      const sub = await tx.get(store.collection(SUBMISSIONS).doc(s.submissionId));
+      const uid = sub.exists ? sub.get('userId') : undefined;
+      const sessionKey = sub.exists ? sub.get('sessionKey') : undefined;
+      if (typeof uid === 'string' && uid) {
+        const userSnap = await tx.get(store.collection('users').doc(uid));
+        // An account deleted since sharing gets nothing, and is not recreated.
+        if (userSnap.exists) studentUid = uid;
+        if (userSnap.exists && typeof sessionKey === 'string' && sessionKey) {
+          const creditRef = store.collection(CREDITS).doc(sessionKey);
+          const credit = await tx.get(creditRef);
+          if (credit.exists && credit.get('state') === 'pending') pay = { uid, creditRef };
+        }
+      }
+    }
+
     const now = FieldValue.serverTimestamp();
     const status: SampleStatus = action === 'approve' ? 'published' : 'rejected';
     tx.set(ref, {
@@ -293,9 +356,30 @@ export async function applyPress(action: Action, sampleId: string): Promise<Outc
     if (action === 'regenerate') {
       tx.set(store.collection(QUEUE).doc(s.questionId), { kind: 'regenerate', requestedAt: now, replaces: sampleId });
     }
+    if (pay) {
+      tx.set(pay.creditRef, { state: 'paid', paidAt: now, sampleId }, { merge: true });
+    }
+    if (studentUid) {
+      // Shown as the dashboard banner and in the bell, like an admin's bonus.
+      const notice = publishedNotice(s.taskType, pay !== null);
+      tx.set(store.collection('users').doc(studentUid), {
+        notification: notice,
+        ...(pay ? { bonusAnalyses: FieldValue.increment(1) } : {}),
+      }, { merge: true });
+      tx.create(store.collection('notifications').doc(studentUid).collection('items').doc(), {
+        type: 'sample_published',
+        fromUserName: 'WriteReady',
+        preview: notice,
+        credited: pay !== null,
+        read: false,
+        createdAt: now,
+      });
+    }
     return {
       kind: 'done',
-      label: action === 'approve' ? '✅ Published' : action === 'reject' ? '❌ Rejected' : '🔁 Rejected — a new draft is queued',
+      label: action === 'approve'
+        ? pay ? '✅ Published · +1 free report sent to the student' : '✅ Published'
+        : action === 'reject' ? '❌ Rejected' : '🔁 Rejected — a new draft is queued',
     };
   });
 }

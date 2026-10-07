@@ -10,7 +10,7 @@ import { sendForReview } from '../samples/review.js';
  *        -> { offer: [{ taskType, band }], credit }   essays the student may be asked
  *           about, and whether sharing still earns the free assessment
  *   POST { action: 'consent', mode, tasks, decision: 'yes' | 'no', share: ['task1', ...] }
- *        -> { shared, credited }
+ *        -> { shared, creditPending }   creditPending: +1 free assessment once the admin approves
  *
  * `tasks` is every essay on the feedback page ({ taskType, questionId?,
  * question, essay }). The rules are in api/_lib/samples/consent.ts.
@@ -46,7 +46,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       for (const id of result.sampleIds) {
         await sendForReview(id).catch((e) => console.error(`samples: could not send ${id} for review:`, e));
       }
-      return res.status(200).json({ shared: result.sampleIds.length, credited: result.credited });
+      return res.status(200).json({ shared: result.sampleIds.length, creditPending: result.creditPending });
     }
     return res.status(400).json({ error: 'Unknown action.' });
   } catch (e) {

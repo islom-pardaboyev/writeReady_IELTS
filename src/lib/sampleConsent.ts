@@ -1,5 +1,6 @@
 import { auth } from '@/firebase/firebase';
 import type { ReportData, ReportMode } from './reportEncoding';
+import { traceFor, type WritingTrace } from './writingTrace';
 
 /**
  * The feedback page's side of "Can we show your essay as a sample answer?"
@@ -22,6 +23,8 @@ export interface SessionTask {
    */
   chart?: string;
   hasChart?: boolean;
+  /** How this browser saw it written (src/lib/writingTrace.ts), sent only with the answer. */
+  writing?: WritingTrace;
 }
 
 export interface Offer {
@@ -60,7 +63,7 @@ async function post<T>(body: Record<string, unknown>): Promise<T> {
 
 /** The essays the student may be asked about, and whether sharing still earns the free assessment. */
 export async function fetchOffer(mode: ReportMode, tasks: SessionTask[]): Promise<{ offer: Offer[]; credit: boolean }> {
-  const light = tasks.map(({ chart: _chart, ...t }) => t);
+  const light = tasks.map(({ chart: _chart, writing: _writing, ...t }) => t);
   const { offer, credit } = await post<{ offer?: Offer[]; credit?: boolean }>({ action: 'status', mode, tasks: light });
   return { offer: Array.isArray(offer) ? offer : [], credit: credit === true };
 }
@@ -70,6 +73,10 @@ export function sendConsent(
   tasks: SessionTask[],
   decision: 'yes' | 'no',
   share: SampleTask[],
-): Promise<{ shared: number; credited: boolean }> {
-  return post({ action: 'consent', mode, tasks, decision, share });
+): Promise<{ shared: number; creditPending: boolean }> {
+  const withWriting = tasks.map((t) => {
+    const writing = traceFor(t.essay);
+    return writing ? { ...t, writing } : t;
+  });
+  return post({ action: 'consent', mode, tasks: withWriting, decision, share });
 }

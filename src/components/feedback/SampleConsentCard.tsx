@@ -45,7 +45,7 @@ export function SampleConsentCard({
   // The answer, and which 7+ tasks were on the page when it was given. When
   // the other task of a Mock is marked later and also reaches 7, the server
   // is asked again and the card comes back for that task alone.
-  const [done, setDone] = useState<{ answer: { credited: boolean } | 'no'; for: string } | null>(null);
+  const [done, setDone] = useState<{ answer: { creditPending: boolean } | 'no'; for: string } | null>(null);
   const [error, setError] = useState('');
   const answered = done?.for === candidates ? done.answer : null;
 
@@ -74,8 +74,8 @@ export function SampleConsentCard({
         <div>
           <p className="m-0 font-semibold">Thank you for sharing!</p>
           <p className="m-0 mt-1 text-sm">
-            {done.credited ? 'One free assessment has been added to your account. ' : ''}
             Your essay will appear without your name after a quick review.
+            {done.creditPending ? ' Once it is published, 1 free full report is added to your account.' : ''}
           </p>
         </div>
       </div>
@@ -88,7 +88,7 @@ export function SampleConsentCard({
     setError('');
     try {
       const result = await sendConsent(mode, tasks, decision, decision === 'yes' ? [...chosen] : []);
-      setDone({ answer: decision === 'yes' ? { credited: result.credited } : 'no', for: candidates });
+      setDone({ answer: decision === 'yes' ? { creditPending: result.creditPending } : 'no', for: candidates });
       setOffer([]);
       if (decision === 'yes') onAnswered?.();
     } catch (e) {
@@ -127,7 +127,7 @@ export function SampleConsentCard({
           <p className="m-0 mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-[var(--text-secondary)]">
             {credit && (
               <span className="inline-flex items-center gap-1.5">
-                <Gift className="h-4 w-4 text-[var(--ink-blue)]" aria-hidden /> You'll get +1 free assessment.
+                <Gift className="h-4 w-4 text-[var(--ink-blue)]" aria-hidden /> If we publish it, you get 1 free full report.
               </span>
             )}
             <span className="inline-flex items-center gap-1.5">

@@ -6,7 +6,8 @@ import { extractJson, type BandScores } from '../bandScore.js';
 import { essayKeys, loadSavedReport, normalizeText, LIMITS, type SavedReport, type TaskType } from '../savedReports.js';
 import {
   BANK, BANK_SOURCE_CREDIT, CONSENTS, CONSENT_LIMITS, CREDITS, CUSTOM_QUESTIONS, MAX_CUSTOM_CHART_CHARS, QUESTION_META, SAMPLES, SUBMISSIONS,
-  chartExt, countWords, imageUrlFor, type Criteria, type SampleMode, type SampleTaskType, type SampleVocab,
+  chartExt, countWords, imageUrlFor, readWritingRecord,
+  type Criteria, type SampleMode, type SampleTaskType, type SampleVocab, type SeenBefore, type WritingRecord,
 } from './model.js';
 import { DAILY_CONSENT_LIMIT, MIN_BAND, qualifyingTasks, readMode } from './qualify.js';
 import { stripPersonalDetails } from './pii.js';
@@ -27,11 +28,14 @@ import { findCustomQuestion, questionKeyOf, readUploadedChart } from './question
  * (customQuestions), shared together with the essay, and, for Task 1, the
  * chart the student uploaded: the admin approves all of it at once.
  *
- * Sharing gives one free assessment per consent action, however many tasks
- * the action shares: a Mock with two Band 7 tasks still gives +1. The credit
- * is written in the same transaction as the consent, under a key made from
- * the student and every essay in the session, so sending the same answer
- * twice (a double tap, a retry, a second tab) can never pay out twice.
+ * Sharing earns one free assessment per consent action, however many tasks
+ * the action shares: a Mock with two Band 7 tasks still gives +1. It is paid
+ * only when the admin approves one of the shared essays (./review.ts
+ * applyPress), so an essay pasted in from ChatGPT or copied from a website,
+ * and rejected, earns nothing. Sharing reserves it: a 'pending' credit
+ * document under a key made from the student and every essay in the session,
+ * written in the same transaction as the consent, so sending the same answer
+ * twice (a double tap, a retry, a second tab) can never reserve or pay twice.
  */
 
 export class ConsentError extends Error {
@@ -53,6 +57,8 @@ export interface SessionTask {
   chart: string | null;
   /** Relax Task 1: whether the page holds a chart, for the status check. */
   hasChart: boolean;
+  /** How the browser saw it written, sent with the answer (src/lib/writingTrace.ts). */
+  writing: WritingRecord | null;
 }
 
 export interface Session {
@@ -84,7 +90,10 @@ export function readSession(body: unknown): Session {
     }
     const questionId = typeof t.questionId === 'string' && ID.test(t.questionId) ? t.questionId : null;
     const chart = taskType === 'task1' ? readUploadedChart(t.chart, MAX_CUSTOM_CHART_CHARS) : null;
-    return { taskType, questionId, question, essay, chart, hasChart: !!chart || (taskType === 'task1' && t.hasChart === true) };
+    return {
+      taskType, questionId, question, essay, chart, hasChart: !!chart || (taskType === 'task1' && t.hasChart === true),
+      writing: readWritingRecord(t.writing),
+    };
   });
   return { mode, tasks };
 }
@@ -202,6 +211,40 @@ export function sessionKey(uid: string, contentKeys: string[]): string {
   return createHash('sha256').update(`${uid}\n${[...contentKeys].sort().join('\n')}`).digest('hex');
 }
 
+// ── Seen before ──────────────────────────────────────────────────────────────
+
+/** Longer than the moment between a report's score lock and its saved copy. */
+const SAME_MARKING_MS = 60_000;
+
+const ms = (v: unknown) => (v && typeof (v as { toMillis?: unknown }).toMillis === 'function' ? (v as { toMillis(): number }).toMillis() : null);
+
+/**
+ * Whether this exact essay text is known from somewhere else, for the
+ * reviewer: another account shared it, it is already a sample answer on the
+ * site (copied from a question page), or another account had it marked first
+ * (its score lock is older than this student's own report of it).
+ */
+async function seenBefore(uid: string, t: CheckedTask, essay: string): Promise<SeenBefore | null> {
+  const store = db();
+  const shared = await store.collection(SUBMISSIONS).where('contentKey', '==', t.contentKey).limit(5).get();
+  if (shared.docs.some((d) => d.get('userId') !== uid)) return 'shared';
+
+  if (t.ref?.id) {
+    const wanted = normalizeText(essay);
+    const onSite = await store.collection(SAMPLES).where('questionId', '==', t.ref.id).get();
+    if (onSite.docs.some((d) => d.get('status') === 'published' && normalizeText(String(d.get('sampleAnswer') ?? '')) === wanted)) return 'sample';
+  }
+
+  const [lock, own] = await store.getAll(
+    store.collection('score_locks').doc(t.contentKey),
+    store.collection('saved_reports').doc(`${uid}_${t.contentKey}`),
+  );
+  const lockAt = lock.exists ? ms(lock.get('createdAt')) : null;
+  const ownAt = own.exists ? ms(own.get('createdAt')) : null;
+  if (lockAt !== null && ownAt !== null && ownAt - lockAt > SAME_MARKING_MS) return 'marked';
+  return null;
+}
+
 // ── Status ───────────────────────────────────────────────────────────────────
 
 export interface OfferedTask {
@@ -299,8 +342,8 @@ export interface ConsentResult {
   decision: 'yes' | 'no';
   /** The new samples, waiting for the admin, in Task 1, Task 2 order. */
   sampleIds: string[];
-  /** Whether this answer earned the free assessment (false on a repeat). */
-  credited: boolean;
+  /** Whether this answer reserved the free assessment, paid on approval (false on a repeat). */
+  creditPending: boolean;
 }
 
 export async function submitConsent(
@@ -334,6 +377,16 @@ export async function submitConsent(
     newQuestions.set(t.taskType, `cq_${store.collection(CUSTOM_QUESTIONS).doc().id}`);
   }
 
+  // For the reviewer only, so worked out before the transaction, and a failed
+  // check never stops a share.
+  const seen = new Map<SampleTaskType, SeenBefore | null>();
+  for (const t of chosen) {
+    seen.set(t.taskType, await seenBefore(uid, t, stripPersonalDetails(t.essay).text).catch((e) => {
+      console.error('samples: the seen-before check failed:', e);
+      return null;
+    }));
+  }
+
   return store.runTransaction(async (tx) => {
     const answered = await tx.getAll(...offered.map((t) => consentRef(uid, t.contentKey)));
     const open = offered.filter((_, i) => !answered[i].exists);
@@ -341,7 +394,7 @@ export async function submitConsent(
     const sharing = chosen.filter((t) => open.includes(t));
     if (decision === 'yes' && !sharing.length) throw new ConsentError('ALREADY_DECIDED', 'You have already answered for these essays.');
 
-    let credited = false;
+    let creditPending = false;
     if (decision === 'yes') {
       const [limit, credit, user] = await tx.getAll(limitRef, creditRef, userRef);
       const used = limit.exists ? Number(limit.get('count')) || 0 : 0;
@@ -351,9 +404,9 @@ export async function submitConsent(
       if (!user.exists) throw new ConsentError('NO_PROFILE', 'Your profile was not found.');
       tx.set(limitRef, { uid, day, count: used + 1, updatedAt: FieldValue.serverTimestamp() }, { merge: true });
       if (!credit.exists) {
-        tx.create(creditRef, { uid, consentId, at: FieldValue.serverTimestamp() });
-        tx.set(userRef, { bonusAnalyses: FieldValue.increment(1) }, { merge: true });
-        credited = true;
+        // Paid when the admin approves one of these essays (./review.ts).
+        tx.create(creditRef, { uid, consentId, state: 'pending', at: FieldValue.serverTimestamp() });
+        creditPending = true;
       }
     }
 
@@ -408,8 +461,14 @@ export async function submitConsent(
         // The partner channels are credited only on their own (bank) questions.
         ...(custom ? { questionSource: 'custom' } : { sourceCredit: BANK_SOURCE_CREDIT }),
         submissionId: id,
-        // For the Telegram header: "Task 1 of 2 • #K7Q2XA". No userId here.
-        review: { consentId },
+        // For the Telegram header: "Task 1 of 2 • #K7Q2XA", how it was
+        // written, and where it was seen before. No userId here, and none of
+        // it is ever published (scripts/prerender-questions.tsx lists fields).
+        review: {
+          consentId,
+          ...(t.writing ? { writing: t.writing } : {}),
+          ...(seen.get(t.taskType) ? { seenBefore: seen.get(t.taskType) } : {}),
+        },
         createdAt: now,
         updatedAt: now,
       });
@@ -425,6 +484,8 @@ export async function submitConsent(
         mode: session.mode,
         essay,
         personalDetailsRemoved: removed,
+        writing: t.writing,
+        seenBefore: seen.get(t.taskType) ?? null,
         band: scores.overall,
         criteria: criteriaOf(scores),
         wordCount: countWords(essay),
@@ -437,6 +498,6 @@ export async function submitConsent(
       });
     });
 
-    return { decision, sampleIds: sharing.map((t) => ids.get(t.taskType)!), credited };
+    return { decision, sampleIds: sharing.map((t) => ids.get(t.taskType)!), creditPending };
   });
 }

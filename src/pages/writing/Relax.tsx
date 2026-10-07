@@ -47,6 +47,7 @@ import { compressChartFile, LINK_CHART_MAX_BYTES } from "@/lib/task1Chart";
 import { hasAccess } from "@/lib/reportAccess";
 import { allowFeedbackStart } from "@/lib/feedbackIntent";
 import { questionDataPath, type QuestionPageData } from "@/lib/questionData";
+import { useWritingTrace } from "@/lib/writingTrace";
 
 /**
  * A question to open with, from a sample-answer page whose question a student
@@ -72,6 +73,8 @@ function Relax() {
   const [prompt, setPrompt] = useState("");
   const [task2Prompt, setTask2Prompt] = useState("");
   const [userText, setUserText] = useState("");
+  // How the answer was written, for the sample-answer review (src/lib/writingTrace.ts).
+  const trace = useWritingTrace("relax", 0, userText);
   const [imageUrl, setImageUrl] = useState<string | null>(null);
   const [imageLoading, setImageLoading] = useState(false);
   const [showFeedbackModal, setShowFeedbackModal] = useState(false);
@@ -674,6 +677,7 @@ function Relax() {
           <textarea name="relax-answer"
             id="relax-answer"
             value={userText}
+            onPaste={trace.onPaste}
             onChange={(e) => setUserText(e.target.value)}
             placeholder="Start writing your response here…"
             spellCheck={false}

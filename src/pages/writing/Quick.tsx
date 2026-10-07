@@ -42,6 +42,7 @@ import { ShuffleBag } from "@/lib/shuffleBag";
 import { useTask1ChartState } from "@/lib/task1Chart";
 import { hasAccess } from "@/lib/reportAccess";
 import { allowFeedbackStart } from "@/lib/feedbackIntent";
+import { useWritingTrace } from "@/lib/writingTrace";
 
 interface Task1 {
   id: string;
@@ -84,6 +85,8 @@ function Quick() {
   // Task selection (null = not chosen yet)
   const [selectedTaskType, setSelectedTaskType] = useState<1 | 2 | null>(null);
   const [userText, setUserText] = useState("");
+  // How the answer was written, for the sample-answer review (src/lib/writingTrace.ts).
+  const trace = useWritingTrace("quick", 0, userText);
   const [task1, setTask1] = useState<Task1 | null>(null);
   const [task2, setTask2] = useState<Task2 | null>(null);
   const [loading, setLoading] = useState(true);
@@ -506,6 +509,7 @@ function Quick() {
           <textarea name="quick-answer"
             id="quick-answer"
             value={userText}
+            onPaste={trace.onPaste}
             onChange={(e) => setUserText(e.target.value)}
             placeholder="Start writing your response here…"
             spellCheck={false}

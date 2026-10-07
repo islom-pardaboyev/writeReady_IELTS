@@ -19,6 +19,7 @@ import type { UserProfile } from '../types';
 import { AuthContext } from './authContextDef';
 import { clearAllDrafts } from '../hooks/useDraft';
 import { forgetProgressCache } from '../lib/progressCache';
+import { clearWritingTraces } from '../lib/writingTrace';
 import { fetchProfilePhoto, rememberProfilePhoto } from '../lib/profilePhoto';
 
 /**
@@ -126,6 +127,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     // Essays being written stay in this browser (src/hooks/useDraft.ts); the
     // next person to sign in on this computer must not find them.
     clearAllDrafts();
+    clearWritingTraces();
     forgetProgressCache();
   };
 

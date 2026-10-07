@@ -122,7 +122,9 @@ export function PrivacyPolicyPage() {
         with obvious personal details removed (names, phone numbers, email addresses, Telegram usernames) and reviewed by
         our team; if approved, it is published on that question&rsquo;s public page with its band scores, without your
         name or account. We keep a private record of which account shared it, only to give you the free assessment once
-        and to stop misuse. See section 11 of the <Link to="/terms#sample-answers">Terms of Service</Link>, and ask us any
+        and to stop misuse. To check that a shared essay is your own work, our reviewer also sees how long you spent
+        writing it and how much of it was pasted in (counted in your browser while you write, never the pasted text
+        itself), and whether the same text was checked on WriteReady before. See section 11 of the <Link to="/terms#sample-answers">Terms of Service</Link>, and ask us any
         time to take a shared essay down.
       </p>
 

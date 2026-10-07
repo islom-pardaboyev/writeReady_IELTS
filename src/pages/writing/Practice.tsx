@@ -42,6 +42,7 @@ import { answerTextStyle, useWritingSettings } from "@/lib/writingSettings";
 import { ShuffleBag } from "@/lib/shuffleBag";
 import { useTask1ChartState } from "@/lib/task1Chart";
 import { allowFeedbackStart } from "@/lib/feedbackIntent";
+import { useWritingTrace } from "@/lib/writingTrace";
 
 interface Task1 {
   id: string;
@@ -70,6 +71,9 @@ function Practice() {
   const [activeTask, setActiveTask] = useState<1 | 2>(1);
   const [userText1, setUserText1] = useState("");
   const [userText2, setUserText2] = useState("");
+  // How each answer was written, for the sample-answer review (src/lib/writingTrace.ts).
+  const trace1 = useWritingTrace("practice", 1, userText1);
+  const trace2 = useWritingTrace("practice", 2, userText2);
   const [task1List, setTask1List] = useState<Task1[]>([]);
   const [task2List, setTask2List] = useState<Task2[]>([]);
   const [task1, setTask1] = useState<Task1 | null>(null);
@@ -494,6 +498,7 @@ function Practice() {
             id={`answer-task-${activeTask}`}
             name="essay"
             value={activeTask === 1 ? userText1 : userText2}
+            onPaste={activeTask === 1 ? trace1.onPaste : trace2.onPaste}
             onChange={(e) => {
               if (activeTask === 1) {
                 setUserText1(e.target.value);

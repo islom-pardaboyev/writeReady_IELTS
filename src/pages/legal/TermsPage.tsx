@@ -143,13 +143,16 @@ export function TermsPage() {
       </p>
       <p>
         A published sample appears on that question&rsquo;s public page at {LEGAL.site}/questions, with its band
-        scores and the writing mode it was written in. Each time you agree to share, you get one free assessment; a
-        Mock or Practice test counts once, even if you share both tasks. You can share up to three times a day.
+        scores and the writing mode it was written in. When we publish an essay you shared, you get one free full
+        report; a Mock or Practice test counts once, even if we publish both tasks. You can share up to three times a
+        day. Share only essays you wrote yourself: an essay written by an AI tool or copied from elsewhere is not
+        published and earns nothing. To help us check, we see how long the essay took to write and how much of it was
+        pasted in.
       </p>
       <p>
         You keep the copyright in your essay. By sharing it you give us a free, non-exclusive permission to show, store
         and copy it on WriteReady, and in previews of our pages, for as long as it is published. To have it removed,
-        message us on Telegram and we will take it down; the free assessment you received stays yours.
+        message us on Telegram and we will take it down; the free report you received stays yours.
       </p>
 
       <h2 id="fair-use">12. Fair use</h2>

@@ -47,6 +47,7 @@ import { hasAccess } from "@/lib/reportAccess";
 import { allowFeedbackStart } from "@/lib/feedbackIntent";
 import { ModeBrand } from "@/components/writing/ModeBrand";
 import { PromptSource } from "@/components/writing/PromptSource";
+import { useWritingTrace } from "@/lib/writingTrace";
 
 interface Task1 {
   id: string;
@@ -74,6 +75,9 @@ function Mock() {
   const [activeTask, setActiveTask] = useState<1 | 2>(1);
   const [userText1, setUserText1] = useState("");
   const [userText2, setUserText2] = useState("");
+  // How each answer was written, for the sample-answer review (src/lib/writingTrace.ts).
+  const trace1 = useWritingTrace("mock", 1, userText1);
+  const trace2 = useWritingTrace("mock", 2, userText2);
   const [task1List, setTask1List] = useState<Task1[]>([]);
   const [task2List, setTask2List] = useState<Task2[]>([]);
   const [task1, setTask1] = useState<Task1 | null>(null);
@@ -604,6 +608,7 @@ function Mock() {
             id={`answer-task-${activeTask}`}
             name={`answer-task-${activeTask}`}
             value={activeTask === 1 ? userText1 : userText2}
+            onPaste={activeTask === 1 ? trace1.onPaste : trace2.onPaste}
             onChange={(e) =>
               activeTask === 1
                 ? setUserText1(e.target.value)

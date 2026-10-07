@@ -65,6 +65,14 @@ function describe(n: Notification): Described {
         body: 'Your feedback is ready to download.',
         href: n.reviewId ? `/human-review/${n.reviewId}` : '/dashboard',
       };
+    case 'sample_published':
+      // The server writes the whole sentence (api/_lib/samples/review.ts).
+      return {
+        icon: Gift,
+        title: <strong className="font-semibold">Your essay was published</strong>,
+        body: preview,
+        href: '/questions',
+      };
     case 'bonus': {
       // Grants made before this line was translated are stored in Uzbek, so the
       // sentence is rebuilt here from the count instead of shown as stored.

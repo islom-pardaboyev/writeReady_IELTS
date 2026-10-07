@@ -99,6 +99,8 @@ export class FakeFirestore {
       delete: async () => {
         table().delete(id);
       },
+      // A sub-collection is its own table, named by its full path.
+      collection: (sub: string) => this.collection(`${name}/${id}/${sub}`),
       snapshot,
     };
     return ref;

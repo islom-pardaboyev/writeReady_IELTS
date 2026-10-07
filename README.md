@@ -158,7 +158,8 @@ npx tsx scripts/test-security-fixes.ts    # sentence cap, refund budget, staff t
 npx tsx scripts/test-email-code.ts        # email codes and the email gate
 npx tsx scripts/test-student-bot.ts       # the Telegram bot
 npx tsx scripts/test-score-store.ts       # saved reports and score-card verification
-npx tsx scripts/test-samples.ts           # sample answers: consent and credit, qualification, zod checks, Telegram approval, batches
+npx tsx scripts/test-samples.ts           # sample answers: consent, credit on approval, qualification, zod checks, Telegram approval, batches
+npx tsx scripts/test-writing-trace.ts     # the writing record (time and pasted share) the sample review shows
 npx tsx --tsconfig tsconfig.scripts.json scripts/test-prerender.tsx   # the built question pages, their head tags and the sitemap
 ```
 
