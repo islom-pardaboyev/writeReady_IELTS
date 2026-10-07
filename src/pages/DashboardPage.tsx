@@ -1,7 +1,5 @@
-import { useLayoutEffect, useMemo, useRef, useEffect, useState } from 'react';
+import { useMemo, useEffect, useState } from 'react';
 import { useNavigate, Link, Navigate } from 'react-router';
-import gsap from 'gsap';
-import { ScrollTrigger } from 'gsap/ScrollTrigger';
 import { useAuth } from '../hooks/useAuth';
 import { useUsage } from '../hooks/useUsage';
 import { AppShell } from '../components/layout/AppShell';
@@ -9,6 +7,7 @@ import { Button } from '../components/ui/Button';
 import { Card } from '../components/ui/Card';
 import { Badge } from '../components/ui/badge';
 import { countFeedbackReports, getActivityDays, getProgressReports, type FeedbackReport } from '../firebase/firestore';
+import { readProgressCache, saveProgressCache } from '../lib/progressCache';
 import { getHumanReviewsForStudent } from '../firebase/teachers';
 import type { HumanReview } from '../types';
 import { ProgressSection } from '../components/ui/ProgressSection';
@@ -27,7 +26,6 @@ import { reportBand } from '@shared/bandScore';
 // A plan's allowance renews at 00:00 UTC on its day (api/_lib/planCycle.ts).
 const renewDay = new Intl.DateTimeFormat(undefined, { day: 'numeric', month: 'short', timeZone: 'UTC' });
 
-gsap.registerPlugin(ScrollTrigger);
 
 const modes = [
   { id: 'mock', emoji: '⏱', title: 'Mock Exam', desc: '60-min timer · Exam simulation' },
@@ -93,7 +91,6 @@ export function DashboardPage() {
   const { user, profile, loading, refreshProfile } = useAuth();
   const { usage } = useUsage(user?.uid ?? null);
   const navigate = useNavigate();
-  const rootRef = useRef<HTMLDivElement>(null);
   // The newest 30 reports, oldest first. One download feeds the figures at the
   // top, the progress charts and the recent analyses.
   const [progress, setProgress] = useState<FeedbackReport[]>([]);
@@ -104,38 +101,6 @@ export function DashboardPage() {
   const [notification, setNotification] = useState<string | null>(null);
   const [humanReviews, setHumanReviews] = useState<HumanReview[]>([]);
   const [humanReviewsLoading, setHumanReviewsLoading] = useState(true);
-
-  useLayoutEffect(() => {
-    // Wait for profile to load before animating — otherwise elements are hidden forever
-    if (!profile) return;
-    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
-    const ctx = gsap.context(() => {
-      gsap.set('.gs-db-welcome', { y: 28, opacity: 0 });
-      gsap.set('.gs-db-stat', { y: 20, opacity: 0 });
-      gsap.set('.gs-db-quota', { y: 20, opacity: 0 });
-      gsap.set('.gs-db-mode-card', { y: 32, opacity: 0 });
-
-      const tl = gsap.timeline({ defaults: { ease: 'power3.out' } });
-      tl.to('.gs-db-welcome', { y: 0, opacity: 1, duration: 0.6 })
-        .to('.gs-db-stat', { y: 0, opacity: 1, duration: 0.5, stagger: 0.06 }, '-=0.35')
-        .to('.gs-db-quota', { y: 0, opacity: 1, duration: 0.5 }, '-=0.3')
-        .to('.gs-db-mode-card', { y: 0, opacity: 1, duration: 0.5, stagger: 0.1 }, '-=0.25');
-
-      if (document.querySelector('.gs-db-upsell')) {
-        gsap.from('.gs-db-upsell', {
-          scrollTrigger: { trigger: '.gs-db-upsell', start: 'top 88%' },
-          y: 36, opacity: 0, duration: 0.65, ease: 'power3.out',
-        });
-      }
-
-      gsap.from('#gs-db-history', {
-        scrollTrigger: { trigger: '#gs-db-history', start: 'top 88%' },
-        y: 36, opacity: 0, duration: 0.65, ease: 'power3.out',
-      });
-    }, rootRef);
-
-    return () => ctx.revert();
-  }, [profile]);
 
   useEffect(() => {
     // Redirect admin/center-admin accounts away from user dashboard
@@ -151,13 +116,29 @@ export function DashboardPage() {
     }
     if (!user?.uid) return;
     refreshProfile();
-    getProgressReports(user.uid)
-      .then(setProgress)
+    // The chart shows the saved copy at once; the count (one read) says
+    // whether it is still current (src/lib/progressCache.ts).
+    const uid = user.uid;
+    const saved = readProgressCache(uid);
+    if (saved) {
+      setProgress(saved.reports);
+      setReportCount(saved.count);
+      setReportsLoading(false);
+    }
+    countFeedbackReports(uid)
+      .catch((e) => {
+        console.error('Could not count feedback reports:', e);
+        return null;
+      })
+      .then(async (count) => {
+        if (count !== null) setReportCount(count);
+        if (saved && count === saved.count) return;
+        const reports = await getProgressReports(uid);
+        setProgress(reports);
+        if (count !== null) saveProgressCache(uid, count, reports);
+      })
       .catch((e) => console.error('Failed to load feedback reports:', e))
       .finally(() => setReportsLoading(false));
-    countFeedbackReports(user.uid)
-      .then(setReportCount)
-      .catch((e) => console.error('Could not count feedback reports:', e));
     getActivityDays(user.uid).then(setActivity);
     getHumanReviewsForStudent(user.uid)
       .then(setHumanReviews)
@@ -243,7 +224,7 @@ export function DashboardPage() {
   return (
     <AppShell>
       <div className="py-10">
-        <div className="max-w-[1160px] mx-auto px-6" ref={rootRef}>
+        <div className="max-w-[1160px] mx-auto px-6">
 
           {/* Bonus notification banner — hide for paid users */}
           {notification && !isPaidPlan && (

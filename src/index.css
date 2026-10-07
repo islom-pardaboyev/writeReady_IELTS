@@ -757,3 +757,52 @@ html.dark [data-exam-look] .exam-answer {
     scroll-behavior: auto !important;
   }
 }
+
+/* ── Dashboard and account entrance ─────────────────────────────────────────
+   Cards rise into place as the page opens. These were GSAP timelines, which
+   made both pages download the animation library (about 45 KB gzipped) for a
+   one-off fade. `backwards` fill: once finished, the card's own transforms
+   (the mode cards' hover lift) apply again. */
+@keyframes rise-in {
+  from {
+    opacity: 0;
+    transform: translateY(var(--rise, 20px));
+  }
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .gs-db-welcome,
+  .gs-db-stat,
+  .gs-db-quota,
+  .gs-db-mode-card,
+  .gs-acc-aside,
+  .gs-acc-section {
+    animation: rise-in 0.5s cubic-bezier(0.215, 0.61, 0.355, 1) backwards;
+  }
+  .gs-db-welcome { --rise: 28px; animation-duration: 0.6s; }
+  .gs-db-stat { animation-delay: 0.25s; }
+  .gs-db-stat:nth-child(2) { animation-delay: 0.31s; }
+  .gs-db-stat:nth-child(3) { animation-delay: 0.37s; }
+  .gs-db-quota { animation-delay: 0.45s; }
+  .gs-db-mode-card { --rise: 32px; animation-delay: 0.55s; }
+  .gs-db-mode-card:nth-child(2) { animation-delay: 0.65s; }
+  .gs-db-mode-card:nth-child(3) { animation-delay: 0.75s; }
+  .gs-db-mode-card:nth-child(n + 4) { animation-delay: 0.85s; }
+  .gs-acc-aside { --rise: 16px; animation-duration: 0.55s; }
+  .gs-acc-section { --rise: 16px; animation-delay: 0.08s; }
+  .gs-acc-section:nth-child(2) { animation-delay: 0.14s; }
+  .gs-acc-section:nth-child(3) { animation-delay: 0.2s; }
+  .gs-acc-section:nth-child(4) { animation-delay: 0.26s; }
+  .gs-acc-section:nth-child(n + 5) { animation-delay: 0.32s; }
+
+  /* Further down, where the browser can tie the rise to scrolling. */
+  @supports (animation-timeline: view()) {
+    .gs-db-upsell,
+    #gs-db-history {
+      --rise: 36px;
+      animation: rise-in linear backwards;
+      animation-timeline: view();
+      animation-range: entry 0% entry 60%;
+    }
+  }
+}

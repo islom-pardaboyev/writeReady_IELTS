@@ -1,7 +1,6 @@
 import { initializeApp } from 'firebase/app';
 import { getAuth } from 'firebase/auth';
 import { getFirestore } from 'firebase/firestore';
-import { getAnalytics, isSupported } from 'firebase/analytics';
 import { analyticsAllowed } from '../lib/consent';
 
 export const firebaseConfig = {
@@ -22,6 +21,11 @@ export const db = getFirestore(app);
 // analyticsAllowed(), and the cookie notice and privacy policy promise no
 // tracking. It used to start for every visitor, and Google then saw the full
 // address of every page, including a report's, which carries the whole essay.
-isSupported().then((supported) => {
-  if (supported && analyticsAllowed()) getAnalytics(app);
-});
+// Loaded only then, so a visitor who never allows it never downloads it either.
+if (analyticsAllowed()) {
+  import('firebase/analytics')
+    .then(async ({ getAnalytics, isSupported }) => {
+      if (await isSupported()) getAnalytics(app);
+    })
+    .catch(() => {});
+}

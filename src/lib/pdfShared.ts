@@ -17,13 +17,7 @@ export const MET: RGB = [4, 120, 87]; // emerald-700
 export const SHORT: RGB = [180, 83, 9]; // amber-700
 
 export const PT = 0.3528; // millimetres per point
-export const MIN_WORDS = { 1: 150, 2: 250 } as const;
-
-// Same rule the writing screens use for their live word count.
-export const countWords = (text: string) => {
-  const t = text.trim();
-  return t ? t.split(/\s+/).length : 0;
-};
+export { countWords, MIN_WORDS } from "@/lib/wordCount";
 
 // jsPDF's built-in Helvetica only has Latin-1 glyphs; anything else prints as
 // garbage or nothing. Map the usual typographic characters (smart quotes from

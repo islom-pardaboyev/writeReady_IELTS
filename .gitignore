@@ -34,3 +34,8 @@ firebase-service-account.json
 *.sw?
 .claude/
 .env*
+
+# AI design-tool working files (kept on this machine, not part of the site)
+.impeccable/
+.agents/
+skills-lock.json

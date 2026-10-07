@@ -1,7 +1,7 @@
 import type { User } from "firebase/auth";
 import { db } from "@/firebase/config";
 import { extractJson } from "@shared/bandScore";
-import { downloadFeedbackPdf } from "@/lib/feedbackPdf";
+import { loadFeedbackPdf } from "@/lib/pdfLoad";
 import { toFeedbackResult, withRealQuotes } from "@/lib/feedbackResult";
 import { loadTask1Chart } from "@/lib/task1Chart";
 
@@ -43,6 +43,7 @@ export async function downloadArchivedReport(user: User, reportId: string): Prom
   const isTask1 = r.taskType === "Task 1";
   const chart = isTask1 ? (r.chartId ? await loadTask1Chart(db, { id: r.chartId }) : "") || r.chartImage || null : null;
   const date = new Date().toISOString().slice(0, 10);
+  const { downloadFeedbackPdf } = await loadFeedbackPdf();
   await downloadFeedbackPdf({
     feedback: withRealQuotes(parsed, r.essay),
     taskNum: isTask1 ? 1 : 2,

@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
-import { doc, getDoc, setDoc, type Firestore } from "firebase/firestore";
+import type { Firestore } from "firebase/firestore";
+import { loadFlags, writeFlags } from "@/lib/flags";
 import { db } from "@/firebase/firebase";
 import { useAuth } from "@/hooks/useAuth";
 import { CRITERIA, normalizeScores, type BandScores, type Criterion } from "@shared/bandScore";
@@ -18,8 +19,7 @@ export interface ScoreTestSettings {
 }
 
 export async function getScoreTestSettings(dbInstance: Firestore): Promise<ScoreTestSettings> {
-  const snap = await getDoc(doc(dbInstance, "config", "featureFlags"));
-  const data = snap.exists() ? snap.data() : {};
+  const data = await loadFlags(dbInstance);
   return {
     enabled: data.scoreTestMode === true,
     uid: typeof data.scoreTestUid === "string" && data.scoreTestUid ? data.scoreTestUid : null,
@@ -30,7 +30,7 @@ export async function saveScoreTestSettings(dbInstance: Firestore, patch: Partia
   const fields: Record<string, unknown> = {};
   if (patch.enabled !== undefined) fields.scoreTestMode = patch.enabled;
   if (patch.uid !== undefined) fields.scoreTestUid = patch.uid ?? "";
-  await setDoc(doc(dbInstance, "config", "featureFlags"), fields, { merge: true });
+  await writeFlags(dbInstance, fields);
 }
 
 /**

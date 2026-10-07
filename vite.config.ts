@@ -133,6 +133,9 @@ export default defineConfig({
       '@': resolve(__dirname, './src'),
       // Files in api/_lib with no imports, shared by the site and the API.
       '@shared': resolve(__dirname, './api/_lib'),
+      // Firestore loads re2js for Pipelines, which the site never uses: about
+      // 300 KB off every first visit (src/lib/stubs/re2js.ts).
+      're2js': resolve(__dirname, './src/lib/stubs/re2js.ts'),
     },
   },
   build: {

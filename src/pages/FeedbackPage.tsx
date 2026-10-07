@@ -12,6 +12,7 @@ import { decodeReport } from '../lib/reportEncoding';
 import { mayStartFeedback } from '../lib/feedbackIntent';
 import type { ReportData } from '../lib/reportEncoding';
 import { getFeedbackReportHistory } from '../firebase/firestore';
+import { forgetProgressCache } from '../lib/progressCache';
 import { db } from '../firebase/config';
 import { loadTask1Chart, useTask1Chart } from '../lib/task1Chart';
 import type { EnhancedFeedbackResult, GrammarPoint, ReadabilityTip, SentenceAnalysis } from '../types';
@@ -19,7 +20,7 @@ import { bandLabel, extractJson } from '@shared/bandScore';
 import { looseText, toFeedbackResult, withRealQuotes } from '../lib/feedbackResult';
 import { hasFreeReportThisWeek } from '../lib/weeklyFree';
 import { isPaidPlan } from '../lib/plans';
-import { downloadFeedbackPdf } from '../lib/feedbackPdf';
+import { loadFeedbackPdf } from '../lib/pdfLoad';
 import { useSingleRun } from '../hooks/useSingleRun';
 import { LogoLoader } from '@/components/ui/LogoLoader';
 import { FeedbackRating } from '@/components/ui/FeedbackRating';
@@ -834,6 +835,8 @@ export function FeedbackPage() {
       const finished = feedbackWithLimit;
       setFeedbacks((p) => ({ ...p, [taskKey]: finished }));
       sessionStorage.setItem(cacheKey, JSON.stringify(finished));
+      // The dashboard chart has a new (or upgraded) report to show.
+      forgetProgressCache();
       refreshProfile().catch(() => {});
 
       getFeedbackReportHistory(user.uid, 5)
@@ -1007,8 +1010,8 @@ export function FeedbackPage() {
   const exportPDF = () => {
     if (!feedback || !reportData) return;
     const isTask1 = selectedTask === 'task1';
-    return runExport(() =>
-      downloadFeedbackPdf({
+    return runExport(async () =>
+      (await loadFeedbackPdf()).downloadFeedbackPdf({
         feedback,
         taskNum: isTask1 ? 1 : 2,
         question: isTask1 ? reportData.task1?.report : reportData.task2?.report,

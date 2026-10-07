@@ -68,13 +68,45 @@ export const paragraphs = (text: string) =>
 
 // ── The list, fetched once per visit ────────────────────────────────────────
 
+// Every signed-in page shows the bell, so every page load asked Firestore for
+// the list. It is kept on the device for a few minutes instead: a new
+// announcement still reaches everyone within that time.
+const LIST_KEY = "announcements_list";
+const LIST_MAX_AGE = 10 * 60 * 1000;
+
+function readSavedList(): Announcement[] | null {
+  try {
+    const saved = JSON.parse(localStorage.getItem(LIST_KEY) ?? "null") as { at?: number; list?: (Omit<Announcement, "createdAt"> & { createdAt: number | null })[] } | null;
+    if (!saved || typeof saved.at !== "number" || !Array.isArray(saved.list) || Date.now() - saved.at > LIST_MAX_AGE) return null;
+    return saved.list.map((a) => ({ ...a, createdAt: a.createdAt === null ? null : new Date(a.createdAt) }));
+  } catch {
+    return null;
+  }
+}
+
+function saveList(list: Announcement[]) {
+  try {
+    localStorage.setItem(LIST_KEY, JSON.stringify({ at: Date.now(), list: list.map((a) => ({ ...a, createdAt: a.createdAt?.getTime() ?? null })) }));
+  } catch {
+    /* storage full or blocked: the next page load asks again */
+  }
+}
+
 let request: Promise<Announcement[]> | null = null;
 
 export function loadAnnouncements(): Promise<Announcement[]> {
-  request ??= getActiveAnnouncements().catch((e) => {
-    request = null; // let the next page try again
-    throw e;
-  });
+  const saved = request ? null : readSavedList();
+  if (saved) request = Promise.resolve(saved);
+  request ??= getActiveAnnouncements().then(
+    (list) => {
+      saveList(list);
+      return list;
+    },
+    (e) => {
+      request = null; // let the next page try again
+      throw e;
+    },
+  );
   return request;
 }
 

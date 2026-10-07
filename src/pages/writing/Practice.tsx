@@ -10,7 +10,8 @@ import { useStopwatch } from "@/hooks/useStopwatch";
 import { auth, db } from "@/firebase/firebase";
 import { doc, getDoc } from "firebase/firestore";
 import { loadPrompts } from "@/lib/promptCache";
-import { downloadEssayPdf, type EssayPdfTask } from "@/lib/essayPdf";
+import type { EssayPdfTask } from "@/lib/essayPdf";
+import { loadEssayPdf } from "@/lib/pdfLoad";
 import { recordFinishedEssays } from "@/lib/activity";
 import { useSingleRun } from "@/hooks/useSingleRun";
 import { BusyLabel } from "@/components/ui/BusyLabel";
@@ -232,7 +233,7 @@ function Practice() {
         { taskNum: 1, question: task1?.report, imageSrc: task1Chart, answer: userText1 },
         { taskNum: 2, question: task2?.report, answer: userText2 },
       ];
-      await downloadEssayPdf({ mode: "Practice Mode", fileName: "WriteReady_Practice.pdf", tasks });
+      await (await loadEssayPdf()).downloadEssayPdf({ mode: "Practice Mode", fileName: "WriteReady_Practice.pdf", tasks });
       recordFinishedEssays(user?.uid, tasks);
       setShowFeedbackModal(true);
     });

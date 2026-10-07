@@ -1,4 +1,5 @@
-import { collection, doc, getDoc, getDocs, setDoc, type Firestore } from "firebase/firestore";
+import { collection, getDocs, type Firestore } from "firebase/firestore";
+import { loadFlags, writeFlags } from "./flags";
 
 /**
  * The writing prompts, kept in the browser between visits.
@@ -72,8 +73,8 @@ function firestoreSource(db: Firestore): PromptSource {
   return {
     async version() {
       try {
-        const snap = await getDoc(doc(db, "config", "featureFlags"));
-        const v = snap.exists() ? snap.data().promptsVersion : undefined;
+        // Shared with the page's other flag reads: one Firestore read for all.
+        const v = (await loadFlags(db)).promptsVersion;
         return typeof v === "string" || typeof v === "number" ? String(v) : null;
       } catch {
         return undefined;
@@ -129,5 +130,5 @@ export async function loadPromptsFrom(source: PromptSource): Promise<PromptLists
  * their next visit. The admin calls it after adding, editing or deleting one.
  */
 export async function bumpPromptsVersion(db: Firestore): Promise<void> {
-  await setDoc(doc(db, "config", "featureFlags"), { promptsVersion: String(Date.now()) }, { merge: true });
+  await writeFlags(db, { promptsVersion: String(Date.now()) });
 }

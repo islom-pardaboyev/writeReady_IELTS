@@ -20,6 +20,8 @@ export interface UserProfile {
   founder?: boolean;
   /** Set while the student has their own photo (profile_photos/{uid}); changes with each new one. */
   photoVersion?: number;
+  /** This plan month's AI reports, worked out from the same read (src/hooks/useUsage.ts). */
+  usage: UsageRecord;
 }
 
 export interface UsageRecord {

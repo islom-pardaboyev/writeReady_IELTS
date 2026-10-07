@@ -1,42 +1,39 @@
 import { useEffect, useState } from 'react';
-import { doc, getDoc, setDoc, type Firestore } from 'firebase/firestore';
+import type { Firestore } from 'firebase/firestore';
 import { db } from '../firebase/config';
+import { loadFlags, writeFlags } from '../lib/flags';
 
 export type FeatureFlagKey = 'humanCheck' | 'showTelegramBot' | 'botChecksPaused';
 
 export async function getFeatureFlag(key: FeatureFlagKey, dbInstance: Firestore = db): Promise<boolean> {
-  const snap = await getDoc(doc(dbInstance, 'config', 'featureFlags'));
-  if (!snap.exists()) return false;
-  return snap.data()[key] === true;
+  return (await loadFlags(dbInstance))[key] === true;
 }
 
 export async function setFeatureFlag(key: FeatureFlagKey, value: boolean, dbInstance: Firestore = db): Promise<void> {
-  await setDoc(doc(dbInstance, 'config', 'featureFlags'), { [key]: value }, { merge: true });
+  await writeFlags(dbInstance, { [key]: value });
 }
 
 const DEFAULT_HUMAN_CHECK_PRICE_UZS = 20000;
 
 export async function getHumanCheckPrice(dbInstance: Firestore = db): Promise<number> {
-  const snap = await getDoc(doc(dbInstance, 'config', 'featureFlags'));
-  const price = snap.exists() ? snap.data().humanCheckPriceUZS : undefined;
+  const price = (await loadFlags(dbInstance)).humanCheckPriceUZS;
   return typeof price === 'number' && price > 0 ? price : DEFAULT_HUMAN_CHECK_PRICE_UZS;
 }
 
 export async function setHumanCheckPrice(priceUZS: number, dbInstance: Firestore = db): Promise<void> {
-  await setDoc(doc(dbInstance, 'config', 'featureFlags'), { humanCheckPriceUZS: priceUZS }, { merge: true });
+  await writeFlags(dbInstance, { humanCheckPriceUZS: priceUZS });
 }
 
 const DEFAULT_PLATFORM_FEE_UZS = 5000;
 
 // The platform (admin) keeps this fee per checked review; the teacher earns the rest.
 export async function getHumanCheckPlatformFee(dbInstance: Firestore = db): Promise<number> {
-  const snap = await getDoc(doc(dbInstance, 'config', 'featureFlags'));
-  const fee = snap.exists() ? snap.data().humanCheckPlatformFeeUZS : undefined;
+  const fee = (await loadFlags(dbInstance)).humanCheckPlatformFeeUZS;
   return typeof fee === 'number' && fee >= 0 ? fee : DEFAULT_PLATFORM_FEE_UZS;
 }
 
 export async function setHumanCheckPlatformFee(feeUZS: number, dbInstance: Firestore = db): Promise<void> {
-  await setDoc(doc(dbInstance, 'config', 'featureFlags'), { humanCheckPlatformFeeUZS: feeUZS }, { merge: true });
+  await writeFlags(dbInstance, { humanCheckPlatformFeeUZS: feeUZS });
 }
 
 // Site-wide maintenance flag. Reads/writes go through api/maintenance.ts

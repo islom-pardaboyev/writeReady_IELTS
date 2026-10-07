@@ -15,8 +15,9 @@ import {
   type Firestore,
 } from 'firebase/firestore';
 import { db } from './config';
-import { customAnalysesOf, effectivePlan } from '../lib/plans';
-import type { UserProfile } from '../types';
+import { customAnalysesOf, effectivePlan, monthlyLimitOf } from '../lib/plans';
+import { nextRenewal, planCycle, usedThisCycle } from '@shared/planCycle';
+import type { UsageRecord, UserProfile } from '../types';
 
 function toDate(val: unknown): Date {
   if (val instanceof Timestamp) return val.toDate();
@@ -64,6 +65,26 @@ export async function getUserProfile(uid: string): Promise<UserProfile | null> {
     balanceUZS: typeof d.balanceUZS === 'number' ? d.balanceUZS : 0,
     founder: d.founder === true,
     photoVersion: typeof d.photoVersion === 'number' ? d.photoVersion : undefined,
+    usage: usageOf(uid, d),
+  };
+}
+
+/**
+ * The same plan rules the server applies in api/pre-check.ts, so the number on
+ * screen matches the number the student actually gets. A learning-center
+ * student carries their center's plan and end date. The month is the plan's
+ * own, from its end date (api/_lib/planCycle.ts).
+ */
+function usageOf(uid: string, d: Record<string, unknown>): UsageRecord {
+  const expiresAt = d.expiresAt as string | undefined;
+  const limit = monthlyLimitOf(d);
+  return {
+    uid,
+    cycleKey: planCycle(expiresAt).key,
+    count: usedThisCycle(d.usage as Parameters<typeof usedThisCycle>[0], expiresAt),
+    limit,
+    renewsAt: limit > 0 ? nextRenewal(expiresAt) : null,
+    updatedAt: new Date(),
   };
 }
 
@@ -202,17 +223,18 @@ export interface Announcement {
   active: boolean;
 }
 
-// Every announcement the admin has switched on, newest first. Filtered here
-// rather than in the query so it needs no composite index.
+// Every announcement the admin has switched on, newest first. Only the active
+// ones are asked for: reading the newest 50 and dropping the switched-off ones
+// here cost a read for each of those too. Sorted here rather than in the
+// query, so it needs no composite index.
 export async function getActiveAnnouncements(): Promise<Announcement[]> {
   const q = query(
     collection(db, 'announcements'),
-    orderBy('createdAt', 'desc'),
+    where('active', '==', true),
     limit(50)
   );
   const snap = await getDocs(q);
   return snap.docs
-    .filter((d) => d.data().active === true)
     .map((d) => {
       const data = d.data();
       return {
@@ -225,5 +247,6 @@ export async function getActiveAnnouncements(): Promise<Announcement[]> {
         createdAt: toDate(data.createdAt),
         active: true,
       };
-    });
+    })
+    .sort((a, b) => (b.createdAt?.getTime() ?? 0) - (a.createdAt?.getTime() ?? 0));
 }

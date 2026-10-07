@@ -9,7 +9,8 @@ import {
 import { auth, db } from "@/firebase/firebase";
 import { doc, getDoc } from "firebase/firestore";
 import { loadPrompts } from "@/lib/promptCache";
-import { downloadEssayPdf, type EssayPdfTask } from "@/lib/essayPdf";
+import type { EssayPdfTask } from "@/lib/essayPdf";
+import { loadEssayPdf, warmEssayPdf } from "@/lib/pdfLoad";
 import { recordFinishedEssays } from "@/lib/activity";
 import { useSingleRun } from "@/hooks/useSingleRun";
 import { BusyLabel } from "@/components/ui/BusyLabel";
@@ -64,6 +65,10 @@ function Mock() {
   useEffect(() => {
     if (!authLoading && !user) navigate("/auth", { replace: true });
   }, [user, authLoading, navigate]);
+
+  // The exam saves its PDF by itself when time runs out, so the builder is
+  // fetched in the background now rather than at that moment.
+  useEffect(() => warmEssayPdf(), []);
 
   const { busy: finishing, run: runFinish } = useSingleRun();
   const [activeTask, setActiveTask] = useState<1 | 2>(1);
@@ -274,7 +279,7 @@ function Mock() {
         { taskNum: 1, question: task1?.report, imageSrc: task1Chart, answer: userText1 },
         { taskNum: 2, question: task2?.report, answer: userText2 },
       ];
-      await downloadEssayPdf({ mode: "Mock Exam", fileName: "WriteReady_Mock.pdf", tasks });
+      await (await loadEssayPdf()).downloadEssayPdf({ mode: "Mock Exam", fileName: "WriteReady_Mock.pdf", tasks });
       recordFinishedEssays(user?.uid, tasks);
       setShowFeedbackModal(true);
     });

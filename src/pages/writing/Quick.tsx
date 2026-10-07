@@ -9,7 +9,8 @@ import {
 import { auth, db } from "@/firebase/firebase";
 import { doc, getDoc } from "firebase/firestore";
 import { loadPrompts } from "@/lib/promptCache";
-import { downloadEssayPdf, type EssayPdfTask } from "@/lib/essayPdf";
+import type { EssayPdfTask } from "@/lib/essayPdf";
+import { loadEssayPdf } from "@/lib/pdfLoad";
 import { recordFinishedEssays } from "@/lib/activity";
 import { useSingleRun } from "@/hooks/useSingleRun";
 import { BusyLabel } from "@/components/ui/BusyLabel";
@@ -234,7 +235,7 @@ function Quick() {
           answer: userText,
         },
       ];
-      await downloadEssayPdf({ mode: "Quick Write", fileName: `WriteReady_Quick_Task${selectedTaskType}.pdf`, tasks });
+      await (await loadEssayPdf()).downloadEssayPdf({ mode: "Quick Write", fileName: `WriteReady_Quick_Task${selectedTaskType}.pdf`, tasks });
       recordFinishedEssays(user?.uid, tasks);
       setShowFeedbackModal(true);
     });

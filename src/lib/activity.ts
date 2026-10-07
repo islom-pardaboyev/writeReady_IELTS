@@ -1,6 +1,6 @@
 import { doc, increment, serverTimestamp, setDoc } from "firebase/firestore";
 import { db } from "@/firebase/config";
-import { countWords, MIN_WORDS } from "@/lib/pdfShared";
+import { countWords, MIN_WORDS } from "@/lib/wordCount";
 import { localDayKey } from "@/lib/dashboardStats";
 
 // The dashboard's day streak counts the days a student wrote. A checked essay

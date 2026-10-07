@@ -1,6 +1,5 @@
-import { useEffect, useLayoutEffect, useRef, useState, type FormEvent } from 'react';
+import { useEffect, useRef, useState, type FormEvent } from 'react';
 import { useNavigate, useLocation, Link } from 'react-router';
-import gsap from 'gsap';
 import { Check, ChevronDown, LogOut } from 'lucide-react';
 import { useAuth } from '../hooks/useAuth';
 import { useUsage } from '../hooks/useUsage';
@@ -52,7 +51,6 @@ export function AccountPage() {
   const { usage } = useUsage(user?.uid ?? null);
   const navigate = useNavigate();
   const { hash } = useLocation();
-  const rootRef = useRef<HTMLDivElement>(null);
   const editCardRef = useRef<HTMLDivElement>(null);
 
   const [nameInput, setNameInput] = useState('');
@@ -91,17 +89,6 @@ export function AccountPage() {
   useEffect(() => {
     if (user) setNameInput(user.displayName ?? '');
   }, [user]);
-
-  useLayoutEffect(() => {
-    if (!user || !profile) return;
-    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
-    const ctx = gsap.context(() => {
-      gsap.from('.gs-acc-aside', { y: 16, opacity: 0, duration: 0.55, ease: 'power3.out' });
-      gsap.from('.gs-acc-section', { y: 16, opacity: 0, duration: 0.5, ease: 'power3.out', stagger: 0.06, delay: 0.08 });
-    }, rootRef);
-
-    return () => ctx.revert();
-  }, [user, profile]);
 
   if (!user || !profile) return null;
 
@@ -187,7 +174,7 @@ export function AccountPage() {
 
   return (
     <AppShell>
-      <div ref={rootRef} className="min-h-[calc(100vh-120px)] bg-[var(--bg-base)] py-8 sm:py-10">
+      <div className="min-h-[calc(100vh-120px)] bg-[var(--bg-base)] py-8 sm:py-10">
         <div className="mx-auto max-w-[1120px] px-4 sm:px-6">
           <header className="mb-6 sm:mb-8">
             <h1 className="text-3xl font-extrabold tracking-[-0.025em] text-balance text-[var(--text-primary)]">My account</h1>
