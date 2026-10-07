@@ -102,7 +102,7 @@ export function OfflineGate() {
               disabled={checking}
               className="inline-flex min-h-11 w-full max-w-[280px] items-center justify-center gap-2 rounded-full bg-[var(--ink-blue-solid)] px-6 text-[0.9375rem] font-semibold text-white transition-opacity hover:opacity-90 disabled:opacity-60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ring)] focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--bg-base)] sm:w-auto"
             >
-              {checking ? "Checking" : "Try again"}
+              {checking ? "Checking…" : "Try again"}
             </button>
 
             <p

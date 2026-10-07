@@ -9,6 +9,7 @@ import { Button } from "../components/ui/Button";
 import { Card } from "../components/ui/Card";
 import { useAuth } from "../hooks/useAuth";
 import { CUSTOM_PLAN_PRICES, PLAN_INFO, customPriceFor } from "../lib/plans";
+import { formatSum, formatUZS } from "@/lib/money";
 
 gsap.registerPlugin(ScrollTrigger);
 
@@ -548,7 +549,7 @@ export function PricingPage() {
                         </td>
                         <td className={`${FONT_MONO} text-right py-2 px-3`}>
                           <label htmlFor={inputId} className="block cursor-pointer text-[var(--text-primary)]">
-                            {price.toLocaleString()} UZS
+                            {formatUZS(price)}
                           </label>
                         </td>
                       </tr>
@@ -568,7 +569,7 @@ export function PricingPage() {
                 className={`shrink-0 ${ownCustom === customAnalyses ? "opacity-60" : ""}`}
                 disabled={ownCustom === customAnalyses}
               >
-                {ownCustom === customAnalyses ? "Current plan" : `Get Customizable (${customPrice.toLocaleString()} UZS) →`}
+                {ownCustom === customAnalyses ? "Current plan" : `Get Customizable (${formatUZS(customPrice)}) →`}
               </Button>
             </div>
           </div>
@@ -586,7 +587,7 @@ export function PricingPage() {
                   </div>
                 </div>
                 <div className={`${FONT_MONO} text-2xl font-bold text-emerald-600`}>
-                  {balance.toLocaleString()} UZS
+                  {formatUZS(balance)}
                 </div>
               </div>
               <div className="flex items-center gap-2 flex-wrap">
@@ -595,8 +596,8 @@ export function PricingPage() {
                   type="number"
                   min={MIN_TOPUP_UZS}
                   step="1000"
-                  aria-label={`Top-up amount in UZS, minimum ${MIN_TOPUP_UZS.toLocaleString()}`}
-                  placeholder={`Amount (min ${MIN_TOPUP_UZS.toLocaleString()} UZS)…`}
+                  aria-label={`Top-up amount in UZS, minimum ${formatSum(MIN_TOPUP_UZS)}`}
+                  placeholder={`Amount (min ${formatUZS(MIN_TOPUP_UZS)})…`}
                   value={topUpAmount}
                   onChange={(e) => setTopUpAmount(e.target.value)}
                   className={`flex-1 min-w-[160px] h-11 px-4 rounded-xl border bg-[var(--bg-base)] text-[var(--text-primary)] text-sm outline-none focus:border-[var(--ink-blue)] ${topUpTooLow ? "border-red-400" : "border-[var(--border-color)]"}`}
@@ -610,7 +611,7 @@ export function PricingPage() {
                 </Button>
               </div>
               <p className={`text-xs mt-2 ${topUpTooLow ? "text-red-500" : "text-[var(--text-secondary)]"}`}>
-                Minimum top-up is {MIN_TOPUP_UZS.toLocaleString()} UZS. Enter any amount above that.
+                Minimum top-up is {formatUZS(MIN_TOPUP_UZS)}. Enter any amount above that.
               </p>
             </div>
           )}
@@ -638,7 +639,7 @@ export function PricingPage() {
                 <section className="receipt-top rounded-t-[18px] bg-[var(--bg-card)] px-6 pt-4 pb-7 sm:px-8">
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-2">
-                      <img src="/logo.png" alt="" className="size-6 rounded-md" />
+                      <img src="/logo.png" alt="" width={24} height={24} className="size-6 rounded-md" />
                       <span className="text-sm font-bold text-[var(--text-primary)]">WriteReady IELTS</span>
                     </div>
                     <button

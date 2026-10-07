@@ -216,6 +216,7 @@ export function ScoreCardDialog({ onClose, defaultName, source }: ScoreCardDialo
       <Label htmlFor={nameId}>Name on the card</Label>
       <Input
         id={nameId}
+        name="cardName"
         value={name}
         onChange={(e) => setName(e.target.value)}
         maxLength={MAX_CARD_NAME}

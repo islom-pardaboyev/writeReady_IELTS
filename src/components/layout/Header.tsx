@@ -14,6 +14,7 @@ import {
 import { ThemeToggle } from "@/components/ui/ThemeToggle";
 import { Button } from "../ui/Button";
 import { NotificationBell } from "../ui/NotificationBell";
+import { formatUZS } from '@/lib/money';
 
 export function SubscriptionBadge({
   plan,
@@ -236,7 +237,7 @@ export function Header() {
                     <span aria-hidden="true">💰</span> Balance
                   </span>
                   <span className="text-sm font-bold font-mono text-emerald-600">
-                    {(profile?.balanceUZS ?? 0).toLocaleString()} UZS
+                    {formatUZS(profile?.balanceUZS ?? 0)}
                   </span>
                 </Link>
 

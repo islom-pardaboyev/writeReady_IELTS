@@ -283,6 +283,7 @@ function CodeForm() {
       <div className="flex gap-2">
         <Input
           id={inputId}
+          name="code"
           value={value}
           onChange={(e) => { setValue(e.target.value); setInvalid(false); }}
           placeholder="7F3K-9Q2M"

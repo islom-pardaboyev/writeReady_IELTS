@@ -84,10 +84,13 @@ export function QuestionList({ data, initialTask = 'all' }: { data: QuestionInde
           <label className="sr-only" htmlFor="question-search">Search questions</label>
           <input
             id="question-search"
+            name="q"
             type="search"
+            autoComplete="off"
+            spellCheck={false}
             value={query}
             onChange={(e) => setQuery(e.target.value)}
-            placeholder="Search, e.g. technology, line graph"
+            placeholder="Search, e.g. technology, line graph…"
             className="h-11 w-full rounded-lg border border-[var(--border-color)] bg-[var(--bg-card)] pl-9 pr-3 text-sm text-[var(--text-primary)] placeholder:text-[var(--text-secondary)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ring)]"
           />
         </div>

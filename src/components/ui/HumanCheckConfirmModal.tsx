@@ -3,6 +3,7 @@ import { Wallet } from 'lucide-react';
 import { Button } from './Button';
 import { Dialog, DialogContent, DialogTitle, DialogDescription } from './dialog';
 import { LogoLoader } from './LogoLoader';
+import { formatUZS } from '@/lib/money';
 
 interface HumanCheckConfirmModalProps {
   open: boolean;
@@ -34,12 +35,12 @@ export function HumanCheckConfirmModal({ open, priceLoading, price, balance, can
           ) : canAfford ? (
             <>
               <DialogTitle className="text-base font-semibold text-slate-900 dark:text-neutral-100 mb-1">
-                Human Check costs {price?.toLocaleString()} UZS
+                Human Check costs {formatUZS(price ?? 0)}
               </DialogTitle>
               <DialogDescription className="text-sm text-slate-500 dark:text-neutral-400 leading-6 mb-1">
                 This amount will be deducted from your balance once you choose a teacher.
               </DialogDescription>
-              <p className="text-xs text-slate-400 dark:text-neutral-500 mb-6">Your balance: {balance.toLocaleString()} UZS</p>
+              <p className="text-xs text-slate-400 dark:text-neutral-500 mb-6">Your balance: {formatUZS(balance)}</p>
               <div className="flex flex-col gap-2.5">
                 <Button onClick={onConfirm} className="w-full bg-emerald-600 hover:bg-emerald-700 text-white">
                   Continue
@@ -53,7 +54,7 @@ export function HumanCheckConfirmModal({ open, priceLoading, price, balance, can
             <>
               <DialogTitle className="text-base font-semibold text-slate-900 dark:text-neutral-100 mb-1">Not enough balance</DialogTitle>
               <DialogDescription className="text-sm text-slate-500 dark:text-neutral-400 leading-6 mb-1">
-                Human Check costs {price?.toLocaleString()} UZS, but your balance is only {balance.toLocaleString()} UZS.
+                Human Check costs {formatUZS(price ?? 0)}, but your balance is only {formatUZS(balance)}.
               </DialogDescription>
               <p className="text-xs text-slate-400 dark:text-neutral-500 mb-6">Top up your balance to use Human Check.</p>
               <div className="flex flex-col gap-2.5">

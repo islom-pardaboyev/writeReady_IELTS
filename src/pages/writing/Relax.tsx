@@ -492,7 +492,7 @@ function Relax() {
                         ) : (
                           <img
                             src={imageUrl}
-                            alt="Preview"
+                            alt="Your Task 1 chart"
                             width={1200}
                             height={800}
                             loading="lazy"

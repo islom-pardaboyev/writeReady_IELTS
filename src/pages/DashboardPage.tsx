@@ -343,9 +343,10 @@ export function DashboardPage() {
           <h2 className="text-xl font-bold text-[var(--text-primary)] mb-4">Choose a practice mode</h2>
           <div className="grid grid-cols-[repeat(auto-fit,minmax(200px,1fr))] gap-4 mb-10">
             {modes.map((m) => (
-              <button
+              <Link
                 key={m.id}
-                className={`gs-db-mode-card rounded-[14px] p-6 text-left cursor-pointer transition-[transform,box-shadow] duration-150 shadow-[var(--shadow-sm)] hover:-translate-y-0.5 hover:shadow-[0_6px_20px_rgba(0,0,0,0.15)] focus-visible:-translate-y-0.5 focus-visible:shadow-[0_6px_20px_rgba(0,0,0,0.15)] motion-reduce:hover:translate-y-0 border-[1.5px] ${
+                to={`/writing/${m.id}`}
+                className={`gs-db-mode-card block rounded-[14px] p-6 text-left cursor-pointer no-underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ring)] focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--bg-base)] transition-[transform,box-shadow] duration-150 shadow-[var(--shadow-sm)] hover:-translate-y-0.5 hover:shadow-[0_6px_20px_rgba(0,0,0,0.15)] focus-visible:-translate-y-0.5 focus-visible:shadow-[0_6px_20px_rgba(0,0,0,0.15)] motion-reduce:hover:translate-y-0 border-[1.5px] ${
                   m.id === 'mock'
                     ? 'bg-[var(--ink-blue-solid)] border-transparent'
                     : m.id === 'quick'
@@ -354,16 +355,15 @@ export function DashboardPage() {
                     ? 'bg-green-50 border-green-200 dark:bg-green-900/20 dark:border-green-800'
                     : 'bg-[var(--bg-card)] border-[var(--border-color)]'
                 }`}
-                onClick={() => navigate(`/writing/${m.id}`)}
               >
-                <div className="text-[1.75rem] mb-2">{m.emoji}</div>
+                <div className="text-[1.75rem] mb-2" aria-hidden="true">{m.emoji}</div>
                 <div className={`font-sans font-bold text-lg mb-1 ${m.id === 'mock' ? 'text-white' : m.id === 'quick' ? 'text-brand-violet-800 dark:text-brand-violet-200' : 'text-[var(--text-primary)]'}`}>
                   {m.title}
                 </div>
                 <div className={`text-[0.8125rem] ${m.id === 'mock' ? 'text-white/85' : m.id === 'quick' ? 'text-brand-violet-600 dark:text-brand-violet-300' : 'text-[var(--text-secondary)]'}`}>
                   {m.desc}
                 </div>
-              </button>
+              </Link>
             ))}
           </div>
 
