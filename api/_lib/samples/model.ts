@@ -6,8 +6,8 @@ import { z } from 'zod';
  * Two kinds:
  *   'student'  a student's own Band 7+ essay, shared anonymously from the
  *              feedback page (./consent.ts)
- *   'ai'       a model answer written by Claude Haiku in the daily batch
- *              (./generate.ts)
+ *   'ai'       a model answer written by Claude Haiku. No new ones are made;
+ *              the drafts already saved can still be approved or rejected.
  *
  * Both wait as 'pending' until the admin taps Approve in Telegram
  * (./review.ts). Only 'published' samples ever reach the public pages, which
@@ -30,13 +30,6 @@ export const CONSENTS = 'sampleConsents';
 export const CREDITS = 'sampleCredits';
 /** Consent actions per student per day. */
 export const CONSENT_LIMITS = 'sampleConsentLimits';
-/** Questions waiting for a new AI draft (Regenerate) or for their metadata. */
-export const QUEUE = 'sampleQueue';
-/** One per Message Batch: what was asked, what it cost. */
-export const RUNS = 'generationRuns';
-/** config/samples: when the deploy hook last ran. */
-export const CONFIG_COLLECTION = 'config';
-export const CONFIG_DOC = 'samples';
 
 /** The question bank (written by the admin panel, src/pages/writing/admin/PromptsSection.tsx). */
 export const BANK = { task1: 'task1_reports', task2: 'task2_reports' } as const;
@@ -202,27 +195,9 @@ export function countWords(text: string): number {
   return text.trim().split(/\s+/).filter(Boolean).length;
 }
 
-/** What an AI draft must come in at, or it is never published. The prompt asks for a little less. */
-export const WORD_RANGE: Record<SampleTaskType, [number, number]> = {
-  task1: [160, 200],
-  task2: [260, 320],
-};
-
 // ── The AI's reply ───────────────────────────────────────────────────────────
 
 const text = z.string().trim().min(1);
-
-export const vocabSchema = z
-  .object({
-    word: text.max(80),
-    meaning: text.max(300),
-    uz: text.max(200),
-    example: text.max(400),
-  })
-  .refine((v) => v.uz.toLowerCase() !== v.word.toLowerCase(), {
-    message: 'the Uzbek translation only repeats the English word',
-    path: ['uz'],
-  });
 
 const metaFields = {
   /** 2-6 words naming the subject, e.g. "Children and technology". Becomes the slug. */
@@ -234,33 +209,6 @@ const task1MetaFields = {
   /** What the chart shows, e.g. "Line graph showing energy consumption in the USA from 1980 to 2030". */
   imageAlt: text.min(15).max(250),
 };
-
-/**
- * A model answer, checked before it can go anywhere. Anything that fails is
- * saved as 'needs_manual' with the reasons, and is never sent for approval.
- * The word count is counted here, never taken from the model's own number.
- */
-export function draftSchema(taskType: SampleTaskType) {
-  const [min, max] = WORD_RANGE[taskType];
-  const base = z.object({
-    sampleAnswer: text.refine(
-      (s) => {
-        const n = countWords(s);
-        return n >= min && n <= max;
-      },
-      (s) => ({ message: `the answer is ${countWords(s)} words; it must be ${min}-${max}` }),
-    ),
-    band: z.number().min(0).max(9),
-    wordCount: z.number().int().nonnegative(),
-    outline: z.array(text.max(300)).min(2).max(8),
-    vocabulary: z.array(vocabSchema).min(8, 'fewer than 8 vocabulary items').max(12, 'more than 12 vocabulary items'),
-    grammarHighlights: z.array(text.max(400)).min(2).max(6),
-    ...metaFields,
-  });
-  return taskType === 'task1' ? base.extend(task1MetaFields) : base;
-}
-
-export type Draft = z.infer<ReturnType<typeof draftSchema>> & { chartType?: ChartType; imageAlt?: string };
 
 /**
  * For a student's essay: the question's metadata (when it has none yet), and
@@ -281,17 +229,17 @@ export function enrichSchema(taskType: SampleTaskType) {
 
 export type Enrichment = z.infer<ReturnType<typeof enrichSchema>> & { chartType?: ChartType; imageAlt?: string };
 
-/** One line per problem, for the needs_manual record and the logs. */
+/** One line per problem, for the logs. */
 export function zodProblems(error: z.ZodError): string[] {
   return error.issues.map((i) => `${i.path.join('.') || 'reply'}: ${i.message}`);
 }
 
 /**
- * The same shapes as JSON Schema, for the API's structured outputs. That only
+ * The same shape as JSON Schema, for the API's structured outputs. That only
  * guarantees the JSON parses and has these fields and enums; counts and
  * lengths are not something it can enforce, so zod checks those after.
  */
-export function replyJsonSchema(kind: 'draft' | 'enrich', taskType: SampleTaskType): Record<string, unknown> {
+export function replyJsonSchema(taskType: SampleTaskType): Record<string, unknown> {
   const str = { type: 'string' };
   const strings = { type: 'array', items: str };
   const obj = (properties: Record<string, unknown>) => ({
@@ -305,14 +253,5 @@ export function replyJsonSchema(kind: 'draft' | 'enrich', taskType: SampleTaskTy
     topic: { type: 'string', enum: [...TOPICS] },
     ...(taskType === 'task1' ? { chartType: { type: 'string', enum: [...CHART_TYPES] }, imageAlt: str } : {}),
   };
-  if (kind === 'enrich') return obj({ outline: strings, grammarHighlights: strings, ...meta });
-  return obj({
-    sampleAnswer: str,
-    band: { type: 'number' },
-    wordCount: { type: 'integer' },
-    outline: strings,
-    vocabulary: { type: 'array', items: obj({ word: str, meaning: str, uz: str, example: str }) },
-    grammarHighlights: strings,
-    ...meta,
-  });
+  return obj({ outline: strings, grammarHighlights: strings, ...meta });
 }

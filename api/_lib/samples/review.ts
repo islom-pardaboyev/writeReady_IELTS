@@ -4,7 +4,7 @@ import { db } from '../db.js';
 import { esc, tg, tgUpload, TelegramError } from '../telegramApi.js';
 import { CAPTION_LIMIT } from '../telegramText.js';
 import {
-  CREDITS, MODE_LABEL, QUEUE, SAMPLES, SUBMISSIONS,
+  CREDITS, MODE_LABEL, SAMPLES, SUBMISSIONS,
   type Criteria, type SampleMode, type SampleStatus, type SampleTaskType, type SampleVocab, type SeenBefore, type WritingRecord,
 } from './model.js';
 import { loadChartDataUrl } from './questions.js';
@@ -198,11 +198,10 @@ function clip(text: string, max: number): string {
   return text.length <= max ? text : `${text.slice(0, max - 1)}…`;
 }
 
-export const buttons = (id: string, sourceType: 'student' | 'ai') => ({
+export const buttons = (id: string) => ({
   inline_keyboard: [[
     { text: '✅ Approve', callback_data: `smp:a:${id}` },
     { text: '❌ Reject', callback_data: `smp:r:${id}` },
-    ...(sourceType === 'ai' ? [{ text: '🔁 Regenerate', callback_data: `smp:g:${id}` }] : []),
   ]],
 });
 
@@ -219,8 +218,8 @@ async function loadChart(questionId: string): Promise<{ data: Buffer; type: stri
 
 /**
  * Sends one sample to the admin chat and remembers the messages on it. A
- * sample whose messages went out already is left alone, so the cron can call
- * this for every pending sample without sending anything twice.
+ * sample whose messages went out already is left alone, so calling this again
+ * for the same sample never sends anything twice.
  */
 export async function sendForReview(sampleId: string): Promise<boolean> {
   const chatId = adminChatId();
@@ -262,7 +261,7 @@ export async function sendForReview(sampleId: string): Promise<boolean> {
       parse_mode: 'HTML',
       disable_web_page_preview: true,
       ...(i === 0 && replyTo !== undefined ? { reply_parameters: { message_id: replyTo, allow_sending_without_reply: true } } : {}),
-      ...(last ? { reply_markup: buttons(sampleId, s.sourceType) } : {}),
+      ...(last ? { reply_markup: buttons(sampleId) } : {}),
     });
     messageIds.push(sent.message_id);
     if (last) buttonMessageId = sent.message_id;
@@ -290,15 +289,15 @@ export interface ReviewCallback {
   message?: { message_id: number; chat: { id: number } };
 }
 
-const ACTIONS = { a: 'approve', r: 'reject', g: 'regenerate' } as const;
+const ACTIONS = { a: 'approve', r: 'reject' } as const;
 type Action = (typeof ACTIONS)[keyof typeof ACTIONS];
 
 export function readPress(data: string | undefined): { action: Action; sampleId: string } | null {
-  const m = /^smp:([arg]):([\w-]{1,40})$/.exec(data ?? '');
+  const m = /^smp:([ar]):([\w-]{1,40})$/.exec(data ?? '');
   return m ? { action: ACTIONS[m[1] as keyof typeof ACTIONS], sampleId: m[2] } : null;
 }
 
-type Outcome = { kind: 'done'; label: string } | { kind: 'already'; status: string } | { kind: 'missing' } | { kind: 'refused'; reason: string };
+type Outcome = { kind: 'done'; label: string } | { kind: 'already'; status: string } | { kind: 'missing' };
 
 /** What the student reads in the bell and on the dashboard when their essay is published. */
 export function publishedNotice(taskType: SampleTaskType, credited: boolean): string {
@@ -323,7 +322,6 @@ export async function applyPress(action: Action, sampleId: string): Promise<Outc
     if (!snap.exists) return { kind: 'missing' };
     const s = snap.data() as { status: SampleStatus; sourceType: string; questionId: string; taskType: SampleTaskType; submissionId?: string };
     if (s.status !== 'pending') return { kind: 'already', status: s.status };
-    if (action === 'regenerate' && s.sourceType !== 'ai') return { kind: 'refused', reason: 'Only AI drafts can be regenerated.' };
 
     // Every read before the first write, as a transaction requires.
     let pay: { uid: string; creditRef: DocumentReference } | null = null;
@@ -350,12 +348,8 @@ export async function applyPress(action: Action, sampleId: string): Promise<Outc
       status,
       updatedAt: now,
       ...(status === 'published' ? { publishedAt: now, pageChangedAt: now } : { rejectedAt: now }),
-      ...(action === 'regenerate' ? { regenerated: true } : {}),
     }, { merge: true });
     if (s.submissionId) tx.set(store.collection(SUBMISSIONS).doc(s.submissionId), { status, updatedAt: now }, { merge: true });
-    if (action === 'regenerate') {
-      tx.set(store.collection(QUEUE).doc(s.questionId), { kind: 'regenerate', requestedAt: now, replaces: sampleId });
-    }
     if (pay) {
       tx.set(pay.creditRef, { state: 'paid', paidAt: now, sampleId }, { merge: true });
     }
@@ -379,7 +373,7 @@ export async function applyPress(action: Action, sampleId: string): Promise<Outc
       kind: 'done',
       label: action === 'approve'
         ? pay ? '✅ Published · +1 free report sent to the student' : '✅ Published'
-        : action === 'reject' ? '❌ Rejected' : '🔁 Rejected — a new draft is queued',
+        : '❌ Rejected',
     };
   });
 }
@@ -423,12 +417,7 @@ export async function handleReviewPress(
 
   const label = outcome.kind === 'done' ? outcome.label
     : outcome.kind === 'already' ? STATUS_LABEL[outcome.status] ?? outcome.status
-    : outcome.kind === 'missing' ? '⚠️ This sample no longer exists'
-    : null;
-  if (outcome.kind === 'refused') {
-    await answer(outcome.reason);
-    return true;
-  }
+    : '⚠️ This sample no longer exists';
 
   // Rewrite the message with the result and without buttons. The stored HTML
   // keeps its formatting; without it, the buttons alone go.

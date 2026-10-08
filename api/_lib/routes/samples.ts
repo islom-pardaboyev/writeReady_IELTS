@@ -42,7 +42,6 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       if (!decision) return res.status(400).json({ error: 'Choose yes or no.' });
       const result = await submitConsent(uid, session, decision, readShare(body.share));
       // Awaited: a serverless function can be frozen once it has answered.
-      // A message that fails here is sent by the next cron run instead.
       for (const id of result.sampleIds) {
         await sendForReview(id).catch((e) => console.error(`samples: could not send ${id} for review:`, e));
       }

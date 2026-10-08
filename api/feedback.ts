@@ -858,7 +858,7 @@ function readReport(raw: string): {
 // language). Coherence & Cohesion, Lexical Resource, and Grammatical Range &
 // Accuracy differ only slightly in phrasing between the two tasks in the
 // official doc, so those three are shared here to keep the prompt compact.
-// The sample-answer generator (api/_lib/samples/generate.ts) writes to these too.
+// The sample answers' study notes (api/_lib/samples/generate.ts) use these too.
 export function bandDescriptors(taskType: string): string {
   const isTask1 = taskType === 'Task 1';
   const minWords = isTask1 ? 150 : 250;

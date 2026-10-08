@@ -90,7 +90,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (update && typeof update.update_id === 'number') {
     try {
       initFirebase();
-      // Approve / Reject / Regenerate on a sample answer, from the admin chat
+      // Approve / Reject on a sample answer, from the admin chat
       // (api/_lib/samples/review.ts). Anything else is the student bot's.
       const apiKey = process.env.ANTHROPIC_API_KEY;
       const onApproved = (sampleId: string) => prepareForPage(sampleId, apiKey ? new Anthropic({ apiKey }) : null);

@@ -38,8 +38,6 @@ const { qualifyingTasks, readMode, DAILY_CONSENT_LIMIT } = await import('../api/
 const consent = await import('../api/_lib/samples/consent.js');
 const review = await import('../api/_lib/samples/review.js');
 const generate = await import('../api/_lib/samples/generate.js');
-const daily = await import('../api/_lib/samples/daily.js');
-const { jobFor } = await import('../api/_lib/routes/samplesCron.js');
 const telegramRoute = (await import('../api/_lib/routes/telegram.js')).default;
 
 const fake = new FakeFirestore();
@@ -358,38 +356,12 @@ check('score-only report: sample has no vocabulary', (fake.all(model.SAMPLES)[0]
 
 section('validation of AI replies');
 const vocab = (n: number) => Array.from({ length: n }, (_, i) => ({ word: `collocation ${i}`, meaning: 'a meaning', uz: `tarjima ${i}`, example: 'A new example sentence.' }));
-const draft2 = (overrides: Record<string, unknown> = {}) => JSON.stringify({
-  sampleAnswer: words(280), band: 8, wordCount: 280, outline: ['Intro', 'Body 1', 'Body 2', 'Conclusion'],
-  vocabulary: vocab(10), grammarHighlights: ['Concession with although.', 'Relative clauses.', 'Conditionals.'],
-  title: 'Children and technology', topic: 'Education', ...overrides,
-});
-const draft1 = (overrides: Record<string, unknown> = {}) => draft2({
-  sampleAnswer: words(180), wordCount: 180, title: 'Energy consumption', topic: 'Energy', chartType: 'Line graph',
-  imageAlt: 'Line graph showing energy consumption in the USA from 1980 to 2030', ...overrides,
-});
-const ok = (r: ReturnType<typeof generate.checkDraft>) => 'draft' in r;
-const problems = (r: ReturnType<typeof generate.checkDraft>) => ('problems' in r ? r.problems.join('; ') : '');
-check('valid Task 2 passes', ok(generate.checkDraft('task2', draft2(), 'end_turn')), problems(generate.checkDraft('task2', draft2(), 'end_turn')));
-check('valid Task 1 passes', ok(generate.checkDraft('task1', draft1(), 'end_turn')), problems(generate.checkDraft('task1', draft1(), 'end_turn')));
-check('Task 2 at 255 words fails', /260-320/.test(problems(generate.checkDraft('task2', draft2({ sampleAnswer: words(255) }), 'end_turn'))));
-check('Task 2 at 330 words fails', !ok(generate.checkDraft('task2', draft2({ sampleAnswer: words(330) }), 'end_turn')));
-check('Task 2 at 260 and 320 pass', ok(generate.checkDraft('task2', draft2({ sampleAnswer: words(260) }), 'end_turn')) && ok(generate.checkDraft('task2', draft2({ sampleAnswer: words(320) }), 'end_turn')));
-check('Task 1 at 155 words fails', !ok(generate.checkDraft('task1', draft1({ sampleAnswer: words(155) }), 'end_turn')));
-check('Task 1 at 205 words fails', !ok(generate.checkDraft('task1', draft1({ sampleAnswer: words(205) }), 'end_turn')));
-check('the model\'s own word count is ignored', ok(generate.checkDraft('task2', draft2({ wordCount: 50 }), 'end_turn')));
-check('7 vocabulary items fail', /fewer than 8/.test(problems(generate.checkDraft('task2', draft2({ vocabulary: vocab(7) }), 'end_turn'))));
-check('13 vocabulary items fail', /more than 12/.test(problems(generate.checkDraft('task2', draft2({ vocabulary: vocab(13) }), 'end_turn'))));
-check('a missing Uzbek translation fails', !ok(generate.checkDraft('task2', draft2({ vocabulary: [...vocab(9), { word: 'x', meaning: 'y', uz: '', example: 'z' }] }), 'end_turn')));
-check('an Uzbek "translation" that repeats the word fails', !ok(generate.checkDraft('task2', draft2({ vocabulary: [...vocab(9), { word: 'Impact', meaning: 'y', uz: 'impact', example: 'z' }] }), 'end_turn')));
-check('Task 1 without alt text fails', !ok(generate.checkDraft('task1', draft1({ imageAlt: '' }), 'end_turn')));
-check('a topic outside the list fails', !ok(generate.checkDraft('task2', draft2({ topic: 'Space travel' }), 'end_turn')));
-check('a cut-off reply fails', !ok(generate.checkDraft('task2', draft2(), 'max_tokens')));
-check('a refusal fails', !ok(generate.checkDraft('task2', draft2(), 'refusal')));
-check('broken JSON fails', !ok(generate.checkDraft('task2', '{"sampleAnswer": "x"', 'end_turn')));
 check('enrichment accepts a Task 1 with no chart (empty alt)', 'notes' in generate.checkEnrichment('task1', JSON.stringify({ outline: ['a', 'b'], grammarHighlights: ['x', 'y'], title: 'Energy use', topic: 'Energy', chartType: 'Bar chart', imageAlt: '' }), 'end_turn'));
-const schema = model.replyJsonSchema('draft', 'task1') as { required: string[]; additionalProperties: boolean };
-check('JSON schema for structured outputs lists every field', schema.additionalProperties === false && ['sampleAnswer', 'vocabulary', 'chartType', 'imageAlt'].every((f) => schema.required.includes(f)));
-check('JSON schema has no length constraints (unsupported by structured outputs)', !JSON.stringify(model.replyJsonSchema('draft', 'task2')).match(/min|max/i));
+check('enrichment rejects a topic outside the list', 'problems' in generate.checkEnrichment('task2', JSON.stringify({ outline: ['a', 'b'], grammarHighlights: ['x', 'y'], title: 'Space', topic: 'Space travel' }), 'end_turn'));
+check('enrichment rejects a cut-off reply', 'problems' in generate.checkEnrichment('task2', '{}', 'max_tokens'));
+const schema = model.replyJsonSchema('task1') as { required: string[]; additionalProperties: boolean };
+check('JSON schema for structured outputs lists every field', schema.additionalProperties === false && ['outline', 'grammarHighlights', 'title', 'topic', 'chartType', 'imageAlt'].every((f) => schema.required.includes(f)));
+check('JSON schema has no length constraints (unsupported by structured outputs)', !JSON.stringify(model.replyJsonSchema('task2')).match(/min|max/i));
 
 // ── Telegram review messages ────────────────────────────────────────────────
 
@@ -427,7 +399,7 @@ const long = review.reviewMessages({
 check('a long text is split into several messages', long.chunks.length >= 2, long.chunks.map((c) => c.length));
 check('every part fits Telegram\'s limit', long.chunks.every((c) => c.length <= review.CHUNK_LIMIT));
 check('AI header says "not assessed"', long.chunks[0].includes('🤖 AI model answer — Band 8') && long.chunks[0].includes('AI draft — not assessed'));
-check('AI drafts get Regenerate', review.buttons('x', 'ai').inline_keyboard[0].map((b) => b.text).join() === '✅ Approve,❌ Reject,🔁 Regenerate');
+check('review buttons are Approve and Reject only', review.buttons('x').inline_keyboard[0].map((b) => b.text).join() === '✅ Approve,❌ Reject');
 const hugeLine = review.chunkLines([{ plain: '<&>'.repeat(3000) }]);
 check('one huge paragraph is cut without breaking entities', hugeLine.length > 1 && hugeLine.every((c) => c.length <= review.CHUNK_LIMIT && !/&(?:a|am|l|g)?$/.test(c)));
 
@@ -475,130 +447,7 @@ check('a second press cannot change it', fake.table(model.SAMPLES).get(target)?.
 check('...and just shows the result', calls.some((c) => c.method === 'answerCallbackQuery' && c.body.text === '✅ Published'));
 await webhook(press(`smp:r:${shared.sampleIds[0]}`));
 check('Reject rejects', fake.table(model.SAMPLES).get(shared.sampleIds[0])?.status === 'rejected');
-check('student samples cannot be regenerated', (await review.applyPress('regenerate', target)).kind !== 'done');
 check('student bot buttons still reach the student bot', (await review.handleReviewPress({ id: 'x', from: { id: 1 }, data: 'check' })) === false);
-
-// ── The batch cycle ─────────────────────────────────────────────────────────
-
-section('daily AI batch');
-freshWorld();
-fake.put(model.BANK.task1, 'q1nochart', { report: 'The bar chart shows coffee sales in three cities.', createdAt: 3 });
-fake.put(model.BANK.task2, 'q2b', { report: 'Some people prefer to live in cities. Discuss both views.', createdAt: 4 });
-type Req = Parameters<typeof generate.anthropicBatches>[0] extends never ? never : { custom_id: string; params: Record<string, unknown> };
-let created: Req[] = [];
-let replies = new Map<string, { text: string; stop?: string; error?: string }>();
-let batchStatus = 'in_progress';
-const api = {
-  create: async (requests: unknown[]) => { created = requests as Req[]; return { id: `batch_${created.length}` }; },
-  status: async () => batchStatus,
-  results: async function* () {
-    for (const r of created) {
-      const reply = replies.get(r.custom_id);
-      if (!reply) continue;
-      if (reply.error) {
-        yield { custom_id: r.custom_id, result: { type: 'errored', error: { type: 'error', request_id: null, error: { type: reply.error, message: 'bad' } } } } as never;
-        continue;
-      }
-      yield {
-        custom_id: r.custom_id,
-        result: { type: 'succeeded', message: { content: [{ type: 'text', text: reply.text }], stop_reason: reply.stop ?? 'end_turn', usage: { input_tokens: 4000, output_tokens: 1500, cache_creation_input_tokens: 0, cache_read_input_tokens: 3000 } } },
-      } as never;
-    }
-  },
-};
-let submitted = await generate.submitBatch(api, 10);
-check('drafts for every question without a sample', submitted.drafts === 3, submitted);
-check('a Task 1 question without a chart becomes needs_manual instead', submitted.noChart === 1 && fake.all(model.SAMPLES).some((s) => s.questionId === 'q1nochart' && s.status === 'needs_manual'));
-check('the newest questions come first', created.map((r) => (r as { custom_id: string }).custom_id).length === 3);
-const userText = (r: Req) => JSON.stringify(r.params.messages);
-const t1req = created.find((r) => userText(r).includes('The line graph below shows'))!;
-const t1content = ((t1req.params.messages as { content: { type: string; text?: string }[] }[])[0]).content;
-check('Task 1 always sends the chart as an image', t1content[0].type === 'image');
-check('Task 1 tells the model to read the numbers from the image', t1content.some((b) => b.text?.includes('Read all numbers, labels, and units directly from the image')));
-check('shared instructions are cached', ((t1req.params.system as { cache_control?: unknown }[])[0]).cache_control !== undefined);
-check('the band descriptors are in the cached part', String(((t1req.params.system as { text: string }[])[0]).text).includes('TASK ACHIEVEMENT') && String(((t1req.params.system as { text: string }[])[0]).text).includes('TASK RESPONSE'));
-check('structured outputs are asked for', !!(t1req.params.output_config as { format?: unknown })?.format);
-check('model is Haiku', t1req.params.model === 'claude-haiku-4-5');
-check('the run is recorded', fake.all(model.RUNS).length === 1 && fake.all(model.RUNS)[0].status === 'submitted');
-check('questions in flight are not picked again', (await generate.submitBatch(api, 10)).drafts === 0);
-fake.table(model.RUNS).clear();
-fake.put(model.RUNS, 'batch_3', { batchId: 'batch_3', status: 'submitted', model: 'claude-haiku-4-5', submittedAt: Date.now(), requests: created.map((r, i) => {
-  const text = userText(r);
-  const questionId = text.includes('The line graph below shows') ? 'q1' : text.includes('live in cities') ? 'q2b' : 'q2';
-  return { customId: r.custom_id, kind: 'draft', questionId, taskType: questionId === 'q1' ? 'task1' : 'task2', questionText: questionId === 'q1' ? Q1 : questionId === 'q2' ? Q2 : 'Some people prefer to live in cities. Discuss both views.', ...(questionId === 'q1' ? { imageExt: 'jpg' } : {}), _i: i };
-}) });
-const idFor = (q: string) => (fake.table(model.RUNS).get('batch_3')!.requests as { customId: string; questionId: string }[]).find((r) => r.questionId === q)!.customId;
-replies = new Map([
-  [idFor('q1'), { text: draft1() }],
-  [idFor('q2'), { text: draft2() }],
-  [idFor('q2b'), { text: draft2({ sampleAnswer: words(200) }) }],
-]);
-calls = [];
-let collected = await generate.collectBatches(api);
-check('nothing collected while the batch runs', collected.runs === 0);
-batchStatus = 'ended';
-collected = await generate.collectBatches(api);
-check('finished batch collected', collected.runs === 1 && collected.drafts === 2 && collected.needsManual === 1, collected);
-const aiSamples = fake.all(model.SAMPLES).filter((s) => s.sourceType === 'ai' && s.status === 'pending');
-check('valid drafts wait for approval', aiSamples.length === 2);
-const aiT1 = aiSamples.find((s) => s.taskType === 'task1')!;
-check('Task 1 draft has slug, image URL and alt text', aiT1.slug === 'line-graph-energy-consumption' && aiT1.imageUrl === 'https://www.writeready.uz/question-images/line-graph-energy-consumption.jpg' && String(aiT1.imageAlt).startsWith('Line graph showing'), aiT1);
-check('Task 2 draft slug from the title', aiSamples.find((s) => s.taskType === 'task2')?.slug === 'children-and-technology');
-check('question metadata saved', fake.table(model.QUESTION_META).get('q1')?.chartType === 'Line graph' && fake.table(model.QUESTION_META).get('q2')?.topic === 'Education');
-check('a too-short draft is needs_manual with reasons, never pending', fake.all(model.SAMPLES).some((s) => s.questionId === 'q2b' && s.status === 'needs_manual' && JSON.stringify(s.validationErrors).includes('260-320')));
-check('drafts are sent for review with Regenerate', calls.some((c) => c.method === 'sendMessage' && kb(c).some((b) => b.text === '🔁 Regenerate')));
-check('Task 1 draft starts with the chart photo', calls.some((c) => c.method === 'sendPhoto' && String(c.body.caption).startsWith('🤖 AI model answer — Band 8')));
-const run = fake.all(model.RUNS)[0];
-check('token use and cost recorded', (run.usage as { input: number }).input === 12000 && Number(run.costUSD) > 0 && run.status === 'collected', run);
-// The same run collected again (an overlapping or retried cron) saves nothing twice.
-fake.put(model.RUNS, 'batch_3', { ...fake.table(model.RUNS).get('batch_3')!, status: 'submitted' });
-const before = fake.all(model.SAMPLES).length;
-calls = [];
-const twice = await Promise.all([generate.collectBatches(api), generate.collectBatches(api)]);
-check('two overlapping collects: only one takes the run', twice.filter((c) => c.runs === 1).length === 1, twice);
-check('a run collected again saves no new samples', fake.all(model.SAMPLES).length === before, fake.all(model.SAMPLES).length - before);
-check('a run collected again sends nothing to review twice', !calls.some((c) => c.method === 'sendMessage' || c.method === 'sendPhoto'), calls.map((c) => c.method));
-fake.put(model.RUNS, 'batch_3', { ...fake.table(model.RUNS).get('batch_3')!, status: 'collecting', claimedAt: Date.now() });
-check('a fresh claim by another run is left alone', (await generate.collectBatches(api)).runs === 0);
-fake.put(model.RUNS, 'batch_3', { ...fake.table(model.RUNS).get('batch_3')!, status: 'collecting', claimedAt: Date.now() - 20 * 60 * 1000 });
-check('a stale claim (the run timed out) is taken over', (await generate.collectBatches(api)).runs === 1 && fake.all(model.SAMPLES).length === before);
-check('draft ids fit Telegram button data', /^[\w-]{1,40}$/.test(generate.draftSampleId('msgbatch_01HkcTjaV5uDC8jWR4ZsDV8d', 'draft-12')));
-check('cost uses Batch prices', Math.abs(Number(run.costUSD) - generate.costUSD({ input: 12000, output: 4500, cacheWrite: 0, cacheRead: 9000 })) < 1e-9 && Math.abs(generate.costUSD({ input: 1e6, output: 1e6, cacheWrite: 0, cacheRead: 0 }) - 3) < 1e-9);
-
-// Regenerate: the draft is rejected and the question comes back first.
-calls = [];
-const regen = aiSamples.find((s) => s.taskType === 'task2')!;
-await webhook(press(`smp:g:${regen.id}`));
-check('Regenerate rejects the draft', fake.table(model.SAMPLES).get(regen.id)?.status === 'rejected');
-check('Regenerate queues the question', fake.table(model.QUEUE).get('q2')?.kind === 'regenerate');
-batchStatus = 'in_progress';
-submitted = await generate.submitBatch(api, 1);
-check('the queued question is drafted first', submitted.drafts === 1 && userText(created[0]).includes('children should not use technology'), created.map((r) => r.custom_id));
-// A rejected draft (without Regenerate) is not drafted again.
-fake.table(model.RUNS).clear();
-fake.table(model.QUEUE).clear();
-const rejectedOnly = (await generate.submitBatch(api, 10)).drafts;
-check('a question whose draft was rejected is not redrafted by itself', rejectedOnly === 0, rejectedOnly);
-
-// Student samples get their notes from the same batch.
-freshWorld();
-await seedReport('u1', 'Task 2', Q2, ESSAY2, 8);
-const [studentId] = (await consent.submitConsent('u1', quick, 'yes', ['task2'])).sampleIds;
-fake.put(model.SAMPLES, 'other', { questionId: 'q1', status: 'published', sourceType: 'ai', taskType: 'task1' });
-batchStatus = 'in_progress';
-submitted = await generate.submitBatch(api, 0);
-check('a student essay is sent for notes, not rewritten', submitted.enrich === 1 && userText(created[0]).includes('KIND B'));
-fake.table(model.RUNS).clear();
-fake.put(model.RUNS, 'b2', { batchId: 'b2', status: 'submitted', model: 'claude-haiku-4-5', submittedAt: Date.now(), requests: [{ customId: created[0].custom_id, kind: 'enrich', questionId: 'q2', taskType: 'task2', questionText: Q2, sampleId: studentId }] });
-replies = new Map([[created[0].custom_id, { text: JSON.stringify({ outline: ['Intro', 'View 1', 'View 2', 'Conclusion'], grammarHighlights: ['Uses although for concession.', 'Uses relative clauses.'], title: 'Children and technology', topic: 'Education' }) }]]);
-batchStatus = 'ended';
-collected = await generate.collectBatches(api);
-const enriched = fake.table(model.SAMPLES).get(studentId)!;
-check('student sample gets outline and grammar notes', collected.enriched === 1 && (enriched.outline as string[]).length === 4 && !!enriched.enrichedAt);
-check('student sample gets the question slug', enriched.slug === 'children-and-technology', enriched.slug);
-check('the essay itself is unchanged', enriched.sampleAnswer === stripPersonalDetails(ESSAY2).text);
-
-// ── Evening: rebuild and summary ────────────────────────────────────────────
 
 // ── Relax: the student's own question ───────────────────────────────────────
 
@@ -660,30 +509,10 @@ freshWorld();
 await seedReport('u1', 'Task 2', Q2, ESSAY2, 8);
 const [plain] = (await consent.submitConsent('u1', quick, 'yes', ['task2'])).sampleIds;
 await review.applyPress('approve', plain);
-check('a published sample with no address is found by the daily job', (await generate.prepareWaitingPages(null)) === 1);
+check('without the AI the page step falls back', (await generate.prepareForPage(plain, null)) === 'fallback');
 check('without the AI it still gets an address from its own words', fake.table(model.SAMPLES).get(plain)?.slug === 'some-people-think-children-should-not-use', fake.table(model.SAMPLES).get(plain)?.slug);
-check('and the page counts as changed, so the evening rebuilds', !!fake.table(model.SAMPLES).get(plain)?.pageChangedAt);
-check('a sample that has its address is left alone', (await generate.prepareWaitingPages(null)) === 0);
-
-section('evening rebuild and summary');
-let hookCalls = 0;
-const fetcher = (async () => { hookCalls++; return new Response('{}', { status: 201 }); }) as unknown as typeof fetch;
-check('no hook URL: nothing called', (await daily.rebuildIfChanged({ fetcher, force: true })) === 'no-hook' && hookCalls === 0);
-process.env.VERCEL_DEPLOY_HOOK_URL = 'https://api.vercel.com/v1/integrations/deploy/prj_test/hook';
-fake.put(model.SAMPLES, 'pub', { status: 'published', pageChangedAt: new Date(Date.now() + 1000).getTime() });
-// pageChangedAt in the stand-in is a number; Firestore holds a Timestamp. Store one.
-const { Timestamp } = await import('firebase-admin/firestore');
-fake.put(model.SAMPLES, 'pub', { status: 'published', pageChangedAt: Timestamp.fromMillis(Date.now() + 1000), publishedAt: Timestamp.now() });
-check('a published change triggers the deploy hook', (await daily.rebuildIfChanged({ fetcher })) === 'triggered' && hookCalls === 1);
-fake.put(model.SAMPLES, 'pub', { status: 'published', pageChangedAt: Timestamp.fromMillis(Date.now() - 60_000), publishedAt: Timestamp.now() });
-{ const r = await daily.rebuildIfChanged({ fetcher }); check('nothing new: no rebuild', r === 'unchanged' && hookCalls === 1, { r, hookCalls, changed: fake.all(model.SAMPLES).filter((s) => s.pageChangedAt).map((s) => [s.id, s.pageChangedAt]), cfg: fake.all('config') }); }
-const numbers = await daily.dayNumbers();
-check('summary counts', numbers.publishedToday >= 1 && numbers.waiting >= 0, numbers);
-const text = daily.summaryText({ publishedToday: 3, waiting: 5, needsManual: 1, costUSD: 0.0612 }, 'triggered');
-check('summary format', text.startsWith('📊 Published today: 3 | Waiting: 5 | needs_manual: 1 | Generation cost: $0.06'), text);
-check('tiny costs keep their digits', daily.formatCost(0.0031) === '$0.0031');
-check('cron picks the job from the schedule', jobFor(undefined, '0 2 * * *') === 'morning' && jobFor(undefined, '0 15 * * *') === 'evening' && jobFor('evening', '0 2 * * *') === 'evening');
-check('Tashkent day starts at 19:00 UTC', daily.tashkentDayStart(new Date('2026-10-06T20:00:00Z')).toISOString() === '2026-10-06T19:00:00.000Z');
+check('and the page counts as changed', !!fake.table(model.SAMPLES).get(plain)?.pageChangedAt);
+check('a sample that has its address is left alone', (await generate.prepareForPage(plain, null)) === 'had-slug');
 
 // ── How it was written, and where it was seen before ────────────────────────
 
