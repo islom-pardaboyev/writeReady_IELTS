@@ -161,6 +161,7 @@ npx tsx scripts/test-score-store.ts       # saved reports and score-card verific
 npx tsx scripts/test-samples.ts           # sample answers: consent, credit on approval, qualification, zod checks, Telegram approval, batches
 npx tsx scripts/test-writing-trace.ts     # the writing record (time and pasted share) the sample review shows
 npx tsx --tsconfig tsconfig.scripts.json scripts/test-prerender.tsx   # the built question pages, their head tags and the sitemap
+npx tsx --tsconfig tsconfig.scripts.json scripts/test-report-json.ts  # reading a full report past the AI's JSON slips, on the server and the page alike
 ```
 
 `scripts/test-email-code-auth.ts` needs the Firebase Auth emulator. `scripts/test-staff-rules.ts` checks `firestore.rules`, `api/staff-login.ts` and `api/center-student.ts` on the Auth and Firestore emulators (the Firestore emulator needs Java 21); the top of each file says how to start them.

@@ -1,5 +1,5 @@
 import type { CategoryFeedback, EnhancedFeedbackCategories, EnhancedFeedbackResult, GrammarPoint } from "@/types";
-import { CRITERIA, normalizeScores } from "@shared/bandScore";
+import { CRITERIA, liftReportFields, normalizeScores } from "@shared/bandScore";
 
 // The model's report JSON turned into what the feedback page and its PDF
 // show. Shared by src/pages/FeedbackPage.tsx and the dashboard's PDF download.
@@ -18,6 +18,9 @@ import { CRITERIA, normalizeScores } from "@shared/bandScore";
 export function toFeedbackResult(parsed: unknown, limited: boolean, taskType: 'Task 1' | 'Task 2'): EnhancedFeedbackResult | null {
   if (!parsed || typeof parsed !== 'object') return null;
   const p = parsed as Record<string, unknown>;
+  // A section a stray bracket left in the wrong place, put back the same way
+  // the server does before it decides whether the report counts.
+  liftReportFields(p);
   const scores = normalizeScores(p.scores);
   if (!scores) return null;
   const list = <T>(v: unknown): T[] => (Array.isArray(v) ? (v as T[]) : []);

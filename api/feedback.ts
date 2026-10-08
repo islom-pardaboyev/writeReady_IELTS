@@ -7,7 +7,9 @@ import { initFirebase, currentDayKey, getUid, resolvePaidStatus } from './_lib/s
 import { archiveReport, pdfHistoryLimit } from './_lib/reportArchive.js';
 import { MAX_SENTENCES, countSentences, nextRefundUsage } from './_lib/essayGuard.js';
 import { chargeIdOf, clearCharge, pendingChargeOf, refundFields, type CreditSource } from './_lib/charges.js';
-import { CRITERIA, cleanBand, extractJson, normalizeScores, type BandScores, type Criterion } from './_lib/bandScore.js';
+import {
+  CRITERIA, cleanBand, extractJson, liftReportFields, normalizeScores, readJson, readLooseJson, type BandScores, type Criterion,
+} from './_lib/bandScore.js';
 import {
   LIMITS, SIGNATURE_VERSION, essayKeys, essaySignature, findSimilarReport, loadSavedReport, loadScoreLock,
   reportSignature, saveSavedReport, saveScoreLock,
@@ -417,6 +419,15 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       return;
     }
 
+    // A reply that read only after repair (see readJson in ./_lib/bandScore.ts)
+    // is kept as the JSON it was read as, so reopening it, its PDF and its
+    // sample page all read it as plain JSON. Logged, to see how often the
+    // model slips and how.
+    if (report.repaired) {
+      console.warn(`feedback: report for ${uid} (${taskType}) read after repair: ${whyUnreadable(raw)}`);
+    }
+    const clean = report.repaired ? JSON.stringify(report.json) : raw;
+
     // A full report also stays downloadable as a PDF from the dashboard, for
     // as many reports as the plan keeps (./_lib/reportArchive.ts). The oldest
     // past that number is deleted here.
@@ -426,7 +437,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         const user = await db.collection('users').doc(uid).get();
         const limit = pdfHistoryLimit(resolvePaidStatus(user.data() ?? {}).plan);
         await archiveReport(uid, reportRef.id, taskType, limit, {
-          raw,
+          raw: clean,
           essay: essayText,
           question: questionText,
           chartId: taskType === 'Task 1' && typeof chartId === 'string' && /^[\w-]{1,128}$/.test(chartId) ? chartId : undefined,
@@ -443,7 +454,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     // most full reports never got their "Download PDF". Side by side, they
     // hold the end of the stream back by a moment only.
     await Promise.all([
-      store(raw, lock?.scores ?? report.scores, report.topic, report.issues),
+      store(clean, lock?.scores ?? report.scores, report.topic, report.issues),
       archive(),
     ]);
     await keepCharge(uid, chargeId);
@@ -507,8 +518,9 @@ export function startMarking(anthropic: Anthropic, m: Marking, sendChart: ChartB
     // reportJsonSchema). A reply cut off at max_tokens is still incomplete.
     // Score-only markings only: the full report's schema is over the API's
     // compiled-grammar limit (400 "The compiled grammar is too large"), so a
-    // full report is written freehand from the prompt's template and read
-    // with extractJson, as before.
+    // full report is written freehand from the prompt's template. About
+    // 25,000 characters of freehand JSON often has a slip in it, so it is read
+    // with readJson (./_lib/bandScore.ts), which gets past them.
     ...(m.scoreOnly
       ? { output_config: { format: { type: 'json_schema' as const, schema: reportJsonSchema(m.taskType, false, m.extraFields) } } }
       : {}),
@@ -746,31 +758,90 @@ function readRationale(raw: string): Partial<Record<Criterion, string>> {
 }
 
 /**
- * Why readReport found no scores, for the logs: the parse error, or which
- * score is missing. Never the reply itself, which quotes the student's essay.
+ * Why a reply does not read as plain JSON with four scores, for the logs: the
+ * parse error and the shape of the reply around it, then what the repairing
+ * reader made of it. Never the reply itself, which quotes the student's
+ * essay: the shape keeps only brackets, commas and key names (jsonShape).
  */
 function whyUnreadable(raw: string): string {
+  const start = raw.indexOf('{');
+  const end = raw.lastIndexOf('}');
+  if (start === -1 || end <= start) return 'no JSON object';
+  const text = raw.slice(start, end + 1);
   let parsed: unknown;
+  let problem = '';
   try {
-    parsed = extractJson(raw);
+    parsed = JSON.parse(text);
   } catch (e) {
-    return `not JSON: ${(e as Error).message.slice(0, 120)}`;
+    // Some parse errors quote the reply around the error instead of giving
+    // its position ('Unexpected token ']', ..."ok"},],"vo"... is not valid
+    // JSON'). The quote is found in the text and left out of the log.
+    const message = (e as Error).message;
+    const quoted = /, (\.\.\.)?"([\s\S]*)"(?:\.\.\.)? is not valid JSON$/.exec(message);
+    const found = quoted ? text.indexOf(quoted[2]) : -1;
+    const at = Number(/position (\d+)/.exec(message)?.[1] ?? (found >= 0 ? found + (quoted?.[1] ? 10 : 0) : text.length));
+    problem = `not JSON: ${(quoted ? message.slice(0, quoted.index) : message).slice(0, 100)}; near ${jsonShape(text, at)}`;
+    try {
+      parsed = readLooseJson(raw.slice(start));
+    } catch (loose) {
+      return `${problem}; unreadable even after repair: ${(loose as Error).message}`;
+    }
   }
+  const lifted = parsed && typeof parsed === 'object' && !Array.isArray(parsed)
+    && liftReportFields(parsed as Record<string, unknown>);
   const scores = (parsed as { scores?: Record<string, unknown> } | null)?.scores;
-  if (!scores || typeof scores !== 'object') return 'no scores object';
-  const bad = CRITERIA.filter((k) => cleanBand(scores[k]) === null);
-  return bad.length ? `unusable scores: ${bad.join(', ')}` : 'scores read fine';
+  const found = !scores || typeof scores !== 'object'
+    ? 'no scores object'
+    : CRITERIA.filter((k) => cleanBand(scores[k]) === null).map((k) => `no ${k}`).join(', ') || 'scores read fine';
+  return [problem, lifted ? 'sections were out of place' : '', found].filter(Boolean).join('; ');
 }
 
-/** What gets saved from a finished report, or null when it has no real scores. */
-function readReport(raw: string): { topic: string; scores: BandScores; issues: string[] } | null {
-  let parsed: Record<string, unknown>;
+/**
+ * The reply's brackets, commas and key names around `at`, with each piece of
+ * text and each word replaced, so the logs can show what a slip looked like
+ * without any of the student's essay.
+ */
+function jsonShape(text: string, at: number, radius = 120): string {
+  const shape = (part: string) => part
+    .replace(/"(?:[^"\\]|\\.)*"(\s*:)?|[^\s{}[\]:,"\d.-]+/g, (m: string, colon?: string) => {
+      if (!m.startsWith('"')) return m === 'true' || m === 'false' || m === 'null' ? m : '~';
+      const str = colon ? m.slice(0, m.length - colon.length) : m;
+      return colon && /^"[A-Za-z]{1,40}"$/.test(str) ? `${str}:` : '"…"';
+    })
+    .replace(/\s+/g, ' ');
+  // Start outside a piece of text, so the quotes pair up the right way.
+  let from = Math.max(0, at - radius);
+  let inText = false;
+  for (let k = 0; k < from; k++) {
+    if (text[k] === '\\') k++;
+    else if (text[k] === '"') inText = !inText;
+  }
+  if (inText) {
+    while (from < at && text[from] !== '"') from += text[from] === '\\' ? 2 : 1;
+    from = Math.min(at, from + 1);
+  }
+  return `${from > 0 ? '…' : ''}${shape(text.slice(from, at))} >>HERE<< ${shape(text.slice(at, at + radius))}`;
+}
+
+/**
+ * What gets saved from a finished report, or null when it has no real scores.
+ * `json` is the report as read, and `repaired` says whether that took more
+ * than a plain JSON.parse (then `json` is what gets saved).
+ */
+function readReport(raw: string): {
+  topic: string; scores: BandScores; issues: string[]; json: Record<string, unknown>; repaired: boolean;
+} | null {
+  let value: unknown;
+  let repaired: boolean;
   try {
-    parsed = extractJson(raw) as Record<string, unknown>;
+    ({ value, repaired } = readJson(raw));
   } catch {
     return null;
   }
-  const scores = normalizeScores(parsed?.scores);
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return null;
+  const parsed = value as Record<string, unknown>;
+  if (liftReportFields(parsed)) repaired = true;
+  const scores = normalizeScores(parsed.scores);
   if (!scores) return null;
   const feedback = (parsed.feedback ?? {}) as Record<string, { issues?: unknown } | undefined>;
   const issues = CRITERIA.flatMap((k) => {
@@ -778,7 +849,7 @@ function readReport(raw: string): { topic: string; scores: BandScores; issues: s
     return Array.isArray(list) ? list.filter((i): i is string => typeof i === 'string') : [];
   });
   const topic = typeof parsed.topic === 'string' && parsed.topic.trim() ? parsed.topic.trim().slice(0, 80) : 'General';
-  return { topic, scores, issues };
+  return { topic, scores, issues, json: parsed, repaired };
 }
 
 // Source: official IELTS Writing Band Descriptors PDF (updated May 2023).
@@ -1408,6 +1479,7 @@ ${scoresSchema(taskType, true)}
 }
 
 STRICT RULES:
+- The reply is one valid JSON object and nothing else. Close every object and array you open, in order: "evidence" and the objects inside it close before "bandRationale" begins. Never put a comma before a closing bracket.
 - sentenceAnalysis: cover EVERY sentence in the essay, in order
 ${vocabularyRule(taskType)}
 ${grammarRule(taskType)}
