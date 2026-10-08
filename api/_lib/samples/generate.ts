@@ -603,7 +603,10 @@ export function checkEnrichment(taskType: SampleTaskType, text: string, stopReas
 export async function applyMeta(
   questionId: string,
   taskType: SampleTaskType,
-  meta: { title: string; topic: string; chartType?: string; imageAlt?: string },
+  // Typed from the schema, not written out: Vercel type-checks api/ without
+  // strict mode, where every field zod infers is optional, and a hand-written
+  // `title: string` then rejected both a Draft and an Enrichment.
+  meta: Pick<Draft, 'title' | 'topic'> & { chartType?: string; imageAlt?: string },
   imageExt?: 'jpg' | 'png' | 'pdf',
 ): Promise<{ slug: string; imageAlt: string; imageExt: 'jpg' | 'png' | 'pdf' }> {
   const store = db();
