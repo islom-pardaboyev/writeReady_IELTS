@@ -544,6 +544,7 @@ export function CentersSection({ intent, clearIntent }: SectionProps) {
             <h3 className="text-sm font-semibold text-[var(--text-primary)]">What this contract costs</h3>
             <p className="font-mono text-xs tabular-nums text-[var(--text-secondary)]">
               {SEAT_TIERS.filter((t) => t.percent > 0).map((t) => `${t.minSeats}+ −${t.percent}%`).join(" · ")}
+              {` · never under ${uzs(quote.floorPerSeatMonthUZS)} a place a month`}
             </p>
           </div>
 
@@ -564,7 +565,7 @@ export function CentersSection({ intent, clearIntent }: SectionProps) {
                 {quote.tierPercent > 0 && (
                   <div className="flex items-baseline justify-between gap-4">
                     <dt className="text-[var(--text-secondary)]">
-                      Bulk discount {quote.freeSeats ? `(priced as ${quote.freeSeats.seats} places)` : `(${tierFor(quote.seats).minSeats}+ places)`}
+                      Bulk discount {quote.pricedAsSeats > quote.seats ? `(priced as ${quote.pricedAsSeats} places)` : `(${tierFor(quote.seats).minSeats}+ places)`}
                     </dt>
                     <dd className="font-mono tabular-nums text-emerald-700 dark:text-emerald-400">−{quote.tierPercent}%</dd>
                   </div>
@@ -573,6 +574,12 @@ export function CentersSection({ intent, clearIntent }: SectionProps) {
                   <div className="flex items-baseline justify-between gap-4">
                     <dt className="text-[var(--text-secondary)]">Agreed extra discount</dt>
                     <dd className="font-mono tabular-nums text-emerald-700 dark:text-emerald-400">−{quote.extraPercent}%</dd>
+                  </div>
+                )}
+                {quote.raisedToFloorUZS > 0 && (
+                  <div className="flex items-baseline justify-between gap-4">
+                    <dt className="text-[var(--text-secondary)]">Raised to the lowest price ({uzs(quote.floorPerSeatMonthUZS)} a place a month)</dt>
+                    <dd className="font-mono tabular-nums text-[var(--text-primary)]">+{uzs(quote.raisedToFloorUZS)}</dd>
                   </div>
                 )}
                 <div className="flex items-baseline justify-between gap-4 border-t border-[var(--border-color)] pt-2">
@@ -590,6 +597,13 @@ export function CentersSection({ intent, clearIntent }: SectionProps) {
                   </div>
                 )}
               </dl>
+
+              {quote.raisedToFloorUZS > 0 && (
+                <Notice tone="info" className="mt-3">
+                  Discounts stop at {uzs(quote.floorPerSeatMonthUZS)} a place a month on {PLAN_INFO[quote.planId].label}: what the AI
+                  costs when a student uses all {PLAN_INFO[quote.planId].monthlyAnalyses} reports. Below it, a student who uses them all costs more than the place brings in.
+                </Notice>
+              )}
 
               {quote.freeSeats && (
                 <Notice tone="info" className="mt-3">
