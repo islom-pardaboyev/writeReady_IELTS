@@ -1,4 +1,4 @@
-import { defineConfig, type Plugin } from 'vite';
+import { defineConfig, normalizePath, type Plugin } from 'vite';
 import react from '@vitejs/plugin-react';
 import tailwindcss from '@tailwindcss/vite';
 import { VitePWA } from 'vite-plugin-pwa';
@@ -6,9 +6,15 @@ import { existsSync } from 'fs';
 import { readFile } from 'fs/promises';
 import { join, resolve } from 'path';
 
-const SHARED_DIR = resolve(__dirname, './api/_lib');
+// Vite tracks every module by a forward-slash id, on every OS (normalizePath
+// below) — Node's own path.join/resolve use '\' on Windows, so comparing a
+// raw one against an id Vite handed back never matches there, and the
+// @shared files 404 in dev. Every path compared against (or handed back as)
+// a module id goes through normalizePath; a plain join is still fine for an
+// actual disk read, which Windows accepts either separator for.
+const SHARED_DIR = normalizePath(resolve(__dirname, './api/_lib'));
 const SHARED_DEV_URL = '/src/__shared__/';
-const SHARED_DEV_DIR = join(__dirname, SHARED_DEV_URL);
+const SHARED_DEV_DIR = normalizePath(join(__dirname, SHARED_DEV_URL));
 
 /**
  * Dev only. `vercel dev` sends every /api/... request to the serverless
@@ -24,20 +30,20 @@ function sharedFilesOutsideApi(): Plugin {
     apply: 'serve',
     enforce: 'pre',
     resolveId(source) {
-      const path = source.split('?')[0];
+      const path = normalizePath(source.split('?')[0]);
       // An @shared import, after the alias below has turned it into a path.
       if (path.startsWith(SHARED_DIR + '/')) {
         const file = /\.[cm]?[jt]s$/.test(path) ? path : `${path}.ts`;
         if (!existsSync(file)) return null;
-        return join(SHARED_DEV_DIR, file.slice(SHARED_DIR.length + 1));
+        return `${SHARED_DEV_DIR}/${file.slice(SHARED_DIR.length + 1)}`;
       }
       // The browser asking for one of them.
-      if (path.startsWith(SHARED_DEV_URL)) return join(__dirname, path);
+      if (path.startsWith(SHARED_DEV_URL)) return normalizePath(join(__dirname, path));
       if (path.startsWith(SHARED_DEV_DIR)) return path;
       return null;
     },
     async load(id) {
-      const path = id.split('?')[0];
+      const path = normalizePath(id.split('?')[0]);
       if (!path.startsWith(SHARED_DEV_DIR)) return null;
       const file = join(SHARED_DIR, path.slice(SHARED_DEV_DIR.length));
       this.addWatchFile(file);
