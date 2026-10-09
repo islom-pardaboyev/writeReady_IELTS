@@ -21,6 +21,8 @@ import { NavLink, useNavigate } from "react-router";
 import { useAuth } from "@/hooks/useAuth";
 import { useUnsavedWork } from "@/hooks/useUnsavedWork";
 import { useDraft } from "@/hooks/useDraft";
+import { DraftSavedStatus } from "@/components/writing/DraftSavedStatus";
+import { ReportAllowance } from "@/components/writing/ReportAllowance";
 import { DraftRestoredNotice } from "@/components/ui/DraftRestoredNotice";
 import { effectivePlan } from "@/lib/plans";
 import { Button } from "@/components/ui/Button";
@@ -532,6 +534,7 @@ function Practice() {
                 {wordCount} / {minWords} words
                 {meetsMinWords && <span className="ml-1.5">✓</span>}
               </span>
+              <DraftSavedStatus savedAt={draft.savedAt} />
             </div>
 
             <div className="flex items-center gap-2">
@@ -580,6 +583,7 @@ function Practice() {
                   </>
                 )}
               </ModalDescription>
+              <ReportAllowance />
               <div className="flex flex-col gap-2.5 mt-6">
                 {emptyTask && (
                   <Button

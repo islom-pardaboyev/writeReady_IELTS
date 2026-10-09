@@ -32,6 +32,8 @@ import { useHumanCheck } from "@/hooks/useHumanCheck";
 import { useUnsavedWork } from "@/hooks/useUnsavedWork";
 import { useAuth } from "@/hooks/useAuth";
 import { useDraft } from "@/hooks/useDraft";
+import { DraftSavedStatus } from "@/components/writing/DraftSavedStatus";
+import { ReportAllowance } from "@/components/writing/ReportAllowance";
 import { DraftRestoredNotice } from "@/components/ui/DraftRestoredNotice";
 import { useFeatureFlag } from "@/hooks/useFeatureFlag";
 import { TeacherPickerModal } from "@/components/ui/TeacherPickerModal";
@@ -705,6 +707,7 @@ function Relax() {
                 {wordCount} / {minWords} words
                 {meetsMinWords && <span className="ml-1.5">✓</span>}
               </span>
+              <DraftSavedStatus savedAt={draft.savedAt} />
             </div>
 
             <div className="flex items-center gap-2">
@@ -743,6 +746,7 @@ function Relax() {
                 Would you like in-depth AI feedback on your writing? We'll
                 analyse grammar, vocabulary, coherence, and task achievement.
               </ModalDescription>
+              <ReportAllowance />
               <div className="flex flex-col gap-2.5 mt-6">
                 <Button
                   onClick={handleAcceptFeedback}

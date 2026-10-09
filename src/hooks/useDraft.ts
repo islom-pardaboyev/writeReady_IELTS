@@ -47,16 +47,23 @@ function read<T>(key: string): Stored<T> | null {
   }
 }
 
-function write<T>(key: string, value: T, shrink?: (value: T) => T): void {
+/** True when the draft (or its smaller copy) is now in storage. */
+function write<T>(key: string, value: T, shrink?: (value: T) => T): boolean {
   const put = (v: T) => localStorage.setItem(key, JSON.stringify({ v: 1, savedAt: Date.now(), value: v } satisfies Stored<T>));
   try {
     put(value);
+    return true;
   } catch {
     // Storage full (a big picture, usually): keep the words at least.
     try {
-      if (shrink) put(shrink(value));
+      if (shrink) {
+        put(shrink(value));
+        return true;
+      }
+      return false;
     } catch {
       /* blocked or still full: the page works as before, just unsaved */
+      return false;
     }
   }
 }
@@ -91,6 +98,12 @@ export function useDraft<T>({ page, uid, value, ready, isEmpty, restore, shrink 
   const [restoredAt, setRestoredAt] = useState<number | null>(null);
   /** The saved draft has been looked at; from here on, changes are saved. */
   const [live, setLive] = useState(false);
+  /**
+   * When the essay on the page was last kept in this browser: null while there
+   * is nothing to keep, false when the browser refused it (storage blocked or
+   * full). Shown beside the word count, so the student can see it is safe.
+   */
+  const [savedAt, setSavedAt] = useState<number | null | false>(null);
 
   const latest = useRef(value);
   const cleared = useRef(false);
@@ -105,8 +118,12 @@ export function useDraft<T>({ page, uid, value, ready, isEmpty, restore, shrink 
     window.clearTimeout(timer.current);
     if (cleared.current) return;
     const v = latest.current;
-    if (fns.current.isEmpty(v)) remove(key);
-    else write(key, v, fns.current.shrink);
+    if (fns.current.isEmpty(v)) {
+      remove(key);
+      setSavedAt(null);
+    } else {
+      setSavedAt(write(key, v, fns.current.shrink) ? Date.now() : false);
+    }
   }, [key]);
 
   // Look for a draft once the page is ready for one.
@@ -117,6 +134,7 @@ export function useDraft<T>({ page, uid, value, ready, isEmpty, restore, shrink 
       try {
         fns.current.restore(saved.value);
         setRestoredAt(saved.savedAt);
+        setSavedAt(saved.savedAt);
       } catch {
         remove(key);
       }
@@ -153,9 +171,10 @@ export function useDraft<T>({ page, uid, value, ready, isEmpty, restore, shrink 
     cleared.current = true;
     remove(key);
     setRestoredAt(null);
+    setSavedAt(null);
   }, [key]);
 
   const dismiss = useCallback(() => setRestoredAt(null), []);
 
-  return { restoredAt, clear, dismiss };
+  return { restoredAt, savedAt, clear, dismiss };
 }
