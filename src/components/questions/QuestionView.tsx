@@ -1,6 +1,6 @@
 import { Link } from 'react-router';
 import { Tooltip } from 'radix-ui';
-import { BookOpen, ChevronRight, ExternalLink, FileText, ListOrdered, PenLine, Sparkles, Users } from 'lucide-react';
+import { ArrowDown, BookOpen, ChevronRight, ExternalLink, FileText, ListOrdered, PenLine, Sparkles, Users } from 'lucide-react';
 import { PROMPT_SOURCES } from '@/lib/promptSources';
 import {
   fmtBand, questionPath, taskLabel, titleCase, writeItPathFor,
@@ -132,6 +132,9 @@ function SampleAnswer({
 }) {
   const student = sample.sourceType === 'student';
   const headingId = `sample-${index}`;
+  // A long essay in full size reads as a wall of text on a phone; a touch
+  // smaller keeps more of it on screen without feeling cramped on desktop.
+  const long = sample.wordCount > 250;
   return (
     <article aria-labelledby={headingId} className="rounded-2xl border border-[var(--border-color)] bg-[var(--bg-card)] p-5 shadow-[var(--shadow-sm)] sm:p-7">
       <header className="flex flex-wrap items-start justify-between gap-3">
@@ -150,7 +153,7 @@ function SampleAnswer({
         </div>
       </header>
       <Criteria sample={sample} taskType={taskType} />
-      <div className="mt-5 max-w-[70ch] space-y-4 text-[1.0625rem] leading-[1.75] text-[var(--text-primary)]">
+      <div className={`mt-5 max-w-[70ch] space-y-4 leading-[1.75] text-[var(--text-primary)] ${long ? 'text-[0.9375rem] sm:text-[1.0625rem]' : 'text-[1.0625rem]'}`}>
         {highlight
           ? paragraphSegments(sample.sampleAnswer, highlight.vocabulary, highlight.grammarHighlights).map((segs, i) => (
               <EssayParagraph key={i} segments={segs} />
@@ -209,6 +212,8 @@ export function QuestionView({ data }: { data: QuestionPageData }) {
   const hasNotes = data.vocabulary.length > 0 || data.grammarHighlights.length > 0;
   // The vocabulary and grammar notes are the reviewed AI answer's own (or the student's, when there is no AI one) — scripts/lib/questionSite.tsx.
   const notesSampleId = data.samples.find((s) => s.sourceType === 'ai')?.id ?? data.samples[0]?.id;
+  // On a phone the notes are stacked below the essay (desktop shows them in the sticky sidebar beside it), so a shortcut past the essay is worth it there.
+  const jumpTo = data.vocabulary.length > 0 ? { id: 'vocab-title', label: 'Jump to vocabulary' } : data.grammarHighlights.length > 0 ? { id: 'grammar-title', label: 'Jump to grammar notes' } : null;
   return (
     <div className={`mx-auto w-full px-4 pb-16 pt-6 sm:px-6 sm:pt-10 ${hasNotes ? 'max-w-[1040px]' : 'max-w-[860px]'}`}>
       <nav aria-label="Breadcrumb" className="text-sm text-[var(--text-secondary)]">
@@ -266,6 +271,14 @@ export function QuestionView({ data }: { data: QuestionPageData }) {
           <WriteButton data={data} className="w-full sm:w-auto" />
           <p className="m-0 mt-2 text-xs text-[var(--text-secondary)]">Free to start. Your essay is marked against the official IELTS band descriptors.</p>
         </div>
+        {jumpTo && (
+          <a
+            href={`#${jumpTo.id}`}
+            className="mt-4 inline-flex items-center gap-1 text-sm font-medium text-[var(--ink-blue)] no-underline hover:underline lg:hidden"
+          >
+            <ArrowDown className="h-3.5 w-3.5" aria-hidden /> {jumpTo.label}
+          </a>
+        )}
       </section>
 
       {data.outline.length > 0 && (

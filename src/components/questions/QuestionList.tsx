@@ -1,7 +1,8 @@
 import { useMemo, useState } from 'react';
 import { Link } from 'react-router';
-import { Search, Users } from 'lucide-react';
+import { PenLine, Search, Send, Users } from 'lucide-react';
 import { fmtBand, questionPath, taskLabel, titleCase, type QuestionIndexData, type QuestionTask } from '@/lib/questionData';
+import { TELEGRAM_CHANNEL_URL } from '@/lib/links';
 
 /**
  * Every question with a published sample, with Task 1 / Task 2 tabs, a topic
@@ -32,10 +33,15 @@ export function QuestionList({ data, initialTask = 'all' }: { data: QuestionInde
     });
   }, [data.questions, task, topic, query]);
 
+  // A topic earns a spot in the dropdown once at least two questions share
+  // it; one question per topic just means every option narrows to a single
+  // card. The dropdown itself waits for the bank to be large enough (~30
+  // questions) that filtering by topic is worth the extra control.
   const topics = useMemo(
-    () => data.topics.filter((t) => data.questions.some((q) => q.topic === t && (task === 'all' || q.taskType === task))),
+    () => data.topics.filter((t) => data.questions.filter((q) => q.topic === t && (task === 'all' || q.taskType === task)).length >= 2),
     [data, task],
   );
+  const showTopicFilter = data.questions.length >= 30 && topics.length > 0;
   const count = (t: TaskFilter) => (t === 'all' ? data.questions.length : data.questions.filter((q) => q.taskType === t).length);
 
   return (
@@ -69,16 +75,20 @@ export function QuestionList({ data, initialTask = 'all' }: { data: QuestionInde
             </button>
           ))}
         </div>
-        <label className="sr-only" htmlFor="question-topic">Topic</label>
-        <select
-          id="question-topic"
-          value={topic}
-          onChange={(e) => setTopic(e.target.value)}
-          className="h-11 rounded-lg border border-[var(--border-color)] bg-[var(--bg-card)] px-3 text-sm text-[var(--text-primary)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ring)] sm:w-48"
-        >
-          <option value="">All topics</option>
-          {topics.map((t) => <option key={t} value={t}>{t}</option>)}
-        </select>
+        {showTopicFilter && (
+          <>
+            <label className="sr-only" htmlFor="question-topic">Topic</label>
+            <select
+              id="question-topic"
+              value={topic}
+              onChange={(e) => setTopic(e.target.value)}
+              className="h-11 rounded-lg border border-[var(--border-color)] bg-[var(--bg-card)] px-3 text-sm text-[var(--text-primary)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ring)] sm:w-48"
+            >
+              <option value="">All topics</option>
+              {topics.map((t) => <option key={t} value={t}>{t}</option>)}
+            </select>
+          </>
+        )}
         <div className="relative flex-1">
           <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[var(--text-secondary)]" aria-hidden />
           <label className="sr-only" htmlFor="question-search">Search questions</label>
@@ -139,6 +149,29 @@ export function QuestionList({ data, initialTask = 'all' }: { data: QuestionInde
           ))}
         </ul>
       )}
+
+      <section className="mt-10 rounded-2xl border border-[var(--border-color)] bg-[var(--bg-card)] p-5 text-center shadow-[var(--shadow-sm)] sm:p-7">
+        <p className="m-0 text-lg font-bold text-[var(--text-primary)]">Don't see your question?</p>
+        <p className="m-0 mt-1 text-sm text-[var(--text-secondary)]">Write any Task 1 or Task 2 question in Quick Write and see your band for each criterion.</p>
+        <Link
+          to="/writing/quick"
+          className="mt-4 inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-lg bg-[var(--ink-blue)] px-5 py-2.5 text-center text-sm font-semibold text-white no-underline transition-opacity hover:opacity-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ring)] focus-visible:ring-offset-2 dark:text-[var(--primary-foreground)] sm:w-auto"
+        >
+          <PenLine className="h-4 w-4 shrink-0" aria-hidden />
+          Write any question in Quick Write
+        </Link>
+        <p className="m-0 mt-4 text-sm">
+          <a
+            href={TELEGRAM_CHANNEL_URL}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-flex items-center gap-1.5 text-[var(--text-secondary)] no-underline hover:text-[var(--text-primary)] hover:underline"
+          >
+            <Send className="h-4 w-4" aria-hidden />
+            Follow us on Telegram for new sample answers
+          </a>
+        </p>
+      </section>
     </div>
   );
 }

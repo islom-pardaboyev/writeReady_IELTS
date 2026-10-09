@@ -4,15 +4,8 @@ import { onAuthStateChanged } from 'firebase/auth';
 import { adminAuth, ADMIN_EMAIL } from '@/firebase/adminConfig';
 import { loadSiteStatus, type MaintenanceStatus } from '@/hooks/useFeatureFlag';
 import { MaintenancePage } from '@/pages/MaintenancePage';
-import { LogoLoader } from '@/components/ui/LogoLoader';
 
 const STAFF_PATHS = new Set(['/admin', '/teacher-portal', '/center-admin']);
-
-const PageSpinner = (
-  <div className="min-h-screen flex items-center justify-center bg-[var(--bg-base)]">
-    <LogoLoader />
-  </div>
-);
 
 /**
  * Site-wide kill switch: when maintenance mode is on, students get the
@@ -21,8 +14,10 @@ const PageSpinner = (
  * normally while you fix things.
  *
  * Status is checked once, when the visitor opens the site; tabs that are
- * already open pick up a change on their next reload. Until that one check
- * returns we show a spinner rather than risk a flash of a possibly broken app.
+ * already open pick up a change on their next reload. Maintenance mode is
+ * rare, so the app renders right away instead of waiting behind a spinner for
+ * that check; if it comes back enabled, the app is swapped for the
+ * maintenance page a moment later, same as a flag flipping while a tab is open.
  */
 export function MaintenanceGate({ children }: { children: ReactNode }) {
   const location = useLocation();
@@ -54,7 +49,6 @@ export function MaintenanceGate({ children }: { children: ReactNode }) {
   // switch says, so the app shows them too rather than a spinner over them.
   if (STAFF_PATHS.has(location.pathname) || /^\/v(\/|$)/i.test(location.pathname) || /^\/questions(\/|$)/.test(location.pathname)) return <>{children}</>;
   if (isAdmin) return <>{children}</>;
-  if (status === null) return PageSpinner;
-  if (status.enabled) return <MaintenancePage startedAt={status.startedAt} endsAt={status.endsAt} />;
+  if (status?.enabled) return <MaintenancePage startedAt={status.startedAt} endsAt={status.endsAt} />;
   return <>{children}</>;
 }
