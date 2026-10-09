@@ -4,17 +4,16 @@ import tailwindcss from '@tailwindcss/vite';
 import { VitePWA } from 'vite-plugin-pwa';
 import { existsSync } from 'fs';
 import { readFile } from 'fs/promises';
-import { join, resolve } from 'path';
+import { resolve } from 'path';
 
-// Vite tracks every module by a forward-slash id, on every OS (normalizePath
-// below) — Node's own path.join/resolve use '\' on Windows, so comparing a
-// raw one against an id Vite handed back never matches there, and the
-// @shared files 404 in dev. Every path compared against (or handed back as)
-// a module id goes through normalizePath; a plain join is still fine for an
-// actual disk read, which Windows accepts either separator for.
-const SHARED_DIR = normalizePath(resolve(__dirname, './api/_lib'));
+// Vite names every module with forward slashes, on every OS. Node's path
+// functions give '\' on Windows, so the paths below are built once from a
+// normalized root with plain '/' joins, and every id Vite hands in is
+// normalized before it is compared. (Windows reads files fine with '/'.)
+const ROOT = normalizePath(__dirname);
+const SHARED_DIR = `${ROOT}/api/_lib/`;
 const SHARED_DEV_URL = '/src/__shared__/';
-const SHARED_DEV_DIR = normalizePath(join(__dirname, SHARED_DEV_URL));
+const SHARED_DEV_DIR = `${ROOT}${SHARED_DEV_URL}`;
 
 /**
  * Dev only. `vercel dev` sends every /api/... request to the serverless
@@ -23,29 +22,34 @@ const SHARED_DEV_DIR = normalizePath(join(__dirname, SHARED_DEV_URL));
  * imports @shared failed to open). While developing, they are served from a
  * made-up folder under /src instead, which vercel dev passes to Vite. The
  * build bundles them into the page code as before and never uses this.
+ *
+ * The dependency scan is left alone: it reads files straight from disk, not
+ * through load() below, so it is given the real file instead.
  */
 function sharedFilesOutsideApi(): Plugin {
   return {
     name: 'writeready:shared-files-outside-api',
     apply: 'serve',
     enforce: 'pre',
-    resolveId(source) {
+    resolveId(source, _importer, options) {
+      // Vite passes `scan` at runtime but leaves it out of the public type.
+      if ((options as { scan?: boolean }).scan) return null;
       const path = normalizePath(source.split('?')[0]);
       // An @shared import, after the alias below has turned it into a path.
-      if (path.startsWith(SHARED_DIR + '/')) {
+      if (path.startsWith(SHARED_DIR)) {
         const file = /\.[cm]?[jt]s$/.test(path) ? path : `${path}.ts`;
         if (!existsSync(file)) return null;
-        return `${SHARED_DEV_DIR}/${file.slice(SHARED_DIR.length + 1)}`;
+        return SHARED_DEV_DIR + file.slice(SHARED_DIR.length);
       }
       // The browser asking for one of them.
-      if (path.startsWith(SHARED_DEV_URL)) return normalizePath(join(__dirname, path));
+      if (path.startsWith(SHARED_DEV_URL)) return ROOT + path;
       if (path.startsWith(SHARED_DEV_DIR)) return path;
       return null;
     },
     async load(id) {
       const path = normalizePath(id.split('?')[0]);
       if (!path.startsWith(SHARED_DEV_DIR)) return null;
-      const file = join(SHARED_DIR, path.slice(SHARED_DEV_DIR.length));
+      const file = SHARED_DIR + path.slice(SHARED_DEV_DIR.length);
       this.addWatchFile(file);
       return readFile(file, 'utf8');
     },
