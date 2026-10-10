@@ -52,7 +52,7 @@ function StaffSidebar<T extends string>({ role, identity, nav, active, onNavigat
           <img src={Logo} width={32} height={32} alt="" className="shrink-0" />
           {expanded && (
             <div className="min-w-0 leading-tight">
-              <p className="truncate text-sm font-bold text-[var(--sidebar-foreground)]">WriteReady</p>
+              <p className="truncate font-display text-[0.9375rem] font-extrabold text-[var(--sidebar-foreground)]">WriteReady</p>
               <p className="truncate text-xs text-[var(--text-secondary)]">{role}</p>
             </div>
           )}
@@ -148,7 +148,7 @@ export function StaffShell<T extends string>(props: StaffShellProps<T>) {
           <div className="sticky top-0 z-20 flex items-center gap-2 border-b border-[var(--border-color)] bg-[var(--bg-card)]/95 px-3 py-2 backdrop-blur-[8px] md:hidden">
             <SidebarTrigger className={triggerClass} />
             <img src={Logo} width={24} height={24} alt="" />
-            <span className="text-sm font-semibold">WriteReady</span>
+            <span className="font-display text-sm font-extrabold">WriteReady</span>
             <span className="text-sm text-[var(--text-secondary)]">{role}</span>
           </div>
           <main id="staff-main" className="min-w-0 flex-1">

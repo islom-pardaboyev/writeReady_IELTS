@@ -95,7 +95,7 @@ export function ListPane({
     <>
       <div className="shrink-0 border-b border-[var(--border-color)] px-4 pt-5 pb-3">
         <div className="mb-3 flex items-center justify-between gap-3">
-          <h1 className="min-w-0 truncate text-lg font-semibold tracking-[-0.01em] text-[var(--text-primary)]">
+          <h1 className="min-w-0 truncate font-display text-xl font-extrabold tracking-[-0.02em] text-[var(--text-primary)]">
             {title}
             {typeof count === "number" && (
               <span className="ml-2 text-sm font-normal tabular-nums text-[var(--text-secondary)]">{count}</span>
@@ -225,7 +225,7 @@ export function DetailHeader({
       {leading}
       <div className="min-w-0 flex-1">
         <div className="flex flex-wrap items-center gap-2">
-          <h2 className="min-w-0 break-words text-xl font-semibold tracking-[-0.02em] text-[var(--text-primary)]">{title}</h2>
+          <h2 className="min-w-0 break-words font-display text-[1.375rem] font-extrabold tracking-[-0.025em] text-[var(--text-primary)]">{title}</h2>
           {badges}
         </div>
         {meta && <div className="mt-1 text-sm text-[var(--text-secondary)]">{meta}</div>}
@@ -250,7 +250,7 @@ export function DetailSection({
     <section className="mt-8 border-t border-[var(--border-color)] pt-6">
       <div className="mb-4 flex flex-wrap items-start justify-between gap-3">
         <div className="min-w-0">
-          <h3 className="text-base font-semibold text-[var(--text-primary)]">{title}</h3>
+          <h3 className="font-display text-base font-extrabold tracking-[-0.01em] text-[var(--text-primary)]">{title}</h3>
           {description && <p className="mt-0.5 max-w-[65ch] text-sm text-[var(--text-secondary)]">{description}</p>}
         </div>
         {action}

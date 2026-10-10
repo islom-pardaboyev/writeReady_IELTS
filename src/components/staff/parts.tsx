@@ -112,7 +112,7 @@ export function Switch({
   );
 }
 
-// ── Number strip (hairline grid of figures) ──────────────────────────────────
+// ── Number tiles (a row of figures, each on its own colour field) ────────────
 export interface StatItem {
   label: string;
   value: ReactNode;
@@ -120,22 +120,22 @@ export interface StatItem {
   onClick?: () => void;
 }
 
+// The fields repeat in this order, the same three the student dashboard uses.
+// They are decoration, not state: emerald, amber and red badges keep that job.
+const STAT_FIELDS = ["bg-field-lilac", "bg-field-mint", "bg-field-amber"];
+
 export function StatStrip({ items, className }: { items: StatItem[]; className?: string }) {
   // Flex-wrap instead of a fixed grid: when tiles wrap, the last row stretches
   // to fill, so there is never an empty cell.
   return (
-    <div
-      className={cn(
-        "flex flex-wrap gap-px overflow-hidden rounded-xl border border-[var(--border-color)] bg-[var(--border-color)] [&>*]:min-w-[150px] [&>*]:flex-1 [&>*]:basis-[150px]",
-        className,
-      )}
-    >
-      {items.map((s) => {
+    <div className={cn("flex flex-wrap gap-3 [&>*]:min-w-[150px] [&>*]:flex-1 [&>*]:basis-[150px]", className)}>
+      {items.map((s, i) => {
+        const field = STAT_FIELDS[i % STAT_FIELDS.length];
         const body = (
           <>
-            <span className="block text-sm text-[var(--text-secondary)]">{s.label}</span>
-            <span className="mt-1 block font-mono text-2xl font-semibold tabular-nums text-[var(--text-primary)]">{s.value}</span>
-            {s.hint && <span className="mt-0.5 block text-xs text-[var(--text-secondary)]">{s.hint}</span>}
+            <span className="block text-sm font-medium text-field-ink/80">{s.label}</span>
+            <span className="mt-1.5 block font-mono text-[1.75rem] font-semibold leading-none tabular-nums text-field-ink">{s.value}</span>
+            {s.hint && <span className="mt-1.5 block text-xs text-field-ink/75">{s.hint}</span>}
           </>
         );
         return s.onClick ? (
@@ -143,12 +143,15 @@ export function StatStrip({ items, className }: { items: StatItem[]; className?:
             key={s.label}
             type="button"
             onClick={s.onClick}
-            className="bg-[var(--bg-card)] px-5 py-4 text-left transition-colors hover:bg-[var(--bg-subtle)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[var(--ring)]"
+            className={cn(
+              "rounded-2xl px-5 py-4 text-left transition-[transform,box-shadow] duration-150 hover:-translate-y-0.5 hover:shadow-[var(--shadow-md)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ring)] focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--bg-base)] motion-reduce:hover:translate-y-0",
+              field,
+            )}
           >
             {body}
           </button>
         ) : (
-          <div key={s.label} className="bg-[var(--bg-card)] px-5 py-4">
+          <div key={s.label} className={cn("rounded-2xl px-5 py-4", field)}>
             {body}
           </div>
         );
@@ -252,17 +255,20 @@ export function EmptyState({
   children,
   action,
   className,
+  wellClassName = "bg-field-lilac text-field-ink",
 }: {
   icon: LucideIcon;
   title: string;
   children?: ReactNode;
   action?: ReactNode;
   className?: string;
+  /** The icon well's colours. A failed load passes the warning tint. */
+  wellClassName?: string;
 }) {
   return (
     <div className={cn("flex flex-col items-center px-6 py-14 text-center", className)}>
-      <span className="mb-4 flex h-11 w-11 items-center justify-center rounded-xl bg-[var(--bg-subtle)] text-[var(--text-secondary)]">
-        <Icon size={20} aria-hidden="true" />
+      <span className={cn("mb-4 flex size-12 items-center justify-center rounded-2xl", wellClassName)}>
+        <Icon size={22} aria-hidden="true" />
       </span>
       <p className="text-sm font-semibold text-[var(--text-primary)]">{title}</p>
       {children && <p className="mt-1 max-w-[42ch] text-sm text-[var(--text-secondary)] text-balance">{children}</p>}
@@ -278,6 +284,7 @@ export function LoadError({ what, onRetry, className }: { what: string; onRetry:
       icon={TriangleAlert}
       title={`Could not load ${what}`}
       className={className}
+      wellClassName="bg-amber-50 text-amber-700 dark:bg-amber-950/50 dark:text-amber-300"
       action={<Button variant="outline" size="sm" onClick={onRetry}>Try again</Button>}
     >
       The request failed. Check your connection, then try again.
@@ -316,10 +323,10 @@ export function Panel({
   bodyClassName?: string;
 }) {
   return (
-    <section className={cn("rounded-xl border border-[var(--border-color)] bg-[var(--bg-card)]", className)}>
-      <header className="flex items-start justify-between gap-4 px-5 pt-4 pb-3">
+    <section className={cn("rounded-3xl border border-[var(--border-color)] bg-[var(--bg-card)]", className)}>
+      <header className="flex items-start justify-between gap-4 px-5 pt-5 pb-3">
         <div className="min-w-0">
-          <h2 className="text-sm font-semibold text-[var(--text-primary)]">{title}</h2>
+          <h2 className="font-display text-base font-extrabold tracking-[-0.01em] text-[var(--text-primary)]">{title}</h2>
           {description && <p className="mt-0.5 text-sm text-[var(--text-secondary)]">{description}</p>}
         </div>
         {action}
@@ -334,7 +341,7 @@ export function PageHeading({ title, description, actions }: { title: string; de
   return (
     <div className="mb-6 flex flex-wrap items-end justify-between gap-4">
       <div className="min-w-0">
-        <h1 className="text-2xl font-semibold tracking-[-0.02em] text-[var(--text-primary)]">{title}</h1>
+        <h1 className="font-display text-[1.75rem] font-extrabold leading-tight tracking-[-0.03em] text-[var(--text-primary)]">{title}</h1>
         {description && <p className="mt-1 text-sm text-[var(--text-secondary)]">{description}</p>}
       </div>
       {actions && <div className="flex items-center gap-2">{actions}</div>}

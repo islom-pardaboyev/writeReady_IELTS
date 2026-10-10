@@ -50,7 +50,7 @@ export function ProfileAvatar({ src, name, size = 'lg' }: { src: string | null; 
 }
 
 /** A thin progress bar that grows from empty once, so it reads as progress being made. */
-export function Meter({ value, label, className }: { value: number; label: string; className: string }) {
+export function Meter({ value, label, className, trackClassName = 'bg-[var(--border-color)] dark:bg-[var(--border-strong)]' }: { value: number; label: string; className: string; trackClassName?: string }) {
   const [shown, setShown] = useState(0);
   useEffect(() => {
     // A timer rather than an animation frame: frames never fire in a
@@ -66,7 +66,7 @@ export function Meter({ value, label, className }: { value: number; label: strin
       aria-valuemin={0}
       aria-valuemax={100}
       aria-valuenow={Math.round(clamped(value) * 100)}
-      className="h-2 overflow-hidden rounded-full bg-[var(--border-color)] dark:bg-[var(--border-strong)]"
+      className={`h-2 overflow-hidden rounded-full ${trackClassName}`}
     >
       <div
         className={`h-full rounded-full transition-[width] duration-700 ease-[cubic-bezier(0.16,1,0.3,1)] motion-reduce:transition-none ${className}`}

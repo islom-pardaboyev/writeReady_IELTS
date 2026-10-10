@@ -1,6 +1,6 @@
 import { useEffect, useRef, useSyncExternalStore } from "react";
-import { Link, useNavigate } from "react-router";
-import { Download, Menu } from "lucide-react";
+import { Link, NavLink, useNavigate } from "react-router";
+import { Download, LayoutDashboard, LogOut, Menu, Star, User, Wallet } from "lucide-react";
 import { useAuth } from "../../hooks/useAuth";
 import { canInstall, getVersion, install, subscribe } from "@/lib/pwaInstall";
 import Logo from "/logo.svg";
@@ -66,15 +66,25 @@ export function SubscriptionBadge({
 }
 
 const navLinkClass =
-  "text-[var(--text-secondary)] text-sm font-medium px-[0.875rem] py-[0.375rem] rounded-[6px] no-underline hover:bg-[var(--bg-subtle)] transition-colors";
+  "text-[var(--text-primary)] text-[0.9375rem] font-semibold px-3.5 py-2 rounded-full no-underline hover:bg-[var(--bg-subtle)] transition-colors aria-[current=page]:bg-[var(--accent)] aria-[current=page]:text-[var(--accent-foreground)]";
+
+// The site's main links, in order. The sample-answer pages draw their own
+// copy of this header (src/components/questions/QuestionsShell.tsx, which the
+// build renders to static HTML); keep the two lists in step.
+const NAV_LINKS: [to: string, label: string][] = [
+  ["/writing/mock", "Writing"],
+  ["/questions", "Sample answers"],
+  ["/blog", "Blog"],
+  ["/pricing", "Pricing"],
+];
 
 const dropdownLinkClass =
   "flex items-center gap-2.5 px-3 py-2 text-sm text-[var(--text-primary)] no-underline cursor-pointer hover:bg-[var(--bg-subtle)] rounded-md mx-1";
 
 /**
- * The breakpoint is md, not sm: at 640px the full row (logo, three links, theme
- * toggle, sign in and the Start Free button) still adds up to more than the
- * screen, so it would swap to the wide layout while it was too wide to fit.
+ * The breakpoint is lg: below 1024px the full row (logo, four links, theme
+ * toggle, sign in and the Start Free button) adds up to more than the screen,
+ * so tablets and phones get the menu button instead.
  */
 export function Header() {
   const { user, profile, logOut, avatarUrl } = useAuth();
@@ -131,7 +141,7 @@ export function Header() {
           .
         </marquee>
       </div>
-      <div className="max-w-[1160px] mx-auto px-4 sm:px-6 h-[60px] flex items-center justify-between gap-2">
+      <div className="max-w-[1280px] mx-auto px-4 sm:px-6 h-[68px] flex items-center justify-between gap-2">
         <Link to="/" className="flex shrink-0 items-center gap-2 no-underline">
           <img
             src={Logo}
@@ -140,7 +150,7 @@ export function Header() {
             className="size-8 sm:size-[40px]"
             alt=""
           />
-          <span className="font-bold text-base sm:text-lg text-[var(--text-primary)] whitespace-nowrap">
+          <span className="font-display font-extrabold text-base sm:text-lg text-[var(--text-primary)] whitespace-nowrap">
             WriteReady{" "}
             <span className="hidden text-[var(--ink-blue)] sm:inline">
               IELTS
@@ -149,16 +159,12 @@ export function Header() {
         </Link>
 
         <nav className="flex shrink-0 items-center gap-1">
-          <div className="hidden items-center gap-1 md:flex">
-            <Link to="/writing/mock" className={navLinkClass}>
-              Writing
-            </Link>
-            <Link to="/blog" className={navLinkClass}>
-              Blog
-            </Link>
-            <Link to="/pricing" className={navLinkClass}>
-              Pricing
-            </Link>
+          <div className="hidden items-center gap-1 lg:flex">
+            {NAV_LINKS.map(([to, label]) => (
+              <NavLink key={to} to={to} className={navLinkClass}>
+                {label}
+              </NavLink>
+            ))}
           </div>
 
           <ThemeToggle />
@@ -234,7 +240,7 @@ export function Header() {
                   className="flex items-center justify-between gap-2 px-3 py-2.5 mx-1 mt-1 rounded-md no-underline cursor-pointer hover:bg-[var(--bg-subtle)] transition-colors"
                 >
                   <span className="flex items-center gap-2.5 text-sm text-[var(--text-primary)]">
-                    <span aria-hidden="true">💰</span> Balance
+                    <Wallet className="size-4 text-[var(--text-secondary)]" aria-hidden="true" /> Balance
                   </span>
                   <span className="text-sm font-bold font-mono text-emerald-600">
                     {formatUZS(profile?.balanceUZS ?? 0)}
@@ -246,7 +252,7 @@ export function Header() {
                     to="/dashboard"
                     className="flex items-center gap-2.5 px-3 py-2 text-sm text-[var(--text-primary)] no-underline cursor-pointer hover:bg-[var(--bg-subtle)] rounded-md mx-1"
                   >
-                    <span aria-hidden="true">🏠</span> Dashboard
+                    <LayoutDashboard className="size-4 text-[var(--text-secondary)]" aria-hidden="true" /> Dashboard
                   </Link>
                 </DropdownMenuItem>
 
@@ -255,7 +261,7 @@ export function Header() {
                     to="/account"
                     className="flex items-center gap-2.5 px-3 py-2 text-sm text-[var(--text-primary)] no-underline cursor-pointer hover:bg-[var(--bg-subtle)] rounded-md mx-1"
                   >
-                    <span aria-hidden="true">👤</span> My Account
+                    <User className="size-4 text-[var(--text-secondary)]" aria-hidden="true" /> My Account
                   </Link>
                 </DropdownMenuItem>
 
@@ -265,7 +271,7 @@ export function Header() {
                       to="/pricing"
                       className="flex items-center gap-2.5 px-3 py-2 text-sm text-amber-700 font-semibold no-underline cursor-pointer hover:bg-amber-50 rounded-md mx-1 dark:text-amber-400 dark:hover:bg-amber-900/20"
                     >
-                      <span aria-hidden="true">⭐</span> Upgrade plan
+                      <Star className="size-4" aria-hidden="true" /> Upgrade plan
                     </Link>
                   </DropdownMenuItem>
                 )}
@@ -276,7 +282,7 @@ export function Header() {
                   onSelect={handleLogout}
                   className="flex items-center gap-2.5 px-3 py-2 text-sm text-red-600 cursor-pointer hover:bg-red-50 rounded-md mx-1 dark:text-red-400 dark:hover:bg-red-900/20"
                 >
-                  <span aria-hidden="true">↩</span> Log out
+                  <LogOut className="size-4" aria-hidden="true" /> Log out
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
@@ -284,13 +290,13 @@ export function Header() {
             <>
               <Link
                 to="/auth?mode=login"
-                className={`hidden md:inline-block ${navLinkClass}`}
+                className={`hidden lg:inline-block ${navLinkClass}`}
               >
                 Sign in
               </Link>
               <Link
                 to="/auth?mode=signup"
-                className="ml-1 bg-[var(--ink-blue-solid)] text-white text-sm font-semibold px-3 md:px-5 py-2 rounded-lg no-underline whitespace-nowrap hover:opacity-90 transition-opacity dark:bg-brand-600"
+                className="ml-1 bg-[var(--ink-blue-solid)] text-white text-sm font-bold px-4 md:px-5 py-2.5 rounded-full no-underline whitespace-nowrap hover:opacity-90 transition-opacity dark:bg-brand-600"
               >
                 Start Free
               </Link>
@@ -302,7 +308,7 @@ export function Header() {
               <button
                 type="button"
                 aria-label="Menu"
-                className="flex h-9 w-9 items-center justify-center rounded-lg border border-[var(--border-color)] bg-[var(--bg-card)] text-[var(--text-secondary)] transition-colors hover:bg-[var(--bg-subtle)] hover:text-[var(--text-primary)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ink-blue)] md:hidden"
+                className="flex h-9 w-9 items-center justify-center rounded-lg border border-[var(--border-color)] bg-[var(--bg-card)] text-[var(--text-secondary)] transition-colors hover:bg-[var(--bg-subtle)] hover:text-[var(--text-primary)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ink-blue)] lg:hidden"
               >
                 <Menu className="h-4 w-4" />
               </button>
@@ -326,21 +332,13 @@ export function Header() {
                 </>
               )}
 
-              <DropdownMenuItem asChild>
-                <Link to="/writing/mock" className={dropdownLinkClass}>
-                  Writing
-                </Link>
-              </DropdownMenuItem>
-              <DropdownMenuItem asChild>
-                <Link to="/blog" className={dropdownLinkClass}>
-                  Blog
-                </Link>
-              </DropdownMenuItem>
-              <DropdownMenuItem asChild>
-                <Link to="/pricing" className={dropdownLinkClass}>
-                  Pricing
-                </Link>
-              </DropdownMenuItem>
+              {NAV_LINKS.map(([to, label]) => (
+                <DropdownMenuItem key={to} asChild>
+                  <Link to={to} className={dropdownLinkClass}>
+                    {label}
+                  </Link>
+                </DropdownMenuItem>
+              ))}
 
               {!user && (
                 <>

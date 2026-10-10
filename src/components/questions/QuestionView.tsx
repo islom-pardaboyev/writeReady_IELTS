@@ -1,12 +1,13 @@
 import { Link } from 'react-router';
 import { Tooltip } from 'radix-ui';
-import { ArrowDown, BookOpen, ChevronRight, ExternalLink, FileText, ListOrdered, PenLine, Sparkles, Users } from 'lucide-react';
+import { ArrowDown, ArrowRight, BookOpen, ChevronRight, ExternalLink, FileText, ListOrdered, PenLine, Sparkles, Users } from 'lucide-react';
 import { PROMPT_SOURCES } from '@/lib/promptSources';
 import {
   fmtBand, questionPath, taskLabel, titleCase, writeItPathFor,
   type PublicSample, type PublicVocab, type QuestionPageData, type QuestionSummary,
 } from '@/lib/questionData';
 import { paragraphSegments, type EssaySegment } from '@/lib/essayHighlights';
+import { BandWell } from './QuestionList';
 
 /**
  * One question's public page: the question, its chart (Task 1), the outline,
@@ -18,11 +19,16 @@ import { paragraphSegments, type EssaySegment } from '@/lib/essayHighlights';
 
 const MODE_NAMES: Record<string, string> = { mock: 'Mock exam', practice: 'Practice', quickwrite: 'Quick Write', relax: 'Relax' };
 
-function WriteButton({ data, className = '' }: { data: QuestionPageData; className?: string }) {
+const WRITE_TONE = {
+  ink: 'bg-[var(--ink-blue-solid)] text-white shadow-[0_10px_22px_-8px_color-mix(in_srgb,var(--ink-blue-solid)_65%,transparent)] focus-visible:ring-[var(--ring)] focus-visible:ring-offset-[var(--bg-card)]',
+  white: 'bg-white text-brand-700 focus-visible:ring-white focus-visible:ring-offset-brand-600',
+};
+
+function WriteButton({ data, className = '', tone = 'ink' }: { data: QuestionPageData; className?: string; tone?: keyof typeof WRITE_TONE }) {
   return (
     <Link
       to={writeItPathFor(data)}
-      className={`inline-flex min-h-11 items-center justify-center gap-2 rounded-lg bg-[var(--ink-blue)] px-5 py-2.5 text-center text-sm font-semibold text-white no-underline transition-opacity hover:opacity-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ring)] focus-visible:ring-offset-2 dark:text-[var(--primary-foreground)] ${className}`}
+      className={`inline-flex min-h-12 items-center justify-center gap-2 rounded-full px-6 py-3 text-center text-[0.9375rem] font-bold no-underline transition-transform duration-150 hover:-translate-y-0.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 motion-reduce:hover:translate-y-0 ${WRITE_TONE[tone]} ${className}`}
     >
       <PenLine className="h-4 w-4 shrink-0" aria-hidden />
       Write your own answer and get your band score
@@ -32,8 +38,8 @@ function WriteButton({ data, className = '' }: { data: QuestionPageData; classNa
 
 function SectionTitle({ icon: Icon, children, id }: { icon: typeof BookOpen; children: string; id: string }) {
   return (
-    <h2 id={id} className="m-0 flex items-center gap-2 text-lg font-bold text-[var(--text-primary)]">
-      <Icon className="h-[18px] w-[18px] text-[var(--ink-blue)]" aria-hidden />
+    <h2 id={id} className="m-0 flex scroll-mt-24 items-center gap-2 font-display text-xl font-extrabold tracking-[-0.02em] text-[var(--text-primary)]">
+      <Icon className="h-5 w-5 text-[var(--ink-blue)]" aria-hidden />
       {children}
     </h2>
   );
@@ -49,11 +55,11 @@ function Criteria({ sample, taskType }: { sample: PublicSample; taskType: Questi
     ['GRA', 'Grammatical Range and Accuracy', c.gra],
   ];
   return (
-    <ul className="m-0 mt-3 flex list-none flex-wrap gap-1.5 p-0" aria-label="Band for each criterion">
+    <ul className="m-0 mt-4 grid max-w-[26rem] list-none grid-cols-4 gap-2 p-0" aria-label="Band for each criterion">
       {items.map(([short, long, band]) => (
-        <li key={short} title={long} className="rounded-full border border-[var(--border-color)] bg-[var(--bg-base)] px-2.5 py-0.5 text-xs font-medium text-[var(--text-secondary)]">
-          <abbr title={long} className="no-underline">{short}</abbr>{' '}
-          <span className="font-mono font-semibold tabular-nums text-[var(--text-primary)]">{fmtBand(band)}</span>
+        <li key={short} title={long} className="rounded-2xl bg-[var(--bg-base)] px-3 py-2 text-xs font-semibold text-[var(--text-secondary)]">
+          <abbr title={long} className="block no-underline">{short}</abbr>
+          <span className="mt-0.5 block font-mono text-base font-semibold tabular-nums text-[var(--text-primary)]">{fmtBand(band)}</span>
         </li>
       ))}
     </ul>
@@ -100,7 +106,7 @@ function GrammarMark({ segment }: { segment: Extract<EssaySegment, { type: 'gram
       </Tooltip.Trigger>
       <Tooltip.Portal>
         <Tooltip.Content sideOffset={6} collisionPadding={8} className="z-[300] max-w-[280px] rounded-lg border border-[var(--border-color)] bg-[var(--bg-card)] px-3 py-2 text-left text-xs leading-snug text-[var(--text-primary)] shadow-[var(--shadow-lg)]">
-          <span className="mb-1 inline-block rounded-full bg-emerald-600 px-1.5 py-[1px] text-[0.625rem] font-bold uppercase tracking-wide text-white">Advanced</span>
+          <span className="mb-1 inline-block rounded-full bg-emerald-600 px-2 py-[1px] text-[0.6875rem] font-bold text-white">Advanced</span>
           <p className="m-0">{segment.note}</p>
           <Tooltip.Arrow className="fill-[var(--bg-card)]" width={10} height={5} />
         </Tooltip.Content>
@@ -136,14 +142,16 @@ function SampleAnswer({
   // smaller keeps more of it on screen without feeling cramped on desktop.
   const long = sample.wordCount > 250;
   return (
-    <article aria-labelledby={headingId} className="rounded-2xl border border-[var(--border-color)] bg-[var(--bg-card)] p-5 shadow-[var(--shadow-sm)] sm:p-7">
-      <header className="flex flex-wrap items-start justify-between gap-3">
-        <div>
-          <h3 id={headingId} className="m-0 flex items-center gap-2 text-base font-bold text-[var(--text-primary)]">
-            {student ? <Users className="h-4 w-4 text-[var(--ink-blue)]" aria-hidden /> : <Sparkles className="h-4 w-4 text-[var(--ink-blue)]" aria-hidden />}
+    <article aria-labelledby={headingId} className="rounded-3xl border border-[var(--border-color)] bg-[var(--bg-card)] p-5 sm:p-7">
+      <header className="flex items-start gap-4">
+        <span className={`grid size-12 shrink-0 place-items-center rounded-2xl text-field-ink ${student ? 'bg-field-mint' : 'bg-field-lilac'}`}>
+          {student ? <Users className="h-6 w-6" aria-hidden /> : <Sparkles className="h-6 w-6" aria-hidden />}
+        </span>
+        <div className="min-w-0">
+          <h3 id={headingId} className="m-0 font-display text-lg font-extrabold tracking-[-0.01em] text-[var(--text-primary)]">
             {student ? 'Student answer' : 'Model answer'} — Band <span className="font-mono tabular-nums">{fmtBand(sample.band)}</span>
           </h3>
-          <p className="m-0 mt-1 text-xs text-[var(--text-secondary)]">
+          <p className="m-0 mt-1 text-xs leading-relaxed text-[var(--text-secondary)]">
             {student
               ? `Written by a WriteReady student${sample.mode && MODE_NAMES[sample.mode] ? ` in ${MODE_NAMES[sample.mode]}` : ''}, shared anonymously`
               : 'Written by WriteReady AI and reviewed by our team'}
@@ -153,6 +161,21 @@ function SampleAnswer({
         </div>
       </header>
       <Criteria sample={sample} taskType={taskType} />
+      {highlight && (
+        <p className="m-0 mt-4 flex flex-wrap items-center gap-x-4 gap-y-1.5 text-xs text-[var(--text-secondary)]">
+          {highlight.vocabulary.length > 0 && (
+            <span className="inline-flex items-center gap-1.5">
+              <span aria-hidden className="h-3 w-5 rounded-[3px] bg-[var(--accent)]" /> Vocabulary
+            </span>
+          )}
+          {highlight.grammarHighlights.length > 0 && (
+            <span className="inline-flex items-center gap-1.5">
+              <span aria-hidden className="h-3 w-5 rounded-[3px] bg-emerald-500/25" /> Advanced grammar
+            </span>
+          )}
+          <span>Tap or hover a highlighted phrase to see its note.</span>
+        </p>
+      )}
       <div className={`mt-5 max-w-[70ch] space-y-4 leading-[1.75] text-[var(--text-primary)] ${long ? 'text-[0.9375rem] sm:text-[1.0625rem]' : 'text-[1.0625rem]'}`}>
         {highlight
           ? paragraphSegments(sample.sampleAnswer, highlight.vocabulary, highlight.grammarHighlights).map((segs, i) => (
@@ -173,14 +196,14 @@ export function RelatedList({ items }: { items: QuestionSummary[] }) {
         <li key={`${q.taskType}/${q.slug}`}>
           <Link
             to={questionPath(q.taskType, q.slug)}
-            className="group flex h-full flex-col gap-1.5 rounded-xl border border-[var(--border-color)] bg-[var(--bg-card)] p-4 no-underline shadow-[var(--shadow-sm)] transition-[box-shadow,transform] hover:-translate-y-0.5 hover:shadow-[var(--shadow-md)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ring)] motion-reduce:transition-none motion-reduce:hover:translate-y-0"
+            className="group flex h-full items-center gap-4 rounded-3xl border border-[var(--border-color)] bg-[var(--bg-card)] p-4 no-underline transition-[box-shadow,transform,border-color] duration-200 hover:-translate-y-0.5 hover:border-[var(--border-strong)] hover:shadow-[var(--shadow-md)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ring)] motion-reduce:transition-none motion-reduce:hover:translate-y-0"
           >
-            <span className="text-xs font-medium text-[var(--text-secondary)]">
-              {taskLabel(q.taskType)} · {q.taskType === 'task1' && q.chartType ? q.chartType : q.topic}
-            </span>
-            <span className="font-semibold text-[var(--text-primary)] group-hover:text-[var(--ink-blue)]">{titleCase(q.title)}</span>
-            <span className="text-sm text-[var(--text-secondary)]">
-              Band <span className="font-mono tabular-nums">{fmtBand(q.bestBand)}</span> sample
+            <BandWell q={q} size="sm" />
+            <span className="min-w-0">
+              <span className="block text-xs font-semibold text-[var(--text-secondary)]">
+                {taskLabel(q.taskType)} · {q.taskType === 'task1' && q.chartType ? q.chartType : q.topic}
+              </span>
+              <span className="mt-0.5 block font-semibold leading-snug text-[var(--text-primary)] group-hover:text-[var(--ink-blue)]">{titleCase(q.title)}</span>
             </span>
           </Link>
         </li>
@@ -213,9 +236,17 @@ export function QuestionView({ data }: { data: QuestionPageData }) {
   // The vocabulary and grammar notes are the reviewed AI answer's own (or the student's, when there is no AI one) — scripts/lib/questionSite.tsx.
   const notesSampleId = data.samples.find((s) => s.sourceType === 'ai')?.id ?? data.samples[0]?.id;
   // On a phone the notes are stacked below the essay (desktop shows them in the sticky sidebar beside it), so a shortcut past the essay is worth it there.
+  const best = fmtBand(Math.max(...data.samples.map((s) => s.band)));
+  // How to get the most from the page, in the order to do it. Each step is a link to its part.
+  const steps = [
+    { title: 'Plan it first', text: 'Decide how you would answer before you read on.', href: data.outline.length > 0 ? '#outline-title' : '#samples-title', chip: 'bg-field-lilac' },
+    { title: 'Study the answer', text: hasNotes ? 'Tap the highlighted phrases for meanings and notes.' : `See how a Band ${best} answer is built.`, href: '#samples-title', chip: 'bg-field-mint' },
+    { title: 'Write it yourself', text: 'Answer this question and get your own band score.', href: writeItPathFor(data), chip: 'bg-field-amber' },
+  ];
+  const stepClass = 'group flex h-full items-start gap-3 rounded-2xl border border-[var(--border-color)] bg-[var(--bg-card)] p-4 no-underline transition-colors hover:border-[var(--border-strong)] hover:bg-[var(--bg-subtle)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ring)]';
   const jumpTo = data.vocabulary.length > 0 ? { id: 'vocab-title', label: 'Jump to vocabulary' } : data.grammarHighlights.length > 0 ? { id: 'grammar-title', label: 'Jump to grammar notes' } : null;
   return (
-    <div className={`mx-auto w-full px-4 pb-16 pt-6 sm:px-6 sm:pt-10 ${hasNotes ? 'max-w-[1040px]' : 'max-w-[860px]'}`}>
+    <div className={`mx-auto w-full px-4 pb-16 pt-6 sm:px-6 sm:pt-10 ${hasNotes ? 'max-w-[1120px]' : 'max-w-[860px]'}`}>
       <nav aria-label="Breadcrumb" className="text-sm text-[var(--text-secondary)]">
         <ol className="m-0 flex list-none flex-wrap items-center gap-1 p-0">
           <li><Link to="/questions" className="text-[var(--text-secondary)] no-underline hover:text-[var(--text-primary)] hover:underline">Sample answers</Link></li>
@@ -224,22 +255,28 @@ export function QuestionView({ data }: { data: QuestionPageData }) {
         </ol>
       </nav>
 
-      <header className="mt-3">
-        <p className="m-0 text-sm font-semibold text-[var(--ink-blue)]">IELTS Writing {task} · {kind}</p>
-        <h1 className="m-0 mt-1 text-[1.75rem] font-extrabold leading-tight tracking-[-0.025em] text-[var(--text-primary)] sm:text-4xl">
-          {heading}: Band {fmtBand(Math.max(...data.samples.map((s) => s.band)))} sample answer
+      <header className="mt-4">
+        <h1 className="m-0 max-w-[24ch] font-display text-[1.75rem] font-extrabold leading-[1.1] tracking-[-0.03em] text-balance text-[var(--text-primary)] sm:text-[2.5rem]">
+          {heading}: Band {best} sample answer
         </h1>
+        <p className="m-0 mt-3 flex flex-wrap gap-2 text-xs font-semibold">
+          <span className={`rounded-full px-2.5 py-1 ${data.taskType === 'task1' ? 'bg-field-lilac text-field-ink' : 'bg-[var(--accent)] text-[var(--accent-foreground)]'}`}>IELTS Writing {task}</span>
+          <span className="rounded-full border border-[var(--border-color)] bg-[var(--bg-card)] px-2.5 py-1 text-[var(--text-secondary)]">{kind}</span>
+          {kind !== data.topic && (
+            <span className="rounded-full border border-[var(--border-color)] bg-[var(--bg-card)] px-2.5 py-1 text-[var(--text-secondary)]">{data.topic}</span>
+          )}
+        </p>
       </header>
 
-      <section aria-labelledby="question-title" className="mt-6 rounded-2xl border border-[var(--border-color)] bg-[var(--bg-card)] p-5 shadow-[var(--shadow-sm)] sm:p-7">
-        <h2 id="question-title" className="m-0 text-xs font-semibold uppercase tracking-wider text-[var(--text-secondary)]">The question</h2>
+      <section aria-labelledby="question-title" className="mt-6 rounded-3xl border border-[var(--border-color)] bg-[var(--bg-card)] p-5 sm:p-7">
+        <h2 id="question-title" className="m-0 text-sm font-semibold text-[var(--text-secondary)]">The question</h2>
         <div className="mt-2 max-w-[70ch] space-y-3 text-base font-medium leading-relaxed text-[var(--text-primary)] sm:text-[1.0625rem]">
           {data.questionText.split(/\n+/).filter((p) => p.trim()).map((p, i) => <p key={i}>{p.trim()}</p>)}
         </div>
         {data.image && data.image.kind === 'image' && (
-          <figure className="m-0 mt-5">
+          <figure className="m-0 mt-5 max-w-[760px]">
             {/* The chart is the page's main content: it loads at once, never lazily, with its size set so nothing jumps. Tapping opens it full size. */}
-            <a href={data.image.src} target="_blank" rel="noopener" className="block overflow-hidden rounded-xl border border-[var(--border-color)] bg-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ring)]">
+            <a href={data.image.src} target="_blank" rel="noopener" className="block overflow-hidden rounded-2xl border border-[var(--border-color)] bg-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ring)]">
               <img
                 src={data.image.src}
                 alt={data.image.alt}
@@ -281,11 +318,41 @@ export function QuestionView({ data }: { data: QuestionPageData }) {
         )}
       </section>
 
+      {/* How to use this page */}
+      <ol aria-label="How to use this page" className="m-0 mt-4 grid list-none gap-3 p-0 sm:grid-cols-3">
+        {steps.map((s, i) => {
+          const body = (
+            <>
+              <span aria-hidden className={`grid size-8 shrink-0 place-items-center rounded-full font-mono text-sm font-semibold text-field-ink ${s.chip}`}>{i + 1}</span>
+              <span className="min-w-0">
+                <span className="flex items-center gap-1 text-[0.9375rem] font-bold text-[var(--text-primary)]">
+                  {s.title}
+                  <ArrowRight className="h-3.5 w-3.5 text-[var(--text-secondary)] transition-transform duration-150 group-hover:translate-x-0.5 motion-reduce:transition-none" aria-hidden />
+                </span>
+                <span className="mt-0.5 block text-sm leading-relaxed text-[var(--text-secondary)]">{s.text}</span>
+              </span>
+            </>
+          );
+          return (
+            <li key={s.title}>
+              {s.href.startsWith('#')
+                ? <a href={s.href} className={stepClass}>{body}</a>
+                : <Link to={s.href} className={stepClass}>{body}</Link>}
+            </li>
+          );
+        })}
+      </ol>
+
       {data.outline.length > 0 && (
         <section aria-labelledby="outline-title" className="mt-10">
           <SectionTitle icon={ListOrdered} id="outline-title">Outline</SectionTitle>
-          <ol className="m-0 mt-3 list-decimal space-y-1.5 pl-5 text-[var(--text-primary)] marker:font-mono marker:text-[var(--text-secondary)]">
-            {data.outline.map((line, i) => <li key={i} className="pl-1 leading-relaxed">{line}</li>)}
+          <ol className="m-0 mt-4 list-none space-y-3 rounded-3xl border border-[var(--border-color)] bg-[var(--bg-card)] p-5 text-[var(--text-primary)] sm:p-7">
+            {data.outline.map((line, i) => (
+              <li key={i} className="flex items-start gap-3 leading-relaxed">
+                <span aria-hidden className="mt-0.5 grid size-6 shrink-0 place-items-center rounded-full bg-[var(--bg-subtle)] font-mono text-xs font-semibold text-[var(--text-secondary)] dark:bg-[var(--border-color)]">{i + 1}</span>
+                <span className="max-w-[75ch]">{line}</span>
+              </li>
+            ))}
           </ol>
         </section>
       )}
@@ -293,7 +360,7 @@ export function QuestionView({ data }: { data: QuestionPageData }) {
       <section aria-labelledby="samples-title" className="mt-10">
         <SectionTitle icon={BookOpen} id="samples-title">{data.samples.length > 1 ? 'Sample answers' : 'Sample answer'}</SectionTitle>
         <Tooltip.Provider delayDuration={150}>
-          <div className={hasNotes ? 'mt-4 lg:grid lg:grid-cols-[minmax(0,1fr)_320px] lg:items-start lg:gap-6' : 'mt-4'}>
+          <div className={hasNotes ? 'mt-4 lg:grid lg:grid-cols-[minmax(0,1fr)_340px] lg:items-start lg:gap-6' : 'mt-4'}>
             <div className={hasNotes ? 'space-y-5 lg:sticky lg:top-20' : 'space-y-5'}>
               {data.samples.map((s, i) => (
                 <SampleAnswer
@@ -312,14 +379,14 @@ export function QuestionView({ data }: { data: QuestionPageData }) {
                     <SectionTitle icon={Sparkles} id="vocab-title">Vocabulary</SectionTitle>
                     <ul className="m-0 mt-3 list-none space-y-3 p-0">
                       {data.vocabulary.map((v) => (
-                        <li key={v.word} className="rounded-xl border border-[var(--border-color)] bg-[var(--bg-card)] p-4 shadow-[var(--shadow-sm)]">
+                        <li key={v.word} className="rounded-2xl border border-[var(--border-color)] bg-[var(--bg-card)] p-4">
                           <p className="m-0 font-bold text-[var(--text-primary)]">{v.word}</p>
                           <p className="m-0 mt-1 text-sm text-[var(--text-secondary)]">{v.meaning}</p>
                           <p className="m-0 mt-2 text-sm text-[var(--text-primary)]" lang="uz">
                             <span className="mr-1.5 rounded bg-[var(--accent)] px-1.5 py-0.5 font-mono text-[0.6875rem] font-semibold text-[var(--accent-foreground)]">UZ</span>
                             {v.uz}
                           </p>
-                          {v.example && <p className="m-0 mt-2 border-l-2 border-[var(--border-color)] pl-3 text-sm italic text-[var(--text-secondary)]">{v.example}</p>}
+                          {v.example && <p className="m-0 mt-2 text-sm italic leading-relaxed text-[var(--text-secondary)]">{v.example}</p>}
                         </li>
                       ))}
                     </ul>
@@ -328,8 +395,8 @@ export function QuestionView({ data }: { data: QuestionPageData }) {
                 {data.grammarHighlights.length > 0 && (
                   <div aria-labelledby="grammar-title">
                     <SectionTitle icon={FileText} id="grammar-title">Grammar highlights</SectionTitle>
-                    <ul className="m-0 mt-3 list-disc space-y-2 pl-5 text-[var(--text-primary)] marker:text-[var(--ink-blue)]">
-                      {data.grammarHighlights.map((g, i) => <li key={i} className="pl-1 leading-relaxed">{g}</li>)}
+                    <ul className="m-0 mt-3 list-disc space-y-2.5 rounded-2xl border border-[var(--border-color)] bg-[var(--bg-card)] py-4 pl-9 pr-4 text-sm text-[var(--text-primary)] marker:text-emerald-600 dark:marker:text-emerald-400">
+                      {data.grammarHighlights.map((g, i) => <li key={i} className="pl-0.5 leading-relaxed">{g}</li>)}
                     </ul>
                   </div>
                 )}
@@ -339,15 +406,15 @@ export function QuestionView({ data }: { data: QuestionPageData }) {
         </Tooltip.Provider>
       </section>
 
-      <section className="mt-10 rounded-2xl border border-[var(--border-color)] bg-[var(--bg-card)] p-5 text-center shadow-[var(--shadow-sm)] sm:p-7">
-        <p className="m-0 text-lg font-bold text-[var(--text-primary)]">Can you write a Band {fmtBand(Math.max(...data.samples.map((s) => s.band)))} answer?</p>
-        <p className="m-0 mt-1 text-sm text-[var(--text-secondary)]">Write this question in Quick Write and see your band for each criterion.</p>
-        <WriteButton data={data} className="mt-4 w-full sm:w-auto" />
+      <section className="mt-12 rounded-[32px] bg-brand-600 px-6 py-10 text-center sm:py-12">
+        <h2 className="m-0 font-display text-2xl font-extrabold tracking-[-0.02em] text-white sm:text-[1.75rem]">Can you write a Band {best} answer?</h2>
+        <p className="m-0 mx-auto mt-2 max-w-[52ch] text-[0.9375rem] leading-relaxed text-white/85">Write this question in Quick Write and see your band for each criterion.</p>
+        <WriteButton data={data} tone="white" className="mt-6 w-full sm:w-auto" />
       </section>
 
       {data.related.length > 0 && (
         <section aria-labelledby="related-title" className="mt-10">
-          <h2 id="related-title" className="m-0 text-lg font-bold text-[var(--text-primary)]">Related questions</h2>
+          <h2 id="related-title" className="m-0 font-display text-xl font-extrabold tracking-[-0.02em] text-[var(--text-primary)]">Related questions</h2>
           <div className="mt-4"><RelatedList items={data.related} /></div>
         </section>
       )}

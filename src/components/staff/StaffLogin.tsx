@@ -49,8 +49,8 @@ export function StaffLogin({
           <img src={Logo} width={36} height={36} alt="" />
           <span className="text-base font-bold">WriteReady</span>
         </div>
-        <div className="rounded-xl border border-[var(--border-color)] bg-[var(--bg-card)] p-6 sm:p-7">
-          <h1 className="text-xl font-semibold tracking-[-0.02em]">{title}</h1>
+        <div className="rounded-3xl border border-[var(--border-color)] bg-[var(--bg-card)] p-6 sm:p-8">
+          <h1 className="font-display text-2xl font-extrabold tracking-[-0.025em]">{title}</h1>
           <p className="mt-1 text-sm text-[var(--text-secondary)]">{description}</p>
           <form onSubmit={handle} className="mt-6 flex flex-col gap-4" noValidate>
             <Field label={loginLabel} htmlFor="staff-login">

@@ -70,7 +70,7 @@ export function AppSidebar() {
         <Link to="/dashboard" className="flex items-center gap-2 no-underline min-w-0" onClick={handleNavClick}>
           <img src={Logo} width={32} height={32} alt="" className="shrink-0" />
           {(open || isMobile) && (
-            <span className="font-bold text-sm text-[var(--sidebar-foreground)] truncate">
+            <span className="font-display font-extrabold text-[0.9375rem] text-[var(--sidebar-foreground)] truncate">
               WriteReady
             </span>
           )}

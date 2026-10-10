@@ -1,6 +1,6 @@
-import { useRef, useEffect, useState, useId } from "react";
+import { useCallback, useRef, useEffect, useState, useId } from "react";
 import { Link } from "react-router";
-import { X, Copy, Send, Check, CircleCheck } from "lucide-react";
+import { X, Copy, Send, Check, CircleCheck, SlidersHorizontal } from "lucide-react";
 import { Layout } from "../components/layout/Layout";
 import { AppShell } from "../components/layout/AppShell";
 import { Button } from "../components/ui/Button";
@@ -113,6 +113,14 @@ const TAGLINE: Record<CoveringPlan, string> = {
 };
 
 const PLAN_ORDER: CoveringPlan[] = ["free", "basic", "standard", "premium"];
+
+/** The colour field at the top of each plan card. Standard wears the brand ink. */
+const PLAN_FIELD: Record<CoveringPlan, string> = {
+  free: "bg-tint text-[var(--text-primary)]",
+  basic: "bg-field-mint text-field-ink",
+  standard: "bg-brand-600 text-white",
+  premium: "bg-field-lilac text-field-ink",
+};
 const planOf = (id: Exclude<CoveringPlan, "free">) => PLANS.find((p) => p.id === id)!;
 
 /** How many essays a month the student's current plan already holds (Free: one a week). */
@@ -130,6 +138,13 @@ export function PricingPage() {
   const [topUpAmount, setTopUpAmount] = useState("");
   const [customAnalyses, setCustomAnalyses] = useState(10);
   const { span, selected, setSelected, activePreset, recommendation } = useStudyMonth();
+  // The calendar opens on "3 a week". Until the student marks days of their
+  // own, no card claims to fit a month they never described.
+  const [touched, setTouched] = useState(false);
+  const mark = useCallback((days: Set<number>) => {
+    setTouched(true);
+    setSelected(days);
+  }, [setSelected]);
   const modalTitleId = useId();
   const modalRef = useRef<HTMLDivElement>(null);
   const lastFocusedRef = useRef<HTMLElement | null>(null);
@@ -254,6 +269,10 @@ export function PricingPage() {
     : spare === 0 ? `${recLabel} covers exactly that.`
     : `${recLabel} covers them, with ${spare} to spare.`;
 
+  // The one card that carries the solid button: the plan that fits the marked
+  // month, or Standard before any day has been marked.
+  const featured: CoveringPlan = touched && rec.plan ? rec.plan : "standard";
+
   const planButton = (id: CoveringPlan, variant: "default" | "outline", className?: string) => {
     if (currentPlan === id) {
       return (
@@ -287,280 +306,289 @@ export function PricingPage() {
   return (
     <Frame>
       <div className="min-h-[calc(100vh-120px)] bg-[var(--bg-base)] py-10 sm:py-14">
-        <div className="mx-auto max-w-[1160px] px-4 sm:px-6">
-          <header className="max-w-[620px]">
-            <h1 className="text-[clamp(2rem,4.2vw,2.75rem)] font-extrabold leading-[1.08] tracking-[-0.03em] text-[var(--text-primary)]">
-              Plan your writing month
-            </h1>
-            <p className="mt-3 text-[1.0625rem] leading-relaxed text-[var(--text-secondary)]">
-              Mark the days you&rsquo;ll write an essay in the next four weeks, and see the plan that covers them.
-            </p>
+        <div className="mx-auto max-w-[1280px] px-4 sm:px-6">
+          <header className="flex flex-wrap items-end justify-between gap-x-10 gap-y-3">
+            <div className="max-w-[620px]">
+              <h1 className="font-display text-[clamp(2rem,4.4vw,3rem)] font-extrabold leading-[1.06] tracking-[-0.035em] text-balance text-[var(--text-primary)]">
+                Pick the plan that fits your month
+              </h1>
+              <p className="mt-3 text-[1.0625rem] leading-relaxed text-[var(--text-secondary)]">
+                Every plan uses the same marking. A bigger plan gives you more AI analyses each month.
+              </p>
+            </div>
+            <p className="text-sm text-[var(--text-secondary)]">Paid monthly by card transfer. Cancel anytime.</p>
           </header>
 
-          <div className="mt-8 grid gap-5 lg:grid-cols-[minmax(0,1fr)_minmax(320px,380px)] lg:items-start lg:gap-6">
-            {/* The study month */}
-            <section
-              aria-labelledby="study-title"
-              className="rounded-[18px] border border-[var(--border-color)] bg-[var(--bg-card)] p-4 shadow-[var(--shadow-sm)] sm:p-6"
-            >
-              <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
-                <h2 id="study-title" className="text-base font-semibold text-[var(--text-primary)]">Your next 4 weeks</h2>
-                <p className="font-mono text-xs tabular-nums text-[var(--text-secondary)]">{spanTitle(span)}</p>
-              </div>
-
-              <div role="group" aria-label="Writing patterns" className="mt-4 flex flex-wrap items-center gap-2">
-                {PRESETS.map((preset) => {
-                  const on = activePreset === preset.id;
-                  return (
-                    <button
-                      key={preset.id}
-                      type="button"
-                      aria-pressed={on}
-                      onClick={() => setSelected(presetDays(span, preset.weekdays))}
-                      className={cn(
-                        "h-8 rounded-full px-3.5 text-[0.8125rem] font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ring)] focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--bg-card)]",
-                        on
-                          ? "bg-[var(--accent)] text-[var(--accent-foreground)]"
-                          : "border border-[var(--border-color)] bg-[var(--bg-card)] text-[var(--text-secondary)] hover:bg-[var(--bg-subtle)] hover:text-[var(--text-primary)]",
-                      )}
-                    >
-                      {preset.label}
-                    </button>
-                  );
-                })}
-                {selected.size > 0 && (
-                  <button
-                    type="button"
-                    onClick={() => setSelected(new Set())}
-                    className="ml-auto h-8 rounded-md px-2 text-[0.8125rem] font-medium text-[var(--text-secondary)] underline-offset-4 hover:text-[var(--text-primary)] hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ring)]"
+          {/* Every plan, side by side */}
+          <section aria-labelledby="all-plans" className="mt-8 sm:mt-10">
+            <h2 id="all-plans" className="sr-only">Every plan</h2>
+            <ul className="m-0 grid list-none gap-5 p-0 md:grid-cols-2 xl:grid-cols-4">
+              {PLAN_ORDER.map((id) => {
+                const fits = touched && rec.plan === id;
+                const lead = featured === id;
+                return (
+                  <li
+                    key={id}
+                    className={cn(
+                      "flex flex-col overflow-hidden rounded-3xl border bg-[var(--bg-card)] transition-shadow duration-200",
+                      lead
+                        ? "border-transparent shadow-[var(--shadow-md)] ring-2 ring-[var(--ink-blue)]"
+                        : "border-[var(--border-color)]",
+                    )}
                   >
-                    Clear
-                  </button>
-                )}
-              </div>
-
-              <div className="mt-5">
-                <StudyCalendar span={span} selected={selected} onChange={setSelected} />
-              </div>
-              <p className="mt-4 text-xs text-[var(--text-secondary)]">
-                Tap a day to mark it. With a mouse, drag across days to mark several at once.
-              </p>
-              {/* On phones the plan sits below the calendar, so the count and the
-                  plan it lands on stay pinned to the bottom of the screen while the
-                  calendar is in view, beside the chat button rather than under it. */}
-              {/* The backing runs the full width under the chat button and fades
-                  to the card, so days scrolling beneath never show beside the bar.
-                  No z-index: the site header, stacked higher, covers it on the way out. */}
-              <div className="sticky bottom-0 -mx-4 -mb-4 mt-1 rounded-b-[18px] bg-[linear-gradient(to_bottom,transparent,var(--bg-card)_20px)] px-4 pt-5 pb-[30px] sm:-mx-6 sm:-mb-6 sm:px-6 lg:hidden">
-                <a
-                  href="#month-plan"
-                  className="mr-14 flex min-h-11 items-center justify-between gap-3 rounded-[10px] border border-[var(--border-color)] bg-[var(--bg-card)] px-3.5 py-2 text-sm text-[var(--text-primary)] no-underline shadow-[var(--shadow-md)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ring)]"
-                >
-                  <span className="min-w-0 truncate">
-                    <span className="font-mono font-semibold tabular-nums">{rec.count}</span> {rec.count === 1 ? "essay" : "essays"}
-                    {rec.plan ? <>: <span className="font-semibold">{recLabel}</span></> : ": mark a day"}
-                  </span>
-                  {rec.plan && <span className="shrink-0 text-xs font-medium text-[var(--ink-blue)]">See the plan</span>}
-                </a>
-              </div>
-            </section>
-
-            {/* What covers it */}
-            <aside id="month-plan" aria-label="The plan for your month" className="scroll-mt-20 lg:sticky lg:top-6">
-              <div className="rounded-[18px] border border-[var(--border-color)] bg-[var(--bg-card)] shadow-[var(--shadow-sm)]">
-                <div className="p-5 sm:p-6">
-                  <p aria-live="polite" className="m-0">
-                    <span className="font-mono text-[2.75rem] font-semibold leading-none tabular-nums tracking-[-0.02em] text-[var(--text-primary)]">
-                      {rec.count}
-                    </span>
-                    <span className="ml-2 text-sm font-medium text-[var(--text-secondary)]">
-                      {rec.count === 1 ? "essay" : "essays"} in 4 weeks
-                    </span>
-                    <span className="mt-2 block text-sm text-[var(--text-primary)]">{summary}</span>
-                  </p>
-                  <div className="mt-5">
-                    <CapacityScale plan={rec.plan} over={rec.over} />
-                  </div>
-                </div>
-
-                <div className="border-t border-[var(--border-color)]">
-                  {rec.plan ? (
-                    <div key={rec.plan} className="plan-sheet-in p-5 sm:p-6">
-                      <div className="flex items-start justify-between gap-3">
-                        <div className="min-w-0">
-                          <h3 className="text-xl font-bold tracking-[-0.02em] text-[var(--text-primary)]">{recLabel}</h3>
-                          <p className="mt-0.5 text-sm text-[var(--text-secondary)]">{TAGLINE[rec.plan]}</p>
-                        </div>
-                        <p className="shrink-0 text-right">
-                          {rec.plan === "free" ? (
-                            <span className="text-[1.75rem] font-semibold leading-none tracking-[-0.02em] text-[var(--text-primary)]">Free</span>
-                          ) : (
-                            <>
-                              <span className="font-mono text-[1.75rem] font-semibold leading-none tabular-nums text-[var(--text-primary)]">
-                                {formatSum(PLAN_INFO[rec.plan].monthlyPriceUZS)}
-                              </span>
-                              <span className="mt-1 block text-xs text-[var(--text-secondary)]">UZS / month</span>
-                            </>
-                          )}
-                        </p>
+                    <div className={cn("px-6 pt-6 pb-5", PLAN_FIELD[id])}>
+                      <div className="flex min-h-7 flex-wrap items-center justify-between gap-2">
+                        <h3 className="font-display text-xl font-extrabold tracking-[-0.01em]">{PLAN_INFO[id].label}</h3>
+                        {fits && (
+                          <span className="rounded-full bg-[var(--bg-card)] px-2.5 py-0.5 text-xs font-bold text-[var(--text-primary)]">
+                            Fits your month
+                          </span>
+                        )}
                       </div>
-                      <p className="mt-3 text-xs text-[var(--text-secondary)]">{priceLine(rec.plan)}</p>
+                      <p className="mt-0.5 text-sm opacity-85">{TAGLINE[id]}</p>
+                      <p className="m-0 mt-5">
+                        {id === "free" ? (
+                          <span className="font-display text-[2.25rem] font-extrabold leading-none tracking-[-0.03em]">Free</span>
+                        ) : (
+                          <>
+                            <span className="font-mono text-[2.25rem] font-semibold leading-none tracking-[-0.03em] tabular-nums">
+                              {formatSum(PLAN_INFO[id].monthlyPriceUZS)}
+                            </span>
+                            <span className="ml-2 text-sm font-medium opacity-85">UZS / month</span>
+                          </>
+                        )}
+                      </p>
+                    </div>
 
-                      <ul className="mt-4 flex flex-col gap-2 text-sm">
-                        {FEATURES[rec.plan].map((f) => (
-                          <li key={f} className="flex items-start gap-2.5 text-[var(--text-primary)]">
+                    <div className="flex flex-1 flex-col p-6">
+                      <p className="m-0 text-xs text-[var(--text-secondary)]">{priceLine(id)}</p>
+                      <ul className="m-0 mt-4 flex list-none flex-col gap-2.5 p-0 text-sm text-[var(--text-primary)]">
+                        {FEATURES[id].map((f) => (
+                          <li key={f} className="flex items-start gap-2.5">
                             <Check className="mt-0.5 size-4 shrink-0 text-[var(--ink-blue)]" aria-hidden="true" />
                             {f}
                           </li>
                         ))}
                       </ul>
-
-                      <div className="mt-6">
-                        {lifetime ? (
-                          <p className="m-0 flex items-center gap-2 rounded-[10px] bg-[var(--bg-subtle)] px-3.5 py-2.5 text-sm text-[var(--text-primary)]">
-                            <CircleCheck className="size-4 shrink-0 text-[var(--ink-blue)]" aria-hidden="true" />
-                            You&rsquo;re on Lifetime: every month is covered.
-                          </p>
-                        ) : (
-                          planButton(rec.plan, "default", "h-11 w-full")
-                        )}
-                      </div>
-
-                      {rec.exact && !lifetime && ownCustom !== rec.exact.analyses && (
-                        <button
-                          type="button"
-                          onClick={() => setPaymentTarget({ kind: "custom", analyses: rec.exact!.analyses, price: rec.exact!.price })}
-                          className="mt-3 w-full rounded-md text-center text-xs text-[var(--text-secondary)] underline-offset-4 hover:text-[var(--text-primary)] hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ring)]"
-                        >
-                          Or exactly {rec.exact.analyses} analyses for {formatUZS(rec.exact.price)} a month (Customizable)
-                        </button>
+                      {!lifetime && (
+                        <div className="mt-auto pt-6">
+                          {planButton(id, lead ? "default" : "outline", "h-11 w-full rounded-full")}
+                        </div>
                       )}
-                    </div>
-                  ) : (
-                    <div className="p-5 text-sm text-[var(--text-secondary)] sm:p-6">
-                      The plan that fits appears here once you mark a day.
-                    </div>
-                  )}
-                </div>
-              </div>
-            </aside>
-          </div>
-
-          {/* Every plan */}
-          <section aria-labelledby="all-plans" className="mt-16">
-            <div className="flex flex-wrap items-baseline justify-between gap-x-6 gap-y-1">
-              <h2 id="all-plans" className="text-xl font-bold tracking-[-0.02em] text-[var(--text-primary)]">Every plan</h2>
-              <p className="text-sm text-[var(--text-secondary)]">Paid monthly by card transfer. Cancel anytime.</p>
-            </div>
-
-            <ul className="mt-5 overflow-hidden rounded-[18px] border border-[var(--border-color)] bg-[var(--bg-card)] shadow-[var(--shadow-sm)]">
-              {PLAN_ORDER.map((id) => {
-                const fits = rec.plan === id;
-                return (
-                  <li
-                    key={id}
-                    className={cn(
-                      "grid gap-4 border-b border-[var(--border-color)] p-5 transition-colors sm:p-6 md:grid-cols-[200px_minmax(0,1fr)_230px] md:items-center md:gap-8",
-                      fits && "bg-[color-mix(in_srgb,var(--accent)_55%,transparent)]",
-                    )}
-                  >
-                    <div>
-                      <div className="flex flex-wrap items-center gap-2">
-                        <h3 className="text-lg font-bold text-[var(--text-primary)]">{PLAN_INFO[id].label}</h3>
-                        {fits && (
-                          <span className="rounded-full bg-[var(--ink-blue)] px-2.5 py-0.5 text-xs font-semibold text-white dark:text-[var(--primary-foreground)]">
-                            Fits your month
-                          </span>
-                        )}
-                      </div>
-                      <p className="mt-0.5 text-sm text-[var(--text-secondary)]">{TAGLINE[id]}</p>
-                    </div>
-
-                    <ul className="grid gap-x-6 gap-y-1.5 text-sm text-[var(--text-primary)] lg:grid-cols-2">
-                      {FEATURES[id].map((f) => (
-                        <li key={f} className="flex items-start gap-2">
-                          <Check className="mt-0.5 size-4 shrink-0 text-[var(--text-secondary)]" aria-hidden="true" />
-                          {f}
-                        </li>
-                      ))}
-                    </ul>
-
-                    <div className="flex flex-wrap items-center justify-between gap-3 md:flex-col md:items-end md:justify-center md:text-right">
-                      <div>
-                        <p className="m-0">
-                          {id === "free" ? (
-                            <span className="text-xl font-semibold text-[var(--text-primary)]">Free</span>
-                          ) : (
-                            <>
-                              <span className="font-mono text-xl font-semibold tabular-nums text-[var(--text-primary)]">
-                                {formatSum(PLAN_INFO[id].monthlyPriceUZS)}
-                              </span>
-                              <span className="ml-1.5 text-xs text-[var(--text-secondary)]">UZS / month</span>
-                            </>
-                          )}
-                        </p>
-                        <p className="m-0 mt-1 text-xs text-[var(--text-secondary)]">{priceLine(id)}</p>
-                      </div>
-                      {!lifetime && planButton(id, "outline", "h-9 bg-transparent")}
                     </div>
                   </li>
                 );
               })}
+            </ul>
 
-              {/* Customizable */}
-              <li className="grid gap-4 p-5 sm:p-6 md:grid-cols-[200px_minmax(0,1fr)_230px] md:items-center md:gap-8">
+            {/* Customizable */}
+            <div className="mt-5 grid gap-5 rounded-3xl border border-[var(--border-color)] bg-[var(--bg-card)] p-6 md:grid-cols-[minmax(0,1fr)_auto_auto] md:items-center md:gap-8">
+              <div className="flex items-center gap-4">
+                <span className="grid size-12 shrink-0 place-items-center rounded-2xl bg-field-amber text-field-ink">
+                  <SlidersHorizontal className="size-6" aria-hidden="true" />
+                </span>
                 <div>
-                  <h3 className="text-lg font-bold text-[var(--text-primary)]">Customizable</h3>
+                  <h3 className="font-display text-lg font-extrabold text-[var(--text-primary)]">Customizable</h3>
                   <p className="mt-0.5 text-sm text-[var(--text-secondary)]">
                     {ownCustom ? `You're on ${ownCustom} analyses a month.` : "Pick the exact number you need."}
                   </p>
                 </div>
-                <div className="flex flex-wrap items-center gap-3 text-sm">
-                  <label htmlFor="custom-analyses" className="text-[var(--text-primary)]">AI analyses a month</label>
-                  <select
-                    id="custom-analyses"
-                    name="custom-analyses"
-                    value={customAnalyses}
-                    onChange={(e) => setCustomAnalyses(Number(e.target.value))}
-                    className="h-9 rounded-md border border-[var(--border-color)] bg-[var(--bg-card)] px-2.5 font-mono text-sm tabular-nums text-[var(--text-primary)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ring)]"
-                  >
-                    {CUSTOM_PLAN_PRICES.map(({ analyses }) => (
-                      <option key={analyses} value={analyses}>{analyses}</option>
-                    ))}
-                  </select>
-                  <span className="text-xs text-[var(--text-secondary)]">
-                    {customPerAnalysisText(customPrice, customAnalyses)} UZS per analysis
-                  </span>
-                </div>
-                <div className="flex flex-wrap items-center justify-between gap-3 md:flex-col md:items-end md:justify-center md:text-right">
-                  <p className="m-0">
-                    <span className="font-mono text-xl font-semibold tabular-nums text-[var(--text-primary)]">{formatSum(customPrice)}</span>
-                    <span className="ml-1.5 text-xs text-[var(--text-secondary)]">UZS / month</span>
-                  </p>
-                  {!lifetime && (
-                    ownCustom === customAnalyses ? (
-                      <Button variant="outline" className="h-9" disabled>Your current plan</Button>
-                    ) : (
-                      <Button variant="outline" className="h-9" onClick={openCustomPayment}>Get Customizable</Button>
-                    )
-                  )}
-                </div>
-              </li>
-            </ul>
+              </div>
+              <div className="flex flex-wrap items-center gap-3 text-sm">
+                <label htmlFor="custom-analyses" className="text-[var(--text-primary)]">AI analyses a month</label>
+                <select
+                  id="custom-analyses"
+                  name="custom-analyses"
+                  value={customAnalyses}
+                  onChange={(e) => setCustomAnalyses(Number(e.target.value))}
+                  className="h-10 rounded-xl border border-[var(--border-color)] bg-[var(--bg-card)] px-3 font-mono text-sm tabular-nums text-[var(--text-primary)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ring)]"
+                >
+                  {CUSTOM_PLAN_PRICES.map(({ analyses }) => (
+                    <option key={analyses} value={analyses}>{analyses}</option>
+                  ))}
+                </select>
+                <span className="text-xs text-[var(--text-secondary)]">
+                  {customPerAnalysisText(customPrice, customAnalyses)} UZS per analysis
+                </span>
+              </div>
+              <div className="flex flex-wrap items-center justify-between gap-4 md:justify-end">
+                <p className="m-0">
+                  <span className="font-mono text-2xl font-semibold tabular-nums text-[var(--text-primary)]">{formatSum(customPrice)}</span>
+                  <span className="ml-1.5 text-xs text-[var(--text-secondary)]">UZS / month</span>
+                </p>
+                {!lifetime && (
+                  ownCustom === customAnalyses ? (
+                    <Button variant="outline" className="h-11 rounded-full px-6" disabled>Your current plan</Button>
+                  ) : (
+                    <Button variant="outline" className="h-11 rounded-full px-6" onClick={openCustomPayment}>Get Customizable</Button>
+                  )
+                )}
+              </div>
+            </div>
             <p className="mt-4 max-w-[72ch] text-xs leading-relaxed text-[var(--text-secondary)]">
               The price per analysis is the monthly price divided by the analyses in the plan; you still pay monthly.
               Savings compare with Basic and assume you use all of the month&rsquo;s analyses.
             </p>
           </section>
 
+          {/* Not sure: plan the month */}
+          <section aria-labelledby="planner-title" className="mt-16 sm:mt-20">
+            <h2 id="planner-title" className="font-display text-[clamp(1.5rem,3vw,2.125rem)] font-extrabold leading-[1.1] tracking-[-0.03em] text-[var(--text-primary)]">
+              Not sure? Plan your writing month
+            </h2>
+            <p className="mt-2 max-w-[60ch] text-[1.0625rem] leading-relaxed text-[var(--text-secondary)]">
+              Mark the days you&rsquo;ll write an essay in the next four weeks, and see the plan that covers them.
+            </p>
+
+            <div className="mt-6 grid gap-5 lg:grid-cols-[minmax(0,1fr)_minmax(320px,380px)] lg:items-start lg:gap-6">
+              {/* The study month */}
+              <section
+                aria-labelledby="study-title"
+                className="rounded-3xl border border-[var(--border-color)] bg-[var(--bg-card)] p-4 sm:p-6"
+              >
+                <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
+                  <h3 id="study-title" className="text-base font-semibold text-[var(--text-primary)]">Your next 4 weeks</h3>
+                  <p className="font-mono text-xs tabular-nums text-[var(--text-secondary)]">{spanTitle(span)}</p>
+                </div>
+
+                <div role="group" aria-label="Writing patterns" className="mt-4 flex flex-wrap items-center gap-2">
+                  {PRESETS.map((preset) => {
+                    const on = activePreset === preset.id;
+                    return (
+                      <button
+                        key={preset.id}
+                        type="button"
+                        aria-pressed={on}
+                        onClick={() => mark(presetDays(span, preset.weekdays))}
+                        className={cn(
+                          "h-8 rounded-full px-3.5 text-[0.8125rem] font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ring)] focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--bg-card)]",
+                          on
+                            ? "bg-[var(--accent)] text-[var(--accent-foreground)]"
+                            : "border border-[var(--border-color)] bg-[var(--bg-card)] text-[var(--text-secondary)] hover:bg-[var(--bg-subtle)] hover:text-[var(--text-primary)]",
+                        )}
+                      >
+                        {preset.label}
+                      </button>
+                    );
+                  })}
+                  {selected.size > 0 && (
+                    <button
+                      type="button"
+                      onClick={() => mark(new Set())}
+                      className="ml-auto h-8 rounded-md px-2 text-[0.8125rem] font-medium text-[var(--text-secondary)] underline-offset-4 hover:text-[var(--text-primary)] hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ring)]"
+                    >
+                      Clear
+                    </button>
+                  )}
+                </div>
+
+                <div className="mt-5">
+                  <StudyCalendar span={span} selected={selected} onChange={mark} />
+                </div>
+                <p className="mt-4 text-xs text-[var(--text-secondary)]">
+                  Tap a day to mark it. With a mouse, drag across days to mark several at once.
+                </p>
+                {/* On phones the plan sits below the calendar, so the count and the
+                    plan it lands on stay pinned to the bottom of the screen while the
+                    calendar is in view, beside the chat button rather than under it. */}
+                {/* The backing runs the full width under the chat button and fades
+                    to the card, so days scrolling beneath never show beside the bar.
+                    No z-index: the site header, stacked higher, covers it on the way out. */}
+                <div className="sticky bottom-0 -mx-4 -mb-4 mt-1 rounded-b-3xl bg-[linear-gradient(to_bottom,transparent,var(--bg-card)_20px)] px-4 pt-5 pb-[30px] sm:-mx-6 sm:-mb-6 sm:px-6 lg:hidden">
+                  <a
+                    href="#month-plan"
+                    className="mr-14 flex min-h-11 items-center justify-between gap-3 rounded-full border border-[var(--border-color)] bg-[var(--bg-card)] px-4 py-2 text-sm text-[var(--text-primary)] no-underline shadow-[var(--shadow-md)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ring)]"
+                  >
+                    <span className="min-w-0 truncate">
+                      <span className="font-mono font-semibold tabular-nums">{rec.count}</span> {rec.count === 1 ? "essay" : "essays"}
+                      {rec.plan ? <>: <span className="font-semibold">{recLabel}</span></> : ": mark a day"}
+                    </span>
+                    {rec.plan && <span className="shrink-0 text-xs font-medium text-[var(--ink-blue)]">See the plan</span>}
+                  </a>
+                </div>
+              </section>
+
+              {/* What covers it */}
+              <aside id="month-plan" aria-label="The plan for your month" className="scroll-mt-20 lg:sticky lg:top-6">
+                <div className="overflow-hidden rounded-3xl border border-[var(--border-color)] bg-[var(--bg-card)]">
+                  <div className="p-5 sm:p-6">
+                    <p aria-live="polite" className="m-0">
+                      <span className="font-mono text-[2.75rem] font-semibold leading-none tabular-nums tracking-[-0.02em] text-[var(--text-primary)]">
+                        {rec.count}
+                      </span>
+                      <span className="ml-2 text-sm font-medium text-[var(--text-secondary)]">
+                        {rec.count === 1 ? "essay" : "essays"} in 4 weeks
+                      </span>
+                      <span className="mt-2 block text-sm text-[var(--text-primary)]">{summary}</span>
+                    </p>
+                    <div className="mt-5">
+                      <CapacityScale plan={rec.plan} over={rec.over} />
+                    </div>
+                  </div>
+
+                  <div className="border-t border-[var(--border-color)]">
+                    {rec.plan ? (
+                      <div key={rec.plan} className="plan-sheet-in p-5 sm:p-6">
+                        <div className="flex items-start justify-between gap-3">
+                          <div className="min-w-0">
+                            <h3 className="font-display text-xl font-extrabold tracking-[-0.02em] text-[var(--text-primary)]">{recLabel}</h3>
+                            <p className="mt-0.5 text-sm text-[var(--text-secondary)]">{TAGLINE[rec.plan]}</p>
+                          </div>
+                          <p className="shrink-0 text-right">
+                            {rec.plan === "free" ? (
+                              <span className="text-[1.75rem] font-semibold leading-none tracking-[-0.02em] text-[var(--text-primary)]">Free</span>
+                            ) : (
+                              <>
+                                <span className="font-mono text-[1.75rem] font-semibold leading-none tabular-nums text-[var(--text-primary)]">
+                                  {formatSum(PLAN_INFO[rec.plan].monthlyPriceUZS)}
+                                </span>
+                                <span className="mt-1 block text-xs text-[var(--text-secondary)]">UZS / month</span>
+                              </>
+                            )}
+                          </p>
+                        </div>
+                        <p className="mt-3 text-xs text-[var(--text-secondary)]">{priceLine(rec.plan)}</p>
+
+                        <div className="mt-5">
+                          {lifetime ? (
+                            <p className="m-0 flex items-center gap-2 rounded-2xl bg-[var(--bg-subtle)] px-3.5 py-2.5 text-sm text-[var(--text-primary)]">
+                              <CircleCheck className="size-4 shrink-0 text-[var(--ink-blue)]" aria-hidden="true" />
+                              You&rsquo;re on Lifetime: every month is covered.
+                            </p>
+                          ) : (
+                            planButton(rec.plan, "outline", "h-11 w-full rounded-full")
+                          )}
+                        </div>
+
+                        {rec.exact && !lifetime && ownCustom !== rec.exact.analyses && (
+                          <button
+                            type="button"
+                            onClick={() => setPaymentTarget({ kind: "custom", analyses: rec.exact!.analyses, price: rec.exact!.price })}
+                            className="mt-3 w-full rounded-md text-center text-xs text-[var(--text-secondary)] underline-offset-4 hover:text-[var(--text-primary)] hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ring)]"
+                          >
+                            Or exactly {rec.exact.analyses} analyses for {formatUZS(rec.exact.price)} a month (Customizable)
+                          </button>
+                        )}
+                      </div>
+                    ) : (
+                      <div className="p-5 text-sm text-[var(--text-secondary)] sm:p-6">
+                        The plan that fits appears here once you mark a day.
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </aside>
+            </div>
+          </section>
+
           {/* Balance */}
           {user && (
             <section
               aria-labelledby="balance-title"
-              className="mt-12 grid gap-5 rounded-[18px] border border-[var(--border-color)] bg-[var(--bg-card)] p-5 shadow-[var(--shadow-sm)] sm:p-6 md:grid-cols-[minmax(0,1fr)_minmax(0,420px)] md:items-end md:gap-10"
+              className="mt-12 grid gap-5 rounded-3xl border border-[var(--border-color)] bg-[var(--bg-card)] p-5 sm:p-7 md:grid-cols-[minmax(0,1fr)_minmax(0,420px)] md:items-end md:gap-10"
             >
               <div>
-                <h2 id="balance-title" className="text-lg font-bold text-[var(--text-primary)]">Account balance</h2>
+                <h2 id="balance-title" className="font-display text-xl font-extrabold tracking-[-0.01em] text-[var(--text-primary)]">Account balance</h2>
                 <p className="mt-0.5 text-sm text-[var(--text-secondary)]">Used for pay-per-use features like Human Check.</p>
                 <p className="m-0 mt-4 font-mono text-[1.875rem] font-semibold leading-none tabular-nums text-[var(--text-primary)]">
                   {formatSum(balance)}

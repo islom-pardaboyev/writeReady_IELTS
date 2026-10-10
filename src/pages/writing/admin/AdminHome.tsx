@@ -216,13 +216,15 @@ export function AdminHome({
     [users],
   );
 
-  const shortcuts: { label: string; icon: LucideIcon; onClick: () => void }[] = [
-    { label: "New Task 1 prompt", icon: Image, onClick: () => go("task1", { action: "new" }) },
-    { label: "New Task 2 prompt", icon: FileText, onClick: () => go("task2", { action: "new" }) },
-    { label: "Find a user", icon: Search, onClick: () => go("users", { action: "search" }) },
-    { label: "New blog post", icon: Newspaper, onClick: () => go("blog", { action: "new" }) },
-    { label: "New announcement", icon: Megaphone, onClick: () => go("announcements", { action: "new" }) },
-    { label: "Add learning center", icon: Building2, onClick: () => go("centers", { action: "new" }) },
+  // The well's colour follows the sidebar group the shortcut belongs to:
+  // content lilac, people mint, partners and the site amber.
+  const shortcuts: { label: string; icon: LucideIcon; well: string; onClick: () => void }[] = [
+    { label: "New Task 1 prompt", icon: Image, well: "bg-field-lilac", onClick: () => go("task1", { action: "new" }) },
+    { label: "New Task 2 prompt", icon: FileText, well: "bg-field-lilac", onClick: () => go("task2", { action: "new" }) },
+    { label: "Find a user", icon: Search, well: "bg-field-mint", onClick: () => go("users", { action: "search" }) },
+    { label: "New blog post", icon: Newspaper, well: "bg-field-lilac", onClick: () => go("blog", { action: "new" }) },
+    { label: "New announcement", icon: Megaphone, well: "bg-field-amber", onClick: () => go("announcements", { action: "new" }) },
+    { label: "Add learning center", icon: Building2, well: "bg-field-amber", onClick: () => go("centers", { action: "new" }) },
   ];
 
   const today = new Date().toLocaleDateString("en-GB", { weekday: "long", day: "numeric", month: "long", year: "numeric" });
@@ -250,8 +252,8 @@ export function AdminHome({
         ]}
       />
 
-      <div className="mt-6 grid gap-6 lg:grid-cols-12">
-        <div className="flex flex-col gap-6 lg:col-span-7">
+      <div className="mt-5 grid gap-5 lg:grid-cols-12">
+        <div className="flex flex-col gap-5 lg:col-span-7">
           <Panel title="Needs attention" bodyClassName="pb-2">
             {loading ? (
               <div aria-hidden="true" className="flex flex-col gap-4 pb-3">
@@ -263,7 +265,7 @@ export function AdminHome({
                   const Icon = a.icon;
                   return (
                     <li key={a.key} className="flex items-center gap-3 py-3">
-                      <span className={cn("flex h-9 w-9 shrink-0 items-center justify-center rounded-lg", TONE[a.tone])}>
+                      <span className={cn("flex size-10 shrink-0 items-center justify-center rounded-xl", TONE[a.tone])}>
                         <Icon size={18} aria-hidden="true" />
                       </span>
                       <div className="min-w-0 flex-1">
@@ -323,7 +325,7 @@ export function AdminHome({
           </Panel>
         </div>
 
-        <div className="flex flex-col gap-6 lg:col-span-5">
+        <div className="flex flex-col gap-5 lg:col-span-5">
           <Panel title="Shortcuts">
             <div className="grid grid-cols-[repeat(auto-fill,minmax(190px,1fr))] gap-2">
               {shortcuts.map((s) => {
@@ -333,9 +335,11 @@ export function AdminHome({
                     key={s.label}
                     type="button"
                     onClick={s.onClick}
-                    className="flex items-center gap-2.5 rounded-lg border border-[var(--border-color)] px-3 py-2.5 text-left text-sm font-medium text-[var(--text-primary)] transition-colors hover:border-[var(--border-strong)] hover:bg-[var(--bg-subtle)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ring)]"
+                    className="flex items-center gap-3 rounded-2xl border border-[var(--border-color)] p-2.5 text-left text-sm font-semibold text-[var(--text-primary)] transition-colors hover:border-[var(--border-strong)] hover:bg-[var(--bg-subtle)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ring)]"
                   >
-                    <Icon size={16} className="shrink-0 text-[var(--ink-blue)]" aria-hidden="true" />
+                    <span className={cn("grid size-9 shrink-0 place-items-center rounded-xl text-field-ink", s.well)}>
+                      <Icon size={18} aria-hidden="true" />
+                    </span>
                     <span className="min-w-0 truncate">{s.label}</span>
                   </button>
                 );

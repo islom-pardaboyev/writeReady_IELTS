@@ -199,15 +199,18 @@ export function AuthPage() {
   const showSwitch = mode !== 'student' && !pending && !useCode;
 
   return (
-    <div className="grid min-h-screen bg-[var(--bg-card)] font-sans lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
+    // The gaps and the field height shrink with the screen's height (--auth-gap,
+    // --auth-field), so the whole form shows without scrolling on a laptop or a
+    // phone. The aside is one screen tall and never adds to the page.
+    <div className="grid min-h-dvh bg-[var(--bg-card)] font-sans [--auth-field:clamp(2.5rem,6dvh,3rem)] [--auth-gap:clamp(0.5rem,1.75dvh,1.25rem)] dark:bg-[var(--bg-base)] lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
       <AuthAside />
 
       <main id="main-content" tabIndex={-1} className="flex min-w-0 flex-col outline-none">
-        <div className="flex h-16 items-center px-4 sm:px-8">
+        <div className="flex h-[clamp(2.75rem,7dvh,4rem)] shrink-0 items-center px-4 sm:px-8">
           {/* The margin carries the logo from 1024px; below that it is here. */}
           <Link
             to="/"
-            className="flex items-center gap-2 rounded-lg font-bold text-[var(--text-primary)] no-underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ring)] focus-visible:ring-offset-2 lg:hidden"
+            className="flex items-center gap-2 rounded-lg font-display font-extrabold text-[var(--text-primary)] no-underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ring)] focus-visible:ring-offset-2 lg:hidden"
           >
             <img src={Logo} width={32} height={32} className="size-8" alt="" />
             <span>
@@ -226,7 +229,7 @@ export function AuthPage() {
         {/* Anchored near the top, not centred: switching between Sign in and
             Create account changes the form's height, and a centred form would
             jump. */}
-        <div className="flex flex-1 justify-center px-4 pb-12 pt-6 sm:px-8 sm:pt-10 lg:pt-[9vh]">
+        <div className="flex flex-1 justify-center px-4 pb-2 pt-[clamp(0.25rem,4dvh,4.5rem)] sm:px-8 sm:pb-[var(--auth-gap)]">
           <div className="w-full max-w-[420px]">
             {showSwitch && (
               <>
@@ -239,20 +242,20 @@ export function AuthPage() {
                     { value: 'login', label: 'Sign in' },
                     { value: 'signup', label: 'Create account' },
                   ]}
-                  className="mb-8 [&>button]:h-10"
+                  className="mb-[calc(var(--auth-gap)*1.5)] rounded-full [&>button]:rounded-full"
                 />
               </>
             )}
 
-            <h1 className="text-[1.875rem] font-bold leading-tight tracking-[-0.025em] text-balance text-[var(--text-primary)]">{title}</h1>
-            <p className="mt-2 text-base leading-relaxed text-[var(--text-secondary)]">{subtitle}</p>
+            <h1 className="font-display text-[1.75rem] font-extrabold leading-[1.15] tracking-[-0.03em] text-balance text-[var(--text-primary)]">{title}</h1>
+            <p className="mt-1 text-[0.9375rem] leading-relaxed text-[var(--text-secondary)]">{subtitle}</p>
 
-            <div className="mt-8">
-              {error && !useCode && !pending && <AuthNotice className="mb-6">{error}</AuthNotice>}
+            <div className="mt-[calc(var(--auth-gap)*1.5)]">
+              {error && !useCode && !pending && <AuthNotice className="mb-4">{error}</AuthNotice>}
 
               {mode === 'student' ? (
-                <form onSubmit={handleStudentLogin} className="flex flex-col gap-5">
-                  <div className="flex flex-col gap-2">
+                <form onSubmit={handleStudentLogin} className="flex flex-col gap-[var(--auth-gap)]">
+                  <div className="flex flex-col gap-1.5">
                     <Label htmlFor="s-login" className={LABEL}>Login</Label>
                     <Input
                       id="s-login"
@@ -267,7 +270,7 @@ export function AuthPage() {
                       className={FIELD}
                     />
                   </div>
-                  <div className="flex flex-col gap-2">
+                  <div className="flex flex-col gap-1.5">
                     <Label htmlFor="s-pass" className={LABEL}>Password</Label>
                     <PasswordInput
                       id="s-pass"
@@ -305,14 +308,14 @@ export function AuthPage() {
                     Continue with Google
                   </Button>
 
-                  <div className="my-6 flex items-center gap-3" aria-hidden="true">
+                  <div className="my-[var(--auth-gap)] flex items-center gap-3" aria-hidden="true">
                     <div className="h-px flex-1 bg-[var(--border-color)]" />
                     <span className="text-xs font-medium text-[var(--text-secondary)]">or with email</span>
                     <div className="h-px flex-1 bg-[var(--border-color)]" />
                   </div>
 
-                  <form onSubmit={handleSubmit} className="flex flex-col gap-5">
-                    <div className="flex flex-col gap-2">
+                  <form onSubmit={handleSubmit} className="flex flex-col gap-[var(--auth-gap)]">
+                    <div className="flex flex-col gap-1.5">
                       <Label htmlFor="auth-email" className={LABEL}>Email</Label>
                       <Input
                         id="auth-email"
@@ -327,7 +330,7 @@ export function AuthPage() {
                         className={FIELD}
                       />
                     </div>
-                    <div className="flex flex-col gap-2">
+                    <div className="flex flex-col gap-1.5">
                       <div className="flex items-baseline justify-between gap-3">
                         <Label htmlFor="auth-password" className={LABEL}>Password</Label>
                         {mode === 'login' && (
@@ -362,7 +365,7 @@ export function AuthPage() {
                         autoComplete={mode === 'signup' ? 'new-password' : 'current-password'}
                         className={FIELD}
                       />
-                      {showRules && <PasswordRequirements id="password-rules" password={password} showUnmet={showUnmetRules} className="mt-1" />}
+                      {showRules && <PasswordRequirements id="password-rules" password={password} showUnmet={showUnmetRules} />}
                     </div>
                     <Button type="submit" loading={loading} className={`mt-1 ${BIG_BUTTON}`}>
                       {mode === 'login' ? 'Sign in' : 'Create account'}
@@ -370,15 +373,23 @@ export function AuthPage() {
                   </form>
 
                   {mode === 'signup' && (
-                    <p className="mt-5 text-center text-sm leading-relaxed text-[var(--text-secondary)]">
-                      We will email you a 6-digit code to confirm the address is yours.
+                    <p className="mt-2 text-center text-xs leading-relaxed text-[var(--text-secondary)]">
+                      We will email you a 6-digit code to confirm the address is yours. By creating an account you agree to our{' '}
+                      <Link to="/terms" className="font-medium text-[var(--text-primary)] underline underline-offset-2 hover:text-[var(--ink-blue)]">
+                        Terms of Service
+                      </Link>{' '}
+                      and{' '}
+                      <Link to="/privacy" className="font-medium text-[var(--text-primary)] underline underline-offset-2 hover:text-[var(--ink-blue)]">
+                        Privacy Policy
+                      </Link>
+                      .
                     </p>
                   )}
                 </>
               )}
             </div>
 
-            <div className="mt-10 border-t border-[var(--border-color)] pt-6 text-center text-sm text-[var(--text-secondary)]">
+            <div className="mt-[var(--auth-gap)] border-t border-[var(--border-color)] pt-[var(--auth-gap)] text-center text-sm text-[var(--text-secondary)]">
               {mode === 'student' ? (
                 <p>
                   Not from a learning centre?{' '}
@@ -394,19 +405,6 @@ export function AuthPage() {
                   </button>
                 </p>
               )}
-              {mode === 'signup' && showSwitch && (
-                <p className="mt-3 text-xs leading-relaxed">
-                  By creating an account you agree to our{' '}
-                  <Link to="/terms" className="font-medium text-[var(--text-primary)] underline underline-offset-2 hover:text-[var(--ink-blue)]">
-                    Terms of Service
-                  </Link>{' '}
-                  and{' '}
-                  <Link to="/privacy" className="font-medium text-[var(--text-primary)] underline underline-offset-2 hover:text-[var(--ink-blue)]">
-                    Privacy Policy
-                  </Link>
-                  .
-                </p>
-              )}
             </div>
           </div>
         </div>
@@ -415,10 +413,14 @@ export function AuthPage() {
   );
 }
 
-/** Fields on the sign-in page run 48px tall with 16px text: bigger to hit, and a phone does not zoom into them. */
-const FIELD = 'h-12 px-4 text-base focus-visible:ring-[var(--ring)]';
+/**
+ * Fields on the sign-in page run up to 48px tall with 16px text: bigger to
+ * hit, and a phone does not zoom into them. The height comes from
+ * --auth-field, which shrinks to 40px on a short screen.
+ */
+const FIELD = 'h-[var(--auth-field,3rem)] rounded-xl px-4 text-base focus-visible:ring-[var(--ring)]';
 const LABEL = 'text-sm font-semibold text-[var(--text-primary)]';
-const BIG_BUTTON = 'h-12 w-full text-[0.9375rem]';
+const BIG_BUTTON = 'h-[var(--auth-field,3rem)] w-full rounded-full text-[0.9375rem] font-bold';
 
 const LINK_BUTTON =
   'cursor-pointer rounded border-0 bg-transparent p-0 font-semibold text-[var(--ink-blue)] underline-offset-4 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ring)] focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-60';

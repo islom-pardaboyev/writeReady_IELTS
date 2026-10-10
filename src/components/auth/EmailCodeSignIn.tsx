@@ -118,11 +118,11 @@ export function EmailCodeSignIn({
 
   return (
     <div>
-      {error && <AuthNotice className="mb-6">{error}</AuthNotice>}
+      {error && <AuthNotice className="mb-4">{error}</AuthNotice>}
 
       {step === 'email' ? (
-        <form onSubmit={sendCode} className="flex flex-col gap-5">
-          <div className="flex flex-col gap-2">
+        <form onSubmit={sendCode} className="flex flex-col gap-[var(--auth-gap,1.25rem)]">
+          <div className="flex flex-col gap-1.5">
             <Label htmlFor="code-email" className={LABEL}>Email</Label>
             <Input
               id="code-email"
@@ -148,7 +148,7 @@ export function EmailCodeSignIn({
             e.preventDefault();
             if (code.length === 6) void verify(code);
           }}
-          className="flex flex-col gap-5"
+          className="flex flex-col gap-[var(--auth-gap,1.25rem)]"
         >
           <p className="text-sm leading-relaxed text-[var(--text-secondary)]" aria-live="polite">
             {!sent && busy ? (
@@ -178,7 +178,7 @@ export function EmailCodeSignIn({
               value={code}
               onChange={(e) => onCodeChange(e.target.value)}
               placeholder="000000"
-              className="h-14 text-center font-mono text-2xl tracking-[0.4em] focus-visible:ring-[var(--ring)]"
+              className="h-14 rounded-xl text-center font-mono text-2xl tracking-[0.4em] focus-visible:ring-[var(--ring)]"
               aria-describedby="code-help"
             />
           </div>
@@ -213,7 +213,7 @@ export function EmailCodeSignIn({
       <button
         type="button"
         onClick={onBack}
-        className="mt-6 inline-flex w-full cursor-pointer items-center justify-center gap-1.5 rounded-md border-0 bg-transparent p-0 text-sm font-medium text-[var(--text-secondary)] hover:text-[var(--text-primary)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ring)] focus-visible:ring-offset-2"
+        className="mt-4 inline-flex w-full cursor-pointer items-center justify-center gap-1.5 rounded-md border-0 bg-transparent p-0 text-sm font-medium text-[var(--text-secondary)] hover:text-[var(--text-primary)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ring)] focus-visible:ring-offset-2"
       >
         <ArrowLeft className="size-4" aria-hidden /> Back
       </button>
@@ -222,6 +222,6 @@ export function EmailCodeSignIn({
 }
 
 // The same sizes as the forms on the sign-in page (src/pages/AuthPage.tsx).
-const FIELD = 'h-12 px-4 text-base focus-visible:ring-[var(--ring)]';
+const FIELD = 'h-[var(--auth-field,3rem)] rounded-xl px-4 text-base focus-visible:ring-[var(--ring)]';
 const LABEL = 'text-sm font-semibold text-[var(--text-primary)]';
-const BIG_BUTTON = 'h-12 w-full text-[0.9375rem]';
+const BIG_BUTTON = 'h-[var(--auth-field,3rem)] w-full rounded-full text-[0.9375rem] font-bold';

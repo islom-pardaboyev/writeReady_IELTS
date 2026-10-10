@@ -40,13 +40,13 @@ function Loading() {
 function Missing({ error }: { error?: boolean }) {
   return (
     <div className="mx-auto max-w-xl px-4 py-20 text-center">
-      <h1 className="m-0 text-2xl font-bold text-[var(--text-primary)]">
+      <h1 className="m-0 font-display text-2xl font-extrabold tracking-[-0.02em] text-[var(--text-primary)]">
         {error ? 'This page could not load.' : 'This question has no sample answer yet.'}
       </h1>
       <p className="m-0 mt-2 text-[var(--text-secondary)]">
         {error ? 'Check your connection and try again.' : 'It may have moved, or its answer is still being reviewed.'}
       </p>
-      <Link to="/questions" className="mt-6 inline-flex h-10 items-center rounded-lg bg-[var(--ink-blue)] px-4 text-sm font-semibold text-white no-underline hover:opacity-90 dark:text-[var(--primary-foreground)]">
+      <Link to="/questions" className="mt-6 inline-flex h-11 items-center rounded-full bg-[var(--ink-blue-solid)] px-6 text-sm font-bold text-white no-underline transition-opacity hover:opacity-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ring)] focus-visible:ring-offset-2">
         See all sample answers
       </Link>
     </div>

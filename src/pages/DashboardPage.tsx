@@ -20,19 +20,22 @@ import { PLAN_INFO, isPaidPlan as isPaidPlanFn, pdfHistoryLimit } from '../lib/p
 import { downloadArchivedReport, listDownloadableReports } from '../lib/reportDownload';
 import { useSingleRun } from '../hooks/useSingleRun';
 import { db } from '../firebase/config';
-import { GraduationCap, Clock, Download, Loader2 } from 'lucide-react';
+import { GraduationCap, Clock, Coffee, Download, FileText, Gift, Loader2, PenLine, School, Timer, X, Zap } from 'lucide-react';
 import { CRITERIA, reportBand, type Criterion } from '@shared/bandScore';
 
 // A plan's allowance renews at 00:00 UTC on its day (api/_lib/planCycle.ts).
 const renewDay = new Intl.DateTimeFormat(undefined, { day: 'numeric', month: 'short', timeZone: 'UTC' });
 
 
+// The same icon and colour each mode wears on the home page.
 const modes = [
-  { id: 'mock', emoji: '⏱', title: 'Mock Exam', desc: '60-min timer · Exam simulation' },
-  { id: 'practice', emoji: '✏️', title: 'Practice', desc: 'No timer · Build your skills' },
-  { id: 'quick', emoji: '⚡', title: 'Quick Write', desc: 'Task 1 or 2 · PDF + AI feedback' },
-  { id: 'relax', emoji: '☕', title: 'Relax', desc: 'Your prompt · Write freely' },
+  { id: 'mock', Icon: Timer, well: 'bg-brand-600 text-white', title: 'Mock Exam', desc: '60-min timer · Exam simulation' },
+  { id: 'practice', Icon: PenLine, well: 'bg-field-mint text-field-ink', title: 'Practice', desc: 'No timer · Build your skills' },
+  { id: 'quick', Icon: Zap, well: 'bg-field-amber text-field-ink', title: 'Quick Write', desc: 'Task 1 or 2 · PDF + AI feedback' },
+  { id: 'relax', Icon: Coffee, well: 'bg-field-lilac text-field-ink', title: 'Relax', desc: 'Your prompt · Write freely' },
 ];
+
+const SECTION_TITLE = 'font-display text-[1.375rem] font-extrabold tracking-[-0.02em] text-[var(--text-primary)]';
 
 // Recent Analyses cards shown before "See more" — one row on desktop.
 const RECENT_PREVIEW_COUNT = 3;
@@ -244,14 +247,16 @@ export function DashboardPage() {
 
           {/* Bonus notification banner — hide for paid users */}
           {notification && !isPaidPlan && (
-            <div role="status" aria-live="polite" className="mb-6 flex items-start gap-3 bg-linear-to-r from-amber-50 to-yellow-50 border border-amber-200 rounded-2xl px-5 py-4">
-              <span className="text-2xl shrink-0" aria-hidden="true">🎁</span>
-              <p className="text-sm text-amber-800 font-medium flex-1 leading-relaxed">{notification}</p>
+            <div role="status" aria-live="polite" className="mb-6 flex items-center gap-3 rounded-3xl bg-field-amber px-5 py-4 text-field-ink">
+              <Gift className="size-5 shrink-0" aria-hidden="true" />
+              <p className="flex-1 text-sm font-medium leading-relaxed">{notification}</p>
               <button
                 onClick={dismissNotification}
-                className="text-amber-500 hover:text-amber-700 bg-transparent border-none cursor-pointer text-lg leading-none shrink-0"
+                className="grid size-9 shrink-0 cursor-pointer place-items-center rounded-full border-none bg-transparent text-field-ink transition-colors hover:bg-field-ink/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-field-ink"
                 aria-label="Dismiss"
-              >×</button>
+              >
+                <X className="size-4" aria-hidden="true" />
+              </button>
             </div>
           )}
 
@@ -259,7 +264,7 @@ export function DashboardPage() {
           {user && profile ? (
             <ProfileHeader user={user} profile={profile} />
           ) : (
-            <div aria-hidden="true" className="mb-6 h-[236px] rounded-[18px] border border-[var(--border-color)] bg-[var(--bg-card)] animate-pulse motion-reduce:animate-none" />
+            <div aria-hidden="true" className="mb-6 h-[236px] rounded-3xl border border-[var(--border-color)] bg-[var(--bg-card)] animate-pulse motion-reduce:animate-none" />
           )}
           <StatsOverview
             stats={stats}
@@ -270,25 +275,27 @@ export function DashboardPage() {
 
           {/* Learning Center student info card */}
           {isStudent && (
-            <Card className="gs-db-quota px-6 py-5 mb-8 bg-linear-to-r from-emerald-50 to-teal-50 dark:from-emerald-900/20 dark:to-teal-900/20 border-emerald-200 dark:border-emerald-800">
+            <Card className="gs-db-quota mb-8 rounded-3xl border-transparent bg-field-mint px-6 py-5 text-field-ink shadow-none">
               <div className="flex items-center gap-4 flex-wrap">
-                <div className="w-11 h-11 rounded-full bg-emerald-600 flex items-center justify-center text-2xl shrink-0">🏫</div>
+                <div className="grid size-12 shrink-0 place-items-center rounded-2xl bg-[var(--bg-card)] text-[var(--text-primary)]">
+                  <School className="size-6" aria-hidden="true" />
+                </div>
                 <div className="flex-1 min-w-0">
-                  <p className="text-xs font-bold tracking-widest uppercase text-emerald-600 dark:text-emerald-400 mb-0.5">Learning Center Student</p>
-                  <p className="font-sans font-bold text-lg text-[var(--text-primary)] leading-tight">{centerName}</p>
+                  <p className="mb-0.5 text-sm font-semibold text-field-ink/80">Learning center student</p>
+                  <p className="font-display text-lg font-extrabold leading-tight text-field-ink">{centerName}</p>
                   <div className="flex items-center gap-3 mt-1 flex-wrap">
-                    <span className="text-sm text-[var(--text-secondary)]">
+                    <span className="text-sm text-field-ink/80">
                       {centerPlanEnded ? (
                         "Your center's plan has ended. You're on the free plan until it renews."
                       ) : (
                         <>
-                          <span className="font-medium text-[var(--text-primary)]">{planName}</span> plan ·{' '}
-                          <span className="font-medium text-[var(--text-primary)]">{remaining}</span> AI analyses remaining this month
+                          <span className="font-semibold text-field-ink">{planName}</span> plan ·{' '}
+                          <span className="font-semibold text-field-ink">{remaining}</span> AI analyses remaining this month
                         </>
                       )}
                     </span>
                     {subscriptionExpiresAt && (
-                      <span className="text-xs text-[var(--text-secondary)] bg-white/60 dark:bg-white/10 px-2 py-0.5 rounded-full">
+                      <span className="rounded-full bg-field-ink/10 px-2 py-0.5 text-xs text-field-ink">
                         {centerPlanEnded ? 'Ended' : 'Access until'}{' '}
                         {new Date(subscriptionExpiresAt).toLocaleDateString(navigator.language, { day: 'numeric', month: 'short', year: 'numeric' })}
                       </span>
@@ -296,13 +303,13 @@ export function DashboardPage() {
                   </div>
                 </div>
                 <div className="text-right shrink-0">
-                  <div className="font-mono text-2xl font-bold text-emerald-600 dark:text-emerald-400">{usedCount}/{usageLimit}</div>
-                  <div className="text-xs text-[var(--text-secondary)]">used</div>
+                  <div className="font-mono text-2xl font-semibold tabular-nums text-field-ink">{usedCount}/{usageLimit}</div>
+                  <div className="text-xs text-field-ink/75">used</div>
                 </div>
               </div>
-              <div className="mt-4 h-1.5 bg-emerald-100 dark:bg-emerald-900/40 rounded-full overflow-hidden">
+              <div className="mt-4 h-2 overflow-hidden rounded-full bg-field-ink/15">
                 <div
-                  className={`h-full rounded-full transition-[width] duration-300 ${usagePct >= 85 ? 'bg-red-500' : 'bg-emerald-500'}`}
+                  className={`h-full rounded-full transition-[width] duration-300 ${usagePct >= 85 ? 'bg-red-500' : 'bg-field-ink'}`}
                   style={{ width: `${usagePct}%` }}
                 />
               </div>
@@ -311,17 +318,17 @@ export function DashboardPage() {
 
           {/* Quota bar */}
           {(isPro || bonusAnalyses > 0 || onFreePlan) && (
-            <Card className="gs-db-quota px-6 py-5 mb-8">
+            <Card className="gs-db-quota mb-8 rounded-3xl px-6 py-5">
               <div className="flex items-center justify-between mb-3 flex-wrap gap-2">
                 <span className="font-semibold text-[0.9375rem] text-[var(--text-primary)]">
                   {isPro ? `${planName} · Monthly AI analyses` : 'Free weekly analysis'}
                 </span>
                 <div className="flex items-center gap-2">
                   {bonusAnalyses > 0 && (
-                    <Badge variant="warning">🎁 +{bonusAnalyses} bonus</Badge>
+                    <Badge variant="warning" className="gap-1"><Gift className="size-3.5" aria-hidden="true" />+{bonusAnalyses} bonus</Badge>
                   )}
                   {isPro && (
-                    <span className={`font-mono text-[0.9375rem] font-medium ${usagePct >= 85 ? 'text-red-500' : 'text-brand-blue-600 dark:text-brand-blue-400'}`}>
+                    <span className={`font-mono text-[0.9375rem] font-medium ${usagePct >= 85 ? 'text-red-500' : 'text-brand-600 dark:text-brand-400'}`}>
                       {usedCount}/{usageLimit}
                     </span>
                   )}
@@ -334,9 +341,9 @@ export function DashboardPage() {
               </div>
               {isPro && (
                 <>
-                  <div className="h-1.5 bg-[var(--bg-subtle)] rounded-full overflow-hidden mb-2">
+                  <div className="mb-2 h-2 overflow-hidden rounded-full bg-[var(--border-color)] dark:bg-[var(--border-strong)]">
                     <div
-                      className={`h-full rounded-full transition-[width] duration-300 ${usagePct >= 85 ? 'bg-red-500' : 'bg-brand-blue-600'}`}
+                      className={`h-full rounded-full transition-[width] duration-300 ${usagePct >= 85 ? 'bg-red-500' : 'bg-brand-600 dark:bg-brand-400'}`}
                       style={{ width: `${usagePct}%` }}
                     />
                   </div>
@@ -356,29 +363,19 @@ export function DashboardPage() {
           )}
 
           {/* Mode picker */}
-          <h2 className="text-xl font-bold text-[var(--text-primary)] mb-4">Choose a practice mode</h2>
+          <h2 className={`${SECTION_TITLE} mb-4`}>Choose a practice mode</h2>
           <div className="grid grid-cols-[repeat(auto-fit,minmax(200px,1fr))] gap-4 mb-10">
             {modes.map((m) => (
               <Link
                 key={m.id}
                 to={`/writing/${m.id}`}
-                className={`gs-db-mode-card block rounded-[14px] p-6 text-left cursor-pointer no-underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ring)] focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--bg-base)] transition-[transform,box-shadow] duration-150 shadow-[var(--shadow-sm)] hover:-translate-y-0.5 hover:shadow-[0_6px_20px_rgba(0,0,0,0.15)] focus-visible:-translate-y-0.5 focus-visible:shadow-[0_6px_20px_rgba(0,0,0,0.15)] motion-reduce:hover:translate-y-0 border-[1.5px] ${
-                  m.id === 'mock'
-                    ? 'bg-[var(--ink-blue-solid)] border-transparent'
-                    : m.id === 'quick'
-                    ? 'bg-brand-violet-50 border-brand-violet-200 dark:bg-brand-violet-900/20 dark:border-brand-violet-800'
-                    : m.id === 'relax'
-                    ? 'bg-green-50 border-green-200 dark:bg-green-900/20 dark:border-green-800'
-                    : 'bg-[var(--bg-card)] border-[var(--border-color)]'
-                }`}
+                className="gs-db-mode-card block cursor-pointer rounded-3xl border border-[var(--border-color)] bg-[var(--bg-card)] p-6 text-left no-underline transition-[transform,box-shadow,border-color] duration-200 hover:-translate-y-1 hover:border-[var(--border-strong)] hover:shadow-[var(--shadow-md)] focus-visible:-translate-y-1 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ring)] focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--bg-base)] motion-reduce:hover:translate-y-0 motion-reduce:focus-visible:translate-y-0"
               >
-                <div className="text-[1.75rem] mb-2" aria-hidden="true">{m.emoji}</div>
-                <div className={`font-sans font-bold text-lg mb-1 ${m.id === 'mock' ? 'text-white' : m.id === 'quick' ? 'text-brand-violet-800 dark:text-brand-violet-200' : 'text-[var(--text-primary)]'}`}>
-                  {m.title}
-                </div>
-                <div className={`text-[0.8125rem] ${m.id === 'mock' ? 'text-white/85' : m.id === 'quick' ? 'text-brand-violet-600 dark:text-brand-violet-300' : 'text-[var(--text-secondary)]'}`}>
-                  {m.desc}
-                </div>
+                <span className={`grid size-12 place-items-center rounded-2xl ${m.well}`}>
+                  <m.Icon className="size-6" aria-hidden="true" />
+                </span>
+                <div className="mt-4 font-display text-lg font-extrabold tracking-[-0.01em] text-[var(--text-primary)]">{m.title}</div>
+                <div className="mt-1 text-[0.8125rem] text-[var(--text-secondary)]">{m.desc}</div>
               </Link>
             ))}
           </div>
@@ -392,7 +389,7 @@ export function DashboardPage() {
           {isPro && (
             <div className="gs-db-history mb-10">
               <div className="flex items-center justify-between mb-4">
-                <h2 className="text-xl font-bold text-[var(--text-primary)]">Recent Analyses</h2>
+                <h2 className={SECTION_TITLE}>Recent analyses</h2>
                 {reports.length > 0 && (
                   <span className="text-xs text-[var(--text-secondary)] font-medium">
                     {showAllReports ? `Last ${reports.length} sessions` : `${visibleReports.length} of ${reports.length}`}
@@ -411,12 +408,14 @@ export function DashboardPage() {
               {reportsLoading ? (
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
                   {[1, 2, 3].map((i) => (
-                    <div key={i} className="h-[160px] rounded-2xl bg-[var(--bg-card)] border border-[var(--border-color)] animate-pulse" />
+                    <div key={i} className="h-[160px] rounded-3xl bg-[var(--bg-card)] border border-[var(--border-color)] animate-pulse motion-reduce:animate-none" />
                   ))}
                 </div>
               ) : reports.length === 0 ? (
-                <Card className="px-8 py-10 text-center">
-                  <div className="text-3xl mb-3">📝</div>
+                <Card className="rounded-3xl px-8 py-10 text-center">
+                  <span className="mx-auto mb-4 grid size-12 place-items-center rounded-2xl bg-field-lilac text-field-ink">
+                    <FileText className="size-6" aria-hidden="true" />
+                  </span>
                   <p className="font-semibold text-[var(--text-primary)] mb-1">No analyses yet</p>
                   <p className="text-sm text-[var(--text-secondary)]">Submit an essay and get AI feedback to see your progress here.</p>
                 </Card>
@@ -428,12 +427,12 @@ export function DashboardPage() {
                     return (
                       <Card
                         key={r.id}
-                        className="group p-5 hover:shadow-[var(--shadow-md)] hover:-translate-y-0.5 transition-[transform,box-shadow] duration-200 flex flex-col gap-4"
+                        className="group flex flex-col gap-4 rounded-3xl p-5 transition-[transform,box-shadow] duration-200 hover:-translate-y-0.5 hover:shadow-[var(--shadow-md)] motion-reduce:hover:translate-y-0"
                       >
                         {/* Header */}
                         <div className="flex items-start justify-between gap-2">
                           <div className="flex-1 min-w-0">
-                            <Badge variant={r.taskType?.toLowerCase().includes('1') ? 'purple' : 'info'} className="mb-2 text-[0.65rem] uppercase tracking-wider">
+                            <Badge variant={r.taskType?.toLowerCase().includes('1') ? 'purple' : 'info'} className="mb-2">
                               {r.taskType?.toLowerCase().includes('1') ? 'Task 1' : 'Task 2'}
                             </Badge>
                             <p className="text-sm font-semibold text-[var(--text-primary)] truncate leading-tight">
@@ -441,10 +440,10 @@ export function DashboardPage() {
                             </p>
                           </div>
                           <div className="text-right shrink-0">
-                            <div className={`font-sans font-bold text-2xl font-extrabold leading-none ${bandColor(band)}`}>
+                            <div className={`font-mono text-[1.75rem] font-semibold leading-none tracking-[-0.03em] tabular-nums ${bandColor(band)}`}>
                               {band}
                             </div>
-                            <div className="text-[0.6rem] text-[var(--text-secondary)] mt-0.5">Overall</div>
+                            <div className="mt-1 text-[0.6875rem] text-[var(--text-secondary)]">Overall</div>
                           </div>
                         </div>
 
@@ -502,22 +501,21 @@ export function DashboardPage() {
           {isPro && (
             <div id="gs-db-history" className=" mb-10">
               <div className="flex items-center justify-between mb-4">
-                <h2 className="text-xl font-bold text-[var(--text-primary)] flex items-center gap-2">
-                  <GraduationCap className="w-5 h-5 text-emerald-600" />
-                  Human Check
-                </h2>
+                <h2 className={SECTION_TITLE}>Human Check</h2>
                 <span className="text-xs text-[var(--text-secondary)] font-medium">Teacher reviews</span>
               </div>
 
               {humanReviewsLoading ? (
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
                   {[1, 2, 3].map((i) => (
-                    <div key={i} className="h-[140px] rounded-2xl bg-[var(--bg-card)] border border-[var(--border-color)] animate-pulse" />
+                    <div key={i} className="h-[140px] rounded-3xl bg-[var(--bg-card)] border border-[var(--border-color)] animate-pulse motion-reduce:animate-none" />
                   ))}
                 </div>
               ) : humanReviews.length === 0 ? (
-                <Card className="px-8 py-10 text-center">
-                  <div className="text-3xl mb-3">🎓</div>
+                <Card className="rounded-3xl px-8 py-10 text-center">
+                  <span className="mx-auto mb-4 grid size-12 place-items-center rounded-2xl bg-field-mint text-field-ink">
+                    <GraduationCap className="size-6" aria-hidden="true" />
+                  </span>
                   <p className="font-semibold text-[var(--text-primary)] mb-1">No teacher reviews yet</p>
                   <p className="text-sm text-[var(--text-secondary)]">Tap "Human Check" after submitting an essay to get real feedback from a teacher.</p>
                 </Card>
@@ -528,17 +526,17 @@ export function DashboardPage() {
                     const isChecked = r.status === 'checked';
                     return (
                       <Link key={r.id} to={`/human-review/${r.id}`} className="no-underline">
-                        <Card className="group p-5 hover:shadow-[var(--shadow-md)] hover:-translate-y-0.5 transition-[transform,box-shadow] duration-200 flex flex-col gap-4 h-full">
+                        <Card className="group flex h-full flex-col gap-4 rounded-3xl p-5 transition-[transform,box-shadow] duration-200 hover:-translate-y-0.5 hover:shadow-[var(--shadow-md)] motion-reduce:hover:translate-y-0">
                           <div className="flex items-start justify-between gap-2">
                             <div className="flex-1 min-w-0">
-                              <Badge variant="purple" className="mb-2 text-[0.65rem] uppercase tracking-wider">
+                              <Badge variant="purple" className="mb-2">
                                 {taskLabel || r.mode}
                               </Badge>
                               <p className="text-sm font-semibold text-[var(--text-primary)] truncate leading-tight">
                                 {r.teacherName}
                               </p>
                             </div>
-                            <Badge variant={isChecked ? 'success' : 'warning'} className="shrink-0 text-[0.65rem] uppercase tracking-wider">
+                            <Badge variant={isChecked ? 'success' : 'warning'} className="shrink-0">
                               {isChecked ? 'Checked' : 'Unchecked'}
                             </Badge>
                           </div>
@@ -567,19 +565,20 @@ export function DashboardPage() {
           )}
 
           {!isPro && (
-            <div className="gs-db-upsell mt-4 bg-linear-to-br from-slate-900 to-brand-900 rounded-2xl p-8 flex items-center justify-between gap-4 flex-wrap">
+            <div className="gs-db-upsell mt-4 flex flex-wrap items-center justify-between gap-5 rounded-3xl bg-brand-600 p-7 sm:p-9">
               <div>
-                <h3 className="font-sans font-bold text-white mb-1.5 text-xl">
+                <h3 className="mb-1.5 font-display text-2xl font-extrabold tracking-[-0.02em] text-white">
                   Unlock AI Feedback
                 </h3>
-                <p className="text-white/65 text-[0.9375rem] m-0">
+                <p className="m-0 max-w-[52ch] text-[0.9375rem] leading-relaxed text-white/85">
                   Get sentence-level corrections, vocabulary upgrades, and a band score estimate.
                 </p>
               </div>
-              <Link to="/pricing">
-                <Button className="bg-[#F59E0B] shrink-0 hover:bg-[#D97706]">
-                  Upgrade Plan
-                </Button>
+              <Link
+                to="/pricing"
+                className="inline-flex h-12 shrink-0 items-center rounded-full bg-white px-6 text-[0.9375rem] font-bold text-brand-700 no-underline transition-transform duration-150 hover:-translate-y-0.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2 focus-visible:ring-offset-brand-600 motion-reduce:hover:translate-y-0"
+              >
+                Upgrade Plan
               </Link>
             </div>
           )}

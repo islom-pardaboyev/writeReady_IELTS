@@ -19,16 +19,6 @@ const dayMonth = new Intl.DateTimeFormat(undefined, { day: 'numeric', month: 'sh
 const weekdayDay = new Intl.DateTimeFormat(undefined, { weekday: 'short', day: 'numeric', month: 'short' });
 const oneDecimal = (n: number) => n.toFixed(1);
 
-type BadgeVariant = 'success' | 'info' | 'warning' | 'danger';
-
-// The same scale the report cards use for a band: 7 and up, 6, 5, below.
-function bandVariant(band: number): BadgeVariant {
-  if (band >= 7) return 'success';
-  if (band >= 6) return 'info';
-  if (band >= 5) return 'warning';
-  return 'danger';
-}
-
 export function ProfileHeader({ user, profile }: { user: User; profile: UserProfile }) {
   const name = profileName(user, profile);
   const handle = profile.studentLogin;
@@ -38,7 +28,7 @@ export function ProfileHeader({ user, profile }: { user: User; profile: UserProf
   const photoLabel = profile.photoVersion ? 'Change profile photo' : 'Add a profile photo';
 
   return (
-    <Card className="gs-db-welcome mb-6 overflow-hidden rounded-[18px]">
+    <Card className="gs-db-welcome mb-6 overflow-hidden rounded-3xl">
       <InkBanner className="h-28 sm:h-36">
         <Link
           to="/account#edit-profile"
@@ -66,7 +56,7 @@ export function ProfileHeader({ user, profile }: { user: User; profile: UserProf
 
         <div className="min-w-0 flex-1 sm:pb-1">
           <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
-            <h1 className="min-w-0 break-words text-2xl font-extrabold tracking-[-0.025em] text-[var(--text-primary)] sm:text-[1.75rem] sm:leading-tight">
+            <h1 className="min-w-0 break-words font-display text-2xl font-extrabold tracking-[-0.025em] text-[var(--text-primary)] sm:text-[1.75rem] sm:leading-tight">
               {name}
             </h1>
             <Badge variant={planBadgeVariant(plan)}>{PLAN_INFO[plan].label}</Badge>
@@ -102,8 +92,8 @@ export function ProfileHeader({ user, profile }: { user: User; profile: UserProf
   );
 }
 
-function Skeleton({ className }: { className: string }) {
-  return <span aria-hidden="true" className={`block rounded bg-[var(--border-color)] animate-pulse motion-reduce:animate-none ${className}`} />;
+function Skeleton({ className, tone = 'bg-[var(--border-color)]' }: { className: string; tone?: string }) {
+  return <span aria-hidden="true" className={`block rounded animate-pulse motion-reduce:animate-none ${tone} ${className}`} />;
 }
 
 function BandCard({ stats, loading }: { stats: DashboardStats | null; loading: boolean }) {
@@ -111,23 +101,23 @@ function BandCard({ stats, loading }: { stats: DashboardStats | null; loading: b
   const next = band === null ? null : nextHalfBand(band);
 
   return (
-    <Card className="gs-db-stat relative flex flex-col overflow-hidden p-5 sm:p-6">
-      <h2 className="text-sm font-medium text-[var(--text-secondary)]">Current band</h2>
+    <Card className="gs-db-stat relative flex flex-col overflow-hidden rounded-3xl border-transparent bg-brand-600 p-5 text-white shadow-none sm:p-7">
+      <h2 className="text-sm font-semibold text-white/85">Current band</h2>
 
       {loading ? (
         <div className="mt-3 space-y-4">
-          <Skeleton className="h-12 w-28" />
-          <Skeleton className="h-2 w-full" />
+          <Skeleton className="h-12 w-28" tone="bg-white/25" />
+          <Skeleton className="h-2 w-full" tone="bg-white/25" />
         </div>
       ) : band === null ? (
         <div className="mt-3 flex flex-1 flex-col">
-          <p className="font-mono text-5xl font-semibold tracking-[-0.03em] text-[var(--border-strong)]" aria-hidden="true">0.0</p>
-          <p className="mt-3 max-w-[38ch] text-sm leading-relaxed text-[var(--text-secondary)]">
+          <p className="font-mono text-5xl font-semibold tracking-[-0.03em] text-white/40" aria-hidden="true">0.0</p>
+          <p className="mt-3 max-w-[38ch] text-sm leading-relaxed text-white/85">
             Your band shows here after your first checked essay.
           </p>
           <Link
             to="/writing/practice"
-            className="mt-auto inline-flex items-center gap-1 pt-4 text-sm font-semibold text-brand-600 no-underline hover:underline dark:text-brand-400"
+            className="mt-auto inline-flex items-center gap-1 pt-4 text-sm font-semibold text-white underline-offset-4 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white"
           >
             Start practising
             <ChevronRight className="size-4" aria-hidden="true" />
@@ -136,12 +126,12 @@ function BandCard({ stats, loading }: { stats: DashboardStats | null; loading: b
       ) : (
         <>
           <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-2">
-            <p className="font-mono text-5xl font-semibold leading-none tracking-[-0.03em] text-[var(--text-primary)] tabular-nums sm:text-6xl">
+            <p className="font-mono text-6xl font-semibold leading-none tracking-[-0.04em] text-white tabular-nums sm:text-7xl">
               {oneDecimal(band)}
             </p>
-            <Badge variant={bandVariant(band)}>{bandDescriptor(band)}</Badge>
+            <span className="rounded-full bg-white/15 px-2.5 py-0.5 text-xs font-semibold text-white">{bandDescriptor(band)}</span>
           </div>
-          <p className="mt-2 text-sm text-[var(--text-secondary)]">
+          <p className="mt-3 text-sm text-white/85">
             {stats!.currentFrom === 1 ? 'From your first report' : `Average of your last ${stats!.currentFrom} reports`}
           </p>
 
@@ -149,17 +139,17 @@ function BandCard({ stats, loading }: { stats: DashboardStats | null; loading: b
             {next ? (
               <>
                 <div className="mb-2 flex items-baseline justify-between gap-3 text-sm">
-                  <span className="font-mono text-[var(--text-primary)] tabular-nums">
-                    {oneDecimal(band)} <span className="text-[var(--text-secondary)]">/ {oneDecimal(next.next)}</span>
+                  <span className="font-mono text-white tabular-nums">
+                    {oneDecimal(band)} <span className="text-white/75">/ {oneDecimal(next.next)}</span>
                   </span>
-                  <span className="text-[var(--text-secondary)]">
-                    <span className="font-mono font-medium text-[var(--text-primary)] tabular-nums">{oneDecimal(next.toGo)}</span> to band {oneDecimal(next.next)}
+                  <span className="text-white/85">
+                    <span className="font-mono font-medium text-white tabular-nums">{oneDecimal(next.toGo)}</span> to band {oneDecimal(next.next)}
                   </span>
                 </div>
-                <Meter value={next.progress} label={`Progress to band ${oneDecimal(next.next)}`} className="bg-brand-600 dark:bg-brand-400" />
+                <Meter value={next.progress} label={`Progress to band ${oneDecimal(next.next)}`} className="bg-white" trackClassName="bg-white/25" />
               </>
             ) : (
-              <p className="text-sm font-medium text-[var(--text-primary)]">Band 9, the top of the scale.</p>
+              <p className="text-sm font-medium text-white">Band 9, the top of the scale.</p>
             )}
           </div>
         </>
@@ -168,23 +158,23 @@ function BandCard({ stats, loading }: { stats: DashboardStats | null; loading: b
   );
 }
 
-function StatCard({ label, icon, value, hint, loading }: { label: string; icon?: ReactNode; value: ReactNode; hint: ReactNode; loading: boolean }) {
+function StatCard({ label, icon, value, hint, loading, field }: { label: string; icon?: ReactNode; value: ReactNode; hint: ReactNode; loading: boolean; field: string }) {
   return (
-    <Card className="gs-db-stat flex min-w-0 flex-col p-4 sm:p-5">
-      <h2 className="flex items-start gap-1.5 text-xs font-medium leading-tight text-[var(--text-secondary)] sm:items-center sm:text-sm">
+    <Card className={`gs-db-stat flex min-w-0 flex-col rounded-3xl border-transparent p-4 text-field-ink shadow-none sm:p-5 ${field}`}>
+      <h2 className="flex items-start gap-1.5 text-xs font-semibold leading-tight text-field-ink/80 sm:items-center sm:text-sm">
         {icon}
         {label}
       </h2>
       <div className="mt-auto pt-3">
         {loading ? (
           <>
-            <Skeleton className="h-8 w-12" />
-            <Skeleton className="mt-2 h-3 w-16" />
+            <Skeleton className="h-8 w-12" tone="bg-field-ink/15" />
+            <Skeleton className="mt-2 h-3 w-16" tone="bg-field-ink/15" />
           </>
         ) : (
           <>
-            <p className="font-mono text-2xl font-semibold leading-none tracking-[-0.02em] text-[var(--text-primary)] tabular-nums sm:text-3xl">{value}</p>
-            <p className="mt-1.5 text-[0.6875rem] leading-snug text-[var(--text-secondary)] sm:truncate sm:text-xs">{hint}</p>
+            <p className="font-mono text-2xl font-semibold leading-none tracking-[-0.02em] text-field-ink tabular-nums sm:text-[2.125rem]">{value}</p>
+            <p className="mt-1.5 text-[0.6875rem] leading-snug text-field-ink/75 sm:truncate sm:text-xs">{hint}</p>
           </>
         )}
       </div>
@@ -215,7 +205,7 @@ function ActivityCard({ stats, loading, showAnalytics }: { stats: DashboardStats
   const active = days.filter((d) => d.count > 0).length;
 
   return (
-    <Card className="gs-db-stat col-span-3 p-4 sm:p-5">
+    <Card className="gs-db-stat col-span-3 rounded-3xl p-4 sm:p-6">
       <div className="flex items-baseline justify-between gap-3">
         <h2 className="text-sm font-semibold text-[var(--text-primary)]">
           Last 14 days
@@ -303,21 +293,24 @@ export function StatsOverview({
       <div className="grid grid-cols-3 gap-3 sm:gap-4">
         <StatCard
           label="Essays checked"
+          field="bg-field-mint"
           loading={loading}
           value={totalReports}
           hint={`${stats?.thisMonth ?? 0} this month`}
         />
         <StatCard
           label="Day streak"
-          icon={<Flame className={`size-3.5 sm:size-4 ${streak > 0 ? 'text-amber-500' : 'text-[var(--text-secondary)]'}`} aria-hidden="true" />}
+          field="bg-field-amber"
+          icon={<Flame className={`size-3.5 sm:size-4 ${streak > 0 ? '' : 'opacity-50'}`} aria-hidden="true" />}
           loading={loading}
           value={streak}
           hint={stats?.wroteToday || streak === 0 ? `best ${stats?.bestStreak ?? 0}` : 'write today to keep it'}
         />
         <StatCard
           label="Best band"
+          field="bg-field-lilac"
           loading={loading}
-          value={stats?.bestBand == null ? <span className="text-[var(--text-secondary)]">0.0</span> : oneDecimal(stats.bestBand)}
+          value={stats?.bestBand == null ? <span className="opacity-45">0.0</span> : oneDecimal(stats.bestBand)}
           hint={best?.createdAt ? `${isTask1(best.taskType) ? 'Task 1' : 'Task 2'}, ${dayMonth.format(best.createdAt)}` : 'no reports yet'}
         />
         <ActivityCard stats={stats} loading={loading} showAnalytics={showAnalytics} />

@@ -1,6 +1,6 @@
 ---
 name: WriteReady IELTS
-description: IELTS Writing practice with instant AI feedback, and the staff panels that run it, in one light-and-dark world of paper, hairlines and indigo ink.
+description: IELTS Writing practice with instant AI feedback, and the staff panels that run it, in one light-and-dark world of white pages, colour fields and indigo ink.
 colors:
   ink-blue: "#4f46e5"
   ink-blue-dark: "#818cf8"
@@ -51,6 +51,16 @@ colors:
   accent-berry-dark: "#eb55a8"
   accent-graphite: "#1d293d"
   accent-graphite-dark: "#d4d4d4"
+  field-amber: "#ffdf8a"
+  field-amber-dark: "#4a390b"
+  field-mint: "#bdeedb"
+  field-mint-dark: "#103c2e"
+  field-lilac: "#dcd0ff"
+  field-lilac-dark: "#30256a"
+  field-ink: "#14132b"
+  field-ink-dark: "#f5f5f5"
+  bg-tint: "#f5f5fb"
+  bg-tint-dark: "#111113"
   exam-ink: "#262626"
   exam-ink-dark: "#525252"
   exam-text: "#000000"
@@ -60,11 +70,23 @@ colors:
   exam-deep: "#0a0a0a"
 typography:
   display:
-    fontFamily: "Inter, sans-serif"
-    fontSize: "clamp(2.25rem, 4.4vw, 3.6rem)"
+    fontFamily: "Wix Madefor Display, Inter, sans-serif"
+    fontSize: "clamp(2.375rem, 6vw, 4.25rem)"
     fontWeight: 800
-    lineHeight: 1.04
+    lineHeight: 1.05
     letterSpacing: "-0.035em"
+  section:
+    fontFamily: "Wix Madefor Display, Inter, sans-serif"
+    fontSize: "clamp(1.75rem, 3.4vw, 2.625rem)"
+    fontWeight: 800
+    lineHeight: 1.08
+    letterSpacing: "-0.03em"
+  card-title:
+    fontFamily: "Wix Madefor Display, Inter, sans-serif"
+    fontSize: "1.125rem"
+    fontWeight: 800
+    lineHeight: 1.4
+    letterSpacing: "-0.01em"
   headline:
     fontFamily: "Inter, sans-serif"
     fontSize: "1.5rem"
@@ -152,6 +174,9 @@ rounded:
   lg: "10px"
   xl: "14px"
   2xl: "18px"
+  sheet: "18px"
+  card: "22px"
+  block: "32px"
   full: "9999px"
 spacing:
   hair: "2px"
@@ -359,21 +384,24 @@ components:
 
 ## Overview
 
-**Creative North Star: "Ink on Paper"**
+**Creative North Star: "Colour Cards"**
 
-WriteReady looks like a well-kept workbook: a pale paper ground, white sheets separated by hairlines, and one indigo ink used for the mark that matters. The token names already say it (`--paper`, `--ink-blue`), and the rest of the system follows. Quiet slate neutrals carry almost everything; indigo marks the primary action, the current selection and keyboard focus; emerald, amber and red appear only when something has a state to report.
+WriteReady shows its work. Every page is a clean white (or near-black) ground, and the product itself, a band score, a marked sentence, a better word, sits in a white card on a field of flat colour: brand indigo, amber, mint or lilac. Headings are set in Wix Madefor Display, heavy and tight; body text stays in Inter and every number in IBM Plex Mono. This replaced the earlier "Ink on Paper" look on 2026-10-10, when the owner chose it from six mocked directions so the site would read like a professional education platform.
 
-One world serves two kinds of visitor. Students get the fuller expression of it: heavier headings, cards with a soft shadow that lift on hover, entrance motion on the dashboard and landing page. Staff (the owner, learning centers, teachers) get the same materials tuned for operating: a light grouped sidebar, a searchable record list with the selected record open beside it, semibold headings, flat hairline panels, and IBM Plex Mono for every figure. PRODUCT.md makes this binding: the staff panels use the same colors and design language as the student pages.
+One world serves two kinds of visitor. Students get the fuller expression of it: the home page's row of colour cards, the dashboard's indigo band card beside mint, amber and lilac figures, pricing as four plan cards. Staff (the owner, learning centers, teachers) get the same materials tuned for operating: a light grouped sidebar, a searchable record list with the selected record open beside it, number tiles on the same colour fields, and flat hairline panels with 22px corners. PRODUCT.md makes this binding: the staff panels use the same colors and design language as the student pages.
+
+**The four writing modes are outside this system.** Mock Exam, Practice, Quick Write and Relax keep their own screens exactly as they were (owner's instruction, 2026-10-10): Inter throughout, their own blue and violet, no display face, no colour fields. Nothing in this document is a reason to restyle them.
 
 Density is comfortable rather than compact: 14px body text, 40px controls, 16 to 24px gaps. Light and dark themes both come from the same semantic tokens, switched by a `.dark` class on `<html>` (light, dark or system, chosen in the theme menu).
 
 **Key Characteristics:**
-- Pale paper ground, white panels, 1px slate hairlines.
+- White page, white cards, 1px slate hairlines, with a tinted ground (`bg-tint`) for alternate sections.
+- Colour fields: flat indigo, amber, mint and lilac areas that hold a white card or dark text.
 - A single indigo ink for primary action, selection and focus.
-- Emerald, amber and red only for state.
-- Inter for words, IBM Plex Mono for numbers.
-- One radius family: 8px fields, 10px controls, 14px panels, pills for chips and badges.
-- Lucide line icons at 16px in controls and 18px in navigation.
+- Emerald, amber and red inks only for state.
+- Wix Madefor Display for headings, Inter for words, IBM Plex Mono for numbers.
+- Radii by role: 8px fields, 10px controls, 18px sheets and icon wells, 22px cards and panels, 32px for a full-width colour block, pills for chips, badges and the main buttons.
+- Lucide line icons at 16px in controls and 18px in navigation, 24px inside a 48px icon well.
 - Full light and dark themes from tokens.
 
 ## Colors
@@ -392,6 +420,14 @@ A student can swap the indigo ink for one of five other inks on My Account (Appe
 - **How it is built:** the choice sets `<html data-accent="…">` (indigo sets nothing). Each accent is one 50 to 950 scale, `--acc-*` in `src/index.css`, and every step has the same lightness as the indigo step it replaces, so contrast never drops below indigo's: white on the ink and the ink on white are 5.4:1 or better, and the dark-mode ink on the dark card is 5.4:1 or better. The ink, wash, ring, chart and sidebar tokens all derive from that scale.
 - **Graphite** is ink without a hue: near-black in light mode and near-white in dark mode, with a wash one step deeper than the hover grey. Its greys follow each theme's own neutrals (slate in light, plain grey in dark).
 - **Tailwind names:** brand ink written as a Tailwind color uses `brand-*` (defaults to indigo), `brand-blue-*` (the blue of Mock, Practice and Relax) or `brand-violet-*` (the violet of Quick Write). With no accent each one is exactly the Tailwind color it replaced.
+
+### Colour fields
+The signature surface. A field is a flat area of colour that carries a white card (`bg-card`) or dark text, never a gradient.
+- **Indigo field** (`bg-brand-600`): the brand's own field, so it follows a student's accent. White text on it. Used for the first report card on the home page, the dashboard's Current band card, the Standard plan header, the upgrade banner and the home page's closing block.
+- **Amber, Mint and Lilac fields** (`field-amber`, `field-mint`, `field-lilac`, each with a deep `-dark` value): fixed pastels, written `bg-field-amber`, `bg-field-mint`, `bg-field-lilac`. Text on them is **Field Ink** (`field-ink`, class `text-field-ink`), with secondary text at 75 to 80% of it, never grey. In dark mode the fields turn deep and Field Ink turns near-white, so the same classes hold.
+- **Tinted ground** (`bg-tint`): the quiet alternate section background on the home page, and the Free plan's header.
+- Tokens live in `src/index.css` (`--field-*`, `--bg-tint`) and are exposed to Tailwind in `@theme inline`.
+- Fields are decoration and grouping, not state. A mint field does not mean "done" and an amber field does not mean "waiting": state still speaks through the emerald, amber and red badges and notices below, which always carry an icon or a word.
 
 ### Tertiary
 - **Upgrade Gold** (`gold`): student side only, for the premium upsell (the `gold` button variant, the band-score highlight on the feedback report). Staff surfaces never use it.
@@ -417,7 +453,9 @@ A student can swap the indigo ink for one of five other inks on My Account (Appe
 ### Named Rules
 **The One Ink Rule.** Solid indigo marks exactly three things: the primary action, the current selection and keyboard focus. If a screen shows two solid indigo buttons side by side, one of them should be outline.
 
-**The State-Only Rule.** Emerald, amber and red speak only about state: done, waiting, wrong, or about to be destroyed. Plan tiers and other categories take the secondary, info, purple or outline badges instead.
+**The State-Only Rule.** The emerald, amber and red inks (badges, notices, the icon wells in "Needs attention") speak only about state: done, waiting, wrong, or about to be destroyed. Plan tiers and other categories take the secondary, info, purple or outline badges instead. The pastel fields are a separate, lighter family and never stand in for a state.
+
+**The One Field Rule.** A card sits on at most one field, and a field never sits inside another field. Indigo is the only field that takes white text.
 
 **The Token Theme Rule.** Surfaces take color from the semantic tokens (`var(--bg-card)`, `var(--text-secondary)`, `var(--border-color)`), so dark mode comes for free. Raw Tailwind hues appear only as state tints, each with its `dark:` counterpart.
 
@@ -425,18 +463,19 @@ A student can swap the indigo ink for one of five other inks on My Account (Appe
 
 ## Typography
 
-**Display Font:** Inter (with sans-serif)
+**Display Font:** Wix Madefor Display (with Inter, sans-serif), class `font-display`
 **Body Font:** Inter (with sans-serif)
 **Label/Mono Font:** IBM Plex Mono (with monospace), for figures only
 
-**Character:** One neutral grotesque carries every word and a mono carries every number, so counts, money, band scores and IDs line up in columns and read as data rather than prose. Both load from Google Fonts in `index.html` (Inter 300 to 800, Plex Mono 400 to 600), so the extrabold display and the semibold figures render for real rather than synthesized.
+**Character:** A heavy, friendly display face carries every heading on the home page, dashboard, pricing and staff panels; one neutral grotesque carries every other word and a mono carries every number, so counts, money, band scores and IDs line up in columns and read as data rather than prose. All three load from Google Fonts in `index.html` (Wix Madefor Display 600 to 800, Inter 300 to 800, Plex Mono 400 to 600). The four writing modes never use the display face.
 
 ### Hierarchy
-- **Display** (extrabold, fluid 36 to 58px, 1.04, -0.035em): the home page hero only. Section titles on the home page step down to extrabold 28 to 40px.
-- **Headline** (semibold, 24px, 32px line): staff page titles such as Overview and Settings. Student pages run heavier here: the dashboard welcome is 36px bold and section titles are 20px bold.
-- **Title** (semibold, 20px, 28px line): the selected record's name at the top of the detail pane, and the staff login card title. Dialog titles sit between at 18px semibold.
-- **Title Small** (semibold, 18px): the list pane title, with the record count beside it in 14px regular Slate Gray.
-- **Heading** (semibold, 16px): detail-section headings. Panel titles step down to 14px semibold.
+- **Display** (Wix Madefor Display extrabold, fluid 38 to 68px, 1.05, -0.035em): the home page hero only. The pricing headline steps down to fluid 32 to 48px.
+- **Section** (display extrabold, fluid 28 to 42px, 1.08, -0.03em): section titles on the home page. Dashboard section titles ("Choose a practice mode", "Recent analyses") are display extrabold 22px.
+- **Headline** (display extrabold, 28px): staff page titles such as Overview and Settings, and the student's name on the dashboard.
+- **Title** (display extrabold, 22px): the selected record's name at the top of the detail pane. The list pane title is 20px and the staff login card title 24px, in the same face. Dialog titles stay Inter 18px semibold.
+- **Card title** (display extrabold, 18 to 20px): report cards, mode tiles, plan names.
+- **Heading** (display extrabold, 16px): detail-section headings and panel titles.
 - **Body** (regular, 14px, 20px line): the default for everything operational. Long text (descriptions, announcement bodies) caps at 65ch.
 - **Label** (medium, 14px): field labels, list-row titles, sidebar items, key-value values.
 - **Button** (semibold, 14px): button text. Small buttons drop to 12px (Caption Strong).
@@ -447,7 +486,7 @@ A student can swap the indigo ink for one of five other inks on My Account (Appe
 ### Named Rules
 **The Mono Figures Rule.** Every count, amount, band score and ID sits in IBM Plex Mono with tabular numerals; words never do. Counts inside Inter text (chip counts, a title's record count) still take `tabular-nums`.
 
-**The Semibold Ceiling Rule.** Staff headings stop at semibold with slightly tight tracking (-0.01 to -0.02em); bold is kept for the WriteReady wordmark. The bold, extrabold and black headings belong to the student dashboard and landing page.
+**The Display Heading Rule.** A heading is Wix Madefor Display extrabold with tight tracking (-0.01em at 16px down to -0.035em at hero size), on student and staff pages alike. Everything that is not a heading stays in Inter: labels, buttons, table text, badges. The display face never sets body copy, and it never appears in the four writing modes.
 
 ### Answer text
 The one place a student chooses the type: their own answer in the four writing modes (`src/lib/writingSettings.ts`). Size 14, 16, 18 or 20px (16 by default), line height 1.5, 1.7 or 2 (1.7 by default), and one of three faces: **Answer** (Inter), **Answer Serif** (Source Serif 4, loaded with the other fonts and downloaded only when used) or **Answer Exam** (Arial). Arial exists for the Mock Exam exam look and nowhere else; it is a practice tool, not a brand face.
@@ -462,7 +501,7 @@ The spacing scale is Tailwind's 4px grid. Staff surfaces keep a steady rhythm: 2
 
 **Home and settings pages.** A page heading (title, description, actions right) over content capped at 1240px. The admin home stacks a stat strip over a 12-column grid split 7 and 5 at 1024px, with 24px gaps.
 
-**Student pages.** The home page uses a 1160px container with 16px gutters on phones and 24px from 640px: a full-width headline, one short promise line, the two buttons and a free-plan line, then the exam demo across the container. The dashboard opens with the profile header and a 5 and 7 split of figures, then lays mode cards and report cards in auto-fit grids (minimum 200px tracks, 16px gaps). My Account is a 340px account card (sticky from 1024px) beside the settings column.
+**Student pages.** The home page and pricing use a 1280px container with 16px gutters on phones and 24px from 640px; the site header matches it. The home page is a centred headline, one short promise line, two pill buttons and a free-plan line, then the four report cards across the container (one column on phones, two from 640px, four from 1280px). The dashboard keeps its 1160px column: the profile header, then a 5 and 7 split with the indigo band card on the left and the three field figures over the activity card on the right, then mode cards and report cards in auto-fit grids (minimum 200px tracks, 16px gaps). My Account is a 340px account card (sticky from 1024px) beside the settings column.
 
 **Breakpoints.** 640px (padding steps up), 768px (sidebar becomes a drawer), 1024px (list and detail sit side by side).
 
@@ -484,18 +523,20 @@ Staff surfaces are flat: depth comes from the Paper ground, Sheet White panels a
 
 ## Shapes
 
-One radius family, derived from `--radius` (10px):
+Radii are chosen by role. Tailwind's radius names are scaled from `--radius` (10px) in `src/index.css`, so `rounded-xl` is 14px, `rounded-2xl` 18px and `rounded-3xl` 22px here:
 - **Base** (4px): skeleton bars, the `/` key hint, tiny icon buttons.
 - **Field** (8px, `rounded-md`): inputs, selects, textareas, small buttons, image thumbnails.
-- **Control** (10px, `rounded-lg`): buttons, list rows, sidebar items, notices, icon wells, shortcut tiles.
-- **Panel** (14px, `rounded-xl`): panels, the stat strip, the login card, the empty-state icon well. The student `Card` reaches the same 14px through `var(--radius-lg)`.
-- **Dialog** (18px, `rounded-2xl`): dialogs and student report-card skeletons.
-- **Pill** (full): filter chips, badges, the switch, avatars, progress bars.
+- **Control** (10px, `rounded-lg`): staff buttons, list rows, sidebar items, notices.
+- **Sheet** (18px, `rounded-2xl`): the white card inside a colour field, 48px icon wells, staff number tiles, shortcut tiles, vocabulary cards. A 36px well steps down to 14px (`rounded-xl`).
+- **Card** (22px, `rounded-3xl`): report cards, mode tiles, plan cards, dashboard cards, sample-answer cards, staff panels, the login card, the pricing sheets.
+- **Block** (32px): a full-width colour block, such as the home page's closing call to action.
+- **Dialog** (18px, `rounded-2xl`): dialogs, unchanged.
+- **Pill** (full): filter chips, badges, the switch, avatars, progress bars, and the main buttons on the home page and pricing.
 
-Borders are always 1px hairlines in `border-color`; the student mode cards are the one place that thickens them (1.5px). Nothing is clipped into custom silhouettes.
+The student `Card` component still defaults to 14px (`var(--radius-lg)`) because the writing modes use it; redesigned pages pass `rounded-3xl`. Borders are 1px hairlines in `border-color`. Nothing is clipped into custom silhouettes.
 
 ### Named Rules
-**The One Family Rule.** New UI picks from 8, 10 and 14px or a pill, by role. Nested shapes step down: a 10px row inside a 14px panel, an 8px field inside a 14px card.
+**The Nested Step Rule.** Nested shapes step down: an 18px sheet inside a 22px card, a 10px row inside a 22px panel, an 8px field inside a 22px card.
 
 ## Components
 
@@ -522,10 +563,13 @@ Solid, compact and quiet; one per screen carries the ink.
 - **Variants:** `success`, `warning` and `danger` for state; `secondary`, `info`, `purple` and `outline` for plan tiers and categories. Sidebar counts are a smaller amber pill (11px, tabular) at the right of the item.
 
 ### Cards / Containers
-- **Panel (staff):** 14px corners, Sheet White, hairline, no shadow. Header with 20px sides, 16px top and 12px bottom: 14px semibold title, optional Slate Gray description, optional action at the right. Body has 20px sides and bottom. Rows inside divide with hairlines.
-- **Stat strip:** a hairline grid. Tiles sit 1px apart on a Hairline background inside a 14px frame, wrap at a 150px minimum and stretch so no cell is ever empty. Each tile: 16 by 20px padding, 14px Slate Gray label, 24px Plex Mono figure, optional 12px hint. Clickable tiles fill Slate Mist on hover and show an inset focus ring.
-- **Student card:** 14px corners, Sheet White, hairline plus the Rest shadow; padding is set per use (20 to 24px). Interactive cards rise 2px with the Lift shadow on hover.
-- **Staff login card:** 380px column, logo and wordmark above, 14px corners, border only, 24px padding (28px from 640px).
+- **Panel (staff):** 22px corners, Sheet White, hairline, no shadow. Header with 20px sides, 20px top and 12px bottom: 16px display title, optional Slate Gray description, optional action at the right. Body has 20px sides and bottom. Rows inside divide with hairlines.
+- **Number tiles (`StatStrip`):** separate 18px-corner tiles, 12px apart, each on a colour field in the order lilac, mint, amber, repeating. They wrap at a 150px minimum and stretch so a row is never left with a gap. Each tile: 16 by 20px padding, 14px medium label in Field Ink at 80%, a 28px Plex Mono figure in Field Ink, optional 12px hint. Clickable tiles rise 2px with the Lift shadow on hover and take the standard focus ring.
+- **Colour card (student):** a 22px-corner card with a hairline, whose top is a colour field (272px tall at least on the home page) holding one 18px white sheet with a soft offset shadow, and whose foot is a display title with one line of Slate Gray text. Used for the home page's four report cards.
+- **Field figure (student):** the dashboard's three stat cards: 22px corners, no border or shadow, a mint, amber or lilac field, label in Field Ink at 80%, a 34px Plex Mono figure, a 12px hint.
+- **Icon well:** a 48px, 18px-corner square on a field (or solid indigo with a white icon) holding a 24px Lucide icon. It marks a mode, an extra or an empty state. Shortcut tiles on the admin home use a 36px, 14px-corner well.
+- **Student card:** 22px corners on redesigned pages, Sheet White, hairline plus the Rest shadow; padding is set per use (20 to 24px). Interactive cards rise 2 to 4px with the Lift shadow on hover.
+- **Staff login card:** 380px column, logo and wordmark above, 22px corners, border only, 24px padding (32px from 640px), a 24px display title.
 
 ### Inputs / Fields
 - **Style:** 40px tall, 8px corners, hairline border, Sheet White fill, 12px sides, 14px text, Slate Gray placeholder. Textareas start at 80px and resize vertically. The password input adds a show or hide eye button at the right. Native selects share the same class.
@@ -536,6 +580,7 @@ Solid, compact and quiet; one per screen carries the ink.
 
 ### Navigation
 - **Staff sidebar:** light, 220px, with a 32px logo, the WriteReady wordmark (14px bold) and the role (12px Slate Gray) in a header over a hairline. Items are grouped (Content, People, Partners, Site) under 12px medium sentence-case labels, 16px apart. Each item: 18px Lucide icon and 14px medium label, 10px corners, 8 by 14px padding. Rest: Ink Black at 70%; hover: full Ink Black on Ink Wash at 60%; active: Ink Wash fill, Ink Blue text, semibold, `aria-current="page"`. Collapsed, it becomes a 64px icon rail with tooltips and hairline dividers between groups. Footer: identity (initials avatar, name, detail), the theme menu and a red ghost Sign out.
+- **Site header** (`src/components/layout/Header.tsx`): 68px tall in the 1280px container, Sheet White at 95% with an 8px blur. Logo and display wordmark at the left; Writing, Sample answers, Blog and Pricing as 15px semibold pill links (the current page takes Ink Wash through `aria-current`), then the theme toggle, Sign in and a solid indigo "Start Free" pill. Below 1024px the links and Sign in move into a menu button. The sample-answer pages draw their own static copy of it (`src/components/questions/QuestionsShell.tsx`, no theme toggle, a plain disclosure menu on phones); the two link lists must match.
 - **Student sidebar:** the same component and light variant with a flat list (Dashboard, Writing, Blog, Pricing, My Account), a notification bell and the plan badge under the name. Immersive pages such as the feedback report use a 56px blurred top bar instead.
 
 ### List and Detail (signature component)
@@ -548,8 +593,8 @@ Staff work through records, not pages.
 
 ### Notices and load states
 - **Notice:** 10px corners, 1px border, 10 by 14px padding, 14px text, a 16px Lucide icon (check, triangle or info). Tones: success, error, warning (state tints) and info (Slate Mist). Errors announce as alerts, the rest as status.
-- **Empty state:** centered, a 44px Slate Mist icon well with 14px corners, a 14px semibold title, a Slate Gray line capped at 42ch, an optional action.
-- **Load error:** the empty-state layout with a triangle icon, "Could not load ..." and an outline "Try again". A failed request never shows as an empty list.
+- **Empty state:** centered, a 48px lilac icon well with 18px corners, a 14px semibold title, a Slate Gray line capped at 42ch, an optional action.
+- **Load error:** the empty-state layout with a triangle icon in the amber warning tint (not a field), "Could not load ..." and an outline "Try again". A failed request never shows as an empty list.
 - **Skeletons:** Slate Mist bars with 4px corners shaped like the rows they replace, pulsing unless reduced motion is set.
 
 ### Dialogs
@@ -566,32 +611,52 @@ Initials in an Ink Wash circle with Ink Wash Text, semibold at 36% of the diamet
 The AI report (`src/pages/FeedbackPage.tsx`, direction in `.impeccable/surfaces/src-pages-feedbackpage-tsx.md`) opens like an examiner's result sheet (`src/components/report/ResultSheet.tsx`). **Header:** back link, "Your feedback report", a meta line with the task and the page's own word count, a segmented Task switch when a mock produced both essays, Score card (solid) and Full feedback PDF (outline). **Result sheet** (made lighter 2026-09-30): one 18px sheet; the overall band first, "Estimated overall band" over the band in 64px Plex Mono with ±0.5 on the number, and at its right the descriptor ("Competent user") over one line saying it is an AI estimate; then the four criteria (Task Response for Task 2, Task Achievement for Task 1) as one row of hairline tiles (two by two on phones), each a Slate Gray name over a Plex Mono band beside a thin bar in the report's band colours (gold 7 and up, ink 6, rose below); the next-band line; and the question folded behind "Show the question". The reason behind each band lives in the By criterion tab, not on the sheet. **Fix these first:** the three priority fixes as native checkboxes (ink accent), "Start here" on the first, an "n of 3 done" count, ticks remembered on the device per report and task. **Detail:** sticky underline tabs with Plex Mono counts (Your essay, By criterion, Readability, Sample answer, Vocabulary, Grammar, Spelling, Practice); on a free report every tab is a disabled, locked button and no panel mounts. Inside the panels: sentence-case labels, 10 and 14px cards with hairlines, white vocabulary cards that flip to an Ink Wash back, no side stripes, gradients or emoji.
 
 ### Home page (student)
-The signed-out front door (`src/pages/LandingPage.tsx`, direction in `.impeccable/surfaces/src-pages-landingpage-tsx.md`). It opens inside the product: the display headline over faint answer-sheet ruling, then **the exam demo** (`src/components/landing/ExamRoomDemo.tsx`), WriteReady's own Mock Exam chrome (bar with a centred Plex Mono timer, Task pills, instruction strip, prompt and answer panes) where a labelled sample answer types itself in and is then marked: red wavy underlines for grammar, an amber highlight for a better word, and a report slip with four criterion bands and three notes. It plays once, offers Replay, and shows the marked state at once under reduced motion. From 1280px up, **the hero marks** (`src/components/landing/HeroMarks.tsx`) fill the empty side margins: ten pieces of a marked report (a grammar fix with a red squiggle, a 7.0 criterion bar, a ticked "Fix this first" note, a 38:12 timer chip, a 7.5 band stamp, a word upgrade with its Uzbek meaning, a 6.5 to 7.5 progress line, a 268-word chip, a pen squiggle and a tick) fade in one by one and drift slowly at different depths, tilting a few degrees with the pointer. They are decorative (`aria-hidden`, no pointer events), never cross the headline or buttons, are absent below 1280px, and stand still under reduced motion. These two are the page's only motion. Below it: what the report holds (six one-line items beside a sticky sample report), the four modes as one hairline grid, the extras (Human Check, the bot when the admin shows it, learning centres) as ruled rows, the demo videos, the home FAQ, and a slate close with the same ruling. The page is kept short on purpose (trimmed 2026-09-28): each fact is said once, in one short line. No kickers above headings; every sample is captioned as a sample.
+The signed-out front door (`src/pages/LandingPage.tsx`, direction in `.impeccable/surfaces/src-pages-landingpage-tsx.md`), on a white ground (near-black in dark mode). **Hero:** the display headline, centred, with a red pen line drawn under "cost you marks." (an inline SVG wave in red-500; it draws once over 900ms as the page opens and is simply there under reduced motion), one Slate Gray promise line, and two 54px pill buttons: solid indigo "Check my essay" with a soft indigo shadow, and outline "Try a mock exam". **Report cards:** four colour cards straight under the hero, each a piece of a sample report: four band scores on the indigo field, a corrected sentence on amber, a better word with its Uzbek meaning on mint, a band 8 to 9 answer on lilac. One line under the row says they are parts of a sample report, names what else a full report holds and links to the plans. **Demo:** on the tinted ground, "See an answer get marked" over the exam demo (`src/components/landing/ExamRoomDemo.tsx`), WriteReady's own Mock Exam chrome where a labelled sample answer types itself in and is then marked; it plays once and offers Replay. **Modes:** four white 22px tiles with an icon well each (Mock Exam solid indigo, Practice mint, Quick Write amber, Relax lilac), a display title, the spec, one line and "Open ...". **Sample answers:** a 32px-corner lilac block with a white icon well, a display heading, one line saying the answers are open to everyone with no account, and a Field Ink pill "Browse sample answers" that goes to `/questions`. **Extras:** on the tinted ground, Human Check, the bot (when the admin shows it) and learning centres as ruled rows inside one 22px card, each with an icon well. Then the demo videos, the home FAQ, and the close: a 32px-corner indigo block with a white display headline and a white pill button. The footer is the tinted ground with Slate Gray links. The pen line and the exam demo are the page's only motion. No kickers or badges above headings; every sample is captioned as a sample.
+
+### Sample answers (public)
+`/questions` and `/questions/:task/:slug` (`src/components/questions/`), open to everyone and linked from the site header, the home page and the student sidebar. The build renders them to static HTML, so these components read nothing from the browser or Firebase.
+- **List:** a display headline and one Slate Gray paragraph, then **How to use a sample answer**, one 22px card with three numbered steps (Plan the question, Study the answer, Write it yourself) whose number chips sit on lilac, mint and amber. Filters: a pill segmented control (All, Task 1, Task 2, each with its count in Plex Mono), a topic select once the bank is large enough, and a pill search field. Questions are 22px cards in one, two or three columns: a **band well** (56px, 18px corners, the best answer's band in Plex Mono over "Band"; lilac for Task 1, Ink Wash for Task 2), the task, chart type and topic, a display title, two lines of the question, then "Student answer" or "Model answer" and "Read the answer". No match shows a dashed card with "Show every question". The page closes with a 32px indigo block sending students to Quick Write.
+- **Answer page:** breadcrumb, a display headline, and chips for the task (lilac or Ink Wash), chart type and topic. **The question** is a 22px card with the chart (capped at 760px wide) and the solid indigo pill "Write your own answer and get your band score". Under it, **three step links** in 18px tiles: Plan it first (jumps to the outline), Study the answer (jumps to the answer), Write it yourself (opens the question in Quick Write or Relax). **Outline** is a 22px card with numbered rows. **Sample answer** is a 22px card: a 48px well (mint for a student's answer, lilac for a model answer), the display heading with the band, four small tiles for the criteria, a legend for the two highlight colours with "Tap or hover a highlighted phrase to see its note", then the essay at 17px with a 70ch measure. **Vocabulary** (18px cards with the Uzbek meaning and an example) and **Grammar highlights** sit in a 340px column beside the answer from 1024px and under it on phones. A 32px indigo block asks "Can you write a Band n answer?" with a white pill, then related questions as rows with a small band well.
 
 ### Pricing page (student)
-The plan picker (`src/pages/PricingPage.tsx`, direction in `.impeccable/surfaces/src-pages-pricingpage-tsx.md`) is a study plan, not a row of price columns. A student marks the days they will write in the next four weeks and the page names the plan that covers them (`src/lib/studyMonth.ts`). It sits in the 1160px student container on Paper: an extrabold headline (fluid 32 to 44px, -0.03em) and one Slate Gray line, then from 1024px a two column grid (the study month, and a 320 to 380px plan column) with 24px between them.
-- **Study month:** one 18px Sheet White sheet with a hairline and the Rest shadow. "Your next 4 weeks" (16px semibold) sits over the date range in 12px Plex Mono. Below it, pattern chips (1 a week, 2 a week, 3 a week, Weekdays, Every day) are 32px pills that behave like filter chips: a hairline and Slate Gray at rest, Ink Wash with Ink Wash Text when the marked days match the pattern. A quiet text "Clear" sits at the right. The page opens on 3 a week.
-- **Calendar** (`src/components/pricing/StudyMonth.tsx`): 28 real days from today in Monday to Sunday columns, with empty cells before today so the columns hold. Each day is a 10px-corner toggle cell with a hairline (square on phones, 56px tall from 640px, 64px from 1280px), its date in Plex Mono at the top left and the month's short name beside the 1st. A marked day drops its border, fills with Ink Wash and shows a solid Ink Blue dot (10px, 12px from 640px) at the bottom right. Today carries a 1px Ink Blue ring and a small "Today" label, like a date circled on a paper calendar. A mouse or pen can press and drag across days to mark or clear a run; touch taps one day at a time so the page still scrolls. The grid is one Tab stop: arrow keys move by a day or a week, Home and End go to the ends, Space or Enter toggles.
-- **Count and capacity scale:** the plan column is a sticky 18px sheet (24px from the top from 1024px). It opens with the count in 44px Plex Mono semibold beside "essays in 4 weeks", and one plain line that says which plan covers it and how many are spare. The capacity scale is a ladder, not a number line: an 8px Hairline pill track with an Ink Blue fill, four equal steps labelled Free, Basic, Standard and Premium with what each holds ("1 a week", then the allowance in Plex Mono), and a 16px Ink Blue marker with a 3px card-coloured ring and the Rest shadow at the middle of the step that covers the month. The covering step's label turns Ink Black and semibold.
-- **Plan sheet:** under a hairline, the covering plan: its name (20px bold) and tagline, the monthly price in 28px Plex Mono with "UZS / month" under it, the per-analysis line with the saving against Basic in Ink Blue semibold, and what the plan includes as a list with 16px Ink Blue Lucide checks. Then the page's single solid ink button, "Get Standard" (44px, full width). Every other plan action on the page is outline. When a Customizable plan with exactly the marked count costs less, a small text link offers it under the button. A current plan shows as a disabled outline "Your current plan", and Lifetime shows a Slate Mist note instead of a button.
-- **Every plan:** a 20px bold heading with the billing line at its right, then one 18px sheet of ruled rows divided by hairlines: Free, Basic, Standard, Premium and Customizable. From 768px each row is three columns (200px name and tagline, the features with Slate Gray checks, a 230px right-aligned price and an outline button). The row that fits the marked month takes Ink Wash at 55% and a solid Ink Blue "Fits your month" pill beside its name, so the fitting plan reads as the current selection. A short Slate Gray note under the sheet explains the per-analysis figure.
-- **Customizable row:** the last ruled row. A labelled native select (36px, 8px corners, hairline, Plex Mono values) picks the monthly analyses, the per-analysis price follows in 12px Slate Gray, and the price and an outline "Get Customizable" sit in the right column like the other rows.
-- **Balance:** signed-in students only. An 18px sheet with "Account balance" (18px bold), a Slate Gray line, and the balance in 30px Plex Mono; at the right a "Top up" field (40px, Plex Mono value) with an outline Top up button and the minimum as a hint, which turns red when the amount is too low.
-- **Phone summary bar:** below 1024px the plan column falls under the calendar, so a summary bar is pinned to the bottom of the study month sheet while it is in view: a 44px, 10px-corner Sheet White bar with a hairline and the Lift shadow reading "12 essays: Standard" (the count in Plex Mono) with "See the plan" in Ink Blue, linking down to the plan column. It stops 56px short of the right edge so it sits beside the chat button, never under it. Its backing runs the full width of the sheet and fades from transparent to Sheet White over 20px, so days scrolling beneath never show beside the bar.
-- **Motion:** a day's dot inks in with a small overshoot (scale and opacity over 220ms, `cubic-bezier(0.34, 1.56, 0.64, 1)`), the scale's fill and marker glide to the covering step over 380ms on `cubic-bezier(0.16, 1, 0.3, 1)`, and when the covering plan changes the plan sheet replays the detail pane's entrance (opacity from 0.4 and a 4px rise) at 220ms. Day cells change colour over 150ms. Reduced motion removes all of it. There is no page-load motion.
+The plan picker (`src/pages/PricingPage.tsx`, direction in `.impeccable/surfaces/src-pages-pricingpage-tsx.md`) leads with the plans, then offers the study month as help for choosing. It sits in the 1280px student container on Paper.
+- **Header:** a display headline (fluid 32 to 48px) and one Slate Gray line at the left, the billing line ("Paid monthly by card transfer. Cancel anytime.") at the right.
+- **Plan cards:** Free, Basic, Standard and Premium side by side from 1280px (two columns from 768px, one on phones). Each is a 22px card whose header is a colour field (Free tinted, Basic mint, Standard indigo with white text, Premium lilac) holding the plan name in display type, its tagline and the price in 36px Plex Mono with "UZS / month". The white body holds the per-analysis line (the saving against Basic in Ink Blue semibold), the features with 16px Ink Blue checks, and a 44px pill button pinned to the foot.
+- **The featured card:** exactly one card carries a 2px Ink Blue ring, the Lift shadow and the page's solid ink button. It is Standard until the student marks days of their own in the planner; after that it is the plan that covers the marked month, which also shows a white "Fits your month" pill beside its name. Every other plan button is outline. A current plan shows as a disabled outline "Your current plan", and Lifetime hides the buttons.
+- **Customizable:** one 22px card under the plan cards: an amber icon well, the name and a line, a labelled native select (40px, Plex Mono values) for the monthly analyses with the per-analysis price beside it, then the price and an outline pill "Get Customizable". A short Slate Gray note under it explains the per-analysis figure.
+- **Planner:** "Not sure? Plan your writing month", a display heading and one line, then from 1024px a two column grid (the study month, and a 320 to 380px sticky plan column), both 22px cards.
+- **Study month:** "Your next 4 weeks" over the date range in 12px Plex Mono. Pattern chips (1 a week, 2 a week, 3 a week, Weekdays, Every day) are 32px pills that behave like filter chips. A quiet text "Clear" sits at the right. The page opens on 3 a week.
+- **Calendar** (`src/components/pricing/StudyMonth.tsx`): 28 real days from today in Monday to Sunday columns. Each day is a 10px-corner toggle cell with a hairline, its date in Plex Mono at the top left. A marked day fills with Ink Wash and shows a solid Ink Blue dot at the bottom right. Today carries a 1px Ink Blue ring and a small "Today" label. A mouse or pen can press and drag across days; touch taps one day at a time. The grid is one Tab stop with arrow keys, Home, End, Space and Enter.
+- **Plan column:** the count in 44px Plex Mono beside "essays in 4 weeks", one plain line that says which plan covers it, the capacity ladder (an 8px track with an Ink Blue fill and four labelled steps), then under a hairline the covering plan's name, tagline, price, per-analysis line and an outline pill button. When a Customizable plan with exactly the marked count costs less, a small text link offers it.
+- **Balance:** signed-in students only. A 22px card with "Account balance" in display type, a Slate Gray line, and the balance in 30px Plex Mono; at the right a "Top up" field with an outline Top up button and the minimum as a hint, which turns red when the amount is too low.
+- **Phone summary bar:** below 1024px a pill is pinned to the bottom of the study month while it is in view, reading "12 essays: Standard" with "See the plan" in Ink Blue, linking down to the plan column. It stops 56px short of the right edge so it sits beside the chat button.
+- **Motion:** a day's dot inks in with a small overshoot (220ms), the ladder's fill and marker glide to the covering step over 380ms, and when the covering plan changes the plan column replays the detail pane's entrance at 220ms. Reduced motion removes all of it. There is no page-load motion.
 
 ### Blog article text (student) and the blog editor (admin)
 One `.article` class in `src/index.css` styles both the published post (`src/pages/blog/BlogPostPage.tsx`) and the admin editor's writing area (`src/components/ui/RichEditor.tsx`), so the editor shows what readers will see. Headings step 30, 24 and 20px at weight 800/700; lists keep their bullets and numbers; quotes sit behind a 3px neutral rule; tables use `border-strong` hairlines with a header row tinted 6% of the text colour; every colour is a token, so dark mode needs nothing extra. There is no typography plugin in the project: never use `prose` classes. The editor toolbar reads its button states through `useEditorState` (Tiptap 3 does not re-render on every change), uses lucide icons, and shows a Table row (add or delete rows and columns, header row, delete table) only while the cursor is in a table.
 
+### Dashboard figures (student)
+Under the profile header (`src/components/dashboard/ProfileOverview.tsx`). **Current band** is the indigo field: the band in 60 to 72px white Plex Mono, its descriptor in a white-on-white-15% pill, the "average of your last n reports" line, and a white meter on a white-25% track showing progress to the next half band. **Essays checked, Day streak and Best band** are field figures on mint, amber and lilac. **Last 14 days** stays a white card: fourteen dots, today ringed, with the Task 1 and Task 2 average bars at the right. Below: the quota card, the four mode tiles with the home page's icon wells, the progress charts, recent analyses (22px cards, the overall band in 28px Plex Mono in its band colour), Human Check, and for free plans an indigo upgrade banner with a white pill button. A learning-center student sees a mint field card naming the center.
+
 ### Profile header and account card (student)
 Shared pieces in `src/components/profile/parts.tsx`. **InkBanner:** the student's accent ink as a diagonal gradient with 1px ruled lines every 28px, one margin rule and a soft light from the top right. **ProfileAvatar:** the photo (or Ink Wash initials) in an 18px-corner square with a 4px card-coloured ring, overlapping the banner. **Meter:** an 8px pill track in Hairline (Firm Hairline in dark) whose fill grows once on mount. The dashboard header puts the banner (112 to 144px) over the name, plan badge and meta line, with Edit profile as a white-on-ink pill on the banner and Settings as an outline button; My Account puts a 80px banner at the top of its account card, followed by plan and balance sections divided by hairlines.
 
+### Sign-in page (student)
+`src/pages/AuthPage.tsx` (direction in `.impeccable/surfaces/src-pages-authpage-tsx.md`). Two halves from 1024px, the form alone below that. **It never scrolls on a normal screen**: the gaps and the field height come from `--auth-gap` and `--auth-field`, which shrink with the screen's height (`dvh`), so sign in, create account and the learning-centre form each show whole on a 1366 by 650 laptop and on a phone.
+- **Aside** (`src/components/auth/AuthAside.tsx`): the indigo field, exactly one screen tall and fixed in place. The logo on a white 14px tile with the display wordmark, the promise line in white display type with an amber pen line under "cost you marks.", one line in white at 85%, and the sample report as an 18px white sheet (`src/components/landing/ReportSample.tsx`). On a short screen the sheet drops its better-word row, then its sentence note, then goes, so the footnote is never cut off.
+- **Form:** a pill segmented control (Sign in, Create account), a 28px display title and one Slate Gray line, an outline pill "Continue with Google", a hairline "or with email", then Email and Password fields (14px corners, 16px text, 40 to 48px tall) and one solid indigo pill. Sign-up adds the password hint under the field and one 12px paragraph with the emailed-code note and the terms. A hairline, then the learning-centre link.
+- The email-code steps (`src/components/auth/EmailCodeSignIn.tsx`) use the same fields and pill.
+
 ### Maintenance page (student)
-What every visitor sees while maintenance mode is on (`src/pages/MaintenancePage.tsx`); the staff portals and an admin session skip it. It speaks with the landing page's voice on Paper.
-- **Frame:** the logo and "WriteReady IELTS" wordmark top left, a centered 680px column, and a footer over a hairline linking the teacher and learning center portals.
-- **Headline:** landing-page black weight, fluid 36 to 60px, tight tracking, with the key words in Ink Blue. It states the reopening day in the visitor's time zone ("We reopen on 18 November.", "today", "tomorrow"), "Almost done." once the end time has passed, and "We'll be back soon." when no end is set.
-- **Countdown:** one 18px-corner Sheet White card split into four cells by hairlines: days, hours, minutes and seconds in Plex Mono with tabular figures, singular or plural labels in Slate Gray. A 4px Ink Blue bar along its bottom edge shows how much of the planned closure has passed (`role="progressbar"`). Under the card, the exact reopening moment in the visitor's local time.
+What every visitor sees while maintenance mode is on (`src/pages/MaintenancePage.tsx`); the staff portals and an admin session skip it. It speaks with the home page's voice on a white ground, and fits one screen: every vertical gap shrinks with the screen's height.
+- **Frame:** the logo and display wordmark top left, a centered 720px column, and a footer over a hairline linking the teacher and learning center portals.
+- **Headline:** display extrabold, fluid 32 to 68px, with the red pen line under the key words. It states the reopening day in the visitor's time zone ("We reopen on 18 November.", "today", "tomorrow"), "Almost done." once the end time has passed, and "We'll be back soon." when no end is set.
+- **Countdown:** a 22px-corner indigo field holding four 18px white sheets: days, hours, minutes and seconds in Plex Mono with tabular figures, singular or plural labels in Slate Gray. Under the sheets, inside the field, a white bar on a white-25% track shows how much of the planned closure has passed (`role="progressbar"`). Under the field, the exact reopening moment in the visitor's local time.
+- **Sample answers:** a 22px-corner lilac field under the countdown, in every state: "Sample answers are still open" in display type, one line in Field Ink at 80%, and a Field Ink pill "Read sample answers" to `/questions`. Those pages are static and stay up through maintenance (`src/components/layout/MaintenanceGate.tsx`), so it is the one thing a student can still do.
 - **Contact:** one outline pill (44px tall) linking to the team's Telegram. No emoji, no kicker labels; the countdown updates every second but never fetches again.
+
+### 404 page
+`src/pages/NotFoundPage.tsx`, on the same frame as the maintenance page, also sized to one screen. At the top, the wrong address marked the way a report marks a sentence: an 18px white sheet on an amber field with "404 · Address not found", the address struck through in red Plex Mono, the right one (home, or the dashboard when signed in) in emerald, and one line of why. Then the display headline "This page doesn't exist." with the pen line under "exist.", one reassuring line, a solid indigo pill home and an outline pill "Go back", and four compact links (Mock Exam, Practice Mode, Quick Write, IELTS Blog) with 36px icon wells, in one row from 640px and two by two on phones.
 
 ### Segmented control
 A single choice from two to four short options (`src/components/appearance/SegmentedControl.tsx`): a 10px-corner Sheet White track with a hairline and 4px padding, holding equal 36px segments with 8px corners and 14px medium text. The chosen segment takes Ink Wash with Ink Wash Text (the weight does not change, so nothing shifts); others are Slate Gray and fill Slate Mist on hover. Underneath it is a radio group: Tab lands on the chosen segment, the arrow keys move the choice, and focus shows as an inset 2px ring. A segment that is only a glyph carries a spoken label ("Large, 18 pixels").
@@ -613,6 +678,8 @@ A switch in the writing settings. The Mock Exam root takes `data-exam-look`: eve
 ### Do:
 - **Do** keep one solid Ink Blue action per screen and show selection with Ink Wash plus Ink Wash Text.
 - **Do** set every count, amount, band score and ID in IBM Plex Mono with tabular numerals.
+- **Do** show the product inside a white sheet on a colour field when a page needs to explain or celebrate something, and keep working lists and forms on plain white.
+- **Do** set every heading in `font-display` extrabold, and nothing else in it.
 - **Do** build each staff section as List and Detail: a 340px list pane with search, filter chips and rows beside a detail column capped at 820px.
 - **Do** give every data surface three states: skeleton rows while loading, an empty state when there is truly nothing, and a load error with Try again when the request failed.
 - **Do** make destructive actions two steps: a Danger Outline button opens the confirm dialog, whose solid destructive button names the action ("Delete teacher").
@@ -626,7 +693,10 @@ A switch in the writing settings. The Mock Exam root takes `data-exam-look`: eve
 - **Don't** put emoji in staff chrome: navigation, headings, buttons, badges, empty states.
 - **Don't** use em or en dashes in visible copy; use commas, colons or "to".
 - **Don't** give a staff container in the page flow both a border and a shadow.
-- **Don't** introduce a radius outside 4, 8, 10, 14 and 18px or a pill.
+- **Don't** introduce a radius outside 4, 8, 10, 14, 18, 22 and 32px, or a pill.
+- **Don't** put grey text on a colour field; tint it from Field Ink (or white on indigo).
+- **Don't** use a field to say done, waiting or wrong, and do not put a gradient on one.
+- **Don't** restyle Mock Exam, Practice, Quick Write or Relax to match this system.
 - **Don't** hard-code hex colors in components; dark mode only works through the tokens.
-- **Don't** add uppercase, letter-spaced kicker labels above headings. The landing page and dashboard still carry some; they are not a pattern to copy.
+- **Don't** add uppercase, letter-spaced kicker labels or pill badges above headings.
 - **Don't** add page-load choreography to staff surfaces; staff motion is the 180ms detail swap and 150 to 200ms color transitions.

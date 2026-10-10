@@ -165,7 +165,7 @@ export function ProgressSection({ reports: all, loading }: { reports: FeedbackRe
   if (loading) {
     return (
       <div className="mb-10">
-        <h2 className="text-xl font-bold text-[var(--text-primary)] mb-4">Your Progress</h2>
+        <h2 className="mb-4 font-display text-[1.375rem] font-extrabold tracking-[-0.02em] text-[var(--text-primary)]">Your progress</h2>
         <div className="h-48 rounded-2xl bg-[var(--bg-card)] border border-[var(--border-color)] animate-pulse motion-reduce:animate-none" />
       </div>
     );
@@ -175,12 +175,12 @@ export function ProgressSection({ reports: all, loading }: { reports: FeedbackRe
 
   return (
     <div id={PROGRESS_ID} className="mb-10 scroll-mt-24">
-      <h2 className="text-xl font-bold text-[var(--text-primary)] mb-4">Your Progress</h2>
+      <h2 className="mb-4 font-display text-[1.375rem] font-extrabold tracking-[-0.02em] text-[var(--text-primary)]">Your progress</h2>
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-        <Card className="p-5">
+        <Card className="rounded-3xl p-5 sm:p-6">
           <TrendChart reports={reports} />
         </Card>
-        <Card className="p-5">
+        <Card className="rounded-3xl p-5 sm:p-6">
           <CategoryBars reports={reports} />
         </Card>
       </div>
