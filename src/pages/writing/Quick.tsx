@@ -21,6 +21,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { useUnsavedWork } from "@/hooks/useUnsavedWork";
 import { useDraft } from "@/hooks/useDraft";
 import { DraftRestoredNotice } from "@/components/ui/DraftRestoredNotice";
+import { DraftSavedIndicator } from "@/components/ui/DraftSavedIndicator";
 import { Button } from "@/components/ui/Button";
 import WritingTask2Preview from "@/components/writingTask2Preview/WritingTask2Preview";
 import { encodeReport } from "@/lib/reportEncoding";
@@ -179,6 +180,7 @@ function Quick() {
   const draft = useDraft({
     page: "quick",
     uid: user?.uid,
+    db,
     value: draftValue,
     ready: Boolean(user) && !loading,
     isEmpty: (d) => !d.userText?.trim(),
@@ -536,6 +538,7 @@ function Quick() {
                 {wordCount} / {minWords} words
                 {meetsMinWords && <span className="ml-1.5">✓</span>}
               </span>
+              <DraftSavedIndicator pending={draft.pending} savedAt={draft.savedAt} />
             </div>
             <div className="flex items-center gap-2">
               <button

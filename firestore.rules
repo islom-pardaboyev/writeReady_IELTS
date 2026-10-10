@@ -336,6 +336,21 @@ service cloud.firestore {
         && request.resource.data.days.size() <= 4000;
     }
 
+    // ── Drafts ────────────────────────────────────────────────────────────
+
+    // A backup of the essay a student is currently writing, keyed by which
+    // writing page it is (practice/mock/quick/relax), written every few
+    // seconds by the writing pages themselves (src/hooks/useDraft.ts) so a
+    // new device or a cleared browser cache does not lose it. This is the
+    // student's own in-progress words, nothing else, so there is no reason
+    // for a centre or teacher to see it.
+    match /drafts/{uid} {
+      allow read: if isSelf(uid);
+      allow create, update: if isSelf(uid)
+        && request.resource.data.keys().hasOnly(['pages', 'updatedAt'])
+        && request.resource.data.pages is map;
+    }
+
     // ── Public content ────────────────────────────────────────────────────
 
     match /config/featureFlags {

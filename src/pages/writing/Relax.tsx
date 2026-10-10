@@ -33,6 +33,7 @@ import { useUnsavedWork } from "@/hooks/useUnsavedWork";
 import { useAuth } from "@/hooks/useAuth";
 import { useDraft } from "@/hooks/useDraft";
 import { DraftRestoredNotice } from "@/components/ui/DraftRestoredNotice";
+import { DraftSavedIndicator } from "@/components/ui/DraftSavedIndicator";
 import { useFeatureFlag } from "@/hooks/useFeatureFlag";
 import { TeacherPickerModal } from "@/components/ui/TeacherPickerModal";
 import { ModalCard, ModalTitle, ModalDescription } from "@/components/ui/ModalCard";
@@ -128,6 +129,7 @@ function Relax() {
   const draft = useDraft({
     page: "relax",
     uid: user?.uid,
+    db,
     value: draftValue,
     ready: !authLoading && !preloading,
     isEmpty: (d) => !d.userText?.trim() && !d.prompt?.trim() && !d.task2Prompt?.trim(),
@@ -705,6 +707,7 @@ function Relax() {
                 {wordCount} / {minWords} words
                 {meetsMinWords && <span className="ml-1.5">✓</span>}
               </span>
+              <DraftSavedIndicator pending={draft.pending} savedAt={draft.savedAt} />
             </div>
 
             <div className="flex items-center gap-2">

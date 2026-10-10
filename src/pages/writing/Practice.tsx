@@ -22,6 +22,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { useUnsavedWork } from "@/hooks/useUnsavedWork";
 import { useDraft } from "@/hooks/useDraft";
 import { DraftRestoredNotice } from "@/components/ui/DraftRestoredNotice";
+import { DraftSavedIndicator } from "@/components/ui/DraftSavedIndicator";
 import { effectivePlan } from "@/lib/plans";
 import { Button } from "@/components/ui/Button";
 import WritingTask2Preview from "@/components/writingTask2Preview/WritingTask2Preview";
@@ -146,6 +147,7 @@ function Practice() {
   const draft = useDraft({
     page: "practice",
     uid: user?.uid,
+    db,
     value: draftValue,
     ready: Boolean(user) && !loading,
     isEmpty: (d) => !d.userText1?.trim() && !d.userText2?.trim(),
@@ -532,6 +534,7 @@ function Practice() {
                 {wordCount} / {minWords} words
                 {meetsMinWords && <span className="ml-1.5">✓</span>}
               </span>
+              <DraftSavedIndicator pending={draft.pending} savedAt={draft.savedAt} />
             </div>
 
             <div className="flex items-center gap-2">
