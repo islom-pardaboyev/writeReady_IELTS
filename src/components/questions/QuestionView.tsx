@@ -1,10 +1,12 @@
 import { Link } from 'react-router';
-import { BookOpen, ChevronRight, ExternalLink, FileText, ListOrdered, PenLine, Sparkles, Users } from 'lucide-react';
+import { Tooltip } from 'radix-ui';
+import { ArrowDown, BookOpen, ChevronRight, ExternalLink, FileText, ListOrdered, PenLine, Sparkles, Users } from 'lucide-react';
 import { PROMPT_SOURCES } from '@/lib/promptSources';
 import {
   fmtBand, questionPath, taskLabel, titleCase, writeItPathFor,
-  type PublicSample, type QuestionPageData, type QuestionSummary,
+  type PublicSample, type PublicVocab, type QuestionPageData, type QuestionSummary,
 } from '@/lib/questionData';
+import { paragraphSegments, type EssaySegment } from '@/lib/essayHighlights';
 
 /**
  * One question's public page: the question, its chart (Task 1), the outline,
@@ -58,9 +60,81 @@ function Criteria({ sample, taskType }: { sample: PublicSample; taskType: Questi
   );
 }
 
-function SampleAnswer({ sample, taskType, index }: { sample: PublicSample; taskType: QuestionPageData['taskType']; index: number }) {
+/** A highlighted vocabulary word, with its meaning on hover or focus. */
+function VocabMark({ segment }: { segment: Extract<EssaySegment, { type: 'vocab' }> }) {
+  return (
+    <Tooltip.Root>
+      <Tooltip.Trigger asChild>
+        <mark
+          tabIndex={0}
+          className="cursor-help rounded-[3px] bg-[var(--accent)]/70 px-0.5 py-px text-inherit underline decoration-dotted decoration-[var(--ink-blue)] underline-offset-[3px] outline-none focus-visible:ring-2 focus-visible:ring-[var(--ring)]"
+        >
+          {segment.text}
+        </mark>
+      </Tooltip.Trigger>
+      <Tooltip.Portal>
+        <Tooltip.Content sideOffset={6} collisionPadding={8} className="z-[300] max-w-[260px] rounded-lg border border-[var(--border-color)] bg-[var(--bg-card)] px-3 py-2 text-left text-xs leading-snug text-[var(--text-primary)] shadow-[var(--shadow-lg)]">
+          <p className="m-0 font-semibold">{segment.vocab.meaning}</p>
+          <p className="m-0 mt-1" lang="uz">
+            <span className="mr-1 rounded bg-[var(--accent)] px-1 py-0.5 font-mono text-[0.625rem] font-semibold text-[var(--accent-foreground)]">UZ</span>
+            {segment.vocab.uz}
+          </p>
+          <Tooltip.Arrow className="fill-[var(--bg-card)]" width={10} height={5} />
+        </Tooltip.Content>
+      </Tooltip.Portal>
+    </Tooltip.Root>
+  );
+}
+
+/** A highlighted grammar structure, labelled Advanced, with the examiner's note on hover or focus. */
+function GrammarMark({ segment }: { segment: Extract<EssaySegment, { type: 'grammar' }> }) {
+  return (
+    <Tooltip.Root>
+      <Tooltip.Trigger asChild>
+        <mark
+          tabIndex={0}
+          className="cursor-help rounded-[3px] bg-emerald-500/15 px-0.5 py-px text-inherit underline decoration-dotted decoration-emerald-600 underline-offset-[3px] outline-none focus-visible:ring-2 focus-visible:ring-[var(--ring)] dark:decoration-emerald-400"
+        >
+          {segment.text}
+        </mark>
+      </Tooltip.Trigger>
+      <Tooltip.Portal>
+        <Tooltip.Content sideOffset={6} collisionPadding={8} className="z-[300] max-w-[280px] rounded-lg border border-[var(--border-color)] bg-[var(--bg-card)] px-3 py-2 text-left text-xs leading-snug text-[var(--text-primary)] shadow-[var(--shadow-lg)]">
+          <span className="mb-1 inline-block rounded-full bg-emerald-600 px-1.5 py-[1px] text-[0.625rem] font-bold uppercase tracking-wide text-white">Advanced</span>
+          <p className="m-0">{segment.note}</p>
+          <Tooltip.Arrow className="fill-[var(--bg-card)]" width={10} height={5} />
+        </Tooltip.Content>
+      </Tooltip.Portal>
+    </Tooltip.Root>
+  );
+}
+
+function EssayParagraph({ segments }: { segments: EssaySegment[] }) {
+  return (
+    <p>
+      {segments.map((seg, i) => {
+        if (seg.type === 'vocab') return <VocabMark key={i} segment={seg} />;
+        if (seg.type === 'grammar') return <GrammarMark key={i} segment={seg} />;
+        return <span key={i}>{seg.text}</span>;
+      })}
+    </p>
+  );
+}
+
+function SampleAnswer({
+  sample, taskType, index, highlight,
+}: {
+  sample: PublicSample;
+  taskType: QuestionPageData['taskType'];
+  index: number;
+  /** This sample's own vocabulary and grammar notes, marked inline when given. */
+  highlight?: { vocabulary: PublicVocab[]; grammarHighlights: string[] };
+}) {
   const student = sample.sourceType === 'student';
   const headingId = `sample-${index}`;
+  // A long essay in full size reads as a wall of text on a phone; a touch
+  // smaller keeps more of it on screen without feeling cramped on desktop.
+  const long = sample.wordCount > 250;
   return (
     <article aria-labelledby={headingId} className="rounded-2xl border border-[var(--border-color)] bg-[var(--bg-card)] p-5 shadow-[var(--shadow-sm)] sm:p-7">
       <header className="flex flex-wrap items-start justify-between gap-3">
@@ -79,10 +153,14 @@ function SampleAnswer({ sample, taskType, index }: { sample: PublicSample; taskT
         </div>
       </header>
       <Criteria sample={sample} taskType={taskType} />
-      <div className="mt-5 max-w-[70ch] space-y-4 text-[1.0625rem] leading-[1.75] text-[var(--text-primary)]">
-        {sample.sampleAnswer.split(/\n+/).filter((p) => p.trim()).map((p, i) => (
-          <p key={i}>{p.trim()}</p>
-        ))}
+      <div className={`mt-5 max-w-[70ch] space-y-4 leading-[1.75] text-[var(--text-primary)] ${long ? 'text-[0.9375rem] sm:text-[1.0625rem]' : 'text-[1.0625rem]'}`}>
+        {highlight
+          ? paragraphSegments(sample.sampleAnswer, highlight.vocabulary, highlight.grammarHighlights).map((segs, i) => (
+              <EssayParagraph key={i} segments={segs} />
+            ))
+          : sample.sampleAnswer.split(/\n+/).filter((p) => p.trim()).map((p, i) => (
+              <p key={i}>{p.trim()}</p>
+            ))}
       </div>
     </article>
   );
@@ -131,8 +209,13 @@ export function QuestionView({ data }: { data: QuestionPageData }) {
   const task = taskLabel(data.taskType);
   const kind = data.taskType === 'task1' && data.chartType ? data.chartType : data.topic;
   const heading = titleCase(data.title);
+  const hasNotes = data.vocabulary.length > 0 || data.grammarHighlights.length > 0;
+  // The vocabulary and grammar notes are the reviewed AI answer's own (or the student's, when there is no AI one) — scripts/lib/questionSite.tsx.
+  const notesSampleId = data.samples.find((s) => s.sourceType === 'ai')?.id ?? data.samples[0]?.id;
+  // On a phone the notes are stacked below the essay (desktop shows them in the sticky sidebar beside it), so a shortcut past the essay is worth it there.
+  const jumpTo = data.vocabulary.length > 0 ? { id: 'vocab-title', label: 'Jump to vocabulary' } : data.grammarHighlights.length > 0 ? { id: 'grammar-title', label: 'Jump to grammar notes' } : null;
   return (
-    <div className="mx-auto w-full max-w-[860px] px-4 pb-16 pt-6 sm:px-6 sm:pt-10">
+    <div className={`mx-auto w-full px-4 pb-16 pt-6 sm:px-6 sm:pt-10 ${hasNotes ? 'max-w-[1040px]' : 'max-w-[860px]'}`}>
       <nav aria-label="Breadcrumb" className="text-sm text-[var(--text-secondary)]">
         <ol className="m-0 flex list-none flex-wrap items-center gap-1 p-0">
           <li><Link to="/questions" className="text-[var(--text-secondary)] no-underline hover:text-[var(--text-primary)] hover:underline">Sample answers</Link></li>
@@ -188,6 +271,14 @@ export function QuestionView({ data }: { data: QuestionPageData }) {
           <WriteButton data={data} className="w-full sm:w-auto" />
           <p className="m-0 mt-2 text-xs text-[var(--text-secondary)]">Free to start. Your essay is marked against the official IELTS band descriptors.</p>
         </div>
+        {jumpTo && (
+          <a
+            href={`#${jumpTo.id}`}
+            className="mt-4 inline-flex items-center gap-1 text-sm font-medium text-[var(--ink-blue)] no-underline hover:underline lg:hidden"
+          >
+            <ArrowDown className="h-3.5 w-3.5" aria-hidden /> {jumpTo.label}
+          </a>
+        )}
       </section>
 
       {data.outline.length > 0 && (
@@ -201,38 +292,52 @@ export function QuestionView({ data }: { data: QuestionPageData }) {
 
       <section aria-labelledby="samples-title" className="mt-10">
         <SectionTitle icon={BookOpen} id="samples-title">{data.samples.length > 1 ? 'Sample answers' : 'Sample answer'}</SectionTitle>
-        <div className="mt-4 space-y-5">
-          {data.samples.map((s, i) => <SampleAnswer key={s.id} sample={s} taskType={data.taskType} index={i} />)}
-        </div>
+        <Tooltip.Provider delayDuration={150}>
+          <div className={hasNotes ? 'mt-4 lg:grid lg:grid-cols-[minmax(0,1fr)_320px] lg:items-start lg:gap-6' : 'mt-4'}>
+            <div className={hasNotes ? 'space-y-5 lg:sticky lg:top-20' : 'space-y-5'}>
+              {data.samples.map((s, i) => (
+                <SampleAnswer
+                  key={s.id}
+                  sample={s}
+                  taskType={data.taskType}
+                  index={i}
+                  highlight={hasNotes && s.id === notesSampleId ? { vocabulary: data.vocabulary, grammarHighlights: data.grammarHighlights } : undefined}
+                />
+              ))}
+            </div>
+            {hasNotes && (
+              <div className="mt-8 space-y-8 lg:mt-0">
+                {data.vocabulary.length > 0 && (
+                  <div aria-labelledby="vocab-title">
+                    <SectionTitle icon={Sparkles} id="vocab-title">Vocabulary</SectionTitle>
+                    <ul className="m-0 mt-3 list-none space-y-3 p-0">
+                      {data.vocabulary.map((v) => (
+                        <li key={v.word} className="rounded-xl border border-[var(--border-color)] bg-[var(--bg-card)] p-4 shadow-[var(--shadow-sm)]">
+                          <p className="m-0 font-bold text-[var(--text-primary)]">{v.word}</p>
+                          <p className="m-0 mt-1 text-sm text-[var(--text-secondary)]">{v.meaning}</p>
+                          <p className="m-0 mt-2 text-sm text-[var(--text-primary)]" lang="uz">
+                            <span className="mr-1.5 rounded bg-[var(--accent)] px-1.5 py-0.5 font-mono text-[0.6875rem] font-semibold text-[var(--accent-foreground)]">UZ</span>
+                            {v.uz}
+                          </p>
+                          {v.example && <p className="m-0 mt-2 border-l-2 border-[var(--border-color)] pl-3 text-sm italic text-[var(--text-secondary)]">{v.example}</p>}
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+                {data.grammarHighlights.length > 0 && (
+                  <div aria-labelledby="grammar-title">
+                    <SectionTitle icon={FileText} id="grammar-title">Grammar highlights</SectionTitle>
+                    <ul className="m-0 mt-3 list-disc space-y-2 pl-5 text-[var(--text-primary)] marker:text-[var(--ink-blue)]">
+                      {data.grammarHighlights.map((g, i) => <li key={i} className="pl-1 leading-relaxed">{g}</li>)}
+                    </ul>
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+        </Tooltip.Provider>
       </section>
-
-      {data.vocabulary.length > 0 && (
-        <section aria-labelledby="vocab-title" className="mt-10">
-          <SectionTitle icon={Sparkles} id="vocab-title">Vocabulary</SectionTitle>
-          <ul className="m-0 mt-4 grid list-none grid-cols-1 gap-3 p-0 sm:grid-cols-2">
-            {data.vocabulary.map((v) => (
-              <li key={v.word} className="rounded-xl border border-[var(--border-color)] bg-[var(--bg-card)] p-4 shadow-[var(--shadow-sm)]">
-                <p className="m-0 font-bold text-[var(--text-primary)]">{v.word}</p>
-                <p className="m-0 mt-1 text-sm text-[var(--text-secondary)]">{v.meaning}</p>
-                <p className="m-0 mt-2 text-sm text-[var(--text-primary)]" lang="uz">
-                  <span className="mr-1.5 rounded bg-[var(--accent)] px-1.5 py-0.5 font-mono text-[0.6875rem] font-semibold text-[var(--accent-foreground)]">UZ</span>
-                  {v.uz}
-                </p>
-                {v.example && <p className="m-0 mt-2 border-l-2 border-[var(--border-color)] pl-3 text-sm italic text-[var(--text-secondary)]">{v.example}</p>}
-              </li>
-            ))}
-          </ul>
-        </section>
-      )}
-
-      {data.grammarHighlights.length > 0 && (
-        <section aria-labelledby="grammar-title" className="mt-10">
-          <SectionTitle icon={FileText} id="grammar-title">Grammar highlights</SectionTitle>
-          <ul className="m-0 mt-3 list-disc space-y-2 pl-5 text-[var(--text-primary)] marker:text-[var(--ink-blue)]">
-            {data.grammarHighlights.map((g, i) => <li key={i} className="pl-1 leading-relaxed">{g}</li>)}
-          </ul>
-        </section>
-      )}
 
       <section className="mt-10 rounded-2xl border border-[var(--border-color)] bg-[var(--bg-card)] p-5 text-center shadow-[var(--shadow-sm)] sm:p-7">
         <p className="m-0 text-lg font-bold text-[var(--text-primary)]">Can you write a Band {fmtBand(Math.max(...data.samples.map((s) => s.band)))} answer?</p>

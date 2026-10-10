@@ -52,16 +52,23 @@ function read<T>(key: string): Stored<T> | null {
   }
 }
 
-function write<T>(key: string, value: T, shrink?: (value: T) => T): void {
+/** True when the draft (or its smaller copy) is now in storage. */
+function write<T>(key: string, value: T, shrink?: (value: T) => T): boolean {
   const put = (v: T) => localStorage.setItem(key, JSON.stringify({ v: 1, savedAt: Date.now(), value: v } satisfies Stored<T>));
   try {
     put(value);
+    return true;
   } catch {
     // Storage full (a big picture, usually): keep the words at least.
     try {
-      if (shrink) put(shrink(value));
+      if (shrink) {
+        put(shrink(value));
+        return true;
+      }
+      return false;
     } catch {
       /* blocked or still full: the page works as before, just unsaved */
+      return false;
     }
   }
 }
@@ -105,12 +112,16 @@ export function useDraft<T>({ page, uid, db, value, ready, isEmpty, restore, shr
   const key = `${PREFIX}${page}.${uid ?? 'guest'}`;
   /** When the essay put back on the page was saved, or null when nothing was put back. */
   const [restoredAt, setRestoredAt] = useState<number | null>(null);
-  /** When this device last wrote the current essay to disk, or null once it is cleared. */
-  const [savedAt, setSavedAt] = useState<number | null>(null);
   /** True from a keystroke until it has been written, for a "Saving…" indicator. */
   const [pending, setPending] = useState(false);
   /** The saved draft has been looked at; from here on, changes are saved. */
   const [live, setLive] = useState(false);
+  /**
+   * When the essay on the page was last kept in this browser: null while there
+   * is nothing to keep, false when the browser refused it (storage blocked or
+   * full). Shown beside the word count, so the student can see it is safe.
+   */
+  const [savedAt, setSavedAt] = useState<number | null | false>(null);
 
   const latest = useRef(value);
   const cleared = useRef(false);
@@ -130,8 +141,7 @@ export function useDraft<T>({ page, uid, db, value, ready, isEmpty, restore, shr
       remove(key);
       setSavedAt(null);
     } else {
-      write(key, v, opts.current.shrink);
-      setSavedAt(Date.now());
+      setSavedAt(write(key, v, opts.current.shrink) ? Date.now() : false);
     }
     setPending(false);
   }, [key]);

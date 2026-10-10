@@ -20,8 +20,9 @@ import { NavLink, useLocation, useNavigate, useSearchParams } from "react-router
 import { useAuth } from "@/hooks/useAuth";
 import { useUnsavedWork } from "@/hooks/useUnsavedWork";
 import { useDraft } from "@/hooks/useDraft";
+import { DraftSavedStatus } from "@/components/writing/DraftSavedStatus";
+import { ReportAllowance } from "@/components/writing/ReportAllowance";
 import { DraftRestoredNotice } from "@/components/ui/DraftRestoredNotice";
-import { DraftSavedIndicator } from "@/components/ui/DraftSavedIndicator";
 import { Button } from "@/components/ui/Button";
 import WritingTask2Preview from "@/components/writingTask2Preview/WritingTask2Preview";
 import { encodeReport } from "@/lib/reportEncoding";
@@ -538,7 +539,7 @@ function Quick() {
                 {wordCount} / {minWords} words
                 {meetsMinWords && <span className="ml-1.5">✓</span>}
               </span>
-              <DraftSavedIndicator pending={draft.pending} savedAt={draft.savedAt} />
+              <DraftSavedStatus pending={draft.pending} savedAt={draft.savedAt} />
             </div>
             <div className="flex items-center gap-2">
               <button
@@ -575,6 +576,7 @@ function Quick() {
               <ModalDescription className="mt-2 text-sm leading-6 text-center text-slate-500 dark:text-neutral-400">
                 AI feedback marks your writing for grammar, vocabulary, coherence and task achievement.
               </ModalDescription>
+              <ReportAllowance />
               <div className="flex flex-col gap-2.5 mt-6">
                 <Button
                   onClick={handleAcceptFeedback}
