@@ -47,7 +47,7 @@ export const GROUPS: Group[] = [
         q: "Why is this better than just asking ChatGPT?",
         home: true,
         plain:
-          "ChatGPT will give you a band for anything you paste in, and it forgets last week's essay. WriteReady marks against the official IELTS band descriptors, the way examiners are trained to, and we check it against essays with known bands so the scores stay steady. Every report has the same parts: notes on each sentence, better words with Uzbek meanings, grammar fixes and a band 8 to 9 answer. Compare two reports and you can see whether you improved.",
+          "WriteReady marks against the official IELTS band descriptors, the way examiners are trained to, and we check it against essays with known bands so the scores stay steady. Every report has the same parts: notes on each sentence, better words with Uzbek meanings, grammar fixes and a band 8 to 9 answer. Compare two reports and you can see whether you improved.",
         a: (
           <>
             <p>ChatGPT will give you a band for anything you paste in, and it forgets last week&apos;s essay.</p>
